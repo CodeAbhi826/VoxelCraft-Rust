@@ -47,9 +47,23 @@ forensic audit verified this at the byte and pixel level (see §4).
 * The project ships **no third-party trademarks** — no names, logos, fonts,
   splash texts, folder conventions, or marketing labels of any other game or
   studio appear in anything this project writes.
-* **Our own vocabulary** covers every coined term we need (fuseling,
-  voidling, the Hollow, fluxstone, scarlet/viridian wood, spirit sand,
-  Voxelfont, …). The rename map lives in `scripts/gen_legacy_aliases.py`.
+* **In-game functional vocabulary is generic, not trademarked** (owner
+  directive, 2026-09-21): the block/item/mob/dimension terms the engine
+  uses are the genre's shared terms of art — redstone, netherrack, soul
+  sand, creeper, enderman, wither, ender dragon, crimson/warped wood,
+  chorus, elytra, … — exactly like every voxel-game wiki and mod calls
+  them. They describe FUNCTION (what a thing does in the genre), carry
+  no source indication, and are how user packs, wikis and muscle memory
+  expect an engine in this space to speak. The 2026-09-20 round's
+  coined vocabulary (fuseling/fluxstone/hollowstone/…) was an
+  over-correction and is retired; its names live on only as read-side
+  legacy aliases (§5).
+* What stays ours: the project's own identity (VoxelCraft, vc-* crates,
+  our folder layout, our pack format), our own art/audio/code, and the
+  **Voxelfont** spare pixel font. The ACTIVE engine font is **Monocraft**
+  (IdreesInc, SIL OFL 1.1) — an open-source font with full redistribution
+  rights, license shipped at
+  `voxelcraft/crates/vc-render/assets/OFL-Monocraft.txt`.
 * Update-marketing names, edition names, and studio names never appear in
   code, docs, commits, or UI text.
 
@@ -63,8 +77,11 @@ of every PNG against the owner's study-only reference set) found:
    generator — provenance is now 100% in-project.
 2. **A third-party derived-styled pixel font** (SIL-OFL licensed, so
    redistribution was technically permitted). Its derived look still did
-   not meet this project's zero-third-party-expression bar. Replaced by
-   **Voxelfont**, generated from our own glyph table.
+   not meet this project's zero-third-party-expression bar at the time;
+   replaced by **Voxelfont**, generated from our own glyph table.
+   2026-09-21: the owner chose **Monocraft** (IdreesInc, SIL OFL 1.1 —
+   the closest legally usable pixel font) as the ACTIVE engine font;
+   Voxelfont (ours, MIT) stays in-repo as the documented spare.
 3. **Scraped wiki page dumps** (process artifacts from the research phase).
    Deleted from the tree and purged from git history. The engine itself
    never needed them.
@@ -88,10 +105,13 @@ spreadsheet open a .xlsx. Rules:
   resolves onto our flat key space (`crates/vc-pack/src/pack.rs`,
   `NsAliasSource`).
 * **Legacy-name aliases are interop data, not branding.**
-  `crates/vc-pack/src/legacy_aliases.rs` maps the ecosystem's coined names
-  (as bare, namespace-stripped keys) onto our vocabulary so real-world packs
-  keep loading. The table is generated (`scripts/gen_legacy_aliases.py`),
-  read-side only, and never rendered to users.
+  `crates/vc-pack/src/legacy_aliases.rs` maps the project's own
+  short-lived coined names (the retired 2026-09-20 vocabulary, as bare,
+  namespace-stripped keys) onto the real terms so packs/saves produced
+  by coined-era builds keep loading; real-name user packs resolve
+  natively (identity — they never consult the table). The table is
+  generated (`scripts/gen_legacy_aliases.py`), read-side only, and never
+  rendered to users.
 * **Compatibility statements are nominative fair use.** Docs may say
   "supports BSL/SEUS-format shader packs and labPBR-spec resource packs"
   the same way a media player says "plays MP4". No pack is ever bundled.

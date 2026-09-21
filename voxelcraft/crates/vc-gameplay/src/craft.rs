@@ -23,7 +23,7 @@ pub enum Ing {
     AnyWood,
     /// 1.14: any planks (vanilla's stick/barrel recipes take "Any
     /// Planks" — the completeness audit extends the oak+jungle pair to
-    /// the 1.16 scarlet/viridian planks, vanilla-exact)
+    /// the 1.16 crimson/warped planks, vanilla-exact)
     AnyPlanks,
     Block(u16),
 }
@@ -43,20 +43,20 @@ pub const RECIPES: &[Recipe] = &[
         grid: &[Ing::Block(JUNGLE_LOG)],
         out: ItemStack::new(JUNGLE_PLANKS, 4),
     },
-    // ---- 1.11 (VERIFIED changelog §Blocks: lurkshell boxes "Crafted in a
+    // ---- 1.11 (VERIFIED changelog §Blocks: shulker boxes "Crafted in a
     // crafting table as a single column, with a chest in the middle of
-    // the row and a lurkshell shell both above and below the chest") ----
+    // the row and a shulker shell both above and below the chest") ----
     // the engine's square-pattern matcher places 3×3 patterns at the
     // top-left, so the column lives in the MIDDLE column (vanilla also
     // accepts the side columns — a disclosed placement constraint)
     Recipe {
         size: 3,
         grid: &[
-            Ing::None, Ing::Block(LURKSHELL_SHELL), Ing::None,
+            Ing::None, Ing::Block(SHULKER_SHELL), Ing::None,
             Ing::None, Ing::Block(CHEST), Ing::None,
-            Ing::None, Ing::Block(LURKSHELL_SHELL), Ing::None,
+            Ing::None, Ing::Block(SHULKER_SHELL), Ing::None,
         ],
-        out: ItemStack::new(LURKSHELL_BOX, 1),
+        out: ItemStack::new(SHULKER_BOX, 1),
     },
     // ---- 1.8 bracket (VERIFIED reference wiki /Java_Edition_1.8
     // §Blocks, live 2026-09-06) ----
@@ -115,26 +115,26 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(RED_SANDSTONE, 1),
     },
-    // abyssprism family (wiki §Blocks: abyssprism = shards, bricks =
+    // prismarine family (wiki §Blocks: prismarine = shards, bricks =
     // shards, dark = shards + ink; ink sacs are palette-absent — the dark
     // variant rides the same shard recipe, documented simplification)
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(ABYSSPRISM_SHARD),
-            Ing::Block(ABYSSPRISM_SHARD),
-            Ing::Block(ABYSSPRISM_SHARD),
-            Ing::Block(ABYSSPRISM_SHARD),
+            Ing::Block(PRISMARINE_SHARD),
+            Ing::Block(PRISMARINE_SHARD),
+            Ing::Block(PRISMARINE_SHARD),
+            Ing::Block(PRISMARINE_SHARD),
         ],
-        out: ItemStack::new(ABYSSPRISM, 1),
+        out: ItemStack::new(PRISMARINE, 1),
     },
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(ABYSSPRISM_CRYSTALS),
-            Ing::Block(ABYSSPRISM_CRYSTALS),
-            Ing::Block(ABYSSPRISM_CRYSTALS),
-            Ing::Block(ABYSSPRISM_CRYSTALS),
+            Ing::Block(PRISMARINE_CRYSTALS),
+            Ing::Block(PRISMARINE_CRYSTALS),
+            Ing::Block(PRISMARINE_CRYSTALS),
+            Ing::Block(PRISMARINE_CRYSTALS),
         ],
         out: ItemStack::new(SEA_LANTERN, 1),
     },
@@ -169,8 +169,8 @@ pub const RECIPES: &[Recipe] = &[
     // wool→? keep the set tight and honest.
     // ---- Phase E1 recipes (evolution 1.0–1.2 bracket, live-verified
     // 2026-09-06) ----
-    // fluxstone lamp: 4 glowstone (cardinal) + 1 fluxstone (center)
-    // (VERIFIED w/Fluxstone_Lamp §Crafting)
+    // redstone lamp: 4 glowstone (cardinal) + 1 redstone (center)
+    // (VERIFIED w/Redstone_Lamp §Crafting)
     Recipe {
         size: 3,
         grid: &[
@@ -178,15 +178,15 @@ pub const RECIPES: &[Recipe] = &[
             Ing::Block(GLOWSTONE),
             Ing::None,
             Ing::Block(GLOWSTONE),
-            Ing::Block(FLUXSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
             Ing::Block(GLOWSTONE),
             Ing::None,
             Ing::Block(GLOWSTONE),
             Ing::None,
         ],
-        out: ItemStack::new(FLUXSTONE_LAMP, 1),
+        out: ItemStack::new(REDSTONE_LAMP, 1),
     },
-    // void eye: blaze powder + void pearl (shapeless in vanilla —
+    // eye of ender: blaze powder + ender pearl (shapeless in vanilla —
     // modeled as the 2×2 diagonal; VERIFIED)
     Recipe {
         size: 2,
@@ -194,9 +194,9 @@ pub const RECIPES: &[Recipe] = &[
             Ing::Block(BLAZE_POWDER),
             Ing::None,
             Ing::None,
-            Ing::Block(VOID_PEARL),
+            Ing::Block(ENDER_PEARL),
         ],
-        out: ItemStack::new(VOID_EYE, 1),
+        out: ItemStack::new(EYE_OF_ENDER, 1),
     },
     // blaze powder: 1 rod → 2 (shapeless in vanilla; 1×1 shaped here)
     Recipe {
@@ -204,16 +204,16 @@ pub const RECIPES: &[Recipe] = &[
         grid: &[Ing::Block(BLAZE_ROD)],
         out: ItemStack::new(BLAZE_POWDER, 2),
     },
-    // hollow bricks: 4 hollow-brick items 2×2 (VERIFIED vanilla)
+    // nether bricks: 4 nether-brick items 2×2 (VERIFIED vanilla)
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(HOLLOW_BRICK),
-            Ing::Block(HOLLOW_BRICK),
-            Ing::Block(HOLLOW_BRICK),
-            Ing::Block(HOLLOW_BRICK),
+            Ing::Block(NETHER_BRICK),
+            Ing::Block(NETHER_BRICK),
+            Ing::Block(NETHER_BRICK),
+            Ing::Block(NETHER_BRICK),
         ],
-        out: ItemStack::new(HOLLOW_BRICKS, 1),
+        out: ItemStack::new(NETHER_BRICKS, 1),
     },
     // [cut/chiseled sandstone crafting DEFERRED: vanilla's recipes need
     // plain SANDSTONE + sandstone slabs — neither block exists in the
@@ -236,13 +236,13 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(POTION_EMPTY, 3),
     },
-    // 3×3: cobble bottom row + hollowstone center (vanilla stand recipe:
+    // 3×3: cobble bottom row + netherrack center (vanilla stand recipe:
     // blaze rod center — §29 palette adaptation)
     Recipe {
         size: 3,
         grid: &[
             Ing::None,
-            Ing::Block(HOLLOWSTONE),
+            Ing::Block(NETHERRACK),
             Ing::None,
             Ing::None,
             Ing::None,
@@ -310,7 +310,7 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(ANVIL, 1),
     },
-    // beacon: 5 glass + 1 hollow star + 3 obsidian (VERIFIED w/Beacon)
+    // beacon: 5 glass + 1 nether star + 3 obsidian (VERIFIED w/Beacon)
     Recipe {
         size: 3,
         grid: &[
@@ -318,7 +318,7 @@ pub const RECIPES: &[Recipe] = &[
             Ing::Block(GLASS),
             Ing::Block(GLASS),
             Ing::Block(GLASS),
-            Ing::Block(HOLLOW_STAR),
+            Ing::Block(NETHER_STAR),
             Ing::Block(GLASS),
             Ing::Block(OBSIDIAN),
             Ing::Block(OBSIDIAN),
@@ -326,7 +326,7 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(BEACON, 1),
     },
-    // void chest: 8 obsidian + 1 void eye (VERIFIED w/Void_Chest)
+    // ender chest: 8 obsidian + 1 eye of ender (VERIFIED w/Ender_Chest)
     Recipe {
         size: 3,
         grid: &[
@@ -334,13 +334,13 @@ pub const RECIPES: &[Recipe] = &[
             Ing::Block(OBSIDIAN),
             Ing::Block(OBSIDIAN),
             Ing::Block(OBSIDIAN),
-            Ing::Block(VOID_EYE),
+            Ing::Block(EYE_OF_ENDER),
             Ing::Block(OBSIDIAN),
             Ing::Block(OBSIDIAN),
             Ing::Block(OBSIDIAN),
             Ing::Block(OBSIDIAN),
         ],
-        out: ItemStack::new(VOID_CHEST, 1),
+        out: ItemStack::new(ENDER_CHEST, 1),
     },
     // cobblestone wall: 6 cobble -> 6 walls (VERIFIED w/Wall)
     Recipe {
@@ -418,14 +418,14 @@ pub const RECIPES: &[Recipe] = &[
         grid: &[Ing::Block(COAL_BLOCK)],
         out: ItemStack::new(COAL, 9),
     },
-    // block of quartz: 4 hollow quartz (VERIFIED w/Block_of_Quartz)
+    // block of quartz: 4 nether quartz (VERIFIED w/Block_of_Quartz)
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(HOLLOW_QUARTZ),
-            Ing::Block(HOLLOW_QUARTZ),
-            Ing::Block(HOLLOW_QUARTZ),
-            Ing::Block(HOLLOW_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
         ],
         out: ItemStack::new(QUARTZ_BLOCK, 1),
     },
@@ -509,16 +509,16 @@ pub const RECIPES: &[Recipe] = &[
         out: ItemStack::new(TRAPPED_CHEST, 1),
     },
     // daylight sensor: 3 glass + 3 quartz + 3 wooden slabs (VERIFIED
-    // w/Daylight_Detector "Glass + Hollow Quartz + Any Wooden Slab")
+    // w/Daylight_Detector "Glass + Nether Quartz + Any Wooden Slab")
     Recipe {
         size: 3,
         grid: &[
             Ing::Block(GLASS),
             Ing::Block(GLASS),
             Ing::Block(GLASS),
-            Ing::Block(HOLLOW_QUARTZ),
-            Ing::Block(HOLLOW_QUARTZ),
-            Ing::Block(HOLLOW_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
             Ing::Block(OAK_SLAB),
             Ing::Block(OAK_SLAB),
             Ing::Block(OAK_SLAB),
@@ -551,28 +551,28 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(HEAVY_WEIGHTED_PLATE, 1),
     },
-    // block of fluxstone: 9 fluxstone (VERIFIED w/Block_of_Fluxstone "nine
-    // fluxstone dust"; fluxstone WIRE block = the engine's dust — disclosed)
+    // block of redstone: 9 redstone (VERIFIED w/Block_of_Redstone "nine
+    // redstone dust"; redstone WIRE block = the engine's dust — disclosed)
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(FLUXSTONE_WIRE),
-            Ing::Block(FLUXSTONE_WIRE),
-            Ing::Block(FLUXSTONE_WIRE),
-            Ing::Block(FLUXSTONE_WIRE),
-            Ing::Block(FLUXSTONE_WIRE),
-            Ing::Block(FLUXSTONE_WIRE),
-            Ing::Block(FLUXSTONE_WIRE),
-            Ing::Block(FLUXSTONE_WIRE),
-            Ing::Block(FLUXSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
         ],
-        out: ItemStack::new(FLUXSTONE_BLOCK, 1),
+        out: ItemStack::new(REDSTONE_BLOCK, 1),
     },
-    // block of fluxstone -> 9 fluxstone (the vanilla reverse craft)
+    // block of redstone -> 9 redstone (the vanilla reverse craft)
     Recipe {
         size: 1,
-        grid: &[Ing::Block(FLUXSTONE_BLOCK)],
-        out: ItemStack::new(FLUXSTONE_WIRE, 9),
+        grid: &[Ing::Block(REDSTONE_BLOCK)],
+        out: ItemStack::new(REDSTONE_WIRE, 9),
     },
     // ---- 1.13 (Aquatic-era update, VERIFIED changelog §Items live
     // 2026-09-07) ----
@@ -631,7 +631,7 @@ pub const RECIPES: &[Recipe] = &[
     // stick: 2 planks stacked → 4 sticks (the classic recipe; "Any
     // Planks" per slot — the engine's oak + jungle pair). Both
     // orientations ship as separate patterns (the matcher has no
-    // rotation pass — the lurkshell-column precedent discloses this
+    // rotation pass — the shulker-column precedent discloses this
     // class of constraint).
     Recipe {
         size: 2,
@@ -719,12 +719,12 @@ pub const RECIPES: &[Recipe] = &[
     },
     // lantern: "8 iron nuggets and 1 torch" (w/Lantern §Crafting: the
     // nugget ring around the torch center). The engine's torch
-    // (FLUXSTONE_TORCH, light 7) is the torch stand-in, disclosed.
+    // (REDSTONE_TORCH, light 7) is the torch stand-in, disclosed.
     Recipe {
         size: 3,
         grid: &[
             Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
-            Ing::Block(IRON_NUGGET), Ing::Block(FLUXSTONE_TORCH), Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET), Ing::Block(REDSTONE_TORCH), Ing::Block(IRON_NUGGET),
             Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
         ],
         out: ItemStack::new(LANTERN, 1),
@@ -815,61 +815,61 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(SHEARS, 1),
     },
-    // ---- 1.16 (Hollows Update, part 1 — the anchor family): all
+    // ---- 1.16 (Nether Update, part 1 — the anchor family): all
     // VERIFIED against the v116 captures. ----
-    // rebirth anchor: "6 weeping obsidian + 3 glowstone" (w/Respawn_
-    // Anchor §Crafting — the weeping obsidian ring around the
+    // respawn anchor: "6 crying obsidian + 3 glowstone" (w/Respawn_
+    // Anchor §Crafting — the crying obsidian ring around the
     // glowstone column)
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(WEEPING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(WEEPING_OBSIDIAN),
-            Ing::Block(WEEPING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(WEEPING_OBSIDIAN),
-            Ing::Block(WEEPING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(WEEPING_OBSIDIAN),
+            Ing::Block(CRYING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(CRYING_OBSIDIAN),
+            Ing::Block(CRYING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(CRYING_OBSIDIAN),
+            Ing::Block(CRYING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(CRYING_OBSIDIAN),
         ],
-        out: ItemStack::new(REBIRTH_ANCHOR, 1),
+        out: ItemStack::new(RESPAWN_ANCHOR, 1),
     },
-    // target: "4 fluxstone dust + 1 hay bale" (w/Target §Crafting —
+    // target: "4 redstone dust + 1 hay bale" (w/Target §Crafting —
     // the dust cross around the hay bale center; the engine has no
-    // fluxstone-dust ITEM — the FLUXSTONE_BLOCK stand-in occupies the
+    // redstone-dust ITEM — the REDSTONE_BLOCK stand-in occupies the
     // dust slots, disclosed)
     Recipe {
         size: 3,
         grid: &[
-            Ing::None,              Ing::Block(FLUXSTONE_BLOCK), Ing::None,
-            Ing::Block(FLUXSTONE_BLOCK), Ing::Block(HAY_BALE),   Ing::Block(FLUXSTONE_BLOCK),
-            Ing::None,              Ing::Block(FLUXSTONE_BLOCK), Ing::None,
+            Ing::None,              Ing::Block(REDSTONE_BLOCK), Ing::None,
+            Ing::Block(REDSTONE_BLOCK), Ing::Block(HAY_BALE),   Ing::Block(REDSTONE_BLOCK),
+            Ing::None,              Ing::Block(REDSTONE_BLOCK), Ing::None,
         ],
         out: ItemStack::new(TARGET, 1),
     },
-    // hollowite ingot: "crafting four hollowite scraps and four gold
-    // ingots together" (VERIFIED w/Hollowite_Ingot — gold is the
+    // netherite ingot: "crafting four netherite scraps and four gold
+    // ingots together" (VERIFIED w/Netherite_Ingot — gold is the
     // engine's IRON_ORE ingot stand-in, the disclosed convention)
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(HOLLOWITE_SCRAP), Ing::Block(IRON_ORE),     Ing::Block(HOLLOWITE_SCRAP),
+            Ing::Block(NETHERITE_SCRAP), Ing::Block(IRON_ORE),     Ing::Block(NETHERITE_SCRAP),
             Ing::Block(IRON_ORE),        Ing::None,                 Ing::Block(IRON_ORE),
-            Ing::Block(HOLLOWITE_SCRAP), Ing::Block(IRON_ORE),     Ing::Block(HOLLOWITE_SCRAP),
+            Ing::Block(NETHERITE_SCRAP), Ing::Block(IRON_ORE),     Ing::Block(NETHERITE_SCRAP),
         ],
-        out: ItemStack::new(HOLLOWITE_INGOT, 1),
+        out: ItemStack::new(NETHERITE_INGOT, 1),
     },
-    // block of hollowite: 9 ingots (the storage-block convention,
-    // VERIFIED w/Block_of_Hollowite) ...
+    // block of netherite: 9 ingots (the storage-block convention,
+    // VERIFIED w/Block_of_Netherite) ...
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(HOLLOWITE_INGOT), Ing::Block(HOLLOWITE_INGOT), Ing::Block(HOLLOWITE_INGOT),
-            Ing::Block(HOLLOWITE_INGOT), Ing::Block(HOLLOWITE_INGOT), Ing::Block(HOLLOWITE_INGOT),
-            Ing::Block(HOLLOWITE_INGOT), Ing::Block(HOLLOWITE_INGOT), Ing::Block(HOLLOWITE_INGOT),
+            Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT),
         ],
-        out: ItemStack::new(HOLLOWITE_BLOCK, 1),
+        out: ItemStack::new(NETHERITE_BLOCK, 1),
     },
     // ... and back into 9 (both directions, the storage convention)
     Recipe {
         size: 1,
-        grid: &[Ing::Block(HOLLOWITE_BLOCK)],
-        out: ItemStack::new(HOLLOWITE_INGOT, 9),
+        grid: &[Ing::Block(NETHERITE_BLOCK)],
+        out: ItemStack::new(NETHERITE_INGOT, 9),
     },
     // chain: "iron nuggets + iron ingot" (VERIFIED w/Chain — the 1.16
     // iron-only form; the copper halves of the current wiki row are
@@ -884,34 +884,34 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(CHAIN, 1),
     },
-    // ---- 1.16 (Hollows Update, part 2 — the scarlet/viridian families):
+    // ---- 1.16 (Nether Update, part 2 — the crimson/warped families):
     // all VERIFIED against the v116b captures. ----
-    // scarlet stem → 4 scarlet planks (the universal log→planks rule,
-    // VERIFIED w/Scarlet_Planks §Crafting: "scarlet planks can be
-    // crafted from scarlet stems")
+    // crimson stem → 4 crimson planks (the universal log→planks rule,
+    // VERIFIED w/Crimson_Planks §Crafting: "crimson planks can be
+    // crafted from crimson stems")
     Recipe {
         size: 1,
-        grid: &[Ing::Block(SCARLET_STEM)],
-        out: ItemStack::new(SCARLET_PLANKS, 4),
+        grid: &[Ing::Block(CRIMSON_STEM)],
+        out: ItemStack::new(CRIMSON_PLANKS, 4),
     },
-    // scarlet hyphae → 4 scarlet planks (the same 1:4 rule — the
+    // crimson hyphae → 4 crimson planks (the same 1:4 rule — the
     // "any log or stem or hyphae" row of the universal planks recipe)
     Recipe {
         size: 1,
-        grid: &[Ing::Block(SCARLET_HYPHAE)],
-        out: ItemStack::new(SCARLET_PLANKS, 4),
+        grid: &[Ing::Block(CRIMSON_HYPHAE)],
+        out: ItemStack::new(CRIMSON_PLANKS, 4),
     },
-    // viridian stem → 4 viridian planks
+    // warped stem → 4 warped planks
     Recipe {
         size: 1,
-        grid: &[Ing::Block(VIRIDIAN_STEM)],
-        out: ItemStack::new(VIRIDIAN_PLANKS, 4),
+        grid: &[Ing::Block(WARPED_STEM)],
+        out: ItemStack::new(WARPED_PLANKS, 4),
     },
-    // viridian hyphae → 4 viridian planks
+    // warped hyphae → 4 warped planks
     Recipe {
         size: 1,
-        grid: &[Ing::Block(VIRIDIAN_HYPHAE)],
-        out: ItemStack::new(VIRIDIAN_PLANKS, 4),
+        grid: &[Ing::Block(WARPED_HYPHAE)],
+        out: ItemStack::new(WARPED_PLANKS, 4),
     },
     // polished basalt: 4 basalt → 4 (VERIFIED w/Polished_Basalt
     // §Crafting: the 2x2 stone family — the part-1 BASALT doc's
@@ -944,40 +944,40 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(POLISHED_BLACKSTONE_BRICKS, 4),
     },
-    // spirit torch: charcoal/coal + stick + spirit soil or spirit sand → 4
-    // — SHAPELESS (VERIFIED w/Spirit_Torch §Crafting: "a torch crafted
-    // with the addition of spirit soil or spirit sand"; the coal and
+    // soul torch: charcoal/coal + stick + soul soil or soul sand → 4
+    // — SHAPELESS (VERIFIED w/Soul_Torch §Crafting: "a torch crafted
+    // with the addition of soul soil or soul sand"; the coal and
     // charcoal halves of the current wiki row are both valid in the
     // 1.16 window). Rides the shapeless matcher below (the concrete-
-    // powder pattern). The spirit lantern follows from it: 8 iron
-    // nuggets + 1 spirit torch (VERIFIED w/Spirit_Torch §Crafting
-    // ingredient table: "Spirit Lantern — Iron Nugget + Spirit Torch").
+    // powder pattern). The soul lantern follows from it: 8 iron
+    // nuggets + 1 soul torch (VERIFIED w/Soul_Torch §Crafting
+    // ingredient table: "Soul Lantern — Iron Nugget + Soul Torch").
     // ---- the 1.0-1.16.5 completeness audit (VERIFIED live 2026-09-08
     // against the audit16 captures) ----
-    // violetstone block: 4 popped echo fruit -> 4 (the 2x2 stone-family
-    // pattern; w/Popped_Echo_Fruit: "used to craft Void rods and
-    // violetstone blocks" — the 1.9 violetstone family finally crafts from its
+    // purpur block: 4 popped chorus fruit -> 4 (the 2x2 stone-family
+    // pattern; w/Popped_Chorus_Fruit: "used to craft End rods and
+    // purpur blocks" — the 1.9 purpur family finally crafts from its
     // own ingredient instead of being picker-only)
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(POPPED_ECHO_FRUIT), Ing::Block(POPPED_ECHO_FRUIT),
-            Ing::Block(POPPED_ECHO_FRUIT), Ing::Block(POPPED_ECHO_FRUIT),
+            Ing::Block(POPPED_CHORUS_FRUIT), Ing::Block(POPPED_CHORUS_FRUIT),
+            Ing::Block(POPPED_CHORUS_FRUIT), Ing::Block(POPPED_CHORUS_FRUIT),
         ],
-        out: ItemStack::new(VIOLETSTONE_BLOCK, 4),
+        out: ItemStack::new(PURPUR_BLOCK, 4),
     },
-    // void rod: blaze rod + popped echo fruit -> 4 (VERIFIED
-    // w/Void_Rod §Crafting; the 1.9 end-rod's first recipe — the
-    // rod-over-echo pair as the top row of the 2x2 window)
+    // end rod: blaze rod + popped chorus fruit -> 4 (VERIFIED
+    // w/End_Rod §Crafting; the 1.9 end-rod's first recipe — the
+    // rod-over-chorus pair as the top row of the 2x2 window)
     Recipe {
         size: 2,
         grid: &[
             Ing::Block(BLAZE_ROD),
-            Ing::Block(POPPED_ECHO_FRUIT),
+            Ing::Block(POPPED_CHORUS_FRUIT),
             Ing::None,
             Ing::None,
         ],
-        out: ItemStack::new(VOID_ROD, 4),
+        out: ItemStack::new(END_ROD, 4),
     },
     // ---- backlog round (farming, 2026-09-09): the farming recipes
     // (all VERIFIED live 2026-09-09 w/Bread, Hay_Bale, Hoe captures) ----
@@ -1018,12 +1018,12 @@ pub const RECIPES: &[Recipe] = &[
     },
 ];
 
-/// 1.16 (Hollows Update, part 2): the shapeless SOUL-TORCH recipe —
-/// 1 charcoal or coal + 1 stick + 1 spirit soil or spirit sand → 4 soul
-/// torches (VERIFIED w/Spirit_Torch §Crafting; the coal and charcoal
-/// halves are both valid). The spirit lantern rides the shaped path:
-/// 8 iron nuggets + 1 spirit torch (VERIFIED w/Spirit_Torch §Crafting
-/// ingredient table: "Spirit Lantern — Iron Nugget + Spirit Torch" —
+/// 1.16 (Nether Update, part 2): the shapeless SOUL-TORCH recipe —
+/// 1 charcoal or coal + 1 stick + 1 soul soil or soul sand → 4 soul
+/// torches (VERIFIED w/Soul_Torch §Crafting; the coal and charcoal
+/// halves are both valid). The soul lantern rides the shaped path:
+/// 8 iron nuggets + 1 soul torch (VERIFIED w/Soul_Torch §Crafting
+/// ingredient table: "Soul Lantern — Iron Nugget + Soul Torch" —
 /// the vanilla lantern recipe's soul form).
 /// the completeness audit: the shapeless KITCHEN chain (all VERIFIED
 /// live 2026-09-08 against the audit16 captures — the Bowl, Sugar,
@@ -1057,7 +1057,7 @@ fn match_kitchen(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
     let mut other = 0;
     for s in slots {
         match s.block {
-            PLANKS | JUNGLE_PLANKS | SCARLET_PLANKS | VIRIDIAN_PLANKS if !s.is_empty() => planks += 1,
+            PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS if !s.is_empty() => planks += 1,
             BOWL if !s.is_empty() => bowl += 1,
             MUSHROOM_RED if !s.is_empty() => red += 1,
             MUSHROOM_BROWN if !s.is_empty() => brown += 1,
@@ -1129,11 +1129,11 @@ fn match_kitchen(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
     None
 }
 
-fn match_spirit_torch(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
+fn match_soul_torch(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
     let mut fuel = 0; // coal or charcoal (exactly one)
     let mut stick_n = 0;
-    let mut soul = 0; // spirit soil or spirit sand (exactly one)
-    let mut torch = 0; // the soul-lantern path: exactly one spirit torch
+    let mut soul = 0; // soul soil or soul sand (exactly one)
+    let mut torch = 0; // the soul-lantern path: exactly one soul torch
     let mut nuggets = 0;
     for s in slots {
         if s.is_empty() {
@@ -1142,19 +1142,19 @@ fn match_spirit_torch(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
         match s.block {
             CHARCOAL | COAL => fuel += 1,
             STICK => stick_n += 1,
-            SPIRIT_SOIL | SPIRIT_SAND => soul += 1,
-            SPIRIT_TORCH => torch += 1,
+            SOUL_SOIL | SOUL_SAND => soul += 1,
+            SOUL_TORCH => torch += 1,
             IRON_NUGGET => nuggets += 1,
             _ => return None, // any other ingredient breaks the multiset
         }
     }
-    // the spirit lantern: 8 nuggets + 1 spirit torch (the lantern ring)
+    // the soul lantern: 8 nuggets + 1 soul torch (the lantern ring)
     if nuggets == 8 && torch == 1 && fuel == 0 && stick_n == 0 && soul == 0 {
-        return Some(ItemStack::new(SPIRIT_LANTERN, 1));
+        return Some(ItemStack::new(SOUL_LANTERN, 1));
     }
-    // the spirit torch: 1 fuel + 1 stick + 1 soul block
+    // the soul torch: 1 fuel + 1 stick + 1 soul block
     if fuel == 1 && stick_n == 1 && soul == 1 && torch == 0 && nuggets == 0 {
-        return Some(ItemStack::new(SPIRIT_TORCH, 4));
+        return Some(ItemStack::new(SOUL_TORCH, 4));
     }
     None
 }
@@ -1206,9 +1206,9 @@ pub fn match_grid(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
     if let Some(out) = match_kitchen(slots, size) {
         return Some(out);
     }
-    // 1.16 (Hollows Update, part 2): the shapeless soul-torch +
+    // 1.16 (Nether Update, part 2): the shapeless soul-torch +
     // soul-lantern recipes (any arrangement)
-    if let Some(out) = match_spirit_torch(slots, size) {
+    if let Some(out) = match_soul_torch(slots, size) {
         return Some(out);
     }
     // 1.12: the shapeless concrete-powder recipe (any arrangement)
@@ -1247,7 +1247,7 @@ pub fn match_grid(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
                             !s.is_empty()
                                 && matches!(
                                     s.block,
-                                    PLANKS | JUNGLE_PLANKS | SCARLET_PLANKS | VIRIDIAN_PLANKS
+                                    PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS
                                 )
                         }
                     };
@@ -1288,10 +1288,10 @@ pub fn consume_grid(slots: &mut [ItemStack]) {
 mod tests {
     use super::*;
 
-    /// the completeness audit: the kitchen chain + the violetstone family
+    /// the completeness audit: the kitchen chain + the purpur family
     /// (all VERIFIED live 2026-09-08 against the audit16 captures —
     /// Bowl/Sugar/Mushroom_Stew/Rabbit_Stew/Beetroot_Soup/Pumpkin_Pie/
-    /// Popped_Echo_Fruit)
+    /// Popped_Chorus_Fruit)
     /// the sweep-2 melon crafts: 9 slices -> the melon block, 1 slice
     /// -> melon seeds (VERIFIED w/Melon_Slice §Crafting, live 2026-09-09)
     #[test]
@@ -1331,9 +1331,9 @@ mod tests {
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (BOWL, 4));
-        // scarlet planks make bowls too (the "Any Planks" row)
+        // crimson planks make bowls too (the "Any Planks" row)
         let g = vec![
-            ItemStack::new(SCARLET_PLANKS, 1), ItemStack::new(SCARLET_PLANKS, 1), ItemStack::new(SCARLET_PLANKS, 1),
+            ItemStack::new(CRIMSON_PLANKS, 1), ItemStack::new(CRIMSON_PLANKS, 1), ItemStack::new(CRIMSON_PLANKS, 1),
             ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
             ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
         ];
@@ -1379,24 +1379,24 @@ mod tests {
         assert_eq!((out.block, out.count), (PUMPKIN_PIE, 1));
     }
 
-    /// the audit: the violetstone + end-rod crafts (the 1.9 violetstone family
-    /// finally crafts from popped echo)
+    /// the audit: the purpur + end-rod crafts (the 1.9 purpur family
+    /// finally crafts from popped chorus)
     #[test]
-    fn audit16_violetstone_and_void_rod() {
-        // 4 popped echo -> 4 violetstone (2x2)
-        let g = vec![ItemStack::new(POPPED_ECHO_FRUIT, 1); 4];
+    fn audit16_purpur_and_end_rod() {
+        // 4 popped chorus -> 4 purpur (2x2)
+        let g = vec![ItemStack::new(POPPED_CHORUS_FRUIT, 1); 4];
         let out = match_grid(&g, 2).unwrap();
-        assert_eq!((out.block, out.count), (VIOLETSTONE_BLOCK, 4));
-        // blaze rod + popped echo -> 4 void rods (the top row of the
+        assert_eq!((out.block, out.count), (PURPUR_BLOCK, 4));
+        // blaze rod + popped chorus -> 4 end rods (the top row of the
         // 2x2 window)
         let g = vec![
             ItemStack::new(BLAZE_ROD, 1),
-            ItemStack::new(POPPED_ECHO_FRUIT, 1),
+            ItemStack::new(POPPED_CHORUS_FRUIT, 1),
             ItemStack::EMPTY,
             ItemStack::EMPTY,
         ];
         let out = match_grid(&g, 2).unwrap();
-        assert_eq!((out.block, out.count), (VOID_ROD, 4));
+        assert_eq!((out.block, out.count), (END_ROD, 4));
     }
 
     #[test]
@@ -1464,7 +1464,7 @@ mod tests {
     #[test]
     fn stand_recipe_needs_the_exact_layout() {
         let mut g = vec![ItemStack::EMPTY; 9];
-        g[1] = ItemStack::new(HOLLOWSTONE, 1);
+        g[1] = ItemStack::new(NETHERRACK, 1);
         for i in [6, 7, 8] {
             g[i] = ItemStack::new(COBBLE, 2);
         }
@@ -1473,7 +1473,7 @@ mod tests {
         // rod NOT centered → no match
         let mut bad = g.clone();
         bad[1] = ItemStack::EMPTY;
-        bad[0] = ItemStack::new(HOLLOWSTONE, 1);
+        bad[0] = ItemStack::new(NETHERRACK, 1);
         assert!(match_grid(&bad, 3).is_none());
     }
 
@@ -1525,8 +1525,8 @@ mod tests {
 
     #[test]
     fn phase_e3_quartz_and_pillar_recipes() {
-        // 4 hollow quartz -> 1 block of quartz (VERIFIED w/Block_of_Quartz)
-        let out = match_grid(&grid2([HOLLOW_QUARTZ, HOLLOW_QUARTZ, HOLLOW_QUARTZ, HOLLOW_QUARTZ]), 2).unwrap();
+        // 4 nether quartz -> 1 block of quartz (VERIFIED w/Block_of_Quartz)
+        let out = match_grid(&grid2([NETHER_QUARTZ, NETHER_QUARTZ, NETHER_QUARTZ, NETHER_QUARTZ]), 2).unwrap();
         assert_eq!((out.block, out.count), (QUARTZ_BLOCK, 1));
         // 2 blocks of quartz (vertical) -> 2 pillars (VERIFIED
         // w/Quartz_Pillar; output count 2 confirmed by a 2nd source)
@@ -1550,7 +1550,7 @@ mod tests {
     }
 
     #[test]
-    fn phase_e3_fluxstone_component_recipes() {
+    fn phase_e3_redstone_component_recipes() {
         // trapped chest: tripwire hook + chest (VERIFIED w/Trapped_Chest)
         let out = match_grid(&grid2([TRIPWIRE_HOOK, 0, CHEST, 0]), 2).unwrap();
         assert_eq!((out.block, out.count), (TRAPPED_CHEST, 1));
@@ -1559,7 +1559,7 @@ mod tests {
         let mut g = [ItemStack::EMPTY; 9];
         for i in 0..3 {
             g[i] = ItemStack::new(GLASS, 1);
-            g[3 + i] = ItemStack::new(HOLLOW_QUARTZ, 1);
+            g[3 + i] = ItemStack::new(NETHER_QUARTZ, 1);
             g[6 + i] = ItemStack::new(OAK_SLAB, 1);
         }
         let out2 = match_grid(&g, 3).unwrap();
@@ -1569,14 +1569,14 @@ mod tests {
         assert_eq!((out3.block, out3.count), (LIGHT_WEIGHTED_PLATE, 1));
         let out4 = match_grid(&grid2([IRON_ORE, 0, IRON_ORE, 0]), 2).unwrap();
         assert_eq!((out4.block, out4.count), (HEAVY_WEIGHTED_PLATE, 1));
-        // block of fluxstone: 9 wire (the engine's dust-as-block row) + back
-        let mut g9 = [ItemStack::new(FLUXSTONE_WIRE, 1); 9];
+        // block of redstone: 9 wire (the engine's dust-as-block row) + back
+        let mut g9 = [ItemStack::new(REDSTONE_WIRE, 1); 9];
         let out5 = match_grid(&g9, 3).unwrap();
-        assert_eq!((out5.block, out5.count), (FLUXSTONE_BLOCK, 1));
-        g9[0] = ItemStack::new(FLUXSTONE_BLOCK, 1);
+        assert_eq!((out5.block, out5.count), (REDSTONE_BLOCK, 1));
+        g9[0] = ItemStack::new(REDSTONE_BLOCK, 1);
         g9[1..].fill(ItemStack::EMPTY);
         let out6 = match_grid(&g9, 3).unwrap();
-        assert_eq!((out6.block, out6.count), (FLUXSTONE_WIRE, 9));
+        assert_eq!((out6.block, out6.count), (REDSTONE_WIRE, 9));
     }
 }
 // ---------------- audit-fix round (2026-09-07): 1.2 jungle planks ----------------
@@ -1840,7 +1840,7 @@ mod v112_tests {
         for i in [0usize, 1, 2, 3, 5, 6, 7, 8] {
             l[i] = ItemStack::new(IRON_NUGGET, 1);
         }
-        l[4] = ItemStack::new(FLUXSTONE_TORCH, 1);
+        l[4] = ItemStack::new(REDSTONE_TORCH, 1);
         let out = match_grid(&l, 3).unwrap();
         assert_eq!((out.block, out.count), (LANTERN, 1));
         // a nugget missing breaks the ring
@@ -1878,48 +1878,48 @@ mod v112_tests {
         assert!(match_grid(&g, 1).is_none(), "allium has no dye recipe yet");
     }
 
-    /// 1.16 (Hollows Update, part 1): the anchor family's six craft
+    /// 1.16 (Nether Update, part 1): the anchor family's six craft
     /// contracts (all VERIFIED against the v116 captures — gold = the
-    /// iron-ingot stand-in, fluxstone dust = the fluxstone block, both
+    /// iron-ingot stand-in, redstone dust = the redstone block, both
     /// the disclosed conventions)
     #[test]
     fn v116_anchor_family_recipes() {
-        // rebirth anchor: 6 weeping obsidian + 3 glowstone (the ring
+        // respawn anchor: 6 crying obsidian + 3 glowstone (the ring
         // around the column)
         let g = vec![
-            ItemStack::new(WEEPING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(WEEPING_OBSIDIAN, 1),
-            ItemStack::new(WEEPING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(WEEPING_OBSIDIAN, 1),
-            ItemStack::new(WEEPING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(WEEPING_OBSIDIAN, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
         ];
         let out = match_grid(&g, 3).unwrap();
-        assert_eq!((out.block, out.count), (REBIRTH_ANCHOR, 1));
+        assert_eq!((out.block, out.count), (RESPAWN_ANCHOR, 1));
 
-        // target: 4 fluxstone dust (block stand-in) around 1 hay bale
+        // target: 4 redstone dust (block stand-in) around 1 hay bale
         let g = vec![
-            ItemStack::EMPTY,               ItemStack::new(FLUXSTONE_BLOCK, 1), ItemStack::EMPTY,
-            ItemStack::new(FLUXSTONE_BLOCK, 1), ItemStack::new(HAY_BALE, 1),   ItemStack::new(FLUXSTONE_BLOCK, 1),
-            ItemStack::EMPTY,               ItemStack::new(FLUXSTONE_BLOCK, 1), ItemStack::EMPTY,
+            ItemStack::EMPTY,               ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::EMPTY,
+            ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::new(HAY_BALE, 1),   ItemStack::new(REDSTONE_BLOCK, 1),
+            ItemStack::EMPTY,               ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::EMPTY,
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (TARGET, 1));
 
-        // hollowite ingot: 4 scrap + 4 gold (iron stand-in) in the
+        // netherite ingot: 4 scrap + 4 gold (iron stand-in) in the
         // checker board
         let g = vec![
-            ItemStack::new(HOLLOWITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1), ItemStack::new(HOLLOWITE_SCRAP, 1),
+            ItemStack::new(NETHERITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1), ItemStack::new(NETHERITE_SCRAP, 1),
             ItemStack::new(IRON_ORE, 1),        ItemStack::EMPTY,           ItemStack::new(IRON_ORE, 1),
-            ItemStack::new(HOLLOWITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1), ItemStack::new(HOLLOWITE_SCRAP, 1),
+            ItemStack::new(NETHERITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1), ItemStack::new(NETHERITE_SCRAP, 1),
         ];
         let out = match_grid(&g, 3).unwrap();
-        assert_eq!((out.block, out.count), (HOLLOWITE_INGOT, 1));
+        assert_eq!((out.block, out.count), (NETHERITE_INGOT, 1));
 
-        // block of hollowite: 9 ingots, and back into 9
-        let g = vec![ItemStack::new(HOLLOWITE_INGOT, 1); 9];
+        // block of netherite: 9 ingots, and back into 9
+        let g = vec![ItemStack::new(NETHERITE_INGOT, 1); 9];
         let out = match_grid(&g, 3).unwrap();
-        assert_eq!((out.block, out.count), (HOLLOWITE_BLOCK, 1));
-        let g = vec![ItemStack::new(HOLLOWITE_BLOCK, 1)];
+        assert_eq!((out.block, out.count), (NETHERITE_BLOCK, 1));
+        let g = vec![ItemStack::new(NETHERITE_BLOCK, 1)];
         let out = match_grid(&g, 1).unwrap();
-        assert_eq!((out.block, out.count), (HOLLOWITE_INGOT, 9));
+        assert_eq!((out.block, out.count), (NETHERITE_INGOT, 9));
 
         // chain: 1 nugget over the ingot over 1 nugget, down the
         // middle column of the 3x3 grid (the 1.16 iron-only form; the
@@ -1933,17 +1933,17 @@ mod v112_tests {
         assert_eq!((out.block, out.count), (CHAIN, 1));
     }
 
-    /// 1.16 (Hollows Update, part 2): the scarlet/viridian families'
+    /// 1.16 (Nether Update, part 2): the crimson/warped families'
     /// craft contracts (all VERIFIED against the v116b captures —
     /// the research record docs/research/phase-v116b-1.16-research.md)
     #[test]
     fn v116b_forest_family_recipes() {
         // the stems → 4 planks each (the universal log→planks rule)
         for (stem, planks) in [
-            (SCARLET_STEM, SCARLET_PLANKS),
-            (SCARLET_HYPHAE, SCARLET_PLANKS),
-            (VIRIDIAN_STEM, VIRIDIAN_PLANKS),
-            (VIRIDIAN_HYPHAE, VIRIDIAN_PLANKS),
+            (CRIMSON_STEM, CRIMSON_PLANKS),
+            (CRIMSON_HYPHAE, CRIMSON_PLANKS),
+            (WARPED_STEM, WARPED_PLANKS),
+            (WARPED_HYPHAE, WARPED_PLANKS),
         ] {
             let g = vec![ItemStack::new(stem, 1)];
             let out = match_grid(&g, 1).unwrap();
@@ -1976,33 +1976,33 @@ mod v112_tests {
         let out = match_grid(&g, 2).unwrap();
         assert_eq!((out.block, out.count), (POLISHED_BLACKSTONE_BRICKS, 4));
 
-        // the spirit torch: SHAPELESS — 1 charcoal + 1 stick + 1 soul
+        // the soul torch: SHAPELESS — 1 charcoal + 1 stick + 1 soul
         // soil (any arrangement; the coal + soul-sand halves too)
         for fuel in [CHARCOAL, COAL] {
-            for soul in [SPIRIT_SOIL, SPIRIT_SAND] {
+            for soul in [SOUL_SOIL, SOUL_SAND] {
                 let g = vec![
                     ItemStack::new(fuel, 1),  ItemStack::EMPTY,           ItemStack::new(STICK, 1),
                     ItemStack::EMPTY,           ItemStack::new(soul, 1),  ItemStack::EMPTY,
                     ItemStack::EMPTY,           ItemStack::EMPTY,           ItemStack::EMPTY,
                 ];
                 let out = match_grid(&g, 3).unwrap();
-                assert_eq!((out.block, out.count), (SPIRIT_TORCH, 4));
+                assert_eq!((out.block, out.count), (SOUL_TORCH, 4));
             }
         }
 
-        // the spirit lantern: 8 iron nuggets + 1 spirit torch (the ring)
+        // the soul lantern: 8 iron nuggets + 1 soul torch (the ring)
         let g = vec![
             ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
-            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(SPIRIT_TORCH, 1),  ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(SOUL_TORCH, 1),  ItemStack::new(IRON_NUGGET, 1),
             ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
         ];
         let out = match_grid(&g, 3).unwrap();
-        assert_eq!((out.block, out.count), (SPIRIT_LANTERN, 1));
+        assert_eq!((out.block, out.count), (SOUL_LANTERN, 1));
 
-        // negative: 7 nuggets + a spirit torch is NOT the recipe
+        // negative: 7 nuggets + a soul torch is NOT the recipe
         let g = vec![
             ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
-            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(SPIRIT_TORCH, 1),  ItemStack::EMPTY,
+            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(SOUL_TORCH, 1),  ItemStack::EMPTY,
             ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
         ];
         assert!(match_grid(&g, 3).is_none(), "the 8-nugget ring is exact");

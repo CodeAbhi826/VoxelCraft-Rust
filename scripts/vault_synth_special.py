@@ -434,7 +434,7 @@ def gen_effect_icon(rec, name):
     elif "regen" in base or "heal" in base or "health" in base:
         fill(c, ink, w // 2 - 1, h // 4, 2, h // 2)
         fill(c, ink, w // 4, h // 2 - 1, w // 2, 2)
-    elif "poison" in base or "blight" in base or "decay" in base:
+    elif "poison" in base or "wither" in base or "decay" in base:
         for k in range(3):
             disc(c, w * (0.3 + k * 0.2), h * (0.65 - k * 0.1), min(w, h) * 0.12, ink)
     elif "night_vision" in base or "vision" in base or "glowing" in base:

@@ -61,7 +61,7 @@ const STATUS_FULL: &str = "full";
 ///  swamp=6, jungle=21, birch_forest=27, savanna=35, badlands=37)
 const BIOME_TO_VANILLA: [i32; 28] = [
     0, 16, 1, 4, 2, 12, 3,
-    8,  // Hollow Wastes
+    8,  // Nether Wastes
     5,  // Taiga
     27, // Birch Forest
     21, // Jungle
@@ -77,9 +77,9 @@ const BIOME_TO_VANILLA: [i32; 28] = [
     45,  // Lukewarm Ocean (gen.rs live-verified)
     46,  // Cold Ocean (gen.rs live-verified)
     10,  // Frozen Ocean (gen.rs live-verified)
-    171, // Scarlet Forest (gen.rs live-verified)
-    172, // Viridian Forest (gen.rs live-verified)
-    170, // Spirit Sand Valley (gen.rs live-verified)
+    171, // Crimson Forest (gen.rs live-verified)
+    172, // Warped Forest (gen.rs live-verified)
+    170, // Soul Sand Valley (gen.rs live-verified)
     173, // Basalt Deltas (gen.rs live-verified)
     7,   // River (classic, both editions)
 ];
@@ -126,7 +126,7 @@ const VANILLA_NAMES: [&str; 57] = [
     "voxelcraft:iron_ore",
     "voxelcraft:gold_ore",
     "voxelcraft:diamond_ore",
-    "voxelcraft:fluxstone_ore",
+    "voxelcraft:redstone_ore",
     "voxelcraft:lapis_ore",
     "voxelcraft:emerald_ore",
     "voxelcraft:iron_block",
@@ -1097,15 +1097,15 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
 /// Default save location: `./saves/VoxelCraft` next to the current dir.
 /// (A platform config-dir layout arrives with §32 settings work.)
 /// §28: the save directory of one dimension. Vanilla layout: the overworld
-/// saves at the world root; the hollow at `<world>/DIM-1` (the Void, if it
+/// saves at the world root; the nether at `<world>/DIM-1` (the End, if it
 /// ever ships, is `DIM1`). Chunks of different dimensions never mix.
 pub fn dimension_dir(world_dir: &Path, dim: vc_world::world::Dimension) -> PathBuf {
     match dim {
         vc_world::world::Dimension::Overworld => world_dir.to_path_buf(),
-        vc_world::world::Dimension::Hollow => world_dir.join("DIM-1"),
-        // Phase E1: the Void ships — vanilla layout (documented in the
+        vc_world::world::Dimension::Nether => world_dir.join("DIM-1"),
+        // Phase E1: the End ships — vanilla layout (documented in the
         // §28 note above)
-        vc_world::world::Dimension::Void => world_dir.join("DIM1"),
+        vc_world::world::Dimension::End => world_dir.join("DIM1"),
     }
 }
 
@@ -1148,7 +1148,7 @@ pub fn sanitize_world_name(name: &str) -> String {
     if clean.len() > 32 {
         clean.truncate(32);
     }
-    // never collide with the Hollow's sub-directory inside a world root
+    // never collide with the Nether's sub-directory inside a world root
     if clean.eq_ignore_ascii_case("DIM-1") || clean.eq_ignore_ascii_case("DIM1") {
         clean.push('_');
     }
@@ -1296,7 +1296,7 @@ mod tests {
         // ore sprinkling (direct 4→5-bit palette growth)
         c.set(1, 2, 1, DIAMOND_ORE);
         c.set(2, 2, 2, GOLD_ORE);
-        c.set(3, 3, 3, FLUXSTONE_ORE);
+        c.set(3, 3, 3, REDSTONE_ORE);
         c.set(4, 1, 4, GRAVEL);
         // surface-ish
         c.set(8, 4, 8, GRASS);
@@ -1563,7 +1563,7 @@ mod tests {
         assert_eq!(sanitize_world_name("  trimmed  "), "trimmed");
         assert_eq!(sanitize_world_name(""), "World");
         assert_eq!(sanitize_world_name("???"), "___");
-        // never collides with the Hollow's DIM-1 sub-directory
+        // never collides with the Nether's DIM-1 sub-directory
         assert_eq!(sanitize_world_name("DIM-1"), "DIM-1_");
         assert_eq!(sanitize_world_name("dim1"), "dim1_");
         // long names clamp, multi-byte chars collapse safely per char

@@ -2,7 +2,7 @@
 
 Date: 2026-09-08. Live captures: `voxelcraft/scripts/v115_page_*.json`
 (Bee, Beehive, Bee_nest, Honey_Block, Honey_Bottle, Honeycomb,
-Honeycomb_Block — minecraft.wiki, extracted the same session). This is the
+Honeycomb_Block — the reference wiki, extracted the same session). This is the
 research half of the round; the implementation follows the established
 bracket pattern (registry window → art → gen → gameplay → tests). Values
 below are the implementation contract.

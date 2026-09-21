@@ -71,12 +71,12 @@
         };
 
         // ---- tab strip (11 tabs: 9 content + Search + Inventory) ----
-        // vanilla tab order: Building, Decoration, Fluxstone, Transport,
+        // vanilla tab order: Building, Decoration, Redstone, Transport,
         // Misc, Food, Tools, Combat, Brewing, Search, Inventory
         let tab_labels: [&str; 11] = [
             "BUILDING BLOCKS",
             "DECORATION BLOCKS",
-            "FLUXSTONE",
+            "REDSTONE",
             "TRANSPORTATION",
             "MISCELLANEOUS",
             "FOODSTUFFS",
@@ -114,8 +114,8 @@
                 blk::CREATIVE_TABS[t as usize].icon_block()
             } else if t == 9 {
                 // Search tab icon: the compass — engine substitute: the
-                // void eye (the registry's search-est item; no compass)
-                blk::VOID_EYE
+                // eye of ender (the registry's search-est item; no compass)
+                blk::EYE_OF_ENDER
             } else {
                 // Inventory tab icon: the player head — engine
                 // substitute: the zombie spawn egg (a face-like egg)

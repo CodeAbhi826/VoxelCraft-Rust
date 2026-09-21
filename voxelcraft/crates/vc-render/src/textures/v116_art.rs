@@ -1,9 +1,9 @@
-//! 1.16 bracket (Hollows Update, part 1 — the anchor family) procedural
-//! tiles, the V13 window (tiles 655..=672): spirit soil, the basalt
-//! top/side pair, blackstone + gilded, weeping obsidian, the respawn
-//! anchor trio (top/side/charged side), the target, hollow gold ore,
-//! the ancient-debris top/side pair, the block of hollowite, the
-//! chain, spirit fire, and the hollowite scrap/ingot item sprites.
+//! 1.16 bracket (Nether Update, part 1 — the anchor family) procedural
+//! tiles, the V13 window (tiles 655..=672): soul soil, the basalt
+//! top/side pair, blackstone + gilded, crying obsidian, the respawn
+//! anchor trio (top/side/charged side), the target, nether gold ore,
+//! the ancient-debris top/side pair, the block of netherite, the
+//! chain, soul fire, and the netherite scrap/ingot item sprites.
 //!
 //! Clean-room art (no third-party assets), a child module of textures.rs
 //! (shares the art helper). Covered by the `v114b_tiles_all_painted`
@@ -13,8 +13,8 @@
 use super::{art, Rng};
 
 // ---- shared palettes ----
-/// spirit soil: ash-brown dirt with charcoal grain (no faces — that is
-/// spirit sand's trademark; VERIFIED distinct from the sand family).
+/// soul soil: ash-brown dirt with charcoal grain (no faces — that is
+/// soul sand's trademark; VERIFIED distinct from the sand family).
 const SOIL_D: [i32; 3] = [64, 48, 38];
 const SOIL_M: [i32; 3] = [86, 66, 50];
 const SOIL_L: [i32; 3] = [108, 84, 62];
@@ -26,10 +26,10 @@ const BASALT_L: [i32; 3] = [122, 124, 130];
 const BLACK_D: [i32; 3] = [24, 22, 26];
 const BLACK_M: [i32; 3] = [42, 39, 44];
 const BLACK_L: [i32; 3] = [60, 56, 62];
-/// the gold flecks (gilded blackstone + hollow gold ore).
+/// the gold flecks (gilded blackstone + nether gold ore).
 const GOLD_L: [i32; 3] = [250, 214, 64];
 const GOLD_M: [i32; 3] = [222, 178, 45];
-/// weeping obsidian: obsidian-dark with glowing purple tears.
+/// crying obsidian: obsidian-dark with glowing purple tears.
 const OBS_D: [i32; 3] = [16, 10, 26];
 const OBS_M: [i32; 3] = [28, 18, 44];
 const TEAR: [i32; 3] = [130, 84, 200];
@@ -41,27 +41,27 @@ const GLOW_L: [i32; 3] = [172, 110, 240];
 const RING_W: [i32; 3] = [222, 214, 196];
 const RING_R: [i32; 3] = [196, 84, 52];
 const RING_D: [i32; 3] = [156, 60, 36];
-/// hollowstone base tones (the gold-ore host).
+/// netherrack base tones (the gold-ore host).
 const RACK_D: [i32; 3] = [86, 30, 24];
 const RACK_M: [i32; 3] = [112, 42, 32];
 /// ancient debris: bronze-brown with the distinctive spiral.
 const DEB_D: [i32; 3] = [96, 70, 42];
 const DEB_M: [i32; 3] = [128, 96, 58];
 const DEB_L: [i32; 3] = [158, 122, 74];
-/// hollowite: dark slate metal.
+/// netherite: dark slate metal.
 const NETH_D: [i32; 3] = [44, 42, 48];
 const NETH_M: [i32; 3] = [62, 58, 66];
 const NETH_L: [i32; 3] = [84, 80, 90];
 /// iron chain links.
 const IRON_M: [i32; 3] = [146, 150, 156];
 const IRON_D: [i32; 3] = [96, 100, 106];
-/// spirit fire: the blue flame.
+/// soul fire: the blue flame.
 const FLAME_IN: [i32; 3] = [200, 236, 252];
 const FLAME_M: [i32; 3] = [92, 158, 226];
 const FLAME_OUT: [i32; 3] = [36, 88, 190];
 
-/// spirit soil — ash-dirt with dark grain and hollow specks.
-pub(super) fn spirit_soil_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// soul soil — ash-dirt with dark grain and nether specks.
+pub(super) fn soul_soil_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "MMMMMDDMMMMMDDMM",
         "MDDMMLLMMMDDMMMm",
@@ -197,8 +197,8 @@ pub(super) fn gilded_blackstone_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// weeping obsidian — dark glass with luminous purple tears.
-pub(super) fn weeping_obsidian_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// crying obsidian — dark glass with luminous purple tears.
+pub(super) fn crying_obsidian_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "MMMMMMMMMMMMMMMM",
         "MMTTMMMMMMMMMMTM",
@@ -231,7 +231,7 @@ pub(super) fn weeping_obsidian_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// rebirth-anchor top — the dark shell ring around the swirling
+/// respawn-anchor top — the dark shell ring around the swirling
 /// portal face (the glow wakes with charge; the tile is shared, the
 /// emissive tint does the waking).
 pub(super) fn anchor_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
@@ -267,7 +267,7 @@ pub(super) fn anchor_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// rebirth-anchor sides, uncharged — the dark obsidian shell.
+/// respawn-anchor sides, uncharged — the dark obsidian shell.
 pub(super) fn anchor_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "DDDDDDDDDDDDDDDD",
@@ -294,7 +294,7 @@ pub(super) fn anchor_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// rebirth-anchor sides at charge >= 1 — the purple glow veins wake.
+/// respawn-anchor sides at charge >= 1 — the purple glow veins wake.
 pub(super) fn anchor_side_charged_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "DDDDDDDDDDDDDDDD",
@@ -356,8 +356,8 @@ pub(super) fn target_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// hollow gold ore — hollowstone host with gold nuggets.
-pub(super) fn hollow_gold_ore_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// nether gold ore — netherrack host with gold nuggets.
+pub(super) fn nether_gold_ore_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "MMMMMMMMMMMMMMMM",
         "MDDMMGLGMMDDMMMM",
@@ -446,8 +446,8 @@ pub(super) fn ancient_debris_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// the block of hollowite — dark slate with a subtle bevel.
-pub(super) fn hollowite_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// the block of netherite — dark slate with a subtle bevel.
+pub(super) fn netherite_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "LLLLLLLLLLLLLLLD",
         "LMMMMMMMMMMMMMDD",
@@ -515,8 +515,8 @@ pub(super) fn chain_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     }
 }
 
-/// spirit fire — the blue flame cross-sprite (transparent ground).
-pub(super) fn spirit_fire_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// soul fire — the blue flame cross-sprite (transparent ground).
+pub(super) fn soul_fire_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "................",
         "......I.........",
@@ -552,8 +552,8 @@ pub(super) fn spirit_fire_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// hollowite scrap item — a rough bronze shard.
-pub(super) fn hollowite_scrap_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// netherite scrap item — a rough bronze shard.
+pub(super) fn netherite_scrap_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "................",
@@ -581,8 +581,8 @@ pub(super) fn hollowite_scrap_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// hollowite ingot item — the dark slate bar.
-pub(super) fn hollowite_ingot_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// netherite ingot item — the dark slate bar.
+pub(super) fn netherite_ingot_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "................",

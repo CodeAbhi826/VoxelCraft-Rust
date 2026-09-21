@@ -4,7 +4,7 @@
 "Ultimate Prompt" parity pass. This document is the pre-implementation
 reference audit required by that prompt's verification protocol.
 
-**Sources fetched live 2026-09-14** (minecraft.wiki):
+**Sources fetched live 2026-09-14** (the reference wiki):
 `w/Heads-up_display`, `w/Armor`, `w/Hunger_(effect)`, `w/Experience`.
 Reused standing repo research: `upload/VANILLA-VALUES.md` (V/C-marked),
 `upload/SCREEN-SPECS.md` §13, `docs/VERIFICATION-REPORT.md` §2 (stale

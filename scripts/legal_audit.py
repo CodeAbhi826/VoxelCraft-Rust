@@ -3,13 +3,20 @@
 
 Scans everything the repo SHIPS (code, assets, packs, docs, CI) for:
 
-  1. Third-party trademark names (the de-branded vocabulary check)
-  2. Files that must never exist in our tree (third-party fonts, the
-     ecosystem's manifest/sidecar conventions in OUR packs, scraped
-     wiki dumps)
+  1. Third-party trademark / brand marks (the bright line: the
+     original publisher's names must never appear — see §3 of the
+     binding doc for the in-game-vocabulary policy: generic functional
+     terms like redstone/creeper/netherrack are the genre's shared
+     vocabulary and are fine; brand names are not)
+  2. Files that must never exist in our tree (the ecosystem's
+     manifest/sidecar conventions in OUR packs, scraped wiki dumps)
   3. Optional byte/pixel-identity check against a reference set, when
      one is supplied via --reference <path-or-zip> (the reference set
      itself must NEVER live inside the repository)
+
+The ACTIVE engine font is Monocraft (IdreesInc, SIL OFL 1.1) — an
+open-source font with full redistribution rights; its license ships
+next to it, so the font and its license file are NOT forbidden.
 
 Must print [PASS] before any deploy. Exit code 0 = pass, 1 = fail.
 """
@@ -24,42 +31,38 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ------------------------------------------------------------- rules --
 
-# Trademark/coinage scan: any of these in a SHIPPED file is a failure.
-# (The interop table + migration tooling are the only exempted files,
-# declared below — they never render to users.)
-# bare persona/short names need word boundaries (avoids matching
-# inside identifiers like CrystalExplosion); compounds are substring-safe
+# Brand-mark scan: any of these in a SHIPPED file is a failure. These
+# are the original publisher's TRADEMARKS and brand labels — the
+# bright line. (The generic functional in-game vocabulary — redstone,
+# creeper, netherrack, soul sand, enderman, … — is the genre's shared
+# term-of-art set and is deliberately NOT scanned; see
+# LEGAL-COMPLIANCE.md §3, owner directive 2026-09-21.)
 TERM_RX = re.compile(
-    r"minecraft|mojang|herobrine|monocraft|"
-    r"creeper|enderman|endermen|endermite|mooshroom|netherite|netherrack|"
-    r"nether|redstone|piglin|hoglin|zoglin|strider|shulker|ghast|"
-    r"purpur|prismarine|nylium|shroomlight|chorus|elytra|warden|allay|"
-    r"vindicator|evoker|illusioner|crimson|warped|soulsand|soul_sand|"
-    r"soul_soil|respawn.anchor|crying.obsidian|totem.of.undying|"
-    r"the_end|the_nether|programmer",
+    r"minecraft|mojang|herobrine|programmer[ _-]art",
     re.IGNORECASE,
 )
-# "notch" is a dictionary word (notch filter in DSP) — not scanned
+# "notch" is a dictionary word (notch filter in DSP) — not scanned.
+# Persona names (steve/alex) are distinctive character marks we have no
+# need for — guarded as a class.
 PERSONA_RX = re.compile(r"\b(steve|alex)\b", re.IGNORECASE)
 
 EXEMPT_FILES = {
     # read-side format-interop data (generated; never user-visible)
     "voxelcraft/crates/vc-pack/src/legacy_aliases.rs",
-    # the rename tooling itself (audit trail of the de-branding)
+    # the rename/restoration tooling (audit trail of the vocabulary
+    # policy rounds — coined names appear in their maps by design)
     "voxelcraft/scripts/rename_terms.py",
     "voxelcraft/scripts/gen_legacy_aliases.py",
     "voxelcraft/scripts/restructure_packs.py",
-    # this script
+    "voxelcraft/scripts/restore_real_names.py",
+    "voxelcraft/scripts/followup_wiki_names.py",
+    # this script + its sibling tooling
     "scripts/legal_audit.py",
+    "scripts/debrand_research_docs.py",
 }
 
 # Files/conventions that must never exist in OUR trees
-FORBIDDEN_PATTERNS = [
-    ("voxelcraft/crates/vc-render/assets/Monocraft.ttf",
-     "third-party font (use the generated Voxelfont.ttf)"),
-    ("voxelcraft/crates/vc-render/assets/OFL-Monocraft.txt",
-     "third-party font license"),
-]
+FORBIDDEN_PATTERNS = []
 FORBIDDEN_SUFFIXES_IN_OUR_PACKS = [
     (".mcmeta", "the ecosystem's manifest/sidecar convention in our packs "
                 "(ours: pack.json + .png.json)"),

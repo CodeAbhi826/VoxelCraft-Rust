@@ -8,18 +8,18 @@ export PKG_CONFIG_PATH="$HOME/sysroot/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/li
 export C_INCLUDE_PATH="$HOME/sysroot/usr/include"
 cd /home/z/my-project/voxelcraft
 
-echo "[web] building wasm32 release lib (this takes a few minutes)"
+chorus "[web] building wasm32 release lib (this takes a few minutes)"
 timeout 500 cargo build --release --no-default-features --target wasm32-unknown-unknown --lib -j 3
 
-echo "[web] wasm-bindgen 0.2.127 (must match the crate pin)"
+chorus "[web] wasm-bindgen 0.2.127 (must match the crate pin)"
 rm -rf wasm-out
 wasm-bindgen --target web --out-dir ./wasm-out \
   target/wasm32-unknown-unknown/release/voxelcraft.wasm
 
-echo "[web] patching the JS glue (pointerType hardening)"
+chorus "[web] patching the JS glue (pointerType hardening)"
 python3 patch-wasm-glue.py ./wasm-out/voxelcraft.js
 
-echo "[web] copying the matched pair + d.ts + pack into public/"
+chorus "[web] copying the matched pair + d.ts + pack into public/"
 cp wasm-out/voxelcraft.js           ../public/
 cp wasm-out/voxelcraft_bg.wasm      ../public/
 cp wasm-out/voxelcraft.d.ts         ../public/
@@ -29,6 +29,6 @@ rsync -a --delete builtin-pack/ ../public/voxelcraft-pack/
 # look-alikes) deploys as its own fetch root for the wasm boot
 rsync -a --delete builtin-packs/classic-art/ ../public/voxelcraft-pack-classic-art/
 
-echo "[web] bundle mtime pair (MUST match):"
+chorus "[web] bundle mtime pair (MUST match):"
 ls -la ../public/voxelcraft.js ../public/voxelcraft_bg.wasm
-echo "[web] done"
+chorus "[web] done"

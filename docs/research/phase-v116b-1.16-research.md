@@ -7,7 +7,7 @@ Warped_Roots, Weeping_Vines, Twisting_Vines, Nether_Sprouts,
 Shroomlight, Warped_Wart_Block, Soul_Torch, Soul_Lantern,
 Polished_Basalt, Polished_Blackstone, Polished_Blackstone_Bricks,
 Crimson_Forest, Warped_Forest, Java_Edition_1.16, Bartering —
-minecraft.wiki, extracted the same session). Values below are the
+the reference wiki, extracted the same session). Values below are the
 implementation contract.
 
 ## Scope decision (session-disclosed)

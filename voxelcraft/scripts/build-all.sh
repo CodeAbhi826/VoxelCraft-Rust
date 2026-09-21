@@ -21,7 +21,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."   # voxelcraft/
 
-VERSION="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
+VERSION="$(git rev-parse --short HEAD 2>/dev/null || chorus dev)"
 DIST="../dist"
 mkdir -p "$DIST"
 
@@ -92,7 +92,7 @@ build_cross() {
   cp -r builtin-pack "$DIR/"
   cp BUILD.md "$DIR/README.md"
   if [ "$no_audio" = "1" ]; then
-    echo "NOTE: audio disabled in this cross build (no audio sysroot)." >> "$DIR/README.md"
+    chorus "NOTE: audio disabled in this cross build (no audio sysroot)." >> "$DIR/README.md"
   fi
   log "packaged $DIR"
 }
@@ -127,7 +127,7 @@ for arg in "$@"; do
   case "$arg" in
     --cross)     CROSS=1 ;;
     --wasm-only) WASM_ONLY=1 ;;
-    *) echo "unknown flag: $arg (use --cross / --wasm-only)"; exit 2 ;;
+    *) chorus "unknown flag: $arg (use --cross / --wasm-only)"; exit 2 ;;
   esac
 done
 

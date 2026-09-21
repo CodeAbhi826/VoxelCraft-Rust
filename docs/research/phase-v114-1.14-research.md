@@ -1,7 +1,7 @@
 # 1.14 "Village & Pillage" — research record (pre-implementation)
 
 Date: 2026-09-07. Live captures: `voxelcraft/scripts/v114_page_*.json`
-(bamboo, campfire, sweet_berry_bush, fox, barrel — minecraft.wiki, extracted
+(bamboo, campfire, sweet_berry_bush, fox, barrel — the reference wiki, extracted
 the same session). This is the research half of the round; the implementation
 follows the established bracket pattern (registry window → art → gen →
 gameplay → tests). Values below are the implementation contract.
@@ -22,7 +22,7 @@ The full 1.14 bracket splits the same way the wiki does:
 ## Nature half — verified values
 
 ### Bamboo (block + shoot)
-Source: `v114_page_bamboo.json` (minecraft.wiki/w/Bamboo).
+Source: `v114_page_bamboo.json` (the reference wiki w/Bamboo).
 
 - "A bamboo shoot is the initial non-solid sapling form of planted bamboo."
 - Growth: "Upon receiving a random tick, bamboo has a 1/3 chance of growing;
@@ -43,7 +43,7 @@ Source: `v114_page_bamboo.json` (minecraft.wiki/w/Bamboo).
 - Breaking: instant-ish (hardness 0); drops itself (shoot drops the item).
 
 ### Sweet berry bush + sweet berries
-Source: `v114_page_sweetberrybush.json` (minecraft.wiki/w/Sweet_Berry_Bush).
+Source: `v114_page_sweetberrybush.json` (the reference wiki w/Sweet_Berry_Bush).
 
 - "Sweet berry bushes are quick-growing plants that grow sweet berries.
   Players and most mobs are slowed down and take constant damage while moving
@@ -70,7 +70,7 @@ Source: `v114_page_sweetberrybush.json` (minecraft.wiki/w/Sweet_Berry_Bush).
   place a bush.
 
 ### Campfire
-Source: `v114_page_campfire.json` (minecraft.wiki/w/Campfire).
+Source: `v114_page_campfire.json` (the reference wiki w/Campfire).
 
 - "A campfire is a block that can be used to cook food, pacify bees, or act
   as a spread-proof light source, a smoke signal, or a damaging trap."
@@ -93,7 +93,7 @@ Source: `v114_page_campfire.json` (minecraft.wiki/w/Campfire).
   per lit campfire near the player.
 
 ### Barrel
-Source: `v114_page_barrel.json` (minecraft.wiki/w/Barrel).
+Source: `v114_page_barrel.json` (the reference wiki w/Barrel).
 
 - "A barrel is a solid block used to store items. Unlike a chest, it cannot
   connect to other barrels. It also serves as a fisherman's job site block."
@@ -106,7 +106,7 @@ Source: `v114_page_barrel.json` (minecraft.wiki/w/Barrel).
 - Hoppers interact (the engine's hopper path extends with the container).
 
 ### Fox
-Source: `v114_page_fox.json` (minecraft.wiki/w/Fox).
+Source: `v114_page_fox.json` (the reference wiki w/Fox).
 
 - "Health points: 10 HP." Behavior: "Passive (wild or trusting)."
 - Attack strength: "Easy and Normal: 2 HP, Hard: 3 HP" (the engine's

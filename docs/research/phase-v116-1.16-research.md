@@ -3,7 +3,7 @@
 Date: 2026-09-08. Live captures: `voxelcraft/scripts/v116_page_*.json`
 (Respawn_Anchor, Target, Crying_Obsidian, Soul_Soil, Soul_Fire, Basalt,
 Blackstone, Ancient_Debris, Netherite_Scrap, Netherite_Ingot,
-Nether_Gold_Ore, Chain, Gilded_Blackstone, Lodestone — minecraft.wiki,
+Nether_Gold_Ore, Chain, Gilded_Blackstone, Lodestone — the reference wiki,
 extracted the same session). Values below are the implementation contract.
 
 ## Scope decision (session-disclosed)

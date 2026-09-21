@@ -248,7 +248,7 @@ def gen_heart(rec, name):
             c[ring & ~m] = r["lo"]
             return c
     c[m] = fillc
-    # variants: poisoned/blighted/frozen/absorbing use their own palettes —
+    # variants: poisoned/withered/frozen/absorbing use their own palettes —
     # the spec palette already carries the right hues.
     if "half" in name:
         c[m & (np.mgrid[0:h, 0:w][1] < w // 2 + 1)] = fillc
@@ -423,7 +423,7 @@ CONTAINER_GRIDS = {
     "villager": [("slot", 1, 1, 0.24, 0.30), ("slot", 1, 1, 0.38, 0.30),
                  ("result", 1, 1, 0.72, 0.30)],
     "horse": [("slot", 1, 1, 0.18, 0.22), ("slot", 1, 1, 0.18, 0.52)],
-    "lurkshell_box": [("grid", 9, 3, 0.12, 0.16)],
+    "shulker_box": [("grid", 9, 3, 0.12, 0.16)],
     "generic_54": [("grid", 9, 6, 0.12, 0.10)],
     "nautilus": [("slot", 1, 1, 0.42, 0.40)],
 }

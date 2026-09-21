@@ -1,7 +1,7 @@
 # Phase E2 live-research record — MC 1.3–1.4 bracket (evolution Phase 2)
 
 Round date: 2026-09-06. Every row below was fetched LIVE this round from
-minecraft.wiki (page_reader fetches archived under `tool-results/phase2/`).
+the reference wiki (page_reader fetches archived under `tool-results/phase2/`).
 Nothing is copied from the old AI research dumps; `evolution-research.md`
 was used only to decide bracket ORDER (which items belong to 1.3–1.4),
 never for values.

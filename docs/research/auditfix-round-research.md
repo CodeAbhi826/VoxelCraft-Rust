@@ -8,7 +8,7 @@ against the live wiki at implementation time (STRICT PROTOCOL).
 
 | Claim | Verdict | Source |
 |---|---|---|
-| Golden Carrot hunger 6, saturation 14.4, consumption 32 game ticks | ✅ | minecraft.wiki/w/Golden_Carrot infobox (live) |
+| Golden Carrot hunger 6, saturation 14.4, consumption 32 game ticks | ✅ | the reference wiki w/Golden_Carrot infobox (live) |
 | Golden Carrot added Java 1.4.2 12w34a (bracket attribution) | ✅ | w/Golden_Carrot §History |
 | Golden Carrot craft = gold nugget + carrot | ✅ | w/Golden_Carrot §Crafting (nuggets absent in engine → picker-only, documented) |
 | "Golden carrots are used to tame, breed, lead, grow, and heal horses, donkeys, and mules, and to breed, lead, and grow rabbits" | ✅ | w/Golden_Carrot §Usage (live) |
@@ -30,7 +30,7 @@ against the live wiki at implementation time (STRICT PROTOCOL).
 | "Ferns occur naturally only in jungle, taiga, snowy taiga and old growth taiga biomes and their variants, scattered with short grass" | ✅ | w/Fern §Natural generation — CORRECTED the first draft (which wrongly included swamp) |
 | "Added jungle trees" — Java 1.2.1 12w03a | ✅ | w/Tree §History |
 | Jungle bushes: "featuring a single jungle log surrounded by oak leaves" | ✅ | w/Tree |
-| Jungle trees "1×1 trunk, which can extend up to 10 blocks tall"; mega 2×2 "over 30 blocks" | ✅ | search round: minecraft.wiki w/Jungle_Tree + w/Jungle (cross-checked 3 sources) |
+| Jungle trees "1×1 trunk, which can extend up to 10 blocks tall"; mega 2×2 "over 30 blocks" | ✅ | search round: the reference wiki w/Jungle_Tree + w/Jungle (cross-checked 3 sources) |
 | Logs → 300-tick furnace fuel (incl. jungle); "Logs, but not stems, can be used as a fuel in furnaces" | ✅ | w/Log §Fuel + the existing engine fuel table |
 | Universal 1 log → 4 planks recipe | ✅ | w/Log §Crafting (the "Wood/Hyphae 4 / 3 / 75%" family table) |
 

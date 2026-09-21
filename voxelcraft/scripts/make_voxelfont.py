@@ -108,7 +108,7 @@ def build_ttf(table):
         adv = (ink + 1) * P if ink > 0 else 2 * P  # space: 2px advance
         advances[name] = adv
 
-    # .notdef: a single 3x5 hollow box (our own placeholder mark)
+    # .notdef: a single 3x5 nether box (our own placeholder mark)
     pen = TTGlyphPen(None)
     pen.moveTo((0, 0)); pen.lineTo((0, 5 * P)); pen.lineTo((3 * P, 5 * P))
     pen.lineTo((3 * P, 0)); pen.closePath()

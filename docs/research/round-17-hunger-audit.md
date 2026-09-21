@@ -5,7 +5,7 @@ gameplay system — the HUD displays the vanilla 20/20 spawn state; the
 drain/regen simulation is a gameplay round of its own"), closed per the
 user's "anything left to do then do it".
 
-Source of truth: minecraft.wiki/w/Food, fetched LIVE 2026-09-18
+Source of truth: the reference wiki w/Food, fetched LIVE 2026-09-18
 (`api.php?action=parse&page=Food&prop=wikitext` — the full §Exhaustion /
 §Effects / §Hunger values / §Saturation / §Food saturation values /
 §Starvation / §Sprinting sections captured below as extracts). Every

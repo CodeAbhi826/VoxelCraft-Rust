@@ -315,8 +315,8 @@ const BUBBLE_GONE_MASK: [&str; 9] = [
 /// number of effect-icon tiles in the sheet (16 kinds × 9x9 = 144x9)
 pub const EFFECT_ICON_COUNT: usize = 16;
 
-// CLEAN-ROOM — hand-drawn from scratch (blight: ash-grey skull)
-const EFF_BLIGHT: [&str; 9] = [
+// CLEAN-ROOM — hand-drawn from scratch (wither: ash-grey skull)
+const EFF_WITHER: [&str; 9] = [
     "..OOOO...",
     ".OFFFFO..",
     ".OFAAFO..",
@@ -327,7 +327,7 @@ const EFF_BLIGHT: [&str; 9] = [
     ".O.....O.",
     ".........",
 ];
-const PAL_BLIGHT: [(char, Px); 3] = [
+const PAL_WITHER: [(char, Px); 3] = [
     ('O', [30, 30, 30, 255]),
     ('F', [85, 75, 75, 255]),
     ('A', [140, 125, 125, 255]),
@@ -605,7 +605,7 @@ type EffectIcon = (&'static [&'static str], &'static [(char, Px)]);
 /// the 16 effect-icon (mask, palette) pairs, index order matching
 /// vc_gameplay::effects::EffectKind's declaration order
 const EFFECT_ICONS: [EffectIcon; EFFECT_ICON_COUNT] = [
-    (&EFF_BLIGHT, &PAL_BLIGHT),
+    (&EFF_WITHER, &PAL_WITHER),
     (&EFF_POISON, &PAL_POISON),
     (&EFF_REGEN, &PAL_REGEN),
     (&EFF_SPEED, &PAL_SPEED),
@@ -627,7 +627,7 @@ const EFFECT_ICONS: [EffectIcon; EFFECT_ICON_COUNT] = [
 /// used by tests + debug dumps — never rendered on screen)
 pub fn effect_icon_name(idx: usize) -> &'static str {
     const NAMES: [&str; EFFECT_ICON_COUNT] = [
-        "blight",
+        "wither",
         "poison",
         "regeneration",
         "speed",
@@ -1050,7 +1050,7 @@ mod tests {
     #[test]
     fn effect_icon_names_match_effectkind_order() {
         for (idx, expect) in [
-            "blight",
+            "wither",
             "poison",
             "regeneration",
             "speed",

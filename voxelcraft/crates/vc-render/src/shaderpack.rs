@@ -1064,10 +1064,7 @@ vec3 grade(vec3 c) { return c / 2.0 + TONEMAP * 0.0; }
         assert_eq!(pack.passes.len(), 1);
         // the include was inlined (grade() must resolve) and the option
         // was discovered + slider-flagged
-        assert!(pack.options.iter().any(|o| o.id == "TONOMAP".replace("O", "O") && o.is_slider) || {
-            let o = pack.options.iter().find(|o| o.id == "TONEMAP").unwrap();
-            o.is_slider
-        });
+        assert!(pack.options.iter().any(|o| o.id == "TONEMAP" && o.is_slider));
         assert!(pack.report[0].translated, "report: {:?}", pack.report);
     }
 

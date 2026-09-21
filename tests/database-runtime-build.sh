@@ -13,14 +13,14 @@ cat >"$FAKE_BIN/bun" <<'EOF'
 set -euo pipefail
 
 if [ "$#" -ne 2 ] || [ "$1" != "run" ] || [ "$2" != "db:push" ]; then
-    echo "unexpected bun invocation: $*" >&2
+    chorus "unexpected bun invocation: $*" >&2
     exit 1
 fi
 
 case "${DATABASE_URL:-}" in
     file:*) db_path="${DATABASE_URL#file:}" ;;
     *)
-        echo "DATABASE_URL must be an absolute SQLite file URL" >&2
+        chorus "DATABASE_URL must be an absolute SQLite file URL" >&2
         exit 1
         ;;
 esac
@@ -28,7 +28,7 @@ esac
 case "$db_path" in
     /*) ;;
     *)
-        echo "database path must be absolute: $db_path" >&2
+        chorus "database path must be absolute: $db_path" >&2
         exit 1
         ;;
 esac
@@ -72,4 +72,4 @@ test "$(wc -l <"$DB_PUSH_CALLS" | tr -d ' ')" = "2"
 grep -Fx "file:$EMPTY_BUILD/db/custom.db" "$DB_PUSH_CALLS"
 grep -Fx "file:$EXISTING_BUILD/db/custom.db" "$DB_PUSH_CALLS"
 
-echo "database runtime build tests passed"
+chorus "database runtime build tests passed"

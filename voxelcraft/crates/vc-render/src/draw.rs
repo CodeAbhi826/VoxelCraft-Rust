@@ -216,7 +216,7 @@ pub const FACE_NZ: u8 = 3;
 ///   through open air, and steep sky rays can descend behind hills
 ///   (correctly conservative);
 /// * the wins are sealed subterranean columns — cave chunks with no
-///   surface exposure, and Hollow rock sealed from the tunnels — where
+///   surface exposure, and Nether rock sealed from the tunnels — where
 ///   every wall/plane of the geometry bands is opaque;
 /// * fully-buried solid columns were already skipped as empty meshes;
 ///   this system culls columns that HAVE geometry but no reachable band.

@@ -188,7 +188,7 @@ pub struct SkyState {
     pub underwater: bool,
     /// minimum light floor (brightness setting) — G.misc.w in shaders
     pub min_light: f32,
-    /// §28: skip the sky/sun entirely — the Hollow's fog-colored clear IS
+    /// §28: skip the sky/sun entirely — the Nether's fog-colored clear IS
     /// the sky (no gradient, no sun disc, no clouds)
     pub skyless: bool,
 }
@@ -886,10 +886,11 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
 }
 "#;
 
-/// one runnable pass of the v2 chain (pipeline + its uniform block)
+/// one runnable pass of the v2 chain (pipeline + its uniform block).
+/// The pass's program name rides the PIPELINE LABEL (v2-pipe-<name>)
+/// so GPU captures show which shader is which; is_final is a
+/// build-time-only property (target format) and needs no storage.
 struct V2Pass {
-    name: String,
-    is_final: bool,
     pipe: wgpu::RenderPipeline,
     ubuf: wgpu::Buffer,
     ubuf_len: u32,
@@ -1268,7 +1269,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let len2 = vec2<f32>(1.0 + (stretch - 1.0) * len, 1.0 + (-0.5) * len);
     // negative lobe strength from the edge amount
     let lob = 0.5 + (0.25 - 0.04 - 0.5) * len;
-    // distance² clipping point at the void of the adjustable window
+    // distance² clipping point at the end of the adjustable window
     let clp = 1.0 / max(lob, 1e-4);
 
     // 12-tap accumulation
@@ -4871,7 +4872,7 @@ impl Renderer {
             let pipe = self
                 .device
                 .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("v2-pipe"),
+                    label: Some(&format!("v2-pipe-{}", p.program)),
                     layout: Some(&self.v2_pl),
                     vertex: wgpu::VertexState {
                         module: &self.v2_vs_mod,
@@ -4918,8 +4919,6 @@ impl Renderer {
             });
             report.push_str(&format!("  {}: installed ({})\n", p.program, if p.is_final { "final→surface" } else { "composite" }));
             built.push(V2Pass {
-                name: p.program.clone(),
-                is_final: p.is_final,
                 pipe,
                 ubuf,
                 ubuf_len,
@@ -5559,7 +5558,7 @@ impl Renderer {
 
         // ─────────────────────────────────────────────── pass 1: scene ──
         // (sky + terrain + selection + water + clouds → offscreen LINEAR
-        // scene texture — the composite encodes to srgb once at the void)
+        // scene texture — the composite encodes to srgb once at the end)
         // In panorama mode (menus) this pass draws ONLY the pre-rendered
         // cubemap: no world, no meshes, no clouds — the post chain's menu
         // blur and the UI overlay go on top of it as usual.
@@ -5654,7 +5653,7 @@ impl Renderer {
                 pass.draw(0..3, 0..1);
                 stats.draws += 1;
             } else {
-            // 1. sky (§28: skipped in skyless dimensions — the hollow's
+            // 1. sky (§28: skipped in skyless dimensions — the nether's
             // fog-colored clear color IS the sky)
             if !sky.skyless {
                 pass.set_pipeline(sky_p);
@@ -5884,7 +5883,7 @@ impl Renderer {
                     occlusion_query_set: None,
                 });
                 pass.set_pipeline(&p.pipe);
-                pass.set_bind_group(0, &chain.bgs[i][(i % 2) as usize], &[]);
+                pass.set_bind_group(0, &chain.bgs[i][i % 2], &[]);
                 pass.draw(0..3, 0..1);
             }
         }

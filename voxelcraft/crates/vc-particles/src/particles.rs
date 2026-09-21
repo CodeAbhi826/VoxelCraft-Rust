@@ -261,7 +261,7 @@ impl ParticleSystem {
 
     /// Push a raw, fully-specified particle (public since the 1.12 round:
     /// the game layer composes clean-room effect particles — the parrot
-    /// cookie-death poison puff, the miragecaller's black blindness mist —
+    /// cookie-death poison puff, the illusioner's black blindness mist —
     /// from their own atlas tiles + tints, which the typed spawn_* helpers
     /// don't cover). Same cap + counter behavior as the internal path.
     pub fn push(&mut self, p: Particle) {

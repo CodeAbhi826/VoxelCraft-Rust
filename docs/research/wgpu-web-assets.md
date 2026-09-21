@@ -88,7 +88,7 @@ Sources: [docs.rs wgpu 22.1.0 `Features`](https://docs.rs/wgpu/22.1.0/wgpu/struc
 - The `zip` crate (2.x, roadmap's "zip 2" pin is current — [docs.rs/zip](https://docs.rs/crate/zip/latest), v2.2.x line) **compiles and runs on wasm32-unknown-unknown** if you disable its default features and keep `deflate` only: `zip = { version = "2", default-features = false, features = ["deflate"] }`.
 - Why: default features include `bzip2`, `zstd`, `lzma` (C-backed crates that don't build for wasm32-unknown-unknown) and `time`/`aes-crypto` you don't need ([zip2 README features table](https://github.com/zip-rs/zip2)); `deflate` → `flate2` → **`miniz_oxide`, a pure-Rust DEFLATE** port ([flate2-rs README](https://github.com/rust-lang/flate2-rs): "This crate by default uses the miniz_oxide crate, a port of miniz.c to pure Rust"; [nickb.dev "Deflate yourself"](https://nickb.dev/blog/deflate-yourself-for-faster-rust-zips)). No zlib-ng/fuchsia/native code involved.
 - Vanilla MC 1.16.5 resource-pack zips use **deflate** (and some entries stored/uncompressed) — covered. `deflate64` is decompress-only and available as an optional feature if we ever need it.
-- Prior art, exact same pattern: **Stevenarella** (the reference Rust Minecraft client) uses `zip = { version = "0.6.3", features = ["deflate"], default-features = false }` + `image` for resource packs ([stevenarella Cargo.toml](https://github.com/iceiix/stevenarella/blob/master/Cargo.toml)).
+- Prior art, exact same pattern: **Stevenarella** (the reference Rust voxel-engine client) uses `zip = { version = "0.6.3", features = ["deflate"], default-features = false }` + `image` for resource packs ([stevenarella Cargo.toml](https://github.com/iceiix/stevenarella/blob/master/Cargo.toml)).
 
 ### 2.2 `image` crate on wasm — PNG decode works ✅
 
@@ -127,7 +127,7 @@ wasm-bindgen-futures = "0.4"   # already present
 1. **Acquire bytes → `Vec<u8>`**
    - Native: `rfd::AsyncFileDialog` pick → `handle.read().await` (or existing winit `DroppedFile` → `std::fs::read`).
    - Web: (a) `rfd::AsyncFileDialog` for a "Load Resource Pack" button, and/or (b) JS `drop`/`<input type=file>` listener in `public/voxelcraft.js` → `arrayBuffer()` → `voxelcraft_load_pack(new Uint8Array(buf))` exported shim (fits the existing shim/screen-state pattern from the E-picker work).
-2. **Open zip in memory** — `zip::ZipArchive::new(Cursor::new(bytes))`; read `pack.mcmeta` (serde: `pack_format ≥ 6` for 1.16.5) → pack metadata; enumerate `assets/minecraft/textures/**.png` (+ later `blockstates/`, `models/`, `sounds.json` for phases 2/12).
+2. **Open zip in memory** — `zip::ZipArchive::new(Cursor::new(bytes))`; read `pack.mcmeta` (serde: `pack_format ≥ 6` for 1.16.5) → pack metadata; enumerate `assets/<ns>/textures/**.png` (+ later `blockstates/`, `models/`, `sounds.json` for phases 2/12).
 3. **Decode PNGs** — per entry: `image::load_from_memory` (png feature only) → `RgbaImage`; reject/resize non-16×16 (vanilla allows 16/32 px; animations strip first frame initially).
 4. **Stitch atlas (CPU, Rust)** — greedy/shelf packing into `2048²` (guaranteed everywhere) or `4096²` if `device.limits().max_texture_dimension_2d() ≥ 4096`; keep the ROADMAP-ANALYSIS-corrected UV encoding (tile_index + tile-local fract, ≥2048-addressable). Fill absent tiles from the existing procedural 44-tile fallback (zero-asset default stays).
 5. **Upload** — `device.create_texture` + `queue.write_texture` (portable); `generate_mipmap` optional (all 3 backends support it).

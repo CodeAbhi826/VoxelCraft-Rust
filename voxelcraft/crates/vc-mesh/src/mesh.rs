@@ -398,8 +398,38 @@ pub fn mesh_sections(
                         if b == WATER || b == LAVA {
                             // fluids mesh through the water-quad path (§18
                             // tint: biome water color / the fixed lava slot —
-                            // both in the greedy key so runs never merge)
-                            if face_visible(b, nb) {
+                            // both in the greedy key so runs never merge).
+                            // 2026-09-21b: the WATER LEVEL also rides the
+                            // key (bits 19..21) so (a) runs never merge
+                            // across levels and (b) the emit stage can
+                            // render each level at its own fluid_height —
+                            // flowing water descends (8−l)/9 like vanilla
+                            // instead of every cell showing the 14/16
+                            // source slab. LAVA stays level-0 (uniform).
+                            let wl: u64 = if b == WATER {
+                                water_level(bs).min(7) as u64
+                            } else {
+                                0
+                            };
+                            let mut vis = face_visible(b, nb);
+                            if b == WATER && nb == WATER && d != 1 {
+                                // step faces between different-height
+                                // water cells: the TALLER side renders
+                                // the shared vertical face (vanilla
+                                // renders internal faces at level steps;
+                                // previously all water-water side faces
+                                // were culled, leaving see-through gaps
+                                // at every step once heights diverged)
+                                let nbs = getb(&blocks, ncell[0], ncell[1], ncell[2]);
+                                let nwl = water_level(nbs);
+                                let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
+                                let nabove =
+                                    getb(&blocks, ncell[0], ncell[1] + 1, ncell[2]);
+                                let my_h = fluid_height(water_level(bs), above == b);
+                                let nb_h = fluid_height(nwl, nabove == b);
+                                vis = my_h > nb_h + 1e-4;
+                            }
+                            if vis {
                                 let l = getl(&light, ncell[0], ncell[1], ncell[2]) as u64;
                                 let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
                                 let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
@@ -407,7 +437,12 @@ pub fn mesh_sections(
                                 let wt = vc_blocks::tint::block_face_tint_packed(
                                     b, false, biome_at(cell[0] as usize, cell[2] as usize),
                                 ) as u64;
-                                wmask[vi * du + ui] = 1 | (l << 1) | (aw << 6) | (bl << 7) | (wt << 11);
+                                wmask[vi * du + ui] = 1
+                                    | (l << 1)
+                                    | (aw << 6)
+                                    | (bl << 7)
+                                    | (wt << 11)
+                                    | (wl << 19);
                             }
                             continue;
                         }
@@ -909,6 +944,11 @@ fn greedy_merge(
                     ((key >> 11) & 0xff) as u8,
                 )
             };
+            // 2026-09-21b: per-level fluid surface height (bits 19..21 of
+            // the water key): sources keep the 14/16 surface, flows
+            // descend (8−l)/9, falling columns (water above) are full.
+            let wlevel = ((key >> 19) & 7) as u16;
+            let wdrop = 1.0 - fluid_height(wlevel, water_aw == 1);
 
             // face plane coordinate along d (local)
             let pd = if dir > 0 { sl as f32 + 1.0 } else { sl as f32 };
@@ -959,11 +999,11 @@ fn greedy_merge(
                 p[v] = c[1] + off_v as f32;
                 if !is_solid {
                     if d == 1 && dir > 0 {
-                        p[1] -= 0.125; // water surface at 14/16
+                        p[1] -= wdrop; // fluid surface at fluid_height(level)
                     } else if d == 0 && c[0] == (ui + w) as f32 && water_top_open {
-                        p[1] -= 0.125; // top edge of side face (u axis = Y for d=0)
+                        p[1] -= wdrop; // top edge of side face (u axis = Y for d=0)
                     } else if d == 2 && c[1] == (vi + h) as f32 && water_top_open {
-                        p[1] -= 0.125; // top edge of side face (v axis = Y for d=2)
+                        p[1] -= wdrop; // top edge of side face (v axis = Y for d=2)
                     }
                 }
                 p

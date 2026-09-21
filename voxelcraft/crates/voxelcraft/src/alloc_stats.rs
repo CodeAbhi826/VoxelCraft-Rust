@@ -11,9 +11,23 @@
 //!
 //! `main.rs` / `lib.rs` (wasm) install `Counting` as the global allocator;
 //! `game.rs` samples `allocated_bytes()` at the F3 cadence.
+//!
+//! 2026-09-21 perf round: on NATIVE targets the wrapper now sits on top of
+//! **mimalloc** instead of the system allocator (consistent wins on the
+//! alloc-heavy world-gen/meshing path — the small-Vec storm is exactly
+//! mimalloc's sweet spot); wasm keeps the system allocator. The telemetry
+//! semantics are unchanged.
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicU64, Ordering};
+
+/// the wrapped backing allocator: mimalloc on native, System on wasm
+/// (mimalloc is a native-only dependency of this crate). Both are unit
+/// structs — INNER is the VALUE the wrapper delegates to.
+#[cfg(not(target_arch = "wasm32"))]
+const INNER: mimalloc::MiMalloc = mimalloc::MiMalloc;
+#[cfg(target_arch = "wasm32")]
+const INNER: System = System;
 
 /// allocations this size and larger are tracked
 pub const TRACK_MIN: usize = 4096;
@@ -25,12 +39,12 @@ pub fn allocated_bytes() -> u64 {
     ALLOCATED.load(Ordering::Relaxed)
 }
 
-/// Counting wrapper over the system allocator.
+/// Counting wrapper (mimalloc-backed on native — see the module doc).
 pub struct Counting;
 
 unsafe impl GlobalAlloc for Counting {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let p = System.alloc(layout);
+        let p = INNER.alloc(layout);
         if !p.is_null() && layout.size() >= TRACK_MIN {
             ALLOCATED.fetch_add(layout.size() as u64, Ordering::Relaxed);
         }
@@ -41,11 +55,11 @@ unsafe impl GlobalAlloc for Counting {
         if layout.size() >= TRACK_MIN {
             ALLOCATED.fetch_sub(layout.size() as u64, Ordering::Relaxed);
         }
-        System.dealloc(ptr, layout);
+        INNER.dealloc(ptr, layout);
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        let p = System.realloc(ptr, layout, new_size);
+        let p = INNER.realloc(ptr, layout, new_size);
         if layout.size() >= TRACK_MIN {
             ALLOCATED.fetch_sub(layout.size() as u64, Ordering::Relaxed);
         }
@@ -56,7 +70,7 @@ unsafe impl GlobalAlloc for Counting {
     }
 
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        let p = System.alloc_zeroed(layout);
+        let p = INNER.alloc_zeroed(layout);
         if !p.is_null() && layout.size() >= TRACK_MIN {
             ALLOCATED.fetch_add(layout.size() as u64, Ordering::Relaxed);
         }

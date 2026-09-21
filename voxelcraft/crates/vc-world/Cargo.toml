@@ -9,6 +9,7 @@ description = "World grid, terrain generation, biomes and the light engine"
 vc-blocks = { workspace = true }
 vc-chunk = { workspace = true }
 vc-rng = { workspace = true }
+rustc-hash.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true }

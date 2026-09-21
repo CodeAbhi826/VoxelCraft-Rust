@@ -19,7 +19,7 @@
 //! mechanics (range/delay/cycle/cap) are the gameplay.
 
 use crate::mobs::{MobKind, MobSystem};
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
 use vc_world::world::World;
@@ -75,7 +75,7 @@ pub fn mob_kind(code: u8) -> MobKind {
 
 pub struct Spawners {
     /// keyed by the spawner block position
-    pub map: HashMap<[i32; 3], Spawner>,
+    pub map: FxHashMap<[i32; 3], Spawner>,
     rng: Rng,
     /// total mobs ever spawned from spawners (stats/F3/E2E)
     pub spawned_total: u64,
@@ -90,7 +90,7 @@ impl Default for Spawners {
 impl Spawners {
     pub fn new(seed: u64) -> Self {
         Spawners {
-            map: HashMap::new(),
+            map: FxHashMap::default(),
             rng: Rng::new(seed),
             spawned_total: 0,
         }

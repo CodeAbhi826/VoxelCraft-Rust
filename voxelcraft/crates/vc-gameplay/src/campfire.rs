@@ -21,7 +21,7 @@
 //! queued in `done` for the game layer to spawn as item entities on
 //! top of the campfire (disclosed in the worklog).
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
 use vc_world::world::World;
@@ -94,7 +94,7 @@ impl CampfireState {
 #[derive(Default)]
 pub struct Campfires {
     /// keyed by the campfire block position
-    pub map: HashMap<[i32; 3], CampfireState>,
+    pub map: FxHashMap<[i32; 3], CampfireState>,
     /// completed cooking: (pos, cooked-item block id) — drained by the
     /// game layer (spawns the item entity above the campfire)
     pub done: Vec<([i32; 3], u16)>,

@@ -20,7 +20,8 @@
 //! tests pass).
 
 use crate::world::{ChunkPos, World};
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
+use rustc_hash::FxHashMap;
 use std::sync::Arc;
 use vc_blocks::blocks::*;
 use vc_chunk::chunk::Chunk;
@@ -150,9 +151,9 @@ pub struct LightEngine {
     blk_q: VecDeque<Node>,
     blk_rm: VecDeque<Node>,
     /// §12 section masks dirtied by light writes since the last drain
-    pub changed: HashMap<ChunkPos, u16>,
+    pub changed: FxHashMap<ChunkPos, u16>,
     /// per-pump working copies (COW against the shared Arc snapshot)
-    working: HashMap<ChunkPos, LightData>,
+    working: FxHashMap<ChunkPos, LightData>,
 }
 
 impl Default for LightEngine {
@@ -168,8 +169,8 @@ impl LightEngine {
             sky_rm: VecDeque::new(),
             blk_q: VecDeque::new(),
             blk_rm: VecDeque::new(),
-            changed: HashMap::new(),
-            working: HashMap::new(),
+            changed: FxHashMap::default(),
+            working: FxHashMap::default(),
         }
     }
 
@@ -179,7 +180,7 @@ impl LightEngine {
     }
 
     /// drain the changed-section map (game.rs marks §12 dirty bits with it)
-    pub fn take_changed(&mut self) -> HashMap<ChunkPos, u16> {
+    pub fn take_changed(&mut self) -> FxHashMap<ChunkPos, u16> {
         std::mem::take(&mut self.changed)
     }
 

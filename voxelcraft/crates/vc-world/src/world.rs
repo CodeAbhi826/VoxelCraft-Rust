@@ -3,8 +3,14 @@
 
 use crate::gen::TerrainGen;
 use crate::light::LightData;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::Arc;
+// 2026-09-21b perf round: every integer-keyed map in this crate swaps
+// std SipHash for FxHash — the chunk map is the single hottest lookup in
+// the engine (every block access), and FxHash is the classic ~2-4x win
+// on integer keys (no DoS-resistant key scheduling needed: keys are
+// (i32,i32) chunk coords / [i32;3] block coords, never attacker data).
+use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
 use vc_chunk::chunk::Chunk;
 use vc_rng::rng::Rng;
@@ -107,20 +113,20 @@ pub struct World {
     /// whole World (fresh generator + chunk maps), vanilla-style
     pub dimension: Dimension,
     pub gen: TerrainGen,
-    pub chunks: HashMap<ChunkPos, Arc<Chunk>>,
+    pub chunks: FxHashMap<ChunkPos, Arc<Chunk>>,
     /// persistent per-chunk light (Phase 4 §18): sky + block channels,
     /// updated incrementally by light::LightEngine, snapshotted for mesh
     /// jobs exactly like the block data (Arc COW)
-    pub light: HashMap<ChunkPos, Arc<LightData>>,
+    pub light: FxHashMap<ChunkPos, Arc<LightData>>,
     /// chunks fully generated + decorated (meshable)
     pub decorated: HashSet<ChunkPos>,
     /// edits queued for not-yet-generated chunks: (block_idx, id)
-    pub pending: HashMap<ChunkPos, Vec<(u16, u16)>>,
+    pub pending: FxHashMap<ChunkPos, Vec<(u16, u16)>>,
     /// sections (bit s = 16-block section s) whose mesh is stale (§12:
     /// fine-grained — a block edit rebuilds sections, not the whole chunk)
-    pub dirty: HashMap<ChunkPos, u16>,
+    pub dirty: FxHashMap<ChunkPos, u16>,
     /// accumulated §12 causes for the dirty sections of each chunk
-    pub dirty_causes: HashMap<ChunkPos, u8>,
+    pub dirty_causes: FxHashMap<ChunkPos, u8>,
     /// chunks with unsaved content (player edits + newly generated;
     /// drained by the native autosave — §28)
     pub save_dirty: HashSet<ChunkPos>,
@@ -130,7 +136,7 @@ pub struct World {
     /// Only filled while `journaling` is on (wasm; native saves real
     /// chunks through anvil). Gameplay + sim edits both land here
     /// because set_block_state is the single mutation choke point.
-    pub journal: HashMap<[i32; 3], u16>,
+    pub journal: FxHashMap<[i32; 3], u16>,
     /// web persistence arming flag — see `journal`
     pub journaling: bool,
 }
@@ -148,14 +154,14 @@ impl World {
             seed,
             dimension: dim,
             gen: TerrainGen::for_dimension(seed, dim),
-            chunks: HashMap::new(),
-            light: HashMap::new(),
+            chunks: FxHashMap::default(),
+            light: FxHashMap::default(),
             decorated: HashSet::new(),
-            pending: HashMap::new(),
-            dirty: HashMap::new(),
-            dirty_causes: HashMap::new(),
+            pending: FxHashMap::default(),
+            dirty: FxHashMap::default(),
+            dirty_causes: FxHashMap::default(),
             save_dirty: HashSet::new(),
-            journal: HashMap::new(),
+            journal: FxHashMap::default(),
             journaling: false,
         }
     }

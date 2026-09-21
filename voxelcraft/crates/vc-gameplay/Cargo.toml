@@ -13,3 +13,4 @@ vc-inventory = { workspace = true }
 vc-particles = { workspace = true }
 vc-rng = { workspace = true }
 vc-world = { workspace = true }
+rustc-hash.workspace = true

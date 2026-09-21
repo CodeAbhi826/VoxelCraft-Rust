@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use vc_mesh::mesh::{MeshData, Vertex};
 use vc_world::world::ChunkPos;
 use wgpu::util::DeviceExt;
+use rustc_hash::FxHashMap;
 
 // ---------------------------------------------------------------- uniforms
 
@@ -1599,7 +1600,7 @@ pub struct Renderer {
     /// raw adapter device name (first word feeds the vanilla "Display
     /// 1920x1080 (Intel)" vendor tag)
     pub adapter_name: String,
-    pub chunks: HashMap<ChunkPos, ChunkGpu>,
+    pub chunks: FxHashMap<ChunkPos, ChunkGpu>,
     /// 8×8-chunk mesh-region arenas (Phase 9 §14: regional mega-buffers)
     regions: HashMap<(i32, i32), RegionArena>,
     /// true when the device exposes MULTI_DRAW_INDIRECT +
@@ -3418,7 +3419,7 @@ impl Renderer {
             backend_name,
             adapter_desc,
             adapter_name,
-            chunks: HashMap::new(),
+            chunks: FxHashMap::default(),
             regions: HashMap::new(),
             draw_mdi,
             args_buf,

@@ -16,7 +16,7 @@
 //!   releases) queue here and are drained by the game layer, exactly
 //!   like the turtle-egg / campfire-done queues.
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
 use vc_world::world::World;
@@ -185,7 +185,7 @@ pub struct HiveData {
 /// The hive registry + lifecycle clock. Ticked by the Sim at the sim
 /// rate; world writes queue out for the game layer.
 pub struct HiveSystem {
-    pub hives: HashMap<[i32; 3], HiveData>,
+    pub hives: FxHashMap<[i32; 3], HiveData>,
     rng: Rng,
     scan_t: i32,
     /// queued honey-level writes: (position, new level) — the game
@@ -205,7 +205,7 @@ pub struct HiveSystem {
 impl HiveSystem {
     pub fn new(seed: u64) -> Self {
         HiveSystem {
-            hives: HashMap::new(),
+            hives: FxHashMap::default(),
             rng: Rng::new(seed),
             scan_t: 0,
             pending_hive_levels: Vec::new(),

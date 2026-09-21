@@ -25,6 +25,7 @@ use vc_world::gen::TerrainGen;
 use vc_world::world::ChunkPos;
 
 use rayon::prelude::*;
+use rustc_hash::FxHashMap;
 
 fn percentile_ms(ms: &mut [f32], q: f32) -> f32 {
     ms.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -103,7 +104,7 @@ fn main() {
 
     // ---------------------------------------------------------------- meshing
     // mesh every chunk whose full 3x3 neighborhood exists (interior ring)
-    let by_pos: HashMap<ChunkPos, Arc<Chunk>> = positions
+    let by_pos: FxHashMap<ChunkPos, Arc<Chunk>> = positions
         .iter()
         .copied()
         .zip(chunks.iter().cloned())
@@ -231,7 +232,7 @@ fn main() {
     // and the REAL allocator/ordering/list/args code (§48 Phase-9 gate:
     // measurable). One "frame" = region ordering + the three pass lists +
     // region runs + MDI args packing for every visible chunk.
-    let mut gpu: HashMap<ChunkPos, ChunkGpu> = HashMap::new();
+    let mut gpu: FxHashMap<ChunkPos, ChunkGpu> = FxHashMap::default();
     let mut allocs: HashMap<(i32, i32), (SlotAlloc, SlotAlloc)> = HashMap::new();
     for &(pos, v_len, i_len, w_i_len) in mesh_dims.iter() {
         let rk = draw::region_of(pos);
@@ -390,7 +391,7 @@ fn main() {
     }
 }
 
-fn snapshot(by_pos: &HashMap<ChunkPos, Arc<Chunk>>, pos: ChunkPos) -> [Option<Arc<Chunk>>; 9] {
+fn snapshot(by_pos: &FxHashMap<ChunkPos, Arc<Chunk>>, pos: ChunkPos) -> [Option<Arc<Chunk>>; 9] {
     let mut snap: [Option<Arc<Chunk>>; 9] = Default::default();
     let mut i = 0;
     for dz in -1..=1 {

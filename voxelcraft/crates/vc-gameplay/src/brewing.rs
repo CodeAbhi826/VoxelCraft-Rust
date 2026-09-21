@@ -11,7 +11,7 @@
 //! - glistering melon → MUSHROOM_BROWN as the effect ingredient
 //! - glowstone upgrade is exactly vanilla
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
 
@@ -310,7 +310,7 @@ impl BrewingState {
 /// all brewing-stand block entities, ticked by the sim at 20 Hz
 #[derive(Default)]
 pub struct Brewings {
-    pub map: HashMap<[i32; 3], BrewingState>,
+    pub map: FxHashMap<[i32; 3], BrewingState>,
     /// positions where a brew completed on the LAST tick (game.rs drains
     /// this each frame to play the bubble event + bump stats)
     pub completed: Vec<[i32; 3]>,

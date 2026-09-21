@@ -2,7 +2,7 @@
 //! — 200-tick cook time, fuel burn times (planks/logs 300 ticks), input →
 //! output, lit state swap on the world block. Ticked by the sim at 20 Hz.
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
 use vc_world::world::World;
@@ -343,7 +343,7 @@ impl FurnaceState {
 /// all furnace block entities
 #[derive(Default)]
 pub struct Furnaces {
-    pub map: HashMap<[i32; 3], FurnaceState>,
+    pub map: FxHashMap<[i32; 3], FurnaceState>,
 }
 
 impl Furnaces {

@@ -26,6 +26,7 @@ use vc_render::ui::{self, UiCanvas, Widget, WidgetKind, UI_H, UI_W};
 use vc_world::gen::Biome;
 use vc_world::world::{ChunkPos, World};
 use winit::keyboard::KeyCode;
+use rustc_hash::FxHashMap;
 
 // ------------------------------------------------------------- keybinds --
 
@@ -1514,10 +1515,10 @@ pub struct GameApp {
     gen_inflight: HashSet<ChunkPos>,
     /// in-flight mesh jobs: pos → submitted section mask (bits added while
     /// a job runs survive via §12 clear_dirty_mask semantics)
-    mesh_inflight: HashMap<ChunkPos, u16>,
+    mesh_inflight: FxHashMap<ChunkPos, u16>,
     /// per-chunk cache of the 16 section meshes (§12 fine-grained remesh —
     /// worker jobs rebuild only dirty sections and reuse the rest)
-    section_meshes: HashMap<ChunkPos, Vec<Option<Arc<MeshData>>>>,
+    section_meshes: FxHashMap<ChunkPos, Vec<Option<Arc<MeshData>>>>,
     /// incremental light engine (Phase 4 §18)
     light: vc_world::light::LightEngine,
     /// fixed-step simulation (Phase 6: scheduled ticks, fluids, gravity,
@@ -2841,8 +2842,8 @@ impl GameApp {
             bob_amp: 0.0,
             work,
             gen_inflight: HashSet::new(),
-            mesh_inflight: HashMap::new(),
-            section_meshes: HashMap::new(),
+            mesh_inflight: FxHashMap::default(),
+            section_meshes: FxHashMap::default(),
             light: vc_world::light::LightEngine::new(),
             sim: vc_sim::sim::Sim::new(0xC0FF_EE01),
             hives_stats_pollinated: 0,

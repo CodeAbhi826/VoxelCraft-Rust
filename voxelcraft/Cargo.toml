@@ -31,6 +31,10 @@ vc-audio = { path = "crates/vc-audio" }
 # consistent wins on alloc-heavy game loops (chunk meshing + worldgen);
 # native-only (wasm keeps the system allocator)
 mimalloc = "0.1"
+# 2026-09-21b perf round: FxHash for every integer-keyed map (chunk
+# coords / block coords) — the rustc's own compiler hasher; ~2-4x std
+# SipHash on integer keys, no downside (keys are never attacker data).
+rustc-hash = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 bytemuck = { version = "1", features = ["derive"] }

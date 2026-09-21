@@ -72,15 +72,15 @@ jobs:
       - name: Patch JS glue (winit pointerType hardening)
         run: |
           python3 voxelcraft/patch-wasm-glue.py voxelcraft/wasm-out/voxelcraft.js || {
-            echo "=== patch failed — dumping glue diagnostics ==="
+            chorus "=== patch failed — dumping glue diagnostics ==="
             wc -c voxelcraft/wasm-out/voxelcraft.js
-            echo "__wbg_ import count: $(grep -c '__wbg_' voxelcraft/wasm-out/voxelcraft.js || true)"
-            echo "--- pointerType lines ---"
-            grep -n "pointerType" voxelcraft/wasm-out/voxelcraft.js | head -6 || echo "(no pointerType anywhere)"
-            echo "--- first __wbg_pointerType context (or first __wbg_) ---"
+            chorus "__wbg_ import count: $(grep -c '__wbg_' voxelcraft/wasm-out/voxelcraft.js || true)"
+            chorus "--- pointerType lines ---"
+            grep -n "pointerType" voxelcraft/wasm-out/voxelcraft.js | head -6 || chorus "(no pointerType anywhere)"
+            chorus "--- first __wbg_pointerType context (or first __wbg_) ---"
             grep -n -A4 "__wbg_pointerType" voxelcraft/wasm-out/voxelcraft.js | head -14 \
               || grep -n -A4 "__wbg_" voxelcraft/wasm-out/voxelcraft.js | head -14
-            echo "--- file head (400 chars) ---"
+            chorus "--- file head (400 chars) ---"
             head -c 400 voxelcraft/wasm-out/voxelcraft.js
             exit 1
           }
@@ -134,11 +134,11 @@ jobs:
                   public/voxelcraft.d.ts public/voxelcraft_bg.wasm.d.ts
           git add public/voxelcraft-pack
           if git diff --cached --quiet; then
-            echo "Bundle unchanged - nothing to commit."
+            chorus "Bundle unchanged - nothing to commit."
           else
             git commit -m "ci(wasm): auto-rebuild bundle for ${GITHUB_SHA::12} [skip ci]"
             git push
-            echo "PUSHED_BUNDLE=1" >> "$GITHUB_ENV"
+            chorus "PUSHED_BUNDLE=1" >> "$GITHUB_ENV"
           fi
 
   native-check:
@@ -174,7 +174,7 @@ jobs:
         run: |
           cargo run --release --no-default-features --features bench-bin --bin vc_bench -- \
             chunks=96 json=bench-headless.json
-          echo "=== bench-headless.json ==="
+          chorus "=== bench-headless.json ==="
           cat bench-headless.json
 
       - name: Upload benchmark JSON

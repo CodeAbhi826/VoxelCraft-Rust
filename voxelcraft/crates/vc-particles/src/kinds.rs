@@ -6,7 +6,7 @@
 //! Rendering model (disclosed): every type renders as a flat-color
 //! billboard — the atlas's white SNOW tile tinted by the type's color,
 //! with the type's own size / lifetime / gravity. The vanilla ADDITIVE
-//! blend modes (portal, reverse_portal, void_rod, firework) are
+//! blend modes (portal, reverse_portal, end_rod, firework) are
 //! registered in the defs but ride the engine's single alpha-blended
 //! particle pipeline (the stream also carries the dragon/crystal
 //! billboards; a blend-split needs a second pipeline + draw batch —
@@ -31,7 +31,7 @@ pub struct KindDef {
     /// vanilla renders this type additively (disclosed: the engine's
     /// particle pass is one alpha pipeline — the flag is registry data)
     pub additive: bool,
-    /// rises instead of falls (bubbles, void_rod sparkle)
+    /// rises instead of falls (bubbles, end_rod sparkle)
     pub rises: bool,
 }
 
@@ -54,19 +54,19 @@ pub const KINDS: [KindDef; 20] = [
     KindDef { name: "falling_water", color: [0.50, 0.65, 0.85], half: 0.05, life: 16, grav: 0.04, additive: false, rises: false },
     // falling_lava — the actually-landing lava, orange glow
     KindDef { name: "falling_lava", color: [1.00, 0.55, 0.15], half: 0.05, life: 16, grav: 0.04, additive: false, rises: false },
-    // portal — hollow portal ambience, teal-purple, additive
+    // portal — nether portal ambience, teal-purple, additive
     KindDef { name: "portal", color: [0.45, 0.20, 0.70], half: 0.06, life: 40, grav: 0.0, additive: true, rises: false },
-    // reverse_portal — void gate, pale purple, additive
+    // reverse_portal — end portal, pale purple, additive
     KindDef { name: "reverse_portal", color: [0.75, 0.60, 0.95], half: 0.06, life: 40, grav: 0.0, additive: true, rises: false },
-    // void_rod — the void rod sparkle, small white star, additive
-    KindDef { name: "void_rod", color: [1.00, 0.98, 0.90], half: 0.04, life: 30, grav: 0.0, additive: true, rises: true },
+    // end_rod — the end rod sparkle, small white star, additive
+    KindDef { name: "end_rod", color: [1.00, 0.98, 0.90], half: 0.04, life: 30, grav: 0.0, additive: true, rises: true },
     // firework — the trail spark, colour-tinted, additive
     KindDef { name: "firework", color: [1.00, 0.80, 0.40], half: 0.05, life: 24, grav: 0.01, additive: true, rises: false },
     // explosion_emitter — the large smoke puff + spark ring
     KindDef { name: "explosion_emitter", color: [0.90, 0.85, 0.75], half: 0.45, life: 12, grav: 0.0, additive: false, rises: false },
     // squid_ink — the black ink cloud
     KindDef { name: "squid_ink", color: [0.10, 0.10, 0.13], half: 0.16, life: 30, grav: 0.0, additive: false, rises: false },
-    // dust — the fluxstone torch dust, red
+    // dust — the redstone torch dust, red
     KindDef { name: "dust", color: [0.85, 0.10, 0.10], half: 0.03, life: 20, grav: 0.04, additive: false, rises: false },
     // note — the note block's note, tinted by instrument
     KindDef { name: "note", color: [0.30, 0.60, 1.00], half: 0.08, life: 12, grav: 0.0, additive: true, rises: true },
@@ -76,8 +76,8 @@ pub const KINDS: [KindDef; 20] = [
     KindDef { name: "angry_villager", color: [0.35, 0.32, 0.30], half: 0.06, life: 20, grav: 0.0, additive: false, rises: true },
     // snowflake — the snow-biome ambient flake
     KindDef { name: "snowflake", color: [1.00, 1.00, 1.00], half: 0.05, life: 60, grav: 0.01, additive: false, rises: false },
-    // totem_of_revival — the green + yellow revival ring
-    KindDef { name: "totem_of_revival", color: [0.70, 1.00, 0.40], half: 0.09, life: 30, grav: 0.0, additive: true, rises: true },
+    // totem_of_undying — the green + yellow revival ring
+    KindDef { name: "totem_of_undying", color: [0.70, 1.00, 0.40], half: 0.09, life: 30, grav: 0.0, additive: true, rises: true },
     // spit — the llama spit projectile trail
     KindDef { name: "spit", color: [0.85, 0.90, 0.75], half: 0.05, life: 8, grav: 0.04, additive: false, rises: false },
 ];
@@ -90,9 +90,9 @@ pub fn def(name: &str) -> Option<&'static KindDef> {
 /// which of the batch's types have a LIVE engine spawn source (the
 /// game layer's event paths); the rest stay registered-but-inert with
 /// their reasons in the audit doc (R10). portal: the engine registers
-/// no hollow-portal BLOCK, so the shimmer has no spawn site; lava
+/// no nether-portal BLOCK, so the shimmer has no spawn site; lava
 /// drips: no lava-adjacent leaf path; bubble_pop: no surface event;
-/// void_rod/firework/reverse_portal/note: no void rods, fireworks,
+/// end_rod/firework/reverse_portal/note: no end rods, fireworks,
 /// end-portal ambience or note blocks in the registry.
 pub fn has_engine_source(name: &str) -> bool {
     matches!(
@@ -107,7 +107,7 @@ pub fn has_engine_source(name: &str) -> bool {
             | "happy_villager"
             | "angry_villager"
             | "snowflake"
-            | "totem_of_revival"
+            | "totem_of_undying"
             | "spit"
     )
 }
@@ -208,7 +208,7 @@ mod tests {
             "falling_lava",
             "portal",
             "reverse_portal",
-            "void_rod",
+            "end_rod",
             "firework",
             "explosion_emitter",
             "squid_ink",
@@ -217,20 +217,20 @@ mod tests {
             "happy_villager",
             "angry_villager",
             "snowflake",
-            "totem_of_revival",
+            "totem_of_undying",
             "spit",
         ] {
             assert!(def(needed).is_some(), "{needed} registered");
         }
         // the additive family is flagged (portal-class glow types)
-        for a in ["portal", "reverse_portal", "void_rod", "firework", "note", "totem_of_revival"] {
+        for a in ["portal", "reverse_portal", "end_rod", "firework", "note", "totem_of_undying"] {
             assert!(def(a).unwrap().additive, "{a} is additive (registry data)");
         }
         // at least the live-source subset claims an engine source
         assert!(has_engine_source("splash"));
-        assert!(has_engine_source("totem_of_revival"));
+        assert!(has_engine_source("totem_of_undying"));
         assert!(!has_engine_source("firework"), "no firework events — inert");
-        assert!(!has_engine_source("portal"), "no hollow-portal block — inert");
+        assert!(!has_engine_source("portal"), "no nether-portal block — inert");
     }
 
     /// Round 15b: the typed emitter pushes particles with the def's

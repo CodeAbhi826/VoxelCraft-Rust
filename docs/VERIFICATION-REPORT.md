@@ -118,7 +118,7 @@ mcpk.wiki/wiki/Sprinting (the +0.2 b/t sprint-jump boost). Suite:
 | Attack cooldown `0.2 + 0.8p²`, ticks = 20/attack_speed | ✅ | `combat.rs` (wiki-cited) |
 | Sweep: sword only, cooldown ≥ 84.8 % | ✅ | `combat.rs` |
 | Water spread 1 lvl/5 ticks, max level 7 | ✅ | `WATER_TICK_RATE = 5`; levels 1..7 |
-| Lava: Overworld 1/30 ticks spread 3, Hollow 1/10 spread 7 | ❌ | **lava fluid simulation absent** (static lava blocks; live-verified the vanilla values for when it lands) |
+| Lava: Overworld 1/30 ticks spread 3, Nether 1/10 spread 7 | ❌ | **lava fluid simulation absent** (static lava blocks; live-verified the vanilla values for when it lands) |
 | Smelting 200 ticks | ✅ | `COOK_TICKS = 200`; live-verified w/Smelting |
 | Coal item 1600 ticks | ✅ | **fixed (round 2)**: COAL item-block added (1600 t / 80 s / 8 items, w/Furnace); coal-ore → coal smelting recipe (0.1 XP); the COAL_ORE 800 stopgap is retired (ore is not a fuel in vanilla) |
 | Planks/logs 300, crafting table 300, fence 300 | ✅ | live-verified this round |
@@ -163,7 +163,7 @@ Suite: **342/342 green** (339 → +3), wasm32 target clean.
 **Mechanical (small, well-defined) — ALL CLOSED:**
 1. ~~Render-distance slider range 2–32~~ ✅ E2 (clamp + keys) + round 2
    (the options-screen slider mapping itself, 2+(t·14) → 2+(t·30)).
-2. ~~Lava fluid simulation~~ ✅ E2 (OW 1/30 ticks spread 3; Hollow 1/10
+2. ~~Lava fluid simulation~~ ✅ E2 (OW 1/30 ticks spread 3; Nether 1/10
    spread 7 — live-verified, in `fluids.rs`).
 3. ~~Sprint-jump 7.127 b/s emergence test~~ ✅ round 2: the vanilla
    +0.2 b/t facing boost now exists (`SPRINT_JUMP_BOOST`) plus a
@@ -172,7 +172,7 @@ Suite: **342/342 green** (339 → +3), wasm32 target clean.
    needed — the old 3×3 test world runs out of floor in 4 s).
 4. ~~Coal item + 1600-tick fuel~~ ✅ round 2: `COAL` item-block
    (id 162, tile 206, state 316) — fuel 1600 t, coal-ore → coal
-   smelting (0.1 XP), blight-skeleton drop / villager "buys coal"
+   smelting (0.1 XP), wither-skeleton drop / villager "buys coal"
    trades / dungeon-chest loot swapped from the COAL_ORE stand-in to
    the real item. Registry ripple handled: BLOCK_COUNT 163,
    STATE_COUNT 317, WGSL mesh-LUT offsets resynced (guarded by
@@ -193,4 +193,4 @@ Suite: **342/342 green** (339 → +3), wasm32 target clean.
 
 None of the visual items break gameplay; they are parity polish. With the
 mechanical list closed, the remaining open work is the visual list above
-plus the next evolution bracket (1.5–1.6.x, the Fluxstone Update).
+plus the next evolution bracket (1.5–1.6.x, the Redstone Update).

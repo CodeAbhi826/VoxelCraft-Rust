@@ -1,9 +1,9 @@
-//! 1.16 bracket (Hollows Update, part 2 — the scarlet/viridian families)
-//! procedural tiles, the V14 window (tiles 673..=705): the scarlet
-//! stem/hyphae/planks/mold quartet, the viridian quartet, the fungi/
-//! roots/sprouts/vines sprites, the viridian wart block, glowcap,
-//! the polished basalt/blackstone/bricks stones, the spirit torch +
-//! spirit lantern, the emberhopper/pigoblin/boarling spawn eggs, and the three
+//! 1.16 bracket (Nether Update, part 2 — the crimson/warped families)
+//! procedural tiles, the V14 window (tiles 673..=705): the crimson
+//! stem/hyphae/planks/nylium quartet, the warped quartet, the fungi/
+//! roots/sprouts/vines sprites, the warped wart block, shroomlight,
+//! the polished basalt/blackstone/bricks stones, the soul torch +
+//! soul lantern, the strider/piglin/hoglin spawn eggs, and the three
 //! mob billboard sprites.
 //!
 //! Clean-room art (no third-party assets), a child module of textures.rs
@@ -14,37 +14,37 @@
 use super::{art, Rng};
 
 // ---- shared palettes ----
-/// scarlet stem: deep maroon wood with blood-red streaks.
+/// crimson stem: deep maroon wood with blood-red streaks.
 const CR_D: [i32; 3] = [74, 22, 26];
 const CR_M: [i32; 3] = [104, 34, 38];
 const CR_L: [i32; 3] = [142, 48, 50];
-/// scarlet mold top: the scarlet fungal turf.
+/// crimson nylium top: the crimson fungal turf.
 const CRNY_D: [i32; 3] = [96, 28, 30];
 const CRNY_M: [i32; 3] = [140, 44, 42];
 const CRNY_L: [i32; 3] = [188, 66, 58];
-/// viridian stem: teal wood with cyan streaks.
+/// warped stem: teal wood with cyan streaks.
 const WP_D: [i32; 3] = [18, 62, 66];
 const WP_M: [i32; 3] = [28, 84, 90];
 const WP_L: [i32; 3] = [40, 112, 118];
-/// viridian mold top: the cyan-lichen turf.
+/// warped nylium top: the cyan-lichen turf.
 const WPNY_D: [i32; 3] = [26, 74, 78];
 const WPNY_M: [i32; 3] = [38, 104, 108];
 const WPNY_L: [i32; 3] = [54, 138, 142];
-/// scarlet fungus: the red cap over a pale stalk.
+/// crimson fungus: the red cap over a pale stalk.
 const CAP_R: [i32; 3] = [158, 38, 40];
 const CAP_RD: [i32; 3] = [120, 26, 28];
 const STALK: [i32; 3] = [196, 186, 178];
-/// viridian fungus: the teal cap over a pale stalk.
+/// warped fungus: the teal cap over a pale stalk.
 const CAP_T: [i32; 3] = [42, 128, 132];
 const CAP_TD: [i32; 3] = [28, 96, 100];
-/// the hollowstone base tones (mold sides, dirt-specked hosts).
+/// the netherrack base tones (nylium sides, dirt-specked hosts).
 const RACK_D: [i32; 3] = [86, 30, 24];
 const RACK_M: [i32; 3] = [112, 42, 32];
-/// glowcap: the glowing orange-pink lamp.
+/// shroomlight: the glowing orange-pink lamp.
 const SH_D: [i32; 3] = [158, 66, 40];
 const SH_M: [i32; 3] = [198, 96, 52];
 const SH_L: [i32; 3] = [240, 168, 96];
-/// viridian wart block: teal warty knobs.
+/// warped wart block: teal warty knobs.
 const WW_D: [i32; 3] = [22, 84, 88];
 const WW_M: [i32; 3] = [34, 116, 120];
 const WW_L: [i32; 3] = [52, 150, 152];
@@ -59,26 +59,26 @@ const PBL_L: [i32; 3] = [76, 71, 80];
 /// the soul flame: the blue fire (torch + lantern share it).
 const SF_IN: [i32; 3] = [214, 240, 252];
 const SF_M: [i32; 3] = [108, 168, 232];
-/// the emberhopper: scarlet quadruped on stilt legs.
+/// the strider: crimson quadruped on stilt legs.
 const ST_BODY: [i32; 3] = [138, 44, 42];
 const ST_BODY_D: [i32; 3] = [102, 30, 30];
 const ST_HAIR: [i32; 3] = [186, 78, 62];
 const ST_LEG: [i32; 3] = [88, 24, 24];
-/// the pigoblin: pink brute with golden trappings.
+/// the piglin: pink brute with golden trappings.
 const PG_SKIN: [i32; 3] = [232, 158, 138];
 const PG_SKIN_D: [i32; 3] = [196, 118, 100];
 const PG_EAR: [i32; 3] = [178, 92, 82];
 const PG_GOLD: [i32; 3] = [238, 192, 66];
-/// the boarling: the brown tusked boar.
+/// the hoglin: the brown tusked boar.
 const HG_HIDE: [i32; 3] = [148, 96, 58];
 const HG_HIDE_D: [i32; 3] = [112, 68, 40];
 const HG_TUSK: [i32; 3] = [228, 220, 200];
 const HG_MANE: [i32; 3] = [84, 52, 32];
 
-// ---- scarlet family ----
+// ---- crimson family ----
 
-/// scarlet stem side — the maroon trunk with vertical streaks.
-pub(super) fn scarlet_stem_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// crimson stem side — the maroon trunk with vertical streaks.
+pub(super) fn crimson_stem_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "MMMDMMMMMDMMMMMD",
         "MDDMMMDMMMMMDMMM",
@@ -105,8 +105,8 @@ pub(super) fn scarlet_stem_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// scarlet stem top — the ringed end grain.
-pub(super) fn scarlet_stem_top_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// crimson stem top — the ringed end grain.
+pub(super) fn crimson_stem_top_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "MMMMMMMMMMMMMMMM",
         "MDDDDDDDDDDDDDDM",
@@ -133,8 +133,8 @@ pub(super) fn scarlet_stem_top_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// scarlet hyphae — the all-sides "bark" (the jungle-bark class).
-pub(super) fn scarlet_hyphae_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// crimson hyphae — the all-sides "bark" (the jungle-bark class).
+pub(super) fn crimson_hyphae_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "MMMDMMMMMDMMMMMD",
         "MDDMMMDMMMMMDMMM",
@@ -170,8 +170,8 @@ pub(super) fn scarlet_hyphae_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     }
 }
 
-/// scarlet planks — horizontal boards with nail dots.
-pub(super) fn scarlet_planks_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// crimson planks — horizontal boards with nail dots.
+pub(super) fn crimson_planks_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "MMMMMMMMMMMMMMMM",
         "MMLMMMMMMMLMMMMM",
@@ -198,8 +198,8 @@ pub(super) fn scarlet_planks_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// scarlet mold top — scarlet fungal turf on hollowstone.
-pub(super) fn scarlet_mold_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// crimson nylium top — crimson fungal turf on netherrack.
+pub(super) fn crimson_nylium_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "MMMLMMMMMLMMMMMM",
         "MLLLMMLLLMMMLLLM",
@@ -230,8 +230,8 @@ pub(super) fn scarlet_mold_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// scarlet mold side — hollowstone under a red lip.
-pub(super) fn scarlet_mold_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// crimson nylium side — netherrack under a red lip.
+pub(super) fn crimson_nylium_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "LLLLLLLLLLLLLLLL",
         "MMMMMLMMMMMMMMMM",
@@ -258,8 +258,8 @@ pub(super) fn scarlet_mold_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// scarlet fungus — the red cap over a pale stalk (cross sprite).
-pub(super) fn scarlet_fungus_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// crimson fungus — the red cap over a pale stalk (cross sprite).
+pub(super) fn crimson_fungus_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "................",
@@ -287,8 +287,8 @@ pub(super) fn scarlet_fungus_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// scarlet roots — the red tuft (cross sprite).
-pub(super) fn scarlet_roots_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// crimson roots — the red tuft (cross sprite).
+pub(super) fn crimson_roots_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         ".....R..R.......",
@@ -313,7 +313,7 @@ pub(super) fn scarlet_roots_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// weeping vines — hanging scarlet strands (cross sprite).
+/// weeping vines — hanging crimson strands (cross sprite).
 pub(super) fn weeping_vines_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "RRRRRRRRRRRRRRRR",
@@ -339,10 +339,10 @@ pub(super) fn weeping_vines_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-// ---- viridian family ----
+// ---- warped family ----
 
-/// viridian stem side — the teal trunk with vertical streaks.
-pub(super) fn viridian_stem_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// warped stem side — the teal trunk with vertical streaks.
+pub(super) fn warped_stem_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "MMMDMMMMMDMMMMMD",
         "MDDMMMDMMMMMDMMM",
@@ -369,8 +369,8 @@ pub(super) fn viridian_stem_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// viridian stem top — the ringed end grain.
-pub(super) fn viridian_stem_top_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// warped stem top — the ringed end grain.
+pub(super) fn warped_stem_top_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "MMMMMMMMMMMMMMMM",
         "MDDDDDDDDDDDDDDM",
@@ -397,8 +397,8 @@ pub(super) fn viridian_stem_top_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// viridian hyphae — the all-sides "bark".
-pub(super) fn viridian_hyphae_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// warped hyphae — the all-sides "bark".
+pub(super) fn warped_hyphae_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "MMMDMMMMMDMMMMMD",
         "MDDMMMDMMMMMDMMM",
@@ -425,8 +425,8 @@ pub(super) fn viridian_hyphae_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// viridian planks — horizontal boards.
-pub(super) fn viridian_planks_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// warped planks — horizontal boards.
+pub(super) fn warped_planks_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "MMMMMMMMMMMMMMMM",
         "MMLMMMMMMMLMMMMM",
@@ -453,8 +453,8 @@ pub(super) fn viridian_planks_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// viridian mold top — cyan-lichen turf on hollowstone.
-pub(super) fn viridian_mold_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// warped nylium top — cyan-lichen turf on netherrack.
+pub(super) fn warped_nylium_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "MMMLMMMMMLMMMMMM",
         "MLLLMMLLLMMMLLLM",
@@ -485,8 +485,8 @@ pub(super) fn viridian_mold_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// viridian mold side — hollowstone under a teal lip.
-pub(super) fn viridian_mold_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// warped nylium side — netherrack under a teal lip.
+pub(super) fn warped_nylium_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "LLLLLLLLLLLLLLLL",
         "MMMMMLMMMMMMMMMM",
@@ -513,8 +513,8 @@ pub(super) fn viridian_mold_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// viridian fungus — the teal cap over a pale stalk (cross sprite).
-pub(super) fn viridian_fungus_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// warped fungus — the teal cap over a pale stalk (cross sprite).
+pub(super) fn warped_fungus_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "................",
@@ -542,8 +542,8 @@ pub(super) fn viridian_fungus_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// viridian roots — the teal tuft (cross sprite).
-pub(super) fn viridian_roots_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// warped roots — the teal tuft (cross sprite).
+pub(super) fn warped_roots_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         ".....T..T.......",
@@ -594,8 +594,8 @@ pub(super) fn twisting_vines_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// viridian wart block — teal warty knobs.
-pub(super) fn viridian_wart_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// warped wart block — teal warty knobs.
+pub(super) fn warped_wart_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "MMMMLLMMMMMMLLMM",
         "MLLLMMMMMLLLMMMM",
@@ -626,8 +626,8 @@ pub(super) fn viridian_wart_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// hollow sprouts — the teal curl sprouts (cross sprite).
-pub(super) fn hollow_sprouts_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// nether sprouts — the teal curl sprouts (cross sprite).
+pub(super) fn nether_sprouts_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "..T....T....T...",
@@ -652,10 +652,10 @@ pub(super) fn hollow_sprouts_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-// ---- glowcap + polished stones ----
+// ---- shroomlight + polished stones ----
 
-/// glowcap — the glowing orange-pink fungus lamp (light 15).
-pub(super) fn glowcap_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// shroomlight — the glowing orange-pink fungus lamp (light 15).
+pub(super) fn shroomlight_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "MMMMMMMMMMMMMMMM",
         "MMLLMMMMMMLLMMMM",
@@ -799,8 +799,8 @@ pub(super) fn polished_blackstone_bricks_art(a: &mut [u8], t: u16, _rng: &mut Rn
 
 // ---- the soul lights ----
 
-/// spirit torch — the stick with a blue flame (cross sprite, light 10).
-pub(super) fn spirit_torch_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// soul torch — the stick with a blue flame (cross sprite, light 10).
+pub(super) fn soul_torch_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         ".......FF.......",
@@ -827,9 +827,9 @@ pub(super) fn spirit_torch_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// spirit lantern — the iron frame with a blue flame (cross sprite,
+/// soul lantern — the iron frame with a blue flame (cross sprite,
 /// light 10; sitting + hanging share the sprite).
-pub(super) fn spirit_lantern_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+pub(super) fn soul_lantern_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         ".......II.......",
@@ -857,8 +857,8 @@ pub(super) fn spirit_lantern_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
 
 // ---- the spawn eggs (the EGG_PALETTES convention) ----
 
-/// emberhopper egg — scarlet/maroon shell (kind 42).
-pub(super) fn emberhopper_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// strider egg — crimson/maroon shell (kind 42).
+pub(super) fn strider_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         ".......AA.......",
@@ -884,8 +884,8 @@ pub(super) fn emberhopper_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// pigoblin egg — pink/gold shell (kind 43).
-pub(super) fn pigoblin_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// piglin egg — pink/gold shell (kind 43).
+pub(super) fn piglin_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         ".......AA.......",
@@ -911,8 +911,8 @@ pub(super) fn pigoblin_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// boarling egg — brown/tan shell (kind 44).
-pub(super) fn boarling_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// hoglin egg — brown/tan shell (kind 44).
+pub(super) fn hoglin_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         ".......AA.......",
@@ -940,9 +940,9 @@ pub(super) fn boarling_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
 
 // ---- the mob billboards ----
 
-/// emberhopper — the scarlet quadruped on stilt legs (the "striding"
+/// strider — the crimson quadruped on stilt legs (the "striding"
 /// silhouette; the wiki sprite's two tall front legs + hair tuft).
-pub(super) fn emberhopper_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+pub(super) fn strider_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "....H...........",
@@ -975,9 +975,9 @@ pub(super) fn emberhopper_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     }
 }
 
-/// pigoblin — the pink brute with golden trappings (the tall-eared
+/// piglin — the pink brute with golden trappings (the tall-eared
 /// humanoid silhouette).
-pub(super) fn pigoblin_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+pub(super) fn piglin_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "..E.E...........",
@@ -1005,9 +1005,9 @@ pub(super) fn pigoblin_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// boarling — the brown tusked boar (the wide, low silhouette with
+/// hoglin — the brown tusked boar (the wide, low silhouette with
 /// the mane ridge + forward tusks).
-pub(super) fn boarling_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+pub(super) fn hoglin_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "................",

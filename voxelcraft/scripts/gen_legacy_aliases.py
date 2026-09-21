@@ -1,67 +1,93 @@
 #!/usr/bin/env python3
 """gen_legacy_aliases.py — regenerate crates/vc-pack/src/legacy_aliases.rs.
 
-The canonical OLD->NEW vocabulary lives HERE (and only here);
-scripts/rename_terms.py mirrors it. The table maps the wider 1.16.5-era
-ecosystem's coined names (as bare, namespace-stripped keys) onto OUR
-vocabulary — read-side format interop for user-supplied packs.
+2026-09-21 UPDATE (vocabulary restoration): the project's in-game
+vocabulary is now the REAL ecosystem terms (redstone, netherrack,
+creeper, enderman, ...). The 2026-09-20 coined sweep is reversed; the
+coined names become the LEGACY side of this table so any pack or save
+produced during the coined-era builds (and any pack that happened to
+use our coined names) keeps loading unchanged. Real-name user packs
+now resolve natively (identity) — this table only bridges coined->real.
+
+The canonical mapping lives HERE (and only here).
 """
 import os
 
-# (legacy ecosystem name, our name) — the canonical project vocabulary
+# (legacy coined name, our name — which is now the real ecosystem name)
 PAIRS = [
-    ("the_end", "the_void"), ("the_nether", "the_hollow"),
-    ("enderdragon", "voidwyrm"), ("ender_dragon", "void_wyrm"),
-    ("endermen", "voidlings"), ("enderman", "voidling"),
-    ("endermite", "voidmite"),
-    ("ender_chest", "void_chest"), ("ender_pearl", "void_pearl"),
-    ("eye_of_ender", "void_eye"),
-    ("end_portal_frame", "void_gate_frame"), ("end_portal", "void_gate"),
-    ("end_gateway", "void_gateway"), ("end_crystal", "void_crystal"),
-    ("end_stone", "void_stone"), ("end_rod", "void_rod"),
-    ("end_pillar", "void_pillar"), ("end_arrival", "void_arrival"),
-    ("netherrack", "hollowstone"), ("netherite", "hollowite"),
-    ("nether", "hollow"),
-    ("wither_skeleton", "blight_skeleton"), ("wither_rose", "blight_rose"),
-    ("wither", "blight"),
-    ("soul_sand_valley", "spirit_sand_valley"),
-    ("soul_sand", "spirit_sand"), ("soul_soil", "spirit_soil"),
-    ("soul_fire", "spirit_fire"), ("soul_torch", "spirit_torch"),
-    ("soul_lantern", "spirit_lantern"), ("soul_campfire", "spirit_campfire"),
-    ("soul_speed", "spirit_speed"), ("soul_dmg", "spirit_dmg"),
-    ("soulsand", "spiritsand"),
-    ("crimson", "scarlet"), ("warped", "viridian"), ("nylium", "mold"),
-    ("redstone", "fluxstone"),
-    ("creeper", "fuseling"), ("ghast", "weepgeist"),
-    ("piglin", "pigoblin"), ("hoglin", "boarling"), ("zoglin", "rotboar"),
-    ("depth_strider", "aqua_step"), ("strider", "emberhopper"),
-    ("shulker", "lurkshell"), ("mooshroom", "shroomcow"),
-    ("evoker", "runecaller"), ("vindicator", "cleaver"),
-    ("illusioner", "miragecaller"),
-    ("allay", "sootheling"), ("warden", "depthbrute"),
-    ("breeze", "zephyr"), ("creaking", "timberhaunt"),
-    ("sniffer", "trufflehog"),
-    ("shroomlight", "glowcap"), ("purpur", "violetstone"),
-    ("prismarine", "abyssprism"), ("chorus", "echo"),
-    ("crying_obsidian", "weeping_obsidian"),
-    ("respawn_anchor", "rebirth_anchor"),
-    ("totem_of_undying", "totem_of_revival"),
-    ("elytra", "skywings"),
+    ("the_void", "the_end"), ("the_hollow", "the_nether"),
+    ("voidwyrm", "enderdragon"), ("void_wyrm", "ender_dragon"),
+    ("voidlings", "endermen"), ("voidling", "enderman"),
+    ("voidmite", "endermite"),
+    ("void_chest", "ender_chest"), ("void_pearl", "ender_pearl"),
+    ("void_eye", "eye_of_ender"),
+    ("void_gate_frame", "end_portal_frame"), ("void_gate", "end_portal"),
+    ("void_gateway", "end_gateway"), ("void_crystal", "end_crystal"),
+    ("void_stone", "end_stone"), ("void_rod", "end_rod"),
+    ("void_pillar", "end_pillar"), ("void_arrival", "end_arrival"),
+    ("hollowstone", "netherrack"), ("hollowite", "netherite"),
+    ("hollow", "nether"),
+    ("blight_skeleton", "wither_skeleton"), ("blight_rose", "wither_rose"),
+    ("blight", "wither"),
+    ("spirit_sand_valley", "soul_sand_valley"),
+    ("spirit_sand", "soul_sand"), ("spirit_soil", "soul_soil"),
+    ("spirit_fire", "soul_fire"), ("spirit_torch", "soul_torch"),
+    ("spirit_lantern", "soul_lantern"), ("spirit_campfire", "soul_campfire"),
+    ("spirit_speed", "soul_speed"), ("spirit_dmg", "soul_dmg"),
+    ("spiritsand", "soulsand"),
+    ("crimson_mold", "crimson_nylium"), ("warped_mold", "warped_nylium"),
+    ("scarlet_mold", "crimson_nylium"), ("viridian_mold", "warped_nylium"),
+    ("scarlet", "crimson"), ("warped_forest", "warped_forest"),
+    ("viridian", "warped"), ("mold", "nylium"),
+    ("redstone", "redstone"),
+    ("fluxstone", "redstone"),
+    ("creeper", "creeper"), ("ghast", "ghast"),
+    ("fuseling", "creeper"), ("weepgeist", "ghast"),
+    ("piglin", "piglin"), ("hoglin", "hoglin"), ("zoglin", "zoglin"),
+    ("pigoblin", "piglin"), ("boarling", "hoglin"), ("rotboar", "zoglin"),
+    ("depth_strider", "depth_strider"), ("strider", "strider"),
+    ("aqua_step", "depth_strider"), ("emberhopper", "strider"),
+    ("shulker", "shulker"), ("mooshroom", "mooshroom"),
+    ("lurkshell", "shulker"), ("shroomcow", "mooshroom"),
+    ("evoker", "evoker"), ("vindicator", "vindicator"),
+    ("illusioner", "illusioner"),
+    ("runecaller", "evoker"), ("cleaver", "vindicator"),
+    ("miragecaller", "illusioner"),
+    ("allay", "allay"), ("warden", "warden"),
+    ("breeze", "breeze"), ("creaking", "creaking"),
+    ("sniffer", "sniffer"),
+    ("sootheling", "allay"), ("depthbrute", "warden"),
+    ("zephyr", "breeze"), ("timberhaunt", "creaking"),
+    ("trufflehog", "sniffer"),
+    ("shroomlight", "shroomlight"), ("purpur", "purpur"),
+    ("prismarine", "prismarine"), ("chorus", "chorus"),
+    ("glowcap", "shroomlight"), ("violetstone", "purpur"),
+    ("abyssprism", "prismarine"), ("echo", "chorus"),
+    ("crying_obsidian", "crying_obsidian"),
+    ("weeping_obsidian", "crying_obsidian"),
+    ("respawn_anchor", "respawn_anchor"),
+    ("rebirth_anchor", "respawn_anchor"),
+    ("totem_of_undying", "totem_of_undying"),
+    ("totem_of_revival", "totem_of_undying"),
+    ("elytra", "elytra"),
+    ("skywings", "elytra"),
     # bare-form display names that may appear in user-pack ids
-    ("vex", "wisp"),
+    ("vex", "vex"), ("wisp", "vex"),
 ]
 
 HEAD = '''//! GENERATED by scripts/gen_legacy_aliases.py - read-side legacy-name
 //! interop table (do not edit by hand; regenerate instead).
 //!
-//! WHAT THIS IS: user-supplied packs authored for the wider 1.16.5-era
-//! ecosystem reference that ecosystem's own coined item/texture/mob
-//! names in their paths and ids. This table maps those (as bare,
-//! namespace-stripped keys) onto OUR vocabulary so real-world packs
-//! keep loading - pure format interop, the same principle as reading
-//! any foreign file format. We never WRITE any of the left-hand names.
+//! WHAT THIS IS: the 2026-09-20 round coined its own in-game vocabulary
+//! (fluxstone/hollowstone/fuseling/...); the 2026-09-21 round restored
+//! the REAL ecosystem terms as the project's own names. This table maps
+//! the short-lived COINED names (as bare, namespace-stripped keys) onto
+//! the real names, so packs or saves produced by the coined-era builds
+//! keep loading — pure format interop. Real-name packs resolve natively
+//! (identity) and never consult this table. We never WRITE the coined
+//! names.
 
-/// (legacy ecosystem name, our name) - longest-first.
+/// (legacy coined name, our name) - longest-first.
 pub const LEGACY_NAME_ALIASES: &[(&str, &str)] = &[
 '''
 
@@ -88,25 +114,30 @@ mod tests {
 
     #[test]
     fn exact_and_prefixed_names_resolve() {
-        assert_eq!(legacy_name_alias("redstone"), Some("fluxstone".into()));
-        assert_eq!(legacy_name_alias("creeper"), Some("fuseling".into()));
-        assert_eq!(legacy_name_alias("enderman"), Some("voidling".into()));
-        assert_eq!(legacy_name_alias("netherrack"), Some("hollowstone".into()));
+        // coined-era names -> the restored real vocabulary
+        assert_eq!(legacy_name_alias("fluxstone"), Some("redstone".into()));
+        assert_eq!(legacy_name_alias("fuseling"), Some("creeper".into()));
+        assert_eq!(legacy_name_alias("voidling"), Some("enderman".into()));
+        assert_eq!(legacy_name_alias("hollowstone"), Some("netherrack".into()));
         // prefix + suffix compounds (files/ids we never enumerated)
         assert_eq!(
-            legacy_name_alias("crimson_pressure_plate"),
-            Some("scarlet_pressure_plate".into())
+            legacy_name_alias("scarlet_pressure_plate"),
+            Some("crimson_pressure_plate".into())
         );
         assert_eq!(
-            legacy_name_alias("soul_sand_valley"),
-            Some("spirit_sand_valley".into())
+            legacy_name_alias("spirit_sand_valley"),
+            Some("soul_sand_valley".into())
         );
-        // longest-first: wither_skeleton beats bare wither
+        // longest-first: blight_skeleton beats bare blight
         assert_eq!(
-            legacy_name_alias("wither_skeleton"),
-            Some("blight_skeleton".into())
+            legacy_name_alias("blight_skeleton"),
+            Some("wither_skeleton".into())
         );
-        // no match — our own names and unrelated names pass through
+        // the real names are now OUR names: they pass through the
+        // loader natively and never consult this table (None = no
+        // remapping needed — it is already our vocabulary)
+        assert_eq!(legacy_name_alias("redstone"), None);
+        // no match — unrelated names pass through
         assert_eq!(legacy_name_alias("stone"), None);
         assert_eq!(legacy_name_alias("oak_planks"), None);
     }
@@ -115,7 +146,11 @@ mod tests {
 
 
 def main():
-    pairs = sorted(set(PAIRS), key=lambda p: -len(p[0]))
+    # identity pairs are kept out of the emitted table (pointless rows);
+    # they only exist above to document that the real name IS ours now.
+    pairs = sorted(
+        {(a, b) for a, b in PAIRS if a != b}, key=lambda p: -len(p[0])
+    )
     rows = "\n".join('    ("%s", "%s"),' % (a, b) for a, b in pairs)
     out = os.path.join(os.path.dirname(__file__), "..",
                        "crates/vc-pack/src/legacy_aliases.rs")

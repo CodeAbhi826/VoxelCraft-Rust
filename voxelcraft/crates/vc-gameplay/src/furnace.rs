@@ -68,10 +68,10 @@ impl FurnaceKind {
 
 /// the ORE/metal smelting class (blast furnace inputs).
 pub fn is_ore_smelting(b: u16) -> bool {
-    // 1.16: ancient debris + hollow gold ore join the metal class
+    // 1.16: ancient debris + nether gold ore join the metal class
     // (ancient debris is THE blast-furnace case — "twice as fast" is
     // the documented vanilla usage; VERIFIED w/Ancient_Debris)
-    matches!(b, COAL_ORE | ANCIENT_DEBRIS | HOLLOW_GOLD_ORE)
+    matches!(b, COAL_ORE | ANCIENT_DEBRIS | NETHER_GOLD_ORE)
 }
 
 /// the FOOD cooking class (smoker inputs — VERIFIED vanilla food
@@ -159,10 +159,10 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         CLAY => Some(TERRACOTTA),
         // Phase E1 (VERIFIED 2026-09-06): sandstone → smooth sandstone
         // (the 1.14 smelting recipe, valid through 1.16.5 — w/Sandstone
-        // §Smelting); hollowstone → the hollow-brick item (w/Hollow_Brick
+        // §Smelting); netherrack → the nether-brick item (w/Nether_Brick
         // §Smelting) — the block form then crafts from 4 items
         CHISELED_SANDSTONE | CUT_SANDSTONE => Some(SMOOTH_SANDSTONE),
-        HOLLOWSTONE => Some(HOLLOW_BRICK),
+        NETHERRACK => Some(NETHER_BRICK),
         // Phase E2 (VERIFIED 2026-09-06 w/Food): potato → baked potato
         // (the only E2 food with a smelting recipe)
         POTATO => Some(BAKED_POTATO),
@@ -200,13 +200,13 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         OAK_LOG | BIRCH_LOG | SPRUCE_LOG | ACACIA_LOG | DARK_OAK_LOG | JUNGLE_LOG => {
             Some(CHARCOAL)
         }
-        // 1.16 (Hollows Update, part 1 — VERIFIED w/Ancient_Debris
-        // §Smelting: "Ancient Debris + Any fuel → Hollowite Scrap" —
-        // 2 XP per scrap (the page's reward row); w/Hollow_Gold_Ore
+        // 1.16 (Nether Update, part 1 — VERIFIED w/Ancient_Debris
+        // §Smelting: "Ancient Debris + Any fuel → Netherite Scrap" —
+        // 2 XP per scrap (the page's reward row); w/Nether_Gold_Ore
         // §Smelting: smelts into a gold ingot — the engine's
         // IRON_ORE ingot stand-in, the disclosed gold convention)
-        ANCIENT_DEBRIS => Some(HOLLOWITE_SCRAP),
-        HOLLOW_GOLD_ORE => Some(IRON_ORE),
+        ANCIENT_DEBRIS => Some(NETHERITE_SCRAP),
+        NETHER_GOLD_ORE => Some(IRON_ORE),
         // ---- the 1.0-1.16.5 completeness audit (all VERIFIED live
         // 2026-09-08 against the audit16 captures / the vanilla food
         // smelting rows) ----
@@ -219,9 +219,9 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         MUTTON => Some(COOKED_MUTTON),
         RAW_FISH => Some(COOKED_COD),
         RAW_SALMON => Some(COOKED_SALMON),
-        // 1.9: popped echo fruit — "obtained by smelting echo
-        // fruit" (VERIFIED w/Popped_Echo_Fruit)
-        ECHO_FRUIT => Some(POPPED_ECHO_FRUIT),
+        // 1.9: popped chorus fruit — "obtained by smelting chorus
+        // fruit" (VERIFIED w/Popped_Chorus_Fruit)
+        CHORUS_FRUIT => Some(POPPED_CHORUS_FRUIT),
         // the classic cactus -> green dye row (Cactus Green = the
         // engine's DYE_BASE + 13, the 1.12 palette's green)
         CACTUS => Some(DYE_BASE + 13),
@@ -871,26 +871,26 @@ mod v112_tests {
         );
     }
 
-    /// 1.16 (Hollows Update, part 1): ancient debris smelts to hollowite
-    /// scrap (the blast-furnace case) and hollow gold ore to a gold
+    /// 1.16 (Nether Update, part 1): ancient debris smelts to netherite
+    /// scrap (the blast-furnace case) and nether gold ore to a gold
     /// ingot (the iron stand-in) — both VERIFIED §Smelting rows
     #[test]
-    fn v116_hollow_smelting() {
-        assert_eq!(smelt_result(ANCIENT_DEBRIS), Some(HOLLOWITE_SCRAP));
-        assert_eq!(smelt_result(HOLLOW_GOLD_ORE), Some(IRON_ORE));
+    fn v116_nether_smelting() {
+        assert_eq!(smelt_result(ANCIENT_DEBRIS), Some(NETHERITE_SCRAP));
+        assert_eq!(smelt_result(NETHER_GOLD_ORE), Some(IRON_ORE));
         // both join the metal class (the blast furnace accepts them —
         // ancient debris is THE documented blast-furnace case)
         assert!(is_ore_smelting(ANCIENT_DEBRIS));
-        assert!(is_ore_smelting(HOLLOW_GOLD_ORE));
+        assert!(is_ore_smelting(NETHER_GOLD_ORE));
         // the material items never smelt (already refined)
-        assert_eq!(smelt_result(HOLLOWITE_SCRAP), None);
-        assert_eq!(smelt_result(HOLLOWITE_INGOT), None);
+        assert_eq!(smelt_result(NETHERITE_SCRAP), None);
+        assert_eq!(smelt_result(NETHERITE_INGOT), None);
     }
 
     /// the 1.0-1.16.5 completeness audit: the cooked-meat family + the
-    /// echo + cactus rows (all VERIFIED against the audit16 captures)
+    /// chorus + cactus rows (all VERIFIED against the audit16 captures)
     #[test]
-    fn audit16_cooked_meat_and_echo_smelts() {
+    fn audit16_cooked_meat_and_chorus_smelts() {
         // the six cooked-meat rows (the standing deferral, closed)
         assert_eq!(smelt_result(BEEF), Some(STEAK));
         assert_eq!(smelt_result(PORKCHOP), Some(COOKED_PORKCHOP));
@@ -898,16 +898,16 @@ mod v112_tests {
         assert_eq!(smelt_result(MUTTON), Some(COOKED_MUTTON));
         assert_eq!(smelt_result(RAW_FISH), Some(COOKED_COD));
         assert_eq!(smelt_result(RAW_SALMON), Some(COOKED_SALMON));
-        // 1.9: echo fruit -> popped ("obtained by smelting echo
-        // fruit", VERIFIED w/Popped_Echo_Fruit)
-        assert_eq!(smelt_result(ECHO_FRUIT), Some(POPPED_ECHO_FRUIT));
+        // 1.9: chorus fruit -> popped ("obtained by smelting chorus
+        // fruit", VERIFIED w/Popped_Chorus_Fruit)
+        assert_eq!(smelt_result(CHORUS_FRUIT), Some(POPPED_CHORUS_FRUIT));
         // the classic cactus -> green dye row (Cactus Green is the
         // DYE_BASE + 13 palette entry)
         assert_eq!(smelt_result(CACTUS), Some(DYE_BASE + 13));
         // the smoker class now carries the raw meats
         assert!(is_food_smelting(BEEF));
         assert!(is_food_smelting(RAW_SALMON));
-        assert!(!is_food_smelting(ECHO_FRUIT), "echo is not smoker food");
+        assert!(!is_food_smelting(CHORUS_FRUIT), "chorus is not smoker food");
         // the furnace accepts everything with a recipe; the blast
         // furnace still rejects food (VERIFIED w/Blast_Furnace)
         use crate::furnace::FurnaceKind;

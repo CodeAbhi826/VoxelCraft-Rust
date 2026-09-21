@@ -2,7 +2,7 @@
 
 ## 1. Vanilla 1.16.5 Options screen (main) — the real layout
 
-Sources: minecraft.wiki/w/Options (live), wayback minecraft.fandom.com/wiki/Options
+Sources: the reference wiki w/Options (live), wayback the reference game.fandom.com/wiki/Options
 (2021 snapshot), real-screenshot VLM reads (2 independent), repo history.
 
 ```
@@ -96,7 +96,7 @@ Source: shaderlabs.org LabPBR_Material_Standard (full text captured).
 
 ## 5. Ravines (the "huge ravines everywhere" bug)
 
-Source: minecraft.wiki World generation + Ravine (repo already cites):
+Source: the reference wiki World generation + Ravine (repo already cites):
 canyons start at levels 10..72, 85..127 long, typically < 15 wide, up to 62
 deep (rare max). Frequency unpublished on the wiki (community ≈ 1 per
 50-100 chunks regionally, carved-area fraction ≈ 1-2% of the surface).

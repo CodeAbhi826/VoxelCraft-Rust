@@ -31,7 +31,7 @@ pub(super) fn coal_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// Block of Quartz — smooth pale cream mineral (craft 4 hollow quartz,
+/// Block of Quartz — smooth pale cream mineral (craft 4 nether quartz,
 /// VERIFIED w/Block_of_Quartz).
 pub(super) fn quartz_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [236, 233, 226], 5, rng);
@@ -244,9 +244,9 @@ pub(super) fn plate_art(a: &mut [u8], t: u16, gold: bool) {
     put(a, t, 8, 8, lo_r, lo_g, lo_b, 255);
 }
 
-/// Block of Fluxstone — deep red mineral block with a wire-lattice motif
-/// (always-on weak power 15, VERIFIED w/Block_of_Fluxstone).
-pub(super) fn fluxstone_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// Block of Redstone — deep red mineral block with a wire-lattice motif
+/// (always-on weak power 15, VERIFIED w/Block_of_Redstone).
+pub(super) fn redstone_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [146, 22, 22], 14, rng);
     // lattice of darker seams
     for i in 0..16 {
@@ -255,7 +255,7 @@ pub(super) fn fluxstone_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
         put(a, t, 5, i, 104, 12, 12, 255);
         put(a, t, 10, i, 104, 12, 12, 255);
     }
-    // bright fluxstone specks
+    // bright redstone specks
     for (x, y) in [(3, 3), (12, 4), (7, 8), (4, 12), (13, 12)] {
         put(a, t, x, y, 220, 40, 40, 255);
     }
@@ -263,9 +263,9 @@ pub(super) fn fluxstone_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
 
 // ---- items ----
 
-/// Hollow Quartz — pale crystal shard (ore drop, VERIFIED
-/// w/Hollow_Quartz_Ore "it drops 1 Hollow quartz").
-pub(super) fn hollow_quartz_art(a: &mut [u8], t: u16) {
+/// Nether Quartz — pale crystal shard (ore drop, VERIFIED
+/// w/Nether_Quartz_Ore "it drops 1 Nether quartz").
+pub(super) fn nether_quartz_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "................",

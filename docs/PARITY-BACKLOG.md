@@ -1,6 +1,6 @@
 # VoxelCraft vs. the reference game 1.16.5 — Comprehensive Parity Backlog & Architecture Audit
 
-This document tracks the clean-room architectural comparison, current implementation status, and technical backlog between VoxelCraft-Rust and **vanilla the reference game 1.16.5 (The Hollows Update)**.
+This document tracks the clean-room architectural comparison, current implementation status, and technical backlog between VoxelCraft-Rust and **vanilla the reference game 1.16.5 (The Nether Update)**.
 
 All mechanics, numbers, and constants documented here are verified against authoritative public documentation (`the reference game.wiki`, vendor specifications like AMD GPUOpen, or technical the reference game community research) or explicitly flagged as `[ESTIMATED / APPROXIMATION]`.
 
@@ -12,12 +12,12 @@ All mechanics, numbers, and constants documented here are verified against autho
 |---|---|---|---|
 | **Blocks & Collision Shapes** | 700+ block IDs, multi-part states, non-cube voxel bounds | 506 block entries, 805 states (`vc-blocks`) | Complex shapes (stairs, slabs, fences, walls, lanterns) need sub-block AABB list. Full waterlogging flag. |
 | **Villager Life & Jobs** | 15 professions, work stations, sleeping, golem summoning, trading tiers | 15 professions, 5 trading tiers, restock | Daily schedule AI (work, gossip at bell, sleep in bed), field harvesting/replanting, iron golem panic summoning. |
-| **Farming Systems** | Wheat, carrots, potatoes, beetroot, melons, pumpkins, sugarcane, sweet berries, cocoa, hollow wart | Basic crop growth, berry bushes, sweet berries | Hydration radius (4 blocks), bone meal growth stages, bee pollination acceleration, villager farmer automation. |
+| **Farming Systems** | Wheat, carrots, potatoes, beetroot, melons, pumpkins, sugarcane, sweet berries, cocoa, nether wart | Basic crop growth, berry bushes, sweet berries | Hydration radius (4 blocks), bone meal growth stages, bee pollination acceleration, villager farmer automation. |
 | **Technical Mechanics & Exploits** | TNT duping (BUD + coral notifier), carpet duping, sand duping, update suppression | Pure tick simulation | Deliberate parity for community farm designs: piston push limit (12 blocks), slime/honey separation, falling block portal transition timing. |
 | **Entity Models & Recoil** | The Pioneer/The Scout humanoid models, quadrupeds, winged, multi-jointed entities | Procedural bounding box & hand renderer | 3D multi-part box models for all mobs, walking leg/arm swing cycle, head pitch/yaw tracking, clean-room damage recoil tilt. |
 | **Enchantments & Books** | 38 enchantments, anvil combining, prior work penalty, librarian book trading | 38 enchantments implemented in `vc-gameplay` | Enchanted book item rendering with glint shader, anvil level progression & XP cost curve, librarian trade rolling. |
 | **Vehicles (Boats & Minecarts)** | Rowable 2-seat boats, minecarts (hopper, chest, furnace, TNT) on 4 rail types | Basic entity movement | Boat rowing oar animation + splash sounds; minecart momentum physics, curves, sloped rails, and rail clatter audio. |
-| **Dimensions & World Gen** | Overworld (79 biomes), Hollow (5 biomes + bastions/fortresses), End (islands + cities + ships) | 25 Overworld biomes, Hollow & End basic terrain | Hollow Bastion Remnant variants (bridge, housing, stables, treasure), Ruined Portals, End gateway beam teleportation, End cities & Skywings ships. |
+| **Dimensions & World Gen** | Overworld (79 biomes), Nether (5 biomes + bastions/fortresses), End (islands + cities + ships) | 25 Overworld biomes, Nether & End basic terrain | Nether Bastion Remnant variants (bridge, housing, stables, treasure), Ruined Portals, End gateway beam teleportation, End cities & Elytra ships. |
 | **UI, Input & Menus** | Mouse release activation, drag cancellation, integer GUI scaling, FSR presets | UI canvas 960×540, mouse release activation, letterbox color match | 1.16.5 button release activation parity verified; X11/Wayland input deduplicated; pillarbox clear normalized (#EF323D Intro, #38281B Loading); integer GUI scaling. |
 | **Weather & Atmosphere** | Rain, thunderstorms, snow, particle splashes, sky darkness, thunder claps | Sky cycle, daylight cycle | Weather state machine (Clear 12k–180k ticks, Rain 12k–24k ticks, Thunder 3.6k–15.6k ticks), rain/snow particle streaks, sky darkening curve. |
 
@@ -46,12 +46,12 @@ All mechanics, numbers, and constants documented here are verified against autho
 1. **Piston & Slime Block Dynamics**:
    - Piston push limit: exactly 12 blocks.
    - Slime blocks and honey blocks do not stick to each other.
-   - Immovable blocks: Obsidian, Weeping Obsidian, Bedrock, Extended Pistons.
+   - Immovable blocks: Obsidian, Crying Obsidian, Bedrock, Extended Pistons.
 2. **TNT Duplication (Java 1.13–1.16.5 Standard)**:
    - Technical machines use an unignited TNT block in a BUD-powered configuration attached to a slime block alongside a dead coral fan and a rail.
    - When the sticky piston moves the assembly, the dead coral fan emits a notifier block update immediately before the intact TNT block transitions into the moving piston tile entity state, causing the TNT to ignite a primed entity while the original block is preserved and moved.
 3. **Gravity Block / Sand Duplication**:
-   - When falling block entities (sand, gravel, concrete powder, anvils) cross an Void Gate or Hollow Portal chunk border, the dimension teleportation logic clones the falling entity at the destination coordinates while tick boundary conditions delay destruction of the source entity, generating an extra block.
+   - When falling block entities (sand, gravel, concrete powder, anvils) cross an End Portal or Nether Portal chunk border, the dimension teleportation logic clones the falling entity at the destination coordinates while tick boundary conditions delay destruction of the source entity, generating an extra block.
 4. **Zero-Tick & Rapid Farming Mechanics**:
    - Piston extension/retraction cycles causing immediate block update notifications forced instant crop growth ticks in pre-1.16 versions; in 1.16, standard piston observers trigger automated harvesting upon maturity.
 
@@ -83,21 +83,21 @@ All mechanics, numbers, and constants documented here are verified against autho
    - Lapis lazuli cost (1–3) + XP levels deducted (1–3), requiring player level 1–30.
    - Runic glyph hover revealing one guaranteed enchantment outcome.
 
-### E. Dimensions: Hollow & The Void Parity
-*(Source: `the reference game.wiki/w/The_Hollow`, `the reference game.wiki/w/The_Void`)*
+### E. Dimensions: Nether & The End Parity
+*(Source: `the reference game.wiki/w/The_Nether`, `the reference game.wiki/w/The_End`)*
 
-1. **The Hollow (1.16.5 Parity)**:
+1. **The Nether (1.16.5 Parity)**:
    - **Bedrock Ceiling**: Flat bedrock ceiling at Y=127; Lava sea surface at Y=31.
-   - **5 Biomes**: Hollow Wastes, Scarlet Forest, Viridian Forest, Spirit Sand Valley, Basalt Deltas.
-   - **Bastion Remnants**: 4 structural layouts (Bridge, Boarling Stables, Housing Units, Treasure Room) with Pigoblin Brutes and gilded blackstone chests.
-   - **Hollow Fortresses**: Blaze spawners, Blight Skeleton spawning on hollow bricks, Hollow Wart rooms.
-   - **Rebirth Anchor**: Charges 1–4 with Glowstone; sets spawn in Hollow; explodes with strength 5 in Overworld or End.
-   - **Pigoblin Bartering**: Gold Ingot barter loot table (void pearls, fire resistance potions, obsidian, spirit speed books).
-2. **The Void (1.16.5 Parity)**:
+   - **5 Biomes**: Nether Wastes, Crimson Forest, Warped Forest, Soul Sand Valley, Basalt Deltas.
+   - **Bastion Remnants**: 4 structural layouts (Bridge, Hoglin Stables, Housing Units, Treasure Room) with Piglin Brutes and gilded blackstone chests.
+   - **Nether Fortresses**: Blaze spawners, Wither Skeleton spawning on nether bricks, Nether Wart rooms.
+   - **Respawn Anchor**: Charges 1–4 with Glowstone; sets spawn in Nether; explodes with strength 5 in Overworld or End.
+   - **Piglin Bartering**: Gold Ingot barter loot table (ender pearls, fire resistance potions, obsidian, soul speed books).
+2. **The End (1.16.5 Parity)**:
    - **Central Island**: 10 Obsidian Pillars with Ender Crystals (some protected by iron bars), Bedrock Exit Portal with Dragon Egg podium.
-   - **Void Wyrm Boss**: Circling, strafing dragon breath fireballs, perching on bedrock podium, healing tethers to void crystals.
-   - **Void Gateway Portals**: 20 circular bedrock portals opening around perimeter after dragon defeat, teleporting player to outer islands (1000 blocks distance).
-   - **Outer Islands**: Echo fruit plants, End Cities with branching rooms, Lurkshells, and End Ships containing the Skywings in an item frame.
+   - **Ender Dragon Boss**: Circling, strafing dragon breath fireballs, perching on bedrock podium, healing tethers to end crystals.
+   - **End Gateway Portals**: 20 circular bedrock portals opening around perimeter after dragon defeat, teleporting player to outer islands (1000 blocks distance).
+   - **Outer Islands**: Chorus fruit plants, End Cities with branching rooms, Shulkers, and End Ships containing the Elytra in an item frame.
 
 ### F. Vehicles: Boats & Minecarts
 *(Source: `the reference game.wiki/w/Boat`, `the reference game.wiki/w/Minecart`)*
@@ -108,7 +108,7 @@ All mechanics, numbers, and constants documented here are verified against autho
    - Water wake and paddle splash sound effects.
    - Extreme acceleration sliding on Ice, Packed Ice, and Blue Ice.
 2. **Minecarts & Rail Network**:
-   - Standard Rail, Powered Rail (boost when powered, brake when unpowered), Detector Rail (emits fluxstone signal when cart is present), Activator Rail (shakes passengers out, primes TNT carts).
+   - Standard Rail, Powered Rail (boost when powered, brake when unpowered), Detector Rail (emits redstone signal when cart is present), Activator Rail (shakes passengers out, primes TNT carts).
    - Dynamic 90-degree track curves and sloped incline ramps.
    - Momentum conservation around loops.
    - Metallic wheel friction hum and rail joint click-clack procedural audio.

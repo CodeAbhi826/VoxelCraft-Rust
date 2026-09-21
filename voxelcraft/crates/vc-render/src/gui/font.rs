@@ -6,12 +6,15 @@
 //! on screen (`src/client/fontengine.cpp`). This module replicates
 //! that architecture with `ab_glyph` (pure Rust, wasm-safe):
 //!
-//! * **Font**: Voxelfont — this project's OWN pixel font, generated
-//!   programmatically from the in-project clean-room 5×8 bitmap glyph
-//!   table (`scripts/make_voxelfont.py` → `assets/Voxelfont.ttf`, MIT —
-//!   see `assets/VOXELFONT-NOTICE.txt`), embedded via `include_bytes!`
-//!   (no PNGs, no external files at runtime, no third-party font data
-//!   anywhere in the pipeline).
+//! * **Font**: Monocraft — IdreesInc's open-source pixel font (SIL
+//!   OFL 1.1 — see `assets/OFL-Monocraft.txt`), the closest legally
+//!   usable match to the classic voxel look; 1,446 glyphs (Latin,
+//!   Greek, Cyrillic, symbols, arrows, ∞, ♥, ⌂, …), embedded via
+//!   `include_bytes!` (no PNGs, no external files at runtime). The
+//!   project's own generated 5×8 pixel font (Voxelfont, MIT —
+//!   `scripts/make_voxelfont.py` → `assets/Voxelfont.ttf` +
+//!   `assets/VOXELFONT-NOTICE.txt`) stays in-repo as the documented
+//!   spare font.
 //! * **Rasterization on demand**: glyphs rasterize with
 //!   anti-aliasing at the DEVICE pixel size (UI cell × the canvas
 //!   letterbox scale), so text stays crisp at any window size —
@@ -41,9 +44,12 @@ use ab_glyph::{Font as _, FontRef, Glyph, PxScale};
 
 use crate::ui::FONT;
 
-/// The embedded in-project pixel font (~16 KB, 109 glyphs: ASCII + a
-/// small original symbol set — arrows, infinity, degree, …).
-pub const VOXELFONT_TTF: &[u8] = include_bytes!("../../assets/Voxelfont.ttf");
+/// The embedded engine font: Monocraft (SIL OFL 1.1, IdreesInc —
+/// license at `assets/OFL-Monocraft.txt`). ~198 KB, 1,446 glyphs:
+/// Latin + Greek + Cyrillic + a wide symbol set (arrows, infinity,
+/// degree, ♥, ⌂, €, …). Chars outside its cmap rasterize from the
+/// builtin clean-room 5×7 bitmap font instead.
+pub const MONOCRAFT_TTF: &[u8] = include_bytes!("../../assets/Monocraft.ttf");
 
 /// Glyph atlas size (px). 1024² holds thousands of 24–40 px glyphs;
 /// overflow resets the cache (`resets()`).
@@ -152,8 +158,8 @@ impl ShelfPacker {
 pub struct FontEngine {
     font: FontRef<'static>,
     /// cap-height / font-height, measured from 'H' at init
-    /// (Voxelfont: 896/1024 = 0.875 — the cap lands exactly on
-    /// CAP_PER_CELL, so the raster maps 1:1 onto the UI cell)
+    /// (Monocraft: 840/1080 = 0.7778 — the em is scaled up at raster
+    /// time so the cap still lands exactly on CAP_PER_CELL)
     cap_ratio: f32,
     /// ink-width / font-height per char (measured lazily at the
     /// canonical raster; 0.0 for the space)
@@ -178,7 +184,7 @@ impl FontEngine {
         let font = FontRef::try_from_slice(bytes).ok()?;
         let mut eng = FontEngine {
             font,
-            cap_ratio: 0.78125, // patched from 'H' below (Voxelfont: 896/1024 em)
+            cap_ratio: 0.78, // patched from 'H' below (Monocraft: 840/1080 em)
             ink: HashMap::new(),
             glyphs: HashMap::new(),
             runs: HashMap::new(),
@@ -200,14 +206,16 @@ impl FontEngine {
 
     /// the ab_glyph PxScale raster size for a UI cell — derived from
     /// the measured cap ratio so the cap lands at `0.875 × cell`
-    /// (Voxelfont: 0.875 / 0.875 = 1.0 × cell — the pixel grid maps
-    /// exactly onto the UI cell, crisp pixel-perfect squares)
+    /// (Monocraft: 0.875 / 0.7778 ≈ 1.125 × cell — the monospaced em
+    /// is scaled up until the CAP hits the vanilla proportion; the
+    /// ink-trim rule then lays out per-glyph, so the monospace advance
+    /// never flattens the vanilla proportional look)
     pub fn raster_px_for_cell(&self, cell: f32) -> f32 {
         cell * CAP_PER_CELL / self.cap_ratio.max(0.1)
     }
 
     /// baseline (px) below the cell top — centers the cap window in
-    /// the cell (cap = 0.875 × cell for Voxelfont)
+    /// the cell (cap = 0.875 × cell at any measured cap ratio)
     pub fn baseline_for_cell(&self, cell: f32) -> f32 {
         let cap = self.cap_ratio * self.raster_px_for_cell(cell);
         (cell + cap) / 2.0
@@ -580,7 +588,7 @@ static ENGINE: OnceLock<Option<Mutex<FontEngine>>> = OnceLock::new();
 /// fail to parse — callers keep the bitmap-font canvas path then)
 pub fn engine() -> Option<&'static Mutex<FontEngine>> {
     ENGINE
-        .get_or_init(|| FontEngine::new(VOXELFONT_TTF).map(Mutex::new))
+        .get_or_init(|| FontEngine::new(MONOCRAFT_TTF).map(Mutex::new))
         .as_ref()
 }
 
@@ -592,17 +600,21 @@ mod tests {
 
     #[test]
     fn engine_loads_the_embedded_font() {
-        let e = engine().expect("embedded Voxelfont parses");
+        let e = engine().expect("embedded Monocraft parses");
         let e = e.lock().unwrap();
         assert!(
             e.has_glyph('A') && e.has_glyph('a') && e.has_glyph('∞'),
             "Latin + infinity covered"
         );
         assert!(!e.has_glyph('\u{4E9C}'), "CJK falls back to bitmap");
-        // cap ratio measured from 'H' — Voxelfont: 896/1024 em = exactly
-        // 0.875 (the glyph grid: 7 cap rows of 8, generated 1:1 from the
-        // bitmap table), so the raster maps exactly onto the UI cell
-        assert!((e.cap_ratio - 0.875).abs() < 0.01, "cap ratio {}", e.cap_ratio);
+        // cap ratio measured from 'H' — Monocraft: 840/1080 em ≈
+        // 0.7778 (the raster then scales the em up by 0.875/0.7778 so
+        // the cap lands exactly on the 7-of-8 vanilla proportion)
+        assert!(
+            (e.cap_ratio - 0.7778).abs() < 0.02,
+            "cap ratio {}",
+            e.cap_ratio
+        );
     }
 
     #[test]
@@ -613,10 +625,10 @@ mod tests {
         let aw = e.advance('W', cell);
         let ai = e.advance('i', cell);
         let ad = e.advance('.', cell);
-        // W (full 5-col ink) packs wider than the narrow glyphs; the
-        // exact i-vs-. ordering is glyph-design-specific (Voxelfont's
-        // centered 2x2 period dot measures a right edge of 4, the
-        // centered i stem 3 — same right-edge rule the bitmap path uses)
+        // W (the widest ink) packs wider than the narrow glyphs; the
+        // exact i-vs-. ordering is glyph-design-specific (Monocraft is
+        // advance-monospaced, but the INK-trim rule measures the
+        // actual drawn pixels — the vanilla proportional behavior)
         assert!(
             aw > ai && aw > ad,
             "W {aw} > i {ai}, . {ad} — ink-trim proportionalization"
@@ -686,7 +698,7 @@ mod tests {
     fn atlas_full_resets_and_reports_it() {
         // a LOCAL engine (not the global) — this test wrecks the packer
         // and must not interleave with the shared-instance tests
-        let mut e = FontEngine::new(VOXELFONT_TTF).expect("parses");
+        let mut e = FontEngine::new(MONOCRAFT_TTF).expect("parses");
         // a wide-but-short packer: the glyph fits the width, never the
         // height → the reset path runs, rasterize still fails cleanly
         e.packer = ShelfPacker::new(64, 8);
@@ -699,7 +711,7 @@ mod tests {
     fn missing_chars_fall_back_to_the_bitmap_glyph() {
         let e = engine().unwrap();
         let mut e = e.lock().unwrap();
-        let c = '\u{4E9C}'; // CJK — not in Voxelfont
+        let c = '\u{4E9C}'; // CJK — not in Monocraft
         let g = e.rasterize(c, 16).expect("bitmap fallback rasterizes");
         assert!(g.w > 0 && g.h > 0, "fallback has ink");
         // the fallback advance matches the bitmap font's Phase-5 rule
@@ -728,14 +740,14 @@ mod tests {
 
     #[test]
     fn height_and_baseline_map_the_vanilla_proportions() {
-        // Voxelfont: raster px = 1.0 × cell (cap ratio 0.875 = exactly
-        // CAP_PER_CELL, so the glyph grid maps 1:1 onto the UI cell);
-        // the cap lands at 0.875 × cell; the baseline centers the cap
-        // window in the cell
+        // Monocraft: raster px = cell × 0.875/0.7778 ≈ 1.125 × cell
+        // (the em scales up so the CAP lands on 0.875 × cell — the
+        // vanilla proportion holds for ANY measured cap ratio); the
+        // baseline centers the cap window in the cell
         let e = engine().unwrap();
         let e = e.lock().unwrap();
         let px = e.raster_px_for_cell(16.0);
-        assert!((px - 16.0).abs() < 0.5, "raster px at cell 16 (got {px})");
+        assert!((px - 18.0).abs() < 0.5, "raster px at cell 16 (got {px})");
         let cap = e.cap_ratio * px;
         assert!((cap - 14.0).abs() < 0.5, "cap ≈ 0.875 × cell (got {cap})");
         let b = e.baseline_for_cell(16.0);

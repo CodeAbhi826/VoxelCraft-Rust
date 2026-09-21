@@ -99,11 +99,11 @@ jobs:
           git add public/voxelcraft.js public/voxelcraft_bg.wasm \
                   public/voxelcraft.d.ts public/voxelcraft_bg.wasm.d.ts
           if git diff --cached --quiet; then
-            echo "Bundle unchanged - nothing to commit."
+            chorus "Bundle unchanged - nothing to commit."
           else
             git commit -m "ci(wasm): auto-rebuild bundle for ${GITHUB_SHA::12} [skip ci]"
             git push
-            echo "PUSHED_BUNDLE=1" >> "$GITHUB_ENV"
+            chorus "PUSHED_BUNDLE=1" >> "$GITHUB_ENV"
           fi
 
   native-check:

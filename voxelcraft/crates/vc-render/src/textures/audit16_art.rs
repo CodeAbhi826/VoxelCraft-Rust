@@ -2,7 +2,7 @@
 //! 706..=734): the cooked-meat family (steak, cooked porkchop/chicken/
 //! mutton/cod/salmon), the kitchen chain (apple, bowl, mushroom + rabbit
 //! stew, beetroot, beetroot soup, sugar, egg, poisonous potato), popped
-//! echo fruit, the weepgeist tear, the weepgeist/cave-spider/silverfish spawn
+//! chorus fruit, the ghast tear, the ghast/cave-spider/silverfish spawn
 //! eggs + the three mob billboard sprites. (The six leaping/regeneration
 //! potion rows ride the shared `potion_art` helper in the dispatcher.)
 //!
@@ -62,10 +62,10 @@ const EGG_SD: [i32; 3] = [200, 194, 178];
 /// poisonous potato: the green-spotted tuber.
 const POT_M: [i32; 3] = [196, 152, 88];
 const POT_ROT: [i32; 3] = [116, 158, 62];
-/// popped echo: the pale-gold popped kernel.
+/// popped chorus: the pale-gold popped kernel.
 const POP_M: [i32; 3] = [226, 206, 186];
 const POP_D: [i32; 3] = [192, 168, 148];
-/// weepgeist tear: the liquid-white tear.
+/// ghast tear: the liquid-white tear.
 const TEAR: [i32; 3] = [226, 238, 240];
 const TEAR_D: [i32; 3] = [182, 200, 208];
 
@@ -492,8 +492,8 @@ pub(super) fn poisonous_potato_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// popped echo fruit — the pale popped kernel (the violetstone input).
-pub(super) fn popped_echo_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// popped chorus fruit — the pale popped kernel (the purpur input).
+pub(super) fn popped_chorus_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "................",
@@ -519,8 +519,8 @@ pub(super) fn popped_echo_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-/// weepgeist tear — the liquid-white tear ("the only source" — the weepgeist).
-pub(super) fn weepgeist_tear_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// ghast tear — the liquid-white tear ("the only source" — the ghast).
+pub(super) fn ghast_tear_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "................",
@@ -548,8 +548,8 @@ pub(super) fn weepgeist_tear_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
 
 // ---- the spawn eggs (the EGG_PALETTES convention) ----
 
-/// weepgeist egg — the white shell with dark-gray mottling (kind 45).
-pub(super) fn weepgeist_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+/// ghast egg — the white shell with dark-gray mottling (kind 45).
+pub(super) fn ghast_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         ".......AA.......",
@@ -631,9 +631,9 @@ pub(super) fn silverfish_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
 
 // ---- the mob billboards ----
 
-/// weepgeist — the huge white floating cube with closed eyes and the
+/// ghast — the huge white floating cube with closed eyes and the
 /// nine-stand-in tentacles (the 4x4 hitbox reads as the big sprite).
-pub(super) fn weepgeist_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+pub(super) fn ghast_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "...GGGGGGGGGG...",

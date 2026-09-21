@@ -5,7 +5,7 @@ against which live page, and every disagreement/adaptation. Raw search
 transcripts: `voxelcraft/scripts/verify_e3_*.json`; raw page fetches:
 `voxelcraft/scripts/e3_page_*.json`.
 
-## Verified live (minecraft.wiki unless noted)
+## Verified live (the reference wiki unless noted)
 
 | Value | Page | Note |
 |---|---|---|

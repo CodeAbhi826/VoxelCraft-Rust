@@ -107,7 +107,7 @@ pub const VANILLA_ITEM_NAMES: &[(&str, u16)] = &[
     ("voxelcraft:iron_ore", IRON_ORE),
     ("voxelcraft:gold_ore", GOLD_ORE),
     ("voxelcraft:diamond_ore", DIAMOND_ORE),
-    ("voxelcraft:fluxstone_ore", FLUXSTONE_ORE),
+    ("voxelcraft:redstone_ore", REDSTONE_ORE),
     ("voxelcraft:lapis_ore", LAPIS_ORE),
     ("voxelcraft:emerald_ore", EMERALD_ORE),
     ("voxelcraft:iron_block", IRON_BLOCK),
@@ -134,15 +134,15 @@ pub const VANILLA_ITEM_NAMES: &[(&str, u16)] = &[
     ("voxelcraft:red_mushroom", MUSHROOM_RED),
     ("voxelcraft:brown_mushroom", MUSHROOM_BROWN),
     ("voxelcraft:dead_bush", DEAD_BUSH),
-    // fluxstone core
-    ("voxelcraft:fluxstone", FLUXSTONE_WIRE), // item form of the wire block
-    ("voxelcraft:fluxstone_torch", FLUXSTONE_TORCH),
+    // redstone core
+    ("voxelcraft:redstone", REDSTONE_WIRE), // item form of the wire block
+    ("voxelcraft:redstone_torch", REDSTONE_TORCH),
     ("voxelcraft:lever", LEVER),
     ("voxelcraft:furnace", FURNACE),
-    // hollow
-    ("voxelcraft:hollowstone", HOLLOWSTONE),
-    ("voxelcraft:hollow_quartz_ore", HOLLOW_QUARTZ_ORE),
-    ("voxelcraft:spirit_sand", SPIRIT_SAND),
+    // nether
+    ("voxelcraft:netherrack", NETHERRACK),
+    ("voxelcraft:nether_quartz_ore", NETHER_QUARTZ_ORE),
+    ("voxelcraft:soul_sand", SOUL_SAND),
     // brewing
     ("voxelcraft:brewing_stand", BREWING_STAND),
     ("voxelcraft:glass_bottle", POTION_EMPTY),
@@ -159,10 +159,10 @@ pub const VANILLA_ITEM_NAMES: &[(&str, u16)] = &[
     ("voxelcraft:bone", BONE),
     ("voxelcraft:string", STRING),
     ("voxelcraft:gunpowder", GUNPOWDER),
-    ("voxelcraft:void_pearl", VOID_PEARL),
+    ("voxelcraft:ender_pearl", ENDER_PEARL),
     ("voxelcraft:rotten_flesh", ROTTEN_FLESH),
     ("voxelcraft:arrow", ARROW_ITEM),
-    // fluxstone components (Phase 3)
+    // redstone components (Phase 3)
     ("voxelcraft:repeater", REPEATER),
     ("voxelcraft:comparator", COMPARATOR),
     ("voxelcraft:piston", PISTON),
@@ -197,8 +197,8 @@ pub fn item_id_by_name(name: &str) -> Option<u16> {
 }
 
 /// Canonicalize any item/type reference into OUR namespace:
-/// "somemod:fluxstone" | "fluxstone" | "anyothermod:fluxstone"
-/// → "voxelcraft:fluxstone".
+/// "somemod:redstone" | "redstone" | "anyothermod:redstone"
+/// → "voxelcraft:redstone".
 ///
 /// Namespace interop (read-side): names arriving from USER-SUPPLIED data
 /// packs are authored for the wider 1.16.5-era ecosystem and carry
@@ -972,7 +972,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                         loot_item_w(ROTTEN_FLESH, 5, 1.0, 4.0),
                         loot_item_w(BONE, 4, 1.0, 4.0),
                         loot_item_w(FEATHER, 3, 1.0, 3.0),
-                        loot_item_w(VOID_PEARL, 1, 1.0, 1.0),
+                        loot_item_w(ENDER_PEARL, 1, 1.0, 1.0),
                     ],
                 },
             ],
@@ -985,8 +985,8 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                     entries: vec![
                         loot_item_w(IRON_ORE, 5, 1.0, 4.0),
                         loot_item_w(GOLD_ORE, 3, 1.0, 3.0),
-                        loot_item_w(FLUXSTONE_ORE, 3, 4.0, 8.0),
-                        loot_item_w(VOID_PEARL, 1, 1.0, 2.0),
+                        loot_item_w(REDSTONE_ORE, 3, 4.0, 8.0),
+                        loot_item_w(ENDER_PEARL, 1, 1.0, 2.0),
                     ],
                 },
             ],
@@ -1012,11 +1012,11 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
         // scripts/v111_page_woodland_mansion.json — "each woodland
         // mansion chest contains items drawn from 4 pools"). Palette-
         // limited with the page's own §History version-scoping: the
-        // Wisp Armor Trim (1.20, 23w04a) and Resin Clump (1.21.4, 24w44a)
+        // Vex Armor Trim (1.20, 23w04a) and Resin Clump (1.21.4, 24w44a)
         // rows are post-1.11 additions — scoped OUT of this bracket; the
         // name tag (removed 26.1 snap11) and diamond hoe / chainmail /
         // music discs / diamond chestplate / enchanted golden apple /
-        // wheat / bread / fluxstone dust / seeds / iron ingot / bucket /
+        // wheat / bread / redstone dust / seeds / iron ingot / bucket /
         // gold ingot rows are palette-absent — they don't roll (the
         // established honest policy; surviving weights keep their live
         // relative values).
@@ -1049,7 +1049,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                         loot_item_w(STRING, 10, 1.0, 8.0),
                     ],
                 },
-                // pool 4: rolls 1 — live shows Nothing (1/2) + Wisp Armor
+                // pool 4: rolls 1 — live shows Nothing (1/2) + Vex Armor
                 // Trim (1/2); the trim is a 1.20 addition (scoped out),
                 // leaving the empty partner
                 LootPool {
@@ -1901,7 +1901,7 @@ mod tests {
     /// 1.11: the woodland_mansion chest table — 4 pools (VERIFIED live
     /// 2026-09-07, reference wiki /Woodland_Mansion §Loot capture:
     /// "each woodland mansion chest contains items drawn from 4 pools"),
-    /// palette-limited with the §History version-scoping (wisp trim 1.20
+    /// palette-limited with the §History version-scoping (vex trim 1.20
     /// / resin 1.21.4 / name-tag removal 26.1 all post-1.11)
     #[test]
     fn v111_woodland_mansion_table() {

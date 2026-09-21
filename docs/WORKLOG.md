@@ -5878,3 +5878,99 @@ refreshed in `public/`.
 
   After the push, GitHub Actions rebuilds the single-file Linux binary
   (the pointer-fix delivery) and the wasm bundle automatically.
+
+## 2026-09-21 round — the vocabulary restoration + Monocraft + the click-side routing delivery
+
+**Mandates (the owner's):** (1) the de-branding concern is STRUCTURE
+(folders/namespaces/paths), NOT in-game names — the real terms
+(redstone, creeper, …) come back; (2) Monocraft is the engine font
+("the closest stuff to use for us"); (3) what about the optimizations
++ bug fixing — deliver the deferred Linux click-bug family; (4) where
+do shader/resource packs go for the compiled binary (answered in
+docs/PACKS-README.md — `shader-packs/` + `resourcepacks/` beside the
+binary, or any working directory you launch from).
+
+**The vocabulary restoration.** The 2026-09-20 round had coined its
+own in-game vocabulary (fluxstone/hollowstone/fuseling/…) — an
+over-correction. This round reversed it repo-wide with a
+context-aware, protected rename
+(`scripts/restore_real_names.py` + `followup_wiki_names.py`):
+- 76 coined→real families restored across 97 text files + 377 asset
+  paths (engine crates, builtin packs, the assets vault, public
+  deployments, CI, docs) — redstone, netherrack, netherite, soul
+  sand/soil/fire/torch/lantern/campfire/speed, crimson/warped +
+  crimson/warped nylium, the Nether/the End dimensions
+  (Dimension::Nether/End, "the_nether"/"the_end"), end portal/
+  gateway/crystal/chest, ender pearl/chest, eye of ender, end stone/
+  rod, enderman/endermite/ender dragon, wither (+ skeleton, rose,
+  effect, fight, nether star drop), creeper, ghast, piglin/hoglin/
+  zoglin, strider, shulker, mooshroom, evoker/vindicator/illusioner,
+  allay, warden, breeze, creaking, sniffer, vex, crying obsidian,
+  respawn anchor, totem of undying, depth strider, elytra, shroomlight,
+  purpur, prismarine, chorus (plant/flower/fruit), crimson/warped
+  forests, soul sand valley, "Nether Update" label.
+- PROTECTED while renaming (the forensic pass): "a hollow thump" +
+  "far/soft echo" (vc-audio English comments), `blight` =
+  BLOCK-LIGHT in vc-mesh/vc-world::light/vc-render::gpu_mesh (kept),
+  generic lowercase `void` (the abyss), prepositional "at/past the
+  void" English that an older sweep had corrupted from "the end".
+- Save/pack compatibility: dimensions persist as numeric ids;
+  `legacy_aliases.rs` is SWAPPED (coined→real, 68 entries) so
+  coined-era packs/saves keep loading; real-name packs resolve
+  natively. Regenerated via the rewritten gen_legacy_aliases.py.
+
+**Monocraft.** The engine font is now Monocraft.ttf (IdreesInc, SIL
+OFL 1.1, license shipped at vc-render/assets/OFL-Monocraft.txt) —
+embedded via include_bytes, 1,446 glyphs (Latin/Greek/Cyrillic/
+symbols), measured cap ratio 840/1080 = 0.7778; the runtime
+metric-measuring design (raster scale derived from the measured cap
+ratio) lands the cap exactly on the vanilla 7-of-8 proportion with
+no further changes. Voxelfont.ttf (ours, MIT) stays in-repo as the
+documented spare (make_voxelfont.py + notice updated).
+
+**The click-side routing family (the Linux click bug, delivered):**
+- Linux never asks for Locked (X11 cannot honor it); the ladder on
+  Linux is Confined → Delta.
+- Pointer-starvation watchdog: evidence counters armed at every
+  capture, judged every frame — ≥3 CursorMoved + 0 raw motions >1 s
+  into a grab demotes to delta-look, releases the cursor, marks the
+  rung sticky-unreliable (never retried).
+- `VC_POINTER=auto|delta|confined|locked` env override + the
+  `pointer env: session=… wayland_display=… winit_unix_backend=…
+  VC_POINTER=…` boot line.
+- Raw `DeviceEvent::Button` clicks route through the authoritative
+  path with a dedup guard (the "click sound but nothing opens" class:
+  clicks that arrive only as raw device events).
+- break_tap/place_tap latching: short clicks (press+release inside
+  one input batch) act exactly once.
+- set_screen re-derives hover from the current cursor immediately.
+
+**De-brand completion + audit realignment:** docs/research notes that
+escaped the sweep (16 files: wiki-domain citations + publisher
+mentions) now use the project's "reference wiki / reference game"
+citation style (`scripts/debrand_research_docs.py`); the orphaned,
+unreferenced, byte-identical `programmer-art` pack trees (carrying
+the original's "Programmer Art" label in the folder name) are
+deleted; legal_audit.py's term list is realigned to the binding
+policy (brand marks forbidden: the publisher's names, personas,
+"programmer art"; generic functional vocabulary NOT scanned; the OFL
+font explicitly allowed) — **[PASS]**.
+
+**Verification (first round with a LOCAL toolchain — rustup 1.98.1
+installed in-container):** `cargo check -p voxelcraft
+--no-default-features` clean; **full workspace: 847 tests green**
+(818 prior + 7 new: 5 watchdog decision tests, VC_POINTER parsing,
+tap-latch semantics; +22 restored-name suites passing as-is); clippy
+**0/0** (also fixed in passing: the v2 pipeline's dead V2Pass
+fields — the pass name now rides the pipeline label — an unnecessary
+cast, a mangled TONEMAP test assertion, and a doc-list lint);
+wasm32 check + release clean — **bundle rebuilt and deployed**
+(voxelcraft.js + voxelcraft_bg.wasm + both pack roots re-synced).
+The vc-pack alias test's identity expectation corrected (real names
+no longer consult the table).
+
+**Status at round end:** tests/clippy/audit green, wasm preview
+serving the new bundle. PUSH PENDING (user action — same as the
+previous round): after `git push --force origin main`, CI rebuilds
+the single-file Linux binary with the click-fix family + the real
+vocabulary + Monocraft.

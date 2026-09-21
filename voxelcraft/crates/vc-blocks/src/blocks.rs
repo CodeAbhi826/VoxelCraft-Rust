@@ -16,14 +16,14 @@ pub enum SoundFamily {
     /// Sub-round 5 (2026-09-15): the vanilla 1.16.5 material-class
     /// expansion — gravel (its own vanilla class), metal (iron/gold
     /// blocks + anvils), plant (bamboo), chains (the 1.16 chain block),
-    /// hollow wood (scarlet/viridian — "hollow_wood" is vanilla's own
-    /// class for the Hollows Update stems). Copper/deepslate are 1.17+
+    /// nether wood (crimson/warped — "nether_wood" is vanilla's own
+    /// class for the Nether Update stems). Copper/deepslate are 1.17+
     /// and stay out (the prompt's "map 1.16.5 classes only").
     Gravel,
     Metal,
     Plant,
     Chain,
-    HollowWood,
+    NetherWood,
     None,
 }
 
@@ -61,7 +61,7 @@ pub const TILE_COAL_ORE: u16 = 27;
 pub const TILE_IRON_ORE: u16 = 28;
 pub const TILE_GOLD_ORE: u16 = 29;
 pub const TILE_DIAMOND_ORE: u16 = 30;
-pub const TILE_FLUXSTONE_ORE: u16 = 31;
+pub const TILE_REDSTONE_ORE: u16 = 31;
 pub const TILE_LAPIS_ORE: u16 = 32;
 pub const TILE_EMERALD_ORE: u16 = 33;
 // mineral blocks
@@ -98,18 +98,18 @@ pub const TILE_SPRUCE_LEAVES: u16 = 59;
 pub const TILE_MUSHROOM_RED: u16 = 60;
 pub const TILE_MUSHROOM_BROWN: u16 = 61;
 pub const TILE_DEAD_BUSH: u16 = 62;
-// fluxstone core (Phase 6 §25)
-pub const TILE_FLUXSTONE_WIRE: u16 = 64;
-pub const TILE_FLUXSTONE_TORCH: u16 = 65;
+// redstone core (Phase 6 §25)
+pub const TILE_REDSTONE_WIRE: u16 = 64;
+pub const TILE_REDSTONE_TORCH: u16 = 65;
 pub const TILE_LEVER: u16 = 66;
 // gameplay (Phase 7)
 pub const TILE_FURNACE_SIDE: u16 = 67;
 pub const TILE_FURNACE_TOP: u16 = 68;
 pub const TILE_FURNACE_LIT_SIDE: u16 = 69;
-// hollow blocks (Phase 7 §28 dimensions)
-pub const TILE_HOLLOWSTONE: u16 = 70;
+// nether blocks (Phase 7 §28 dimensions)
+pub const TILE_NETHERRACK: u16 = 70;
 pub const TILE_QUARTZ_ORE: u16 = 71;
-pub const TILE_SPIRIT_SAND: u16 = 72;
+pub const TILE_SOUL_SAND: u16 = 72;
 // brewing (Phase 7 §29): stand + potion bottles (item-only tiles)
 pub const TILE_BREWING_STAND: u16 = 73;
 pub const TILE_BOTTLE_EMPTY: u16 = 74;
@@ -132,15 +132,15 @@ pub const TILE_FERMENTED_EYE: u16 = 121;
 // cage silhouette, clean-room drawn — see textures.rs spawner_art)
 pub const TILE_SPAWNER: u16 = 122;
 /// Phase 10: end-portal frame tile (clean-room inset-ring face)
-pub const TILE_VOID_GATE_FRAME: u16 = 123;
+pub const TILE_END_PORTAL_FRAME: u16 = 123;
 // ---- Phase E1 (evolution 1.0–1.2 bracket, live-verified 2026-09-06) ----
 // world blocks
 pub const TILE_MYCELIUM_TOP: u16 = 124;
 pub const TILE_MYCELIUM_SIDE: u16 = 125;
-pub const TILE_VOID_STONE: u16 = 126;
-pub const TILE_HOLLOW_BRICKS: u16 = 127;
-pub const TILE_FLUXSTONE_LAMP: u16 = 128;
-pub const TILE_FLUXSTONE_LAMP_ON: u16 = 129;
+pub const TILE_END_STONE: u16 = 126;
+pub const TILE_NETHER_BRICKS: u16 = 127;
+pub const TILE_REDSTONE_LAMP: u16 = 128;
+pub const TILE_REDSTONE_LAMP_ON: u16 = 129;
 pub const TILE_CHISELED_STONE_BRICKS: u16 = 130;
 pub const TILE_CHISELED_SANDSTONE: u16 = 131;
 pub const TILE_CUT_SANDSTONE: u16 = 132;
@@ -148,30 +148,30 @@ pub const TILE_SMOOTH_SANDSTONE: u16 = 133;
 pub const TILE_MUSHROOM_RED_BLOCK: u16 = 134;
 pub const TILE_MUSHROOM_BROWN_BLOCK: u16 = 135;
 pub const TILE_MUSHROOM_STEM: u16 = 136;
-pub const TILE_HOLLOW_WART_0: u16 = 137;
-pub const TILE_HOLLOW_WART_1: u16 = 138;
-pub const TILE_HOLLOW_WART_2: u16 = 139;
-pub const TILE_HOLLOW_WART_3: u16 = 140;
+pub const TILE_NETHER_WART_0: u16 = 137;
+pub const TILE_NETHER_WART_1: u16 = 138;
+pub const TILE_NETHER_WART_2: u16 = 139;
+pub const TILE_NETHER_WART_3: u16 = 140;
 pub const TILE_DRAGON_EGG: u16 = 141;
-pub const TILE_VOID_GATE: u16 = 142;
+pub const TILE_END_PORTAL: u16 = 142;
 // items + entity sprites
-pub const TILE_VOID_CRYSTAL: u16 = 143;
+pub const TILE_END_CRYSTAL: u16 = 143;
 pub const TILE_XP_ORB: u16 = 144;
 pub const TILE_XP_ORB_BIG: u16 = 145;
-pub const TILE_VOID_EYE: u16 = 146;
+pub const TILE_EYE_OF_ENDER: u16 = 146;
 pub const TILE_BLAZE_ROD: u16 = 147;
 pub const TILE_BLAZE_POWDER: u16 = 148;
 pub const TILE_GOLDEN_APPLE: u16 = 149;
 pub const TILE_SNOWBALL: u16 = 150;
-pub const TILE_HOLLOW_BRICK: u16 = 151;
+pub const TILE_NETHER_BRICK: u16 = 151;
 pub const TILE_SNOWGOLEM: u16 = 152;
 pub const TILE_MAGMACUBE: u16 = 153;
 pub const TILE_BLAZE: u16 = 154;
 pub const TILE_OCELOT: u16 = 155;
 pub const TILE_IRONGOLEM: u16 = 156;
 pub const TILE_ZOMBIEVILLAGER: u16 = 157;
-pub const TILE_SHROOMCOW: u16 = 158;
-pub const TILE_VOIDWYRM: u16 = 159;
+pub const TILE_MOOSHROOM: u16 = 158;
+pub const TILE_ENDERDRAGON: u16 = 159;
 // spawn eggs: 20 tiles, one per implemented mob kind (base 160..=179)
 pub const TILE_EGG_BASE: u16 = 160;
 pub const TILE_EGG_MAX: u16 = 179;
@@ -183,26 +183,26 @@ pub const TILE_ANVIL_DAMAGED: u16 = 182;
 pub const TILE_BEACON: u16 = 183;
 pub const TILE_BEACON_BEAM: u16 = 184;
 pub const TILE_COBBLE_WALL: u16 = 185;
-pub const TILE_VOID_CHEST: u16 = 186;
+pub const TILE_ENDER_CHEST: u16 = 186;
 pub const TILE_FLOWER_POT: u16 = 187;
 pub const TILE_ITEM_FRAME: u16 = 188;
 pub const TILE_TRIPWIRE_HOOK: u16 = 189;
 pub const TILE_TRIPWIRE_HOOK_ON: u16 = 190;
-pub const TILE_BLIGHT_SKULL: u16 = 191;
+pub const TILE_WITHER_SKULL: u16 = 191;
 pub const TILE_COMMAND_BLOCK: u16 = 192;
 pub const TILE_COMMAND_BLOCK_ON: u16 = 193;
 pub const TILE_EMERALD: u16 = 194;
-pub const TILE_HOLLOW_STAR: u16 = 195;
+pub const TILE_NETHER_STAR: u16 = 195;
 pub const TILE_POTATO: u16 = 196;
 pub const TILE_BAKED_POTATO: u16 = 197;
 pub const TILE_CARROT: u16 = 198;
 pub const TILE_PUMPKIN_PIE: u16 = 199;
 // E2 mob sprites (billboards)
-pub const TILE_BLIGHT: u16 = 200;
-pub const TILE_BLIGHT_SKELETON: u16 = 201;
+pub const TILE_WITHER: u16 = 200;
+pub const TILE_WITHER_SKELETON: u16 = 201;
 pub const TILE_WITCH: u16 = 202;
 pub const TILE_BAT: u16 = 203;
-pub const TILE_BLIGHT_SKULL_PROJ: u16 = 204;
+pub const TILE_WITHER_SKULL_PROJ: u16 = 204;
 /// lava fluid tile (the flowing face art — one shared tile like water)
 pub const TILE_LAVA: u16 = 205;
 /// coal ITEM tile (VERIFICATION-REPORT mechanical fix #4 — base-game
@@ -226,9 +226,9 @@ pub const TILE_DAYLIGHT_TOP: u16 = 230;
 pub const TILE_DAYLIGHT_SIDE: u16 = 231;
 pub const TILE_PLATE_LIGHT: u16 = 232;
 pub const TILE_PLATE_HEAVY: u16 = 233;
-pub const TILE_FLUXSTONE_BLOCK: u16 = 234;
+pub const TILE_REDSTONE_BLOCK: u16 = 234;
 // item tiles
-pub const TILE_HOLLOW_QUARTZ: u16 = 235;
+pub const TILE_NETHER_QUARTZ: u16 = 235;
 pub const TILE_LEAD: u16 = 236;
 pub const TILE_SADDLE: u16 = 237;
 // E3 mob sprites (billboards)
@@ -303,8 +303,8 @@ pub const TILE_PUFFERFISH: u16 = 287;
 // ---------------------------------------------------------------------------
 // 1.8 bracket tiles (Bountiful-era update — live round 2026-09-06): slime,
 // coarse dirt, the three polished stones, red sandstone family,
-// abyssprism family, sea lantern, iron trapdoor, barrier, and the
-// rabbit/abyssprism item icons.
+// prismarine family, sea lantern, iron trapdoor, barrier, and the
+// rabbit/prismarine item icons.
 // ---------------------------------------------------------------------------
 pub const TILE_SLIME: u16 = 288;
 pub const TILE_COARSE_DIRT: u16 = 289;
@@ -313,9 +313,9 @@ pub const TILE_POLISHED_DIORITE: u16 = 291;
 pub const TILE_POLISHED_ANDESITE: u16 = 292;
 pub const TILE_RED_SANDSTONE: u16 = 293;
 pub const TILE_SMOOTH_RED_SANDSTONE: u16 = 294;
-pub const TILE_ABYSSPRISM: u16 = 295;
-pub const TILE_ABYSSPRISM_BRICKS: u16 = 296;
-pub const TILE_DARK_ABYSSPRISM: u16 = 297;
+pub const TILE_PRISMARINE: u16 = 295;
+pub const TILE_PRISMARINE_BRICKS: u16 = 296;
+pub const TILE_DARK_PRISMARINE: u16 = 297;
 pub const TILE_SEA_LANTERN: u16 = 298;
 pub const TILE_IRON_TRAPDOOR: u16 = 299;
 pub const TILE_BARRIER: u16 = 300;
@@ -323,30 +323,30 @@ pub const TILE_RAW_RABBIT: u16 = 301;
 pub const TILE_COOKED_RABBIT: u16 = 302;
 pub const TILE_RABBIT_HIDE: u16 = 303;
 pub const TILE_RABBIT_FOOT: u16 = 304;
-pub const TILE_ABYSSPRISM_SHARD: u16 = 305;
-pub const TILE_ABYSSPRISM_CRYSTALS: u16 = 306;
+pub const TILE_PRISMARINE_SHARD: u16 = 305;
+pub const TILE_PRISMARINE_CRYSTALS: u16 = 306;
 /// 1.8 rabbit entity sprite (clean-room, like the other mob tiles)
 pub const TILE_RABBIT: u16 = 307;
 // ---------------------------------------------------------------------------
 // 1.9 bracket tiles (Combat Update — live round 2026-09-06): grass path,
-// violetstone family, void stone bricks, void rod, echo plant/flower, and the
-// echo fruit / skywings / shield item icons.
+// purpur family, end stone bricks, end rod, chorus plant/flower, and the
+// chorus fruit / elytra / shield item icons.
 // ---------------------------------------------------------------------------
 pub const TILE_GRASS_PATH: u16 = 308;
 pub const TILE_GRASS_PATH_SIDE: u16 = 309;
-pub const TILE_VIOLETSTONE: u16 = 310;
-pub const TILE_VIOLETSTONE_PILLAR_SIDE: u16 = 311;
-pub const TILE_VOID_STONE_BRICKS: u16 = 312;
-pub const TILE_VOID_ROD: u16 = 313;
-pub const TILE_ECHO_PLANT: u16 = 314;
-pub const TILE_ECHO_FLOWER: u16 = 315;
-pub const TILE_ECHO_FRUIT: u16 = 316;
-pub const TILE_SKYWINGS: u16 = 317;
+pub const TILE_PURPUR: u16 = 310;
+pub const TILE_PURPUR_PILLAR_SIDE: u16 = 311;
+pub const TILE_END_STONE_BRICKS: u16 = 312;
+pub const TILE_END_ROD: u16 = 313;
+pub const TILE_CHORUS_PLANT: u16 = 314;
+pub const TILE_CHORUS_FLOWER: u16 = 315;
+pub const TILE_CHORUS_FRUIT: u16 = 316;
+pub const TILE_ELYTRA: u16 = 317;
 pub const TILE_SHIELD: u16 = 318;
 // 1.10 Frostburn tiles (live round 2026-09-06)
 pub const TILE_MAGMA: u16 = 319;
-pub const TILE_HOLLOW_WART_BLOCK: u16 = 320;
-pub const TILE_RED_HOLLOW_BRICKS: u16 = 321;
+pub const TILE_NETHER_WART_BLOCK: u16 = 320;
+pub const TILE_RED_NETHER_BRICKS: u16 = 321;
 pub const TILE_BONE_BLOCK: u16 = 322;
 // 1.10 mob sprites
 pub const TILE_POLAR_BEAR: u16 = 323;
@@ -376,18 +376,18 @@ pub const TILE_VINE: u16 = 331;
 /// — no seeds item in engine, drops nothing).
 pub const TILE_FERN: u16 = 332;
 // ---- 1.11 bracket tiles (Exploration-era update, live 2026-09-07) ----
-/// 1.11 mob sprites (w/Llama, /w/Cleaver, /w/Runecaller, /w/Wisp).
+/// 1.11 mob sprites (w/Llama, /w/Vindicator, /w/Evoker, /w/Vex).
 pub const TILE_LLAMA: u16 = 333;
 pub const TILE_CLEAVER: u16 = 334;
-pub const TILE_RUNECALLER: u16 = 335;
+pub const TILE_EVOKER: u16 = 335;
 pub const TILE_VEX: u16 = 336;
-/// Lurkshell box (VERIFIED w/Lurkshell_Box: hardness 2, 27 slots, keeps
-/// contents; craft = 2 lurkshell shells + chest column).
-pub const TILE_LURKSHELL_BOX: u16 = 337;
-/// Lurkshell shell (VERIFIED w/Lurkshell_Shell: 50% lurkshell drop — no
-/// lurkshells in engine, picker-only, documented).
-pub const TILE_LURKSHELL_SHELL: u16 = 338;
-/// Totem of revival (VERIFIED w/Totem_of_Revival live: restores 1 HP,
+/// Shulker box (VERIFIED w/Shulker_Box: hardness 2, 27 slots, keeps
+/// contents; craft = 2 shulker shells + chest column).
+pub const TILE_SHULKER_BOX: u16 = 337;
+/// Shulker shell (VERIFIED w/Shulker_Shell: 50% shulker drop — no
+/// shulkers in engine, picker-only, documented).
+pub const TILE_SHULKER_SHELL: u16 = 338;
+/// Totem of undying (VERIFIED w/Totem_of_Undying live: restores 1 HP,
 /// clears effects, Regeneration II 45 s + Absorption II 5 s — the Fire
 /// Resistance row is a 1.16.2 addition per §History, version-scoped out
 /// of this bracket).
@@ -397,9 +397,9 @@ pub const TILE_TOTEM: u16 = 339;
 // clean-room pixel art (ours, not the original game's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
 pub const TILE_SKELETON: u16 = 84;
-pub const TILE_FUSELING: u16 = 85;
+pub const TILE_CREEPER: u16 = 85;
 pub const TILE_SPIDER: u16 = 86;
-pub const TILE_VOIDLING: u16 = 87;
+pub const TILE_ENDERMAN: u16 = 87;
 pub const TILE_COW: u16 = 88;
 pub const TILE_PIG: u16 = 89;
 pub const TILE_SHEEP: u16 = 90;
@@ -414,10 +414,10 @@ pub const TILE_LEATHER: u16 = 98;
 pub const TILE_BONE: u16 = 99;
 pub const TILE_STRING: u16 = 100;
 pub const TILE_GUNPOWDER: u16 = 101;
-pub const TILE_VOID_PEARL: u16 = 102;
+pub const TILE_ENDER_PEARL: u16 = 102;
 pub const TILE_ROTTEN_FLESH: u16 = 103;
 pub const TILE_ARROW_ITEM: u16 = 104;
-// fluxstone components (Phase 3): repeater, comparator, pistons,
+// redstone components (Phase 3): repeater, comparator, pistons,
 // dispenser, dropper, observer, hopper + chest (hopper target)
 pub const TILE_REPEATER: u16 = 105;
 pub const TILE_COMPARATOR: u16 = 106;
@@ -467,7 +467,7 @@ pub const COAL_ORE: u16 = 26;
 pub const IRON_ORE: u16 = 27;
 pub const GOLD_ORE: u16 = 28;
 pub const DIAMOND_ORE: u16 = 29;
-pub const FLUXSTONE_ORE: u16 = 30;
+pub const REDSTONE_ORE: u16 = 30;
 pub const LAPIS_ORE: u16 = 31;
 pub const EMERALD_ORE: u16 = 32;
 // mineral blocks
@@ -502,25 +502,25 @@ pub const DEAD_BUSH: u16 = 56;
 
 // (BLOCK_COUNT moved below — after all item ids are declared)
 
-// fluxstone core (Phase 6 §25 subset)
-pub const FLUXSTONE_WIRE: u16 = 60;
-pub const FLUXSTONE_TORCH: u16 = 61;
+// redstone core (Phase 6 §25 subset)
+pub const REDSTONE_WIRE: u16 = 60;
+pub const REDSTONE_TORCH: u16 = 61;
 pub const LEVER: u16 = 62;
 // gameplay (Phase 7)
 pub const FURNACE: u16 = 63;
-// hollow blocks (Phase 7 §28 dimensions): identities collide with the
+// nether blocks (Phase 7 §28 dimensions): identities collide with the
 // log-axis/model state slots exactly like FURNACE — they too always store
 // their dedicated STATE ids below
-pub const HOLLOWSTONE: u16 = 64;
-pub const HOLLOW_QUARTZ_ORE: u16 = 65;
-pub const SPIRIT_SAND: u16 = 66;
-pub const HOLLOWSTONE_STATE: u16 = 118;
+pub const NETHERRACK: u16 = 64;
+pub const NETHER_QUARTZ_ORE: u16 = 65;
+pub const SOUL_SAND: u16 = 66;
+pub const NETHERRACK_STATE: u16 = 118;
 pub const QUARTZ_ORE_STATE: u16 = 119;
-pub const SPIRIT_SAND_STATE: u16 = 120;
+pub const SOUL_SAND_STATE: u16 = 120;
 // brewing (Phase 7 §29): the stand block + potion ITEM ids. Potions live in
 // inventories/hotbar only — never stored in the world. Their identity ids
 // (67..73) collide with the COBBLE_STAIRS/OAK_FENCE model-state range, so
-// like the hollow blocks they get dedicated registry states and fold
+// like the nether blocks they get dedicated registry states and fold
 // through state_block like everything else (§46 defensive folding).
 pub const BREWING_STAND: u16 = 67;
 pub const POTION_EMPTY: u16 = 68; // "Glass Bottle"
@@ -554,10 +554,10 @@ pub const LEATHER: u16 = 81;
 pub const BONE: u16 = 82;
 pub const STRING: u16 = 83;
 pub const GUNPOWDER: u16 = 84;
-pub const VOID_PEARL: u16 = 85;
+pub const ENDER_PEARL: u16 = 85;
 pub const ROTTEN_FLESH: u16 = 86;
 pub const ARROW_ITEM: u16 = 87;
-// fluxstone components (Phase 3): ids 88..=96, dedicated sim states above
+// redstone components (Phase 3): ids 88..=96, dedicated sim states above
 pub const REPEATER: u16 = 88;
 pub const COMPARATOR: u16 = 89;
 pub const PISTON: u16 = 90;
@@ -579,7 +579,7 @@ pub const SPAWNER: u16 = 101;
 /// Decorative-only: eye-of-void insertion + portal activation are out
 /// of scope (documented); the frame marks the vanilla portal room's
 /// 12-frame ring, ours renders as a full cube with a frame inset.
-pub const VOID_GATE_FRAME: u16 = 102;
+pub const END_PORTAL_FRAME: u16 = 102;
 
 // ---- Phase E1 block ids (evolution 1.0–1.2 bracket) — all values
 // live-verified against the reference wiki on 2026-09-06 (see
@@ -588,16 +588,16 @@ pub const VOID_GATE_FRAME: u16 = 102;
 /// 1 sideways / 3 down, light gates 9/4 — VERIFIED w/Mycelium §Spread).
 /// Drops DIRT without Silk Touch (adaptation: no Silk Touch in engine).
 pub const MYCELIUM: u16 = 103;
-/// Void stone — hardness 3, blast resistance 9 (VERIFIED w/Void_Stone).
-pub const VOID_STONE: u16 = 104;
-/// Hollow bricks — the fortress structural block.
-pub const HOLLOW_BRICKS: u16 = 105;
-/// Fluxstone lamp — light 0 when off; the LIT state emits 15. Turns on
-/// instantly, off after 4 game ticks (VERIFIED w/Fluxstone_Lamp: "takes
+/// End stone — hardness 3, blast resistance 9 (VERIFIED w/End_Stone).
+pub const END_STONE: u16 = 104;
+/// Nether bricks — the fortress structural block.
+pub const NETHER_BRICKS: u16 = 105;
+/// Redstone lamp — light 0 when off; the LIT state emits 15. Turns on
+/// instantly, off after 4 game ticks (VERIFIED w/Redstone_Lamp: "takes
 /// 4 ticks (0.2 seconds) to turn off in Java Edition"; the 1.2.4
-/// history note "2-tick delay" = 2 fluxstone ticks = the same 4 game
-/// ticks). Crafted 4 glowstone + 1 fluxstone dust.
-pub const FLUXSTONE_LAMP: u16 = 106;
+/// history note "2-tick delay" = 2 redstone ticks = the same 4 game
+/// ticks). Crafted 4 glowstone + 1 redstone dust.
+pub const REDSTONE_LAMP: u16 = 106;
 /// Chiseled stone bricks — decorative variant (recipe needs stone-brick
 /// slabs, out of engine scope; picker-only, documented).
 pub const CHISELED_STONE_BRICKS: u16 = 107;
@@ -613,23 +613,23 @@ pub const MUSHROOM_RED_BLOCK: u16 = 111;
 pub const MUSHROOM_BROWN_BLOCK: u16 = 112;
 /// Huge mushroom stem.
 pub const MUSHROOM_STEM: u16 = 113;
-/// Hollow wart crop — 4 stages (age 0..3), 10%/random-tick growth, only
-/// on spirit sand (VERIFIED w/Hollow_Wart). Storage states 237..=240.
-pub const HOLLOW_WART: u16 = 114;
-/// Dragon egg — spawns above the Void exit portal after the first dragon
+/// Nether wart crop — 4 stages (age 0..3), 10%/random-tick growth, only
+/// on soul sand (VERIFIED w/Nether_Wart). Storage states 237..=240.
+pub const NETHER_WART: u16 = 114;
+/// Dragon egg — spawns above the End exit portal after the first dragon
 /// kill (light level 1).
 pub const DRAGON_EGG: u16 = 115;
-/// Void gate block — the 3×3 active portal in the stronghold room /
-/// the Void exit portal. Emissive 15. Entering it dimension-travels.
-pub const VOID_GATE: u16 = 116;
+/// End gate block — the 3×3 active portal in the stronghold room /
+/// the End exit portal. Emissive 15. Entering it dimension-travels.
+pub const END_PORTAL: u16 = 116;
 // ---- Phase E1 item-blocks (inventory-only, the potion pattern) ----
-pub const VOID_CRYSTAL: u16 = 117;
-pub const VOID_EYE: u16 = 118;
+pub const END_CRYSTAL: u16 = 117;
+pub const EYE_OF_ENDER: u16 = 118;
 pub const BLAZE_ROD: u16 = 119;
 pub const BLAZE_POWDER: u16 = 120;
 pub const GOLDEN_APPLE: u16 = 121;
 pub const SNOWBALL: u16 = 122;
-pub const HOLLOW_BRICK: u16 = 123;
+pub const NETHER_BRICK: u16 = 123;
 // spawn eggs: ids 124..=143, one per implemented mob kind (20).
 /// Vanilla mechanic (VERIFIED w/Spawn_Egg §Usage): use on a surface →
 /// the mob spawns with feet adjacent to the surface; the egg is
@@ -656,15 +656,15 @@ pub const CHIPPED_ANVIL: u16 = 145;
 /// Damaged Anvil — damage stage 2 (next degrade = destroyed).
 pub const DAMAGED_ANVIL: u16 = 146;
 /// Beacon — light 15, pyramid 1–4 levels, effects (VERIFIED w/Beacon).
-/// Craft: 5 glass + 1 hollow star + 3 obsidian.
+/// Craft: 5 glass + 1 nether star + 3 obsidian.
 pub const BEACON: u16 = 147;
 /// Cobblestone Wall — 6 cobble → 6 walls (VERIFIED w/Wall); 1.5-block
 /// collision like fences; connects to neighbors at mesh time.
 pub const COBBLE_WALL: u16 = 148;
-/// Void Chest — 27 slots, per-player, shared across all void chests
-/// (VERIFIED w/Void_Chest). Craft: 8 obsidian + void eye. Light 7.
+/// Ender Chest — 27 slots, per-player, shared across all ender chests
+/// (VERIFIED w/Ender_Chest). Craft: 8 obsidian + eye of ender. Light 7.
 /// Break drops 8 obsidian (no Silk Touch in engine — documented).
-pub const VOID_CHEST: u16 = 149;
+pub const ENDER_CHEST: u16 = 149;
 /// Flower Pot — craft 3 bricks (VERIFIED w/Flower_Pot; brick ITEM →
 /// brick BLOCK adaptation, documented); hardness 0, instant break.
 pub const FLOWER_POT: u16 = 150;
@@ -674,22 +674,22 @@ pub const FLOWER_POT: u16 = 150;
 pub const ITEM_FRAME: u16 = 151;
 /// Tripwire Hook — craft 1 iron + 1 stick + 2 planks → 2 (VERIFIED
 /// w/Tripwire_Hook; iron ore + planks adaptation). Pairs + a 1–40
-/// string line emit fluxstone while tripped.
+/// string line emit redstone while tripped.
 pub const TRIPWIRE_HOOK: u16 = 152;
-/// Blight Skeleton Skull — the blight-summon block (2.5% drop, VERIFIED
-/// w/Blight_Skeleton); hardness 1.
-pub const BLIGHT_SKELETON_SKULL: u16 = 153;
+/// Wither Skeleton Skull — the wither-summon block (2.5% drop, VERIFIED
+/// w/Wither_Skeleton); hardness 1.
+pub const WITHER_SKELETON_SKULL: u16 = 153;
 /// Command Block — creative/`give` only (VERIFIED w/Command_Block);
-/// executes the engine command bridge on fluxstone pulse. Impulse variant
+/// executes the engine command bridge on redstone pulse. Impulse variant
 /// (chain/repeating are 1.9 — deferred).
 pub const COMMAND_BLOCK: u16 = 154;
 // ---- Phase E2 item-blocks (inventory-only, the potion pattern) ----
 /// Emerald — ore drop + beacon feed + trade currency (VERIFIED
 /// w/Emerald, w/Emerald_Ore: drops 1, XP 3–7).
 pub const EMERALD: u16 = 155;
-/// Hollow Star — the blight's guaranteed drop (VERIFIED w/Blight:
+/// Nether Star — the wither's guaranteed drop (VERIFIED w/Wither:
 /// 100%, 50 XP, 10-min despawn); beacon ingredient.
-pub const HOLLOW_STAR: u16 = 156;
+pub const NETHER_STAR: u16 = 156;
 /// Potato — food 1 / 0.6 (VERIFIED w/Food).
 pub const POTATO: u16 = 157;
 /// Baked Potato — food 5 / 6.0 (VERIFIED w/Food); smelted from potato.
@@ -700,7 +700,7 @@ pub const CARROT: u16 = 159;
 /// egg (absent in engine) → picker-only, recipe deferred (documented).
 pub const PUMPKIN_PIE: u16 = 160;
 /// Lava — light-emitting fluid (VERIFIED w/Lava infobox: luminance 15,
-/// transparent, flow distance 4 blocks Overworld/End & 8 Hollow —
+/// transparent, flow distance 4 blocks Overworld/End & 8 Nether —
 /// counted including the source, i.e. 3/7 spread; flow speed 30/10
 /// ticks per block; contact damage 4 HP per 10 ticks via the damage
 /// immunity window). States: source 307 + flow levels 1..7 at 308..=314.
@@ -718,7 +718,7 @@ pub const COAL: u16 = 162;
 /// 800 seconds (16000 ticks), which smelts 80 items" — 10× the coal
 /// item's 1600). Craft: 9 coal ↔ 1 block (w/Block_of_Coal recipe).
 pub const COAL_BLOCK: u16 = 163;
-/// Block of Quartz — craft 4 hollow quartz (VERIFIED live 2026-09-06,
+/// Block of Quartz — craft 4 nether quartz (VERIFIED live 2026-09-06,
 /// reference wiki /Block_of_Quartz).
 pub const QUARTZ_BLOCK: u16 = 164;
 /// Chiseled Quartz Block — vanilla crafts from 2 quartz slabs
@@ -757,14 +757,14 @@ pub const CARPET_BASE: u16 = 183;
 /// wheat/farming in the engine → recipe deferred, picker/loot only
 /// (disclosed). Feeds horses (mobs.rs).
 pub const HAY_BALE: u16 = 188;
-/// Daylight Sensor — fluxstone signal from sky light; recipe glass +
-/// hollow quartz + any wooden slab (VERIFIED live: reference wiki /
-/// Daylight_Detector "Glass + Hollow Quartz + Any Wooden Slab").
+/// Daylight Sensor — redstone signal from sky light; recipe glass +
+/// nether quartz + any wooden slab (VERIFIED live: reference wiki /
+/// Daylight_Detector "Glass + Nether Quartz + Any Wooden Slab").
 /// Java 1.16.5 signal: driven by time-of-day + weather + sky exposure
 /// (the engine maps its real sky-light engine through the same 0–15
-/// ladder — adaptation disclosed in fluxstone.rs).
+/// ladder — adaptation disclosed in redstone.rs).
 pub const DAYLIGHT_SENSOR: u16 = 189;
-/// Trapped Chest — container + fluxstone signal = number of players
+/// Trapped Chest — container + redstone signal = number of players
 /// viewing, max 15 (VERIFIED live: reference wiki /Trapped_Chest "to
 /// a power level equal to the number of players ... accessing the
 /// trapped chest at once (maximum 15)"). Recipe: tripwire hook +
@@ -783,17 +783,17 @@ pub const LIGHT_WEIGHTED_PLATE: u16 = 191;
 /// up to the nearest integer), up to a maximum power level of 15").
 /// Craft: 2 iron — 2 IRON_ORE (convention, disclosed).
 pub const HEAVY_WEIGHTED_PLATE: u16 = 192;
-/// Block of Fluxstone — always-on power source, weak power 15 to direct
-/// neighbors (VERIFIED live: reference wiki /Block_of_Fluxstone "acts
-/// as a permanently powered fluxstone power source", "provide weak
+/// Block of Redstone — always-on power source, weak power 15 to direct
+/// neighbors (VERIFIED live: reference wiki /Block_of_Redstone "acts
+/// as a permanently powered redstone power source", "provide weak
 /// power to their direct neighbors at signal strength 15"). Craft
-/// 9 fluxstone ↔ 1 block — engine fluxstone dust is the WIRE block →
-/// 9 FLUXSTONE_WIRE (adaptation, disclosed).
-pub const FLUXSTONE_BLOCK: u16 = 193;
-/// Hollow Quartz — item dropped by hollow quartz ore (VERIFIED live:
-/// reference wiki /Hollow_Quartz_Ore "it drops 1 Hollow quartz";
+/// 9 redstone ↔ 1 block — engine redstone dust is the WIRE block →
+/// 9 REDSTONE_WIRE (adaptation, disclosed).
+pub const REDSTONE_BLOCK: u16 = 193;
+/// Nether Quartz — item dropped by nether quartz ore (VERIFIED live:
+/// reference wiki /Nether_Quartz_Ore "it drops 1 Nether quartz";
 /// ore XP 2–5 from the same page). Quartz-block ingredient.
-pub const HOLLOW_QUARTZ: u16 = 194;
+pub const NETHER_QUARTZ: u16 = 194;
 /// Lead — leash item (VERIFIED live: reference wiki /Lead "A lead can
 /// stretch a maximum of 12 blocks" on the CURRENT wiki — but that 12
 /// value is the 2025 "Chase the Skies" buff ("Leash snapping distance
@@ -935,12 +935,12 @@ pub const POLISHED_DIORITE: u16 = 246;
 pub const POLISHED_ANDESITE: u16 = 247;
 pub const RED_SANDSTONE: u16 = 248;
 pub const SMOOTH_RED_SANDSTONE: u16 = 249;
-pub const ABYSSPRISM: u16 = 250;
-pub const ABYSSPRISM_BRICKS: u16 = 251;
-pub const DARK_ABYSSPRISM: u16 = 252;
+pub const PRISMARINE: u16 = 250;
+pub const PRISMARINE_BRICKS: u16 = 251;
+pub const DARK_PRISMARINE: u16 = 252;
 /// sea lantern: light level 15 (wiki: "Emit light at a light level of 15")
 pub const SEA_LANTERN: u16 = 253;
-/// iron trapdoor: fluxstone-only opening (vanilla) — our fluxstone gates are
+/// iron trapdoor: redstone-only opening (vanilla) — our redstone gates are
 /// documented as deferred; the block places/plays like a trapdoor
 pub const IRON_TRAPDOOR: u16 = 254;
 /// barrier: bedrock-like, fully transparent, creative-only (wiki)
@@ -951,20 +951,20 @@ pub const RAW_RABBIT: u16 = 256;
 pub const COOKED_RABBIT: u16 = 257;
 pub const RABBIT_HIDE: u16 = 258;
 pub const RABBIT_FOOT: u16 = 259;
-// 1.8 abyssprism materials (inventory-only; guardian drops — guardians
+// 1.8 prismarine materials (inventory-only; guardian drops — guardians
 // are a documented deferral, the items register now so recipes exist)
-pub const ABYSSPRISM_SHARD: u16 = 260;
-pub const ABYSSPRISM_CRYSTALS: u16 = 261;
+pub const PRISMARINE_SHARD: u16 = 260;
+pub const PRISMARINE_CRYSTALS: u16 = 261;
 
 /// first state of the V3 window (1.8 bracket)
 pub const V3_STATE_BASE: u16 = 447;
 pub const V3_COUNT: u16 = 19; // ids 162..=180
 pub const V3_STATE_TO_BLOCK: [u16; V3_COUNT as usize] = [
     SLIME_BLOCK, COARSE_DIRT, POLISHED_GRANITE, POLISHED_DIORITE, POLISHED_ANDESITE,
-    RED_SANDSTONE, SMOOTH_RED_SANDSTONE, ABYSSPRISM, ABYSSPRISM_BRICKS, DARK_ABYSSPRISM,
+    RED_SANDSTONE, SMOOTH_RED_SANDSTONE, PRISMARINE, PRISMARINE_BRICKS, DARK_PRISMARINE,
     SEA_LANTERN, IRON_TRAPDOOR, BARRIER,
-    RAW_RABBIT, COOKED_RABBIT, RABBIT_HIDE, RABBIT_FOOT, ABYSSPRISM_SHARD,
-    ABYSSPRISM_CRYSTALS,
+    RAW_RABBIT, COOKED_RABBIT, RABBIT_HIDE, RABBIT_FOOT, PRISMARINE_SHARD,
+    PRISMARINE_CRYSTALS,
 ];
 
 #[inline]
@@ -991,21 +991,21 @@ pub fn is_v3_state(s: u16) -> bool {
 /// (documented simplification); vanilla always drops dirt even with Silk
 /// Touch — our drops match via the break path.
 pub const GRASS_PATH: u16 = 262;
-pub const VIOLETSTONE_BLOCK: u16 = 263;
-pub const VIOLETSTONE_PILLAR: u16 = 264;
-pub const VOID_STONE_BRICKS: u16 = 265;
-/// void rod: "lighting source with the same brightness as torches" (14)
-pub const VOID_ROD: u16 = 266;
-pub const ECHO_PLANT: u16 = 267;
-pub const ECHO_FLOWER: u16 = 268;
-/// echo fruit: eat + random teleport (VERIFIED §Items: heals 4, "can be
+pub const PURPUR_BLOCK: u16 = 263;
+pub const PURPUR_PILLAR: u16 = 264;
+pub const END_STONE_BRICKS: u16 = 265;
+/// end rod: "lighting source with the same brightness as torches" (14)
+pub const END_ROD: u16 = 266;
+pub const CHORUS_PLANT: u16 = 267;
+pub const CHORUS_FLOWER: u16 = 268;
+/// chorus fruit: eat + random teleport (VERIFIED §Items: heals 4, "can be
 /// eaten even if the player is not hungry... teleports the player to a
 /// random nearby location")
-pub const ECHO_FRUIT: u16 = 269;
-/// skywings: gliding wings (§Items: "they function according to hang glider
+pub const CHORUS_FRUIT: u16 = 269;
+/// elytra: gliding wings (§Items: "they function according to hang glider
 /// aerodynamics" — chest slot in vanilla; our adaptation: active when the
 /// SELECTED item while falling, documented)
-pub const SKYWINGS: u16 = 270;
+pub const ELYTRA: u16 = 270;
 /// shield: "new tool used for blocking incoming attacks" (§Items; crafted
 /// 6 planks + 1 iron — our craft hook is a documented deferral, the item
 /// blocks while held + right-click)
@@ -1014,8 +1014,8 @@ pub const SHIELD: u16 = 271;
 pub const V4_STATE_BASE: u16 = 466;
 pub const V4_COUNT: u16 = 10; // ids 181..=190
 pub const V4_STATE_TO_BLOCK: [u16; V4_COUNT as usize] = [
-    GRASS_PATH, VIOLETSTONE_BLOCK, VIOLETSTONE_PILLAR, VOID_STONE_BRICKS, VOID_ROD,
-    ECHO_PLANT, ECHO_FLOWER, ECHO_FRUIT, SKYWINGS, SHIELD,
+    GRASS_PATH, PURPUR_BLOCK, PURPUR_PILLAR, END_STONE_BRICKS, END_ROD,
+    CHORUS_PLANT, CHORUS_FLOWER, CHORUS_FRUIT, ELYTRA, SHIELD,
 ];
 
 #[inline]
@@ -1040,10 +1040,10 @@ pub fn is_v4_state(s: u16) -> bool {
 /// magma block — VERIFIED (wiki /w/Magma_Block, live 2026-09-06): emits
 /// light level 3; "mobs and players take 1 HP damage every second while
 /// touching it, similar to a cactus"; sneaking / Frost Walker / Fire
-/// Resistance grant immunity; Hollow: 4 blobs per chunk between Y=27-36
+/// Resistance grant immunity; Nether: 4 blobs per chunk between Y=27-36
 pub const MAGMA_BLOCK: u16 = 272;
-pub const HOLLOW_WART_BLOCK: u16 = 273;
-pub const RED_HOLLOW_BRICKS: u16 = 274;
+pub const NETHER_WART_BLOCK: u16 = 273;
+pub const RED_NETHER_BRICKS: u16 = 274;
 pub const BONE_BLOCK: u16 = 275;
 
 // ---- audit-fix round (2026-09-07): ids 276..=281, V6 window 480..=485.
@@ -1093,39 +1093,39 @@ pub const VINE: u16 = 280;
 pub const FERN: u16 = 281;
 
 // ---- 1.11 bracket (Exploration-era update): ids 282..=288, V7 window ----
-/// Lurkshell Box — container (VERIFIED w/Lurkshell_Box live: hardness 2,
-/// "All lurkshell boxes have 27 inventory slots, the same as a barrel, a
-/// single chest, or an void chest"; "keep their items when broken";
-/// craft = "Lurkshell Shell + Chest" column; "cannot be placed inside
-/// another" lurkshell box; "drops itself as an item if pushed by
+/// Shulker Box — container (VERIFIED w/Shulker_Box live: hardness 2,
+/// "All shulker boxes have 27 inventory slots, the same as a barrel, a
+/// single chest, or an ender chest"; "keep their items when broken";
+/// craft = "Shulker Shell + Chest" column; "cannot be placed inside
+/// another" shulker box; "drops itself as an item if pushed by
 /// pistons"). Engine adaptation: item entities carry no NBT, so a
 /// broken box spills its contents (the vanilla keep-inside-the-item
 /// needs item-NBT — disclosed); the no-nesting rule IS enforced.
-pub const LURKSHELL_BOX: u16 = 282;
-/// Lurkshell Shell — item (VERIFIED w/Lurkshell_Shell: 50% lurkshell drop; no
-/// lurkshells/End cities in engine → picker-only, documented).
-pub const LURKSHELL_SHELL: u16 = 283;
-/// Totem of Revival — item (VERIFIED live w/Totem_of_Revival: revives
+pub const SHULKER_BOX: u16 = 282;
+/// Shulker Shell — item (VERIFIED w/Shulker_Shell: 50% shulker drop; no
+/// shulkers/End cities in engine → picker-only, documented).
+pub const SHULKER_SHELL: u16 = 283;
+/// Totem of Revival — item (VERIFIED live w/Totem_of_Undying: revives
 /// the holder on lethal damage, "restores 1 HP, removes all existing
 /// status effects and grants" Regeneration II 45 s + Absorption II 5 s.
-/// Runecaller drop ("Runecallers always drop one of these upon death" — 1.11
+/// Evoker drop ("Evokers always drop one of these upon death" — 1.11
 /// changelog). Fire Resistance I (0:40) is a 1.16.2 addition
 /// (w/Totem §History 20w28a) — version-scoped OUT of this bracket.
-pub const TOTEM_OF_REVIVAL: u16 = 284;
-/// 1.11 spawn eggs (changelog §Items: "5 new spawn eggs" — Cleaver,
-/// Llama, Runecaller, Wisp, Zombie Villager): kinds 23..=26. The zombie-
+pub const TOTEM_OF_UNDYING: u16 = 284;
+/// 1.11 spawn eggs (changelog §Items: "5 new spawn eggs" — Vindicator,
+/// Llama, Evoker, Vex, Zombie Villager): kinds 23..=26. The zombie-
 /// villager egg — the 5th of the new set — is ALREADY in the engine:
 /// the E2-era egg item at id 129 (egg kind 5, added with the zombie-
 /// villager cure round; an engine anachronism, disclosed in the WORKLOG
 /// — it satisfies the 1.11 requirement without a duplicate item).
 pub const SPAWN_EGG_LLAMA: u16 = 285;
 pub const SPAWN_EGG_CLEAVER: u16 = 286;
-pub const SPAWN_EGG_RUNECALLER: u16 = 287;
+pub const SPAWN_EGG_EVOKER: u16 = 287;
 pub const SPAWN_EGG_VEX: u16 = 288;
 /// 1.11 re-added eggs (VERIFIED changelog §Items: "Eggs that were
 /// removed in Java Edition 1.10-pre2 are re-added, except the cat
 /// spawn egg, including: ... Husk spawn egg, Stray spawn egg"): husk
-/// kind 27, stray 28. The blight-skeleton re-add is covered by the
+/// kind 27, stray 28. The wither-skeleton re-add is covered by the
 /// existing kind 16; donkey/mule re-adds by kinds 21/22; skeleton
 /// horse / zombie horse / elder guardian eggs are palette-absent
 /// (those mobs don't exist — N/A, disclosed).
@@ -1135,7 +1135,7 @@ pub const SPAWN_EGG_STRAY: u16 = 290;
 pub const V5_STATE_BASE: u16 = 476;
 pub const V5_COUNT: u16 = 4; // ids 191..=194
 pub const V5_STATE_TO_BLOCK: [u16; V5_COUNT as usize] = [
-    MAGMA_BLOCK, HOLLOW_WART_BLOCK, RED_HOLLOW_BRICKS, BONE_BLOCK,
+    MAGMA_BLOCK, NETHER_WART_BLOCK, RED_NETHER_BRICKS, BONE_BLOCK,
 ];
 
 #[inline]
@@ -1172,14 +1172,14 @@ pub fn is_v6_state(s: u16) -> bool {
     (V6_STATE_BASE..V6_STATE_BASE + V6_COUNT).contains(&s)
 }
 
-/// 1.11 mansion spawners: mob-kind code 5 (cleaver) — the
+/// 1.11 mansion spawners: mob-kind code 5 (vindicator) — the
 /// woodland-mansion illager placement (engine-native adaptation;
 /// vanilla spawns them at generation without respawn — disclosed).
 pub const SPAWNER_CLEAVER: u16 = 495;
-/// 1.11 mansion spawners: mob-kind code 6 (runecaller, the two upper
-/// floors — VERIFIED w/Runecaller: "Spawn in the two upper floors of
+/// 1.11 mansion spawners: mob-kind code 6 (evoker, the two upper
+/// floors — VERIFIED w/Evoker: "Spawn in the two upper floors of
 /// woodland mansions upon generation").
-pub const SPAWNER_RUNECALLER: u16 = 496;
+pub const SPAWNER_EVOKER: u16 = 496;
 
 pub const V7_STATE_BASE: u16 = 486;
 // 9 ids: 282..=290 (the 1.11 bracket + the completion round's
@@ -1187,8 +1187,8 @@ pub const V7_STATE_BASE: u16 = 486;
 // states sit directly above at 495..=496 (STATE_COUNT = 497).
 pub const V7_COUNT: u16 = 9;
 pub const V7_STATE_TO_BLOCK: [u16; V7_COUNT as usize] = [
-    LURKSHELL_BOX, LURKSHELL_SHELL, TOTEM_OF_REVIVAL, SPAWN_EGG_LLAMA,
-    SPAWN_EGG_CLEAVER, SPAWN_EGG_RUNECALLER, SPAWN_EGG_VEX,
+    SHULKER_BOX, SHULKER_SHELL, TOTEM_OF_UNDYING, SPAWN_EGG_LLAMA,
+    SPAWN_EGG_CLEAVER, SPAWN_EGG_EVOKER, SPAWN_EGG_VEX,
     SPAWN_EGG_HUSK, SPAWN_EGG_STRAY,
 ];
 
@@ -1270,7 +1270,7 @@ pub const COOKIE: u16 = 360;
 //   food + "Drops from turtles when killed" (changelog)
 // * conduit — "Crafted using 1 heart of the sea and 8 nautilus shells
 //   ... Emits a strong glow, at light level 15" (changelog; the frame
-//   needs 16-42 abyssprism-family blocks — w/Conduit)
+//   needs 16-42 prismarine-family blocks — w/Conduit)
 // * turtle egg — 3 hatch stages (uncracked/slightly/very cracked;
 //   changelog: "After a while, they become slightly cracked and then
 //   very cracked. Very cracked turtle eggs eventually hatch into baby
@@ -1319,7 +1319,7 @@ pub const SCUTE: u16 = 400;
 /// 1.13 trident — "A new weapon ... dealing 9 HP damage" melee /
 /// 8 HP thrown; drowned drop (changelog + w/Trident).
 pub const TRIDENT: u16 = 401;
-/// 1.13 phantom membrane — Slow Falling brewing + skywings repair.
+/// 1.13 phantom membrane — Slow Falling brewing + elytra repair.
 pub const PHANTOM_MEMBRANE: u16 = 402;
 /// 1.13 dried kelp — "Can be eaten, restoring 1 hunger point" (1 HP-
 /// heal in the engine's hunger-bar-less convention, documented).
@@ -1330,7 +1330,7 @@ pub const DRIED_KELP: u16 = 403;
 pub const TURTLE_SHELL: u16 = 404;
 /// 1.13 potion of Slow Falling (1:30 — VERIFIED w/Slow_Falling).
 pub const POTION_SLOW_FALLING: u16 = 405;
-/// 1.13 potion of Slow Falling, extended (4:00 — fluxstone modifier).
+/// 1.13 potion of Slow Falling, extended (4:00 — redstone modifier).
 pub const POTION_SLOW_FALLING_EXT: u16 = 406;
 /// 1.13 potion of the Turtle Master (Slowness IV + Resistance III,
 /// 1:00 — VERIFIED changelog §Items).
@@ -1609,24 +1609,24 @@ pub const SHEARS: u16 = 438;
 /// mob kind 41.
 pub const SPAWN_EGG_BEE: u16 = 439;
 
-// ---- 1.16 (Hollows Update, PART 1 — the anchor family): the V13
+// ---- 1.16 (Nether Update, PART 1 — the anchor family): the V13
 // block window, ids 440..=453. All values VERIFIED against the
 // captures v116_page_*.json (see the research record
 // docs/research/phase-v116-1.16-research.md). ----
-/// 1.16: spirit soil — the hollow's spirit-fire host ("burns indefinitely
-/// when manually ignited on the top side only, creating spirit fire",
-/// VERIFIED w/Spirit_Soil). Hardness 0.5 / blast 0.5, shovel. The soul
+/// 1.16: soul soil — the nether's soul-fire host ("burns indefinitely
+/// when manually ignited on the top side only, creating soul fire",
+/// VERIFIED w/Soul_Soil). Hardness 0.5 / blast 0.5, shovel. The soul
 /// sand valley terrain component (this engine: soul patches in the
-/// Hollow, the disclosed no-sub-biome adaptation).
-pub const SPIRIT_SOIL: u16 = 440;
+/// Nether, the disclosed no-sub-biome adaptation).
+pub const SOUL_SOIL: u16 = 440;
 /// 1.16: basalt — hardness 1.25 / blast 4.2, pickaxe (VERIFIED
-/// w/Basalt). Pillars + blobs on the Hollow body (the soul-sand-valley
+/// w/Basalt). Pillars + blobs on the Nether body (the soul-sand-valley
 /// / basalt-deltas adaptation); polished/smooth variants ride the
 /// part-2 wood round with their crafting families.
 pub const BASALT: u16 = 441;
 /// 1.16: blackstone — hardness 1.5 / blast 6, pickaxe (VERIFIED
-/// w/Blackstone). "Small patches in all Hollow biomes" (the 20w19a
-/// row) — the bastion source is part 2 with the pigoblins.
+/// w/Blackstone). "Small patches in all Nether biomes" (the 20w19a
+/// row) — the bastion source is part 2 with the piglins.
 pub const BLACKSTONE: u16 = 442;
 /// 1.16: gilded blackstone — the gold-flecked blackstone: "a 10%
 /// chance to drop 2–5 gold nuggets when mined with any pickaxe. If it
@@ -1635,132 +1635,132 @@ pub const BLACKSTONE: u16 = 442;
 /// engine's blackstone patches (disclosed adaptation). Gold nugget =
 /// the iron-nugget stand-in (the disclosed convention).
 pub const GILDED_BLACKSTONE: u16 = 443;
-/// 1.16: weeping obsidian — the luminous (light 10) obsidian variant,
-/// hardness 50 / blast 1,200 (VERIFIED w/Weeping_Obsidian). Obtained
-/// from pigoblin bartering / bastion loot (part 2) — here: world-gen
-/// trace in blackstone + the crafting path. Crafts the rebirth anchor.
-pub const WEEPING_OBSIDIAN: u16 = 444;
-/// 1.16: the rebirth anchor — "a block that allows the player to set
-/// their spawn point in the Hollow, provided it's fueled with
-/// glowstone blocks" (VERIFIED w/Rebirth_Anchor). Charges 0..=4
-/// (blockstates): charge light 3/7/11/15; using it in the Hollow sets
+/// 1.16: crying obsidian — the luminous (light 10) obsidian variant,
+/// hardness 50 / blast 1,200 (VERIFIED w/Crying_Obsidian). Obtained
+/// from piglin bartering / bastion loot (part 2) — here: world-gen
+/// trace in blackstone + the crafting path. Crafts the respawn anchor.
+pub const CRYING_OBSIDIAN: u16 = 444;
+/// 1.16: the respawn anchor — "a block that allows the player to set
+/// their spawn point in the Nether, provided it's fueled with
+/// glowstone blocks" (VERIFIED w/Respawn_Anchor). Charges 0..=4
+/// (blockstates): charge light 3/7/11/15; using it in the Nether sets
 /// the respawn point (needs ≥ 1 charge, each respawn consumes one);
 /// using it in the Overworld explodes it (power 5). Craft: 6 crying
 /// obsidian + 3 glowstone. Hardness 50 / blast 1,200.
-pub const REBIRTH_ANCHOR: u16 = 445;
-/// 1.16: the target block — "produces a temporary fluxstone signal when
+pub const RESPAWN_ANCHOR: u16 = 445;
+/// 1.16: the target block — "produces a temporary redstone signal when
 /// hit by a projectile" (VERIFIED w/Target): power 1..15 by proximity
 /// to the block center, 8 game ticks (20 for arrows/tridents — the
-/// stone-button row). Hardness 0.5 / blast 0.5. Craft: 4 fluxstone dust
-/// (the engine's fluxstone-block stand-in, disclosed) + 1 hay bale.
+/// stone-button row). Hardness 0.5 / blast 0.5. Craft: 4 redstone dust
+/// (the engine's redstone-block stand-in, disclosed) + 1 hay bale.
 pub const TARGET: u16 = 446;
-/// 1.16: hollow gold ore — "drops 2–6 gold nuggets when mined with any
-/// pickaxe" (VERIFIED w/Hollow_Gold_Ore; Fortune is absent —
+/// 1.16: nether gold ore — "drops 2–6 gold nuggets when mined with any
+/// pickaxe" (VERIFIED w/Nether_Gold_Ore; Fortune is absent —
 /// disclosed). Smelts to a gold ingot (the iron stand-in).
-pub const HOLLOW_GOLD_ORE: u16 = 447;
-/// 1.16: ancient debris — "generates in the Hollow in the form of
+pub const NETHER_GOLD_ORE: u16 = 447;
+/// 1.16: ancient debris — "generates in the Nether in the form of
 /// scatter ores which are never naturally exposed to air"; hardness
 /// 30 / blast 1,200 (VERIFIED w/Ancient_Debris). Java gen: one
 /// 0–3-cluster triangle y 8–24 (peak 16) + one 0–2-cluster even y
-/// 8–119 per chunk. Smelts into 1 hollowite scrap + 2 XP.
+/// 8–119 per chunk. Smelts into 1 netherite scrap + 2 XP.
 pub const ANCIENT_DEBRIS: u16 = 448;
-/// 1.16: the block of hollowite — 9 ingots both ways (the disc row:
+/// 1.16: the block of netherite — 9 ingots both ways (the disc row:
 /// blast 1,200, hardness 50 class). The gear-upgrade path needs the
 /// tool/armor system (the standing 1.11+ deferral) — the block is the
 /// material endpoint here.
-pub const HOLLOWITE_BLOCK: u16 = 449;
+pub const NETHERITE_BLOCK: u16 = 449;
 /// 1.16: the chain — hardness 0.5 / blast 6, "a metallic decoration
 /// block made from ingots and nuggets" (VERIFIED w/Chain — the 1.16
 /// iron-only form; the copper variants are 1.21+). Craft: 2 iron
 /// nuggets + 1 iron ingot. Sits on block tops or hangs from undersides
 /// (the lantern's face-matched states, extended).
 pub const CHAIN: u16 = 450;
-/// 1.16: spirit fire — "the fire inflicts damage at a rate of 2 HP per
+/// 1.16: soul fire — "the fire inflicts damage at a rate of 2 HP per
 /// tick, twice as many as with the normal fire (although damage
 /// immunity reduces this to once every half-second)" (VERIFIED
-/// w/Spirit_Fire) → 2 HP per half-second through the engine's shared
+/// w/Soul_Fire) → 2 HP per half-second through the engine's shared
 /// damage-immunity window. Light 10; does not spread; generates on
-/// spirit sand/soil (flint-and-steel ignition is not in the engine —
+/// soul sand/soil (flint-and-steel ignition is not in the engine —
 /// disclosed).
-pub const SPIRIT_FIRE: u16 = 451;
-/// 1.16: hollowite scrap — smelted from ancient debris ("which is
-/// found in the Hollow"), crafts hollowite ingots. Item-row (never
+pub const SOUL_FIRE: u16 = 451;
+/// 1.16: netherite scrap — smelted from ancient debris ("which is
+/// found in the Nether"), crafts netherite ingots. Item-row (never
 /// placeable).
-pub const HOLLOWITE_SCRAP: u16 = 452;
-/// 1.16: hollowite ingot — "crafting four hollowite scraps and four
-/// gold ingots together" (VERIFIED w/Hollowite_Ingot; gold = the
+pub const NETHERITE_SCRAP: u16 = 452;
+/// 1.16: netherite ingot — "crafting four netherite scraps and four
+/// gold ingots together" (VERIFIED w/Netherite_Ingot; gold = the
 /// engine's iron-ingot stand-in, the disclosed convention). Item-row.
-pub const HOLLOWITE_INGOT: u16 = 453;
+pub const NETHERITE_INGOT: u16 = 453;
 
-// ---- 1.16 (Hollows Update, PART 2 — the scarlet/viridian families):
+// ---- 1.16 (Nether Update, PART 2 — the crimson/warped families):
 // the V14 block window, ids 454..=478. All values VERIFIED against
 // the captures v116b_page_*.json (see the research record
 // docs/research/phase-v116b-1.16-research.md). ----
-/// 1.16: scarlet stem — the huge-scarlet-fungus trunk (VERIFIED
-/// w/Scarlet_Stem: hardness 2 / blast 2, the log class). "Used as
+/// 1.16: crimson stem — the huge-crimson-fungus trunk (VERIFIED
+/// w/Crimson_Stem: hardness 2 / blast 2, the log class). "Used as
 /// a building block, crafted into planks"; the flammability (5) is
 /// the log class. Stripped forms need the axe-strip mechanic — the
 /// engine's standing deferral, disclosed.
-pub const SCARLET_STEM: u16 = 454;
-/// 1.16: scarlet hyphae — the "bark" variant (all-six-sides stem
+pub const CRIMSON_STEM: u16 = 454;
+/// 1.16: crimson hyphae — the "bark" variant (all-six-sides stem
 /// texture, the jungle-log-bark pattern).
-pub const SCARLET_HYPHAE: u16 = 455;
-/// 1.16: scarlet planks — hardness 2 / blast 3 (VERIFIED
-/// w/Scarlet_Planks), crafted 1:4 from stem or hyphae.
-pub const SCARLET_PLANKS: u16 = 456;
-/// 1.16: scarlet mold — the scarlet-forest floor ("The forest
-/// floor is mostly covered with scarlet mold", VERIFIED
-/// w/Scarlet_Forest). Hardness 0.4, shovel; drops hollowstone when
-/// mined (the mold row, engine's grass-block-to-dirt pattern).
-pub const SCARLET_MOLD: u16 = 457;
-/// 1.16: scarlet fungus — the scarlet-forest mushroom (hardness 0,
-/// any tool, transparent cross plant — VERIFIED w/Scarlet_Fungus).
-/// "Can also be fed to boarlings" (the boarling breeding item).
-pub const SCARLET_FUNGUS: u16 = 458;
-/// 1.16: scarlet roots — the scarlet-forest tuft (hardness 0,
-/// transparent cross — VERIFIED w/Scarlet_Roots; drops itself
+pub const CRIMSON_HYPHAE: u16 = 455;
+/// 1.16: crimson planks — hardness 2 / blast 3 (VERIFIED
+/// w/Crimson_Planks), crafted 1:4 from stem or hyphae.
+pub const CRIMSON_PLANKS: u16 = 456;
+/// 1.16: crimson nylium — the crimson-forest floor ("The forest
+/// floor is mostly covered with crimson nylium", VERIFIED
+/// w/Crimson_Forest). Hardness 0.4, shovel; drops netherrack when
+/// mined (the nylium row, engine's grass-block-to-dirt pattern).
+pub const CRIMSON_NYLIUM: u16 = 457;
+/// 1.16: crimson fungus — the crimson-forest mushroom (hardness 0,
+/// any tool, transparent cross plant — VERIFIED w/Crimson_Fungus).
+/// "Can also be fed to hoglins" (the hoglin breeding item).
+pub const CRIMSON_FUNGUS: u16 = 458;
+/// 1.16: crimson roots — the crimson-forest tuft (hardness 0,
+/// transparent cross — VERIFIED w/Crimson_Roots; drops itself
 /// without shears — the 1.16.2-pre2 revert row).
-pub const SCARLET_ROOTS: u16 = 459;
-/// 1.16: weeping vines — the scarlet-forest hanging vine (hardness
+pub const CRIMSON_ROOTS: u16 = 459;
+/// 1.16: weeping vines — the crimson-forest hanging vine (hardness
 /// 0, transparent, "downwards-growing", VERIFIED w/Weeping_Vines);
-/// "generate naturally ... on huge scarlet fungi" ceilings; the
+/// "generate naturally ... on huge crimson fungi" ceilings; the
 /// 1-in-3 self-drop chance rides the game layer (disclosed).
 pub const WEEPING_VINES: u16 = 460;
-/// 1.16: viridian stem — the huge-viridian-fungus trunk (the scarlet
-/// twin's verified values, w/Viridian_Forest).
-pub const VIRIDIAN_STEM: u16 = 461;
-/// 1.16: viridian hyphae — the viridian "bark" variant.
-pub const VIRIDIAN_HYPHAE: u16 = 462;
-/// 1.16: viridian planks — hardness 2 / blast 3; 1:4 from stem or
+/// 1.16: warped stem — the huge-warped-fungus trunk (the crimson
+/// twin's verified values, w/Warped_Forest).
+pub const WARPED_STEM: u16 = 461;
+/// 1.16: warped hyphae — the warped "bark" variant.
+pub const WARPED_HYPHAE: u16 = 462;
+/// 1.16: warped planks — hardness 2 / blast 3; 1:4 from stem or
 /// hyphae.
-pub const VIRIDIAN_PLANKS: u16 = 463;
-/// 1.16: viridian mold — the viridian-forest floor ("The floor of
-/// the biome is composed mostly of viridian mold", VERIFIED
-/// w/Viridian_Forest). Drops hollowstone when mined.
-pub const VIRIDIAN_MOLD: u16 = 464;
-/// 1.16: viridian fungus — hardness 0 cross plant (VERIFIED
-/// w/Viridian_Fungus). "Fed to emberhoppers or planted to repel
-/// boarlings" — both mechanics ride the mob layer.
-pub const VIRIDIAN_FUNGUS: u16 = 465;
-/// 1.16: viridian roots — the viridian-forest tuft (hardness 0,
-/// transparent cross — VERIFIED w/Viridian_Roots).
-pub const VIRIDIAN_ROOTS: u16 = 466;
-/// 1.16: twisting vines — the viridian-forest climbing vine
+pub const WARPED_PLANKS: u16 = 463;
+/// 1.16: warped nylium — the warped-forest floor ("The floor of
+/// the biome is composed mostly of warped nylium", VERIFIED
+/// w/Warped_Forest). Drops netherrack when mined.
+pub const WARPED_NYLIUM: u16 = 464;
+/// 1.16: warped fungus — hardness 0 cross plant (VERIFIED
+/// w/Warped_Fungus). "Fed to striders or planted to repel
+/// hoglins" — both mechanics ride the mob layer.
+pub const WARPED_FUNGUS: u16 = 465;
+/// 1.16: warped roots — the warped-forest tuft (hardness 0,
+/// transparent cross — VERIFIED w/Warped_Roots).
+pub const WARPED_ROOTS: u16 = 466;
+/// 1.16: twisting vines — the warped-forest climbing vine
 /// ("upward-growing", VERIFIED w/Twisting_Vines), grows from the
-/// viridian ground; 1-in-3 self-drop chance (disclosed).
+/// warped ground; 1-in-3 self-drop chance (disclosed).
 pub const TWISTING_VINES: u16 = 467;
-/// 1.16: viridian wart block — the huge-viridian-fungus cap (hardness
-/// 1 / blast 1, VERIFIED w/Viridian_Wart_Block).
-pub const VIRIDIAN_WART_BLOCK: u16 = 468;
-/// 1.16: glowcap — the huge-fungus lamp (hardness 1 / blast 1,
-/// light 15, VERIFIED w/Glowcap: "Luminous Yes (15)").
+/// 1.16: warped wart block — the huge-warped-fungus cap (hardness
+/// 1 / blast 1, VERIFIED w/Warped_Wart_Block).
+pub const WARPED_WART_BLOCK: u16 = 468;
+/// 1.16: shroomlight — the huge-fungus lamp (hardness 1 / blast 1,
+/// light 15, VERIFIED w/Shroomlight: "Luminous Yes (15)").
 /// "Generate in huge fungi".
-pub const GLOWCAP: u16 = 469;
-/// 1.16: hollow sprouts — the viridian-forest tuft (hardness 0,
-/// transparent cross — VERIFIED w/Hollow_Sprouts). Drops nothing
+pub const SHROOMLIGHT: u16 = 469;
+/// 1.16: nether sprouts — the warped-forest tuft (hardness 0,
+/// transparent cross — VERIFIED w/Nether_Sprouts). Drops nothing
 /// when broken without shears (the engine has no tool-gated drops
 /// — matches vanilla's empty-handed result, disclosed).
-pub const HOLLOW_SPROUTS: u16 = 470;
+pub const NETHER_SPROUTS: u16 = 470;
 /// 1.16: polished basalt — hardness 1.25 / blast 4.2 (VERIFIED
 /// w/Polished_Basalt); crafted 4:4 from basalt (the 2x2 family
 /// that part 1's BASALT doc deferred here).
@@ -1773,29 +1773,29 @@ pub const POLISHED_BLACKSTONE: u16 = 472;
 /// blackstone. Chiseled/cracked forms are the stonecutter family
 /// — no stonecutter in the engine, disclosed.
 pub const POLISHED_BLACKSTONE_BRICKS: u16 = 473;
-/// 1.16: spirit torch — light 10, hardness 0, any tool (VERIFIED
-/// w/Spirit_Torch: "Luminous Yes (10)"); the torch family's soul
-/// variant ("crafted with the addition of spirit soil or soul
-/// sand"). "Soul torches repel pigoblins" — the mob-layer rule.
-pub const SPIRIT_TORCH: u16 = 474;
-/// 1.16: spirit lantern — light 10, hardness 3.5 / blast 3.5
-/// (VERIFIED w/Spirit_Lantern); sits on tops or hangs from
+/// 1.16: soul torch — light 10, hardness 0, any tool (VERIFIED
+/// w/Soul_Torch: "Luminous Yes (10)"); the torch family's soul
+/// variant ("crafted with the addition of soul soil or soul
+/// sand"). "Soul torches repel piglins" — the mob-layer rule.
+pub const SOUL_TORCH: u16 = 474;
+/// 1.16: soul lantern — light 10, hardness 3.5 / blast 3.5
+/// (VERIFIED w/Soul_Lantern); sits on tops or hangs from
 /// undersides (the lantern/chain face-matched pair). Craft: 8 iron
-/// nuggets + 1 spirit torch.
-pub const SPIRIT_LANTERN: u16 = 475;
-/// 1.16: emberhopper spawn egg (kind 42).
-pub const SPAWN_EGG_EMBERHOPPER: u16 = 476;
-/// 1.16: pigoblin spawn egg (kind 43).
-pub const SPAWN_EGG_PIGOBLIN: u16 = 477;
-/// 1.16: boarling spawn egg (kind 44).
-pub const SPAWN_EGG_BOARLING: u16 = 478;
+/// nuggets + 1 soul torch.
+pub const SOUL_LANTERN: u16 = 475;
+/// 1.16: strider spawn egg (kind 42).
+pub const SPAWN_EGG_STRIDER: u16 = 476;
+/// 1.16: piglin spawn egg (kind 43).
+pub const SPAWN_EGG_PIGLIN: u16 = 477;
+/// 1.16: hoglin spawn egg (kind 44).
+pub const SPAWN_EGG_HOGLIN: u16 = 478;
 
 // ---- the 1.0-1.16.5 completeness audit: the V15 item window (ids
 // 479..=504). Every value VERIFIED against the audit-round captures
 // (scripts/audit16_page_*.json — the Food page's hunger table, the
-// Potion page's brewing chart, the Weepgeist/Cave_Spider/Silverfish
+// Potion page's brewing chart, the Ghast/Cave_Spider/Silverfish
 // infoboxes, the Egg/Bowl/Sugar/Mushroom_Stew/Beetroot_Soup/
-// Pumpkin_Pie/Poisonous_Potato/Apple/Rabbit_Stew/Popped_Echo_Fruit
+// Pumpkin_Pie/Poisonous_Potato/Apple/Rabbit_Stew/Popped_Chorus_Fruit
 // pages). The round closes the engine's own recorded gaps: the
 // standing cooked-meat deferral (campfire.rs), the 1.8 rabbit-stew
 // deferral (its blockers — the rabbit's foot, the bowl — now exist),
@@ -1846,13 +1846,13 @@ pub const EGG: u16 = 492;
 /// saturation and has a 60% chance of applying 5 seconds of Poison I"
 /// (VERIFIED w/Poisonous_Potato).
 pub const POISONOUS_POTATO: u16 = 493;
-/// popped echo fruit — "obtained by smelting echo fruit that is
-/// used to craft Void rods and violetstone blocks" (VERIFIED
-/// w/Popped_Echo_Fruit).
-pub const POPPED_ECHO_FRUIT: u16 = 494;
-/// weepgeist tear — "Weepgeists ... are the only source of weepgeist tears"
-/// (VERIFIED w/Weepgeist); the regeneration brewing base.
-pub const WEEPGEIST_TEAR: u16 = 495;
+/// popped chorus fruit — "obtained by smelting chorus fruit that is
+/// used to craft End rods and purpur blocks" (VERIFIED
+/// w/Popped_Chorus_Fruit).
+pub const POPPED_CHORUS_FRUIT: u16 = 494;
+/// ghast tear — "Ghasts ... are the only source of ghast tears"
+/// (VERIFIED w/Ghast); the regeneration brewing base.
+pub const GHAST_TEAR: u16 = 495;
 /// potion of leaping (1:30 base is the glowstone-enhanced form's
 /// pre-1.9... no — VERIFIED w/Potion: rabbit's-foot brewing, base
 /// 3:00 Jump Boost I; the II form 1:30 via glowstone).
@@ -1860,19 +1860,19 @@ pub const POTION_LEAPING: u16 = 496;
 /// potion of leaping II — glowstone-enhanced (1:30, Jump Boost II).
 pub const POTION_LEAPING_II: u16 = 497;
 /// potion of leaping (extended 8:00) — registry row; brewing is
-/// fluxstone-gated (the engine has no fluxstone-dust item, the disclosed
+/// redstone-gated (the engine has no redstone-dust item, the disclosed
 /// SLOW_FALLING_EXT convention).
 pub const POTION_LEAPING_LONG: u16 = 498;
-/// potion of regeneration (0:45, Regeneration I) — weepgeist tear base
-/// (VERIFIED w/Potion: the ingredient chart lists Weepgeist Tear).
+/// potion of regeneration (0:45, Regeneration I) — ghast tear base
+/// (VERIFIED w/Potion: the ingredient chart lists Ghast Tear).
 pub const POTION_REGEN: u16 = 499;
 /// potion of regeneration II (0:22) — glowstone-enhanced.
 pub const POTION_REGEN_II: u16 = 500;
-/// potion of regeneration (extended 1:30) — registry row, fluxstone-
+/// potion of regeneration (extended 1:30) — registry row, redstone-
 /// gated (disclosed, the LEAPING_LONG/SLOW_FALLING_EXT convention).
 pub const POTION_REGEN_LONG: u16 = 501;
-/// the weepgeist spawn egg (kind 45 — the classic Hollow mob joins).
-pub const SPAWN_EGG_WEEPGEIST: u16 = 502;
+/// the ghast spawn egg (kind 45 — the classic Nether mob joins).
+pub const SPAWN_EGG_GHAST: u16 = 502;
 /// the cave-spider spawn egg (kind 46 — mineshaft spawner mob).
 pub const SPAWN_EGG_CAVE_SPIDER: u16 = 503;
 /// the silverfish spawn egg (kind 47 — stronghold spawner mob).
@@ -2032,12 +2032,12 @@ pub fn hive_full(s: u16) -> bool {
     honey_level(s) == 5 && is_v12_state(s) && s < V12_STATE_BASE + 12
 }
 
-// ---- 1.16 (Hollows Update, PART 1): the V13 state window ----
+// ---- 1.16 (Nether Update, PART 1): the V13 state window ----
 pub const V13_STATE_BASE: u16 = 716;
-// 34 states: rebirth anchor charges 0..=4 (5), target power 0..=15
-// (16), then the identity states (spirit soil, basalt, blackstone,
-// gilded blackstone, weeping obsidian, hollow gold ore, ancient
-// debris, hollowite block, chain sitting/hanging, spirit fire, and the
+// 34 states: respawn anchor charges 0..=4 (5), target power 0..=15
+// (16), then the identity states (soul soil, basalt, blackstone,
+// gilded blackstone, crying obsidian, nether gold ore, ancient
+// debris, netherite block, chain sitting/hanging, soul fire, and the
 // 2 item rows). Every block >= 440 gets an explicit state slot (the
 // standing invariant since id 57: block ids never double as state
 // ids past the flat registry).
@@ -2046,41 +2046,41 @@ pub const V13_COUNT: u16 = 34;
 /// target power states fold to their parents; the chain's hanging
 /// state folds like the lantern's.
 pub const V13_STATE_TO_BLOCK: [u16; V13_COUNT as usize] = [
-    REBIRTH_ANCHOR, REBIRTH_ANCHOR, REBIRTH_ANCHOR, REBIRTH_ANCHOR, REBIRTH_ANCHOR,
+    RESPAWN_ANCHOR, RESPAWN_ANCHOR, RESPAWN_ANCHOR, RESPAWN_ANCHOR, RESPAWN_ANCHOR,
     TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET,
     TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET,
-    SPIRIT_SOIL,
+    SOUL_SOIL,
     BASALT,
     BLACKSTONE,
     GILDED_BLACKSTONE,
-    WEEPING_OBSIDIAN,
-    HOLLOW_GOLD_ORE,
+    CRYING_OBSIDIAN,
+    NETHER_GOLD_ORE,
     ANCIENT_DEBRIS,
-    HOLLOWITE_BLOCK,
+    NETHERITE_BLOCK,
     CHAIN,
     CHAIN,
-    SPIRIT_FIRE,
-    HOLLOWITE_SCRAP,
-    HOLLOWITE_INGOT,
+    SOUL_FIRE,
+    NETHERITE_SCRAP,
+    NETHERITE_INGOT,
 ];
 
 #[inline]
 pub fn v13_state(b: u16) -> Option<u16> {
     match b {
-        REBIRTH_ANCHOR => Some(V13_STATE_BASE),          // charge 0
+        RESPAWN_ANCHOR => Some(V13_STATE_BASE),          // charge 0
         TARGET => Some(V13_STATE_BASE + 5),              // power 0
-        SPIRIT_SOIL => Some(V13_STATE_BASE + 21),
+        SOUL_SOIL => Some(V13_STATE_BASE + 21),
         BASALT => Some(V13_STATE_BASE + 22),
         BLACKSTONE => Some(V13_STATE_BASE + 23),
         GILDED_BLACKSTONE => Some(V13_STATE_BASE + 24),
-        WEEPING_OBSIDIAN => Some(V13_STATE_BASE + 25),
-        HOLLOW_GOLD_ORE => Some(V13_STATE_BASE + 26),
+        CRYING_OBSIDIAN => Some(V13_STATE_BASE + 25),
+        NETHER_GOLD_ORE => Some(V13_STATE_BASE + 26),
         ANCIENT_DEBRIS => Some(V13_STATE_BASE + 27),
-        HOLLOWITE_BLOCK => Some(V13_STATE_BASE + 28),
+        NETHERITE_BLOCK => Some(V13_STATE_BASE + 28),
         CHAIN => Some(V13_STATE_BASE + 29),              // sitting
-        SPIRIT_FIRE => Some(V13_STATE_BASE + 31),
-        HOLLOWITE_SCRAP => Some(V13_STATE_BASE + 32),
-        HOLLOWITE_INGOT => Some(V13_STATE_BASE + 33),
+        SOUL_FIRE => Some(V13_STATE_BASE + 31),
+        NETHERITE_SCRAP => Some(V13_STATE_BASE + 32),
+        NETHERITE_INGOT => Some(V13_STATE_BASE + 33),
         _ => None,
     }
 }
@@ -2090,9 +2090,9 @@ pub fn is_v13_state(s: u16) -> bool {
     (V13_STATE_BASE..V13_STATE_BASE + V13_COUNT).contains(&s)
 }
 
-/// 1.16: the rebirth anchor's charge 0..=4 stored in its state
+/// 1.16: the respawn anchor's charge 0..=4 stored in its state
 /// ("fueled with glowstone blocks" — each glowstone adds one, max 4,
-/// VERIFIED w/Rebirth_Anchor).
+/// VERIFIED w/Respawn_Anchor).
 #[inline]
 pub fn anchor_charge(s: u16) -> u8 {
     if is_v13_state(s) && s < V13_STATE_BASE + 5 {
@@ -2102,15 +2102,15 @@ pub fn anchor_charge(s: u16) -> u8 {
     }
 }
 
-/// state id for a rebirth anchor at a given charge (clamped 0..=4).
+/// state id for a respawn anchor at a given charge (clamped 0..=4).
 #[inline]
 pub fn anchor_state(charge: u8) -> u16 {
     V13_STATE_BASE + (charge.min(4)) as u16
 }
 
-/// 1.16: the anchor's light by charge — "the rebirth anchor glow with
+/// 1.16: the anchor's light by charge — "the respawn anchor glow with
 /// a light level of 3. Each glowstone after the first increases the
-/// light level by 4, up to a maximum of 15" (VERIFIED w/Rebirth_Anchor
+/// light level by 4, up to a maximum of 15" (VERIFIED w/Respawn_Anchor
 /// — charges 1/2/3/4 → light 3/7/11/15, the infobox row).
 #[inline]
 pub fn anchor_light(s: u16) -> u8 {
@@ -2147,80 +2147,80 @@ pub fn chain_hanging(s: u16) -> bool {
     s == V13_STATE_BASE + 30
 }
 
-/// 1.16: is this state the spirit fire block? (the engine's first fire
+/// 1.16: is this state the soul fire block? (the engine's first fire
 /// block — non-solid, non-opaque, cross-sprite, light 10.)
 #[inline]
-pub fn is_spirit_fire(s: u16) -> bool {
-    s == V13_STATE_BASE + 31 || state_block(s) == SPIRIT_FIRE
+pub fn is_soul_fire(s: u16) -> bool {
+    s == V13_STATE_BASE + 31 || state_block(s) == SOUL_FIRE
 }
 
-// ---- 1.16 (Hollows Update, PART 2): the V14 state window ----
+// ---- 1.16 (Nether Update, PART 2): the V14 state window ----
 pub const V14_STATE_BASE: u16 = 750;
-// 26 states: the 22 scarlet/viridian family blocks as identity states
-// (the spirit lantern carries its sitting/hanging pair — the chain
+// 26 states: the 22 crimson/warped family blocks as identity states
+// (the soul lantern carries its sitting/hanging pair — the chain
 // convention), plus the 3 spawn-egg item rows. Every block >= 454
 // gets an explicit state slot (the standing invariant since id 57:
 // block ids never double as state ids past the flat registry).
 pub const V14_COUNT: u16 = 26;
-/// V14 state -> block fold: all identity except the spirit lantern's
+/// V14 state -> block fold: all identity except the soul lantern's
 /// hanging state, which folds like the lantern/chain's.
 pub const V14_STATE_TO_BLOCK: [u16; V14_COUNT as usize] = [
-    SCARLET_STEM,
-    SCARLET_HYPHAE,
-    SCARLET_PLANKS,
-    SCARLET_MOLD,
-    SCARLET_FUNGUS,
-    SCARLET_ROOTS,
+    CRIMSON_STEM,
+    CRIMSON_HYPHAE,
+    CRIMSON_PLANKS,
+    CRIMSON_NYLIUM,
+    CRIMSON_FUNGUS,
+    CRIMSON_ROOTS,
     WEEPING_VINES,
-    VIRIDIAN_STEM,
-    VIRIDIAN_HYPHAE,
-    VIRIDIAN_PLANKS,
-    VIRIDIAN_MOLD,
-    VIRIDIAN_FUNGUS,
-    VIRIDIAN_ROOTS,
+    WARPED_STEM,
+    WARPED_HYPHAE,
+    WARPED_PLANKS,
+    WARPED_NYLIUM,
+    WARPED_FUNGUS,
+    WARPED_ROOTS,
     TWISTING_VINES,
-    VIRIDIAN_WART_BLOCK,
-    GLOWCAP,
-    HOLLOW_SPROUTS,
+    WARPED_WART_BLOCK,
+    SHROOMLIGHT,
+    NETHER_SPROUTS,
     POLISHED_BASALT,
     POLISHED_BLACKSTONE,
     POLISHED_BLACKSTONE_BRICKS,
-    SPIRIT_TORCH,
-    SPIRIT_LANTERN,
-    SPIRIT_LANTERN, // hanging (the lantern/chain pair)
-    SPAWN_EGG_EMBERHOPPER,
-    SPAWN_EGG_PIGOBLIN,
-    SPAWN_EGG_BOARLING,
+    SOUL_TORCH,
+    SOUL_LANTERN,
+    SOUL_LANTERN, // hanging (the lantern/chain pair)
+    SPAWN_EGG_STRIDER,
+    SPAWN_EGG_PIGLIN,
+    SPAWN_EGG_HOGLIN,
 ];
 
 #[inline]
 pub fn v14_state(b: u16) -> Option<u16> {
     match b {
-        SCARLET_STEM => Some(V14_STATE_BASE),
-        SCARLET_HYPHAE => Some(V14_STATE_BASE + 1),
-        SCARLET_PLANKS => Some(V14_STATE_BASE + 2),
-        SCARLET_MOLD => Some(V14_STATE_BASE + 3),
-        SCARLET_FUNGUS => Some(V14_STATE_BASE + 4),
-        SCARLET_ROOTS => Some(V14_STATE_BASE + 5),
+        CRIMSON_STEM => Some(V14_STATE_BASE),
+        CRIMSON_HYPHAE => Some(V14_STATE_BASE + 1),
+        CRIMSON_PLANKS => Some(V14_STATE_BASE + 2),
+        CRIMSON_NYLIUM => Some(V14_STATE_BASE + 3),
+        CRIMSON_FUNGUS => Some(V14_STATE_BASE + 4),
+        CRIMSON_ROOTS => Some(V14_STATE_BASE + 5),
         WEEPING_VINES => Some(V14_STATE_BASE + 6),
-        VIRIDIAN_STEM => Some(V14_STATE_BASE + 7),
-        VIRIDIAN_HYPHAE => Some(V14_STATE_BASE + 8),
-        VIRIDIAN_PLANKS => Some(V14_STATE_BASE + 9),
-        VIRIDIAN_MOLD => Some(V14_STATE_BASE + 10),
-        VIRIDIAN_FUNGUS => Some(V14_STATE_BASE + 11),
-        VIRIDIAN_ROOTS => Some(V14_STATE_BASE + 12),
+        WARPED_STEM => Some(V14_STATE_BASE + 7),
+        WARPED_HYPHAE => Some(V14_STATE_BASE + 8),
+        WARPED_PLANKS => Some(V14_STATE_BASE + 9),
+        WARPED_NYLIUM => Some(V14_STATE_BASE + 10),
+        WARPED_FUNGUS => Some(V14_STATE_BASE + 11),
+        WARPED_ROOTS => Some(V14_STATE_BASE + 12),
         TWISTING_VINES => Some(V14_STATE_BASE + 13),
-        VIRIDIAN_WART_BLOCK => Some(V14_STATE_BASE + 14),
-        GLOWCAP => Some(V14_STATE_BASE + 15),
-        HOLLOW_SPROUTS => Some(V14_STATE_BASE + 16),
+        WARPED_WART_BLOCK => Some(V14_STATE_BASE + 14),
+        SHROOMLIGHT => Some(V14_STATE_BASE + 15),
+        NETHER_SPROUTS => Some(V14_STATE_BASE + 16),
         POLISHED_BASALT => Some(V14_STATE_BASE + 17),
         POLISHED_BLACKSTONE => Some(V14_STATE_BASE + 18),
         POLISHED_BLACKSTONE_BRICKS => Some(V14_STATE_BASE + 19),
-        SPIRIT_TORCH => Some(V14_STATE_BASE + 20),
-        SPIRIT_LANTERN => Some(V14_STATE_BASE + 21), // sitting
-        SPAWN_EGG_EMBERHOPPER => Some(V14_STATE_BASE + 23),
-        SPAWN_EGG_PIGOBLIN => Some(V14_STATE_BASE + 24),
-        SPAWN_EGG_BOARLING => Some(V14_STATE_BASE + 25),
+        SOUL_TORCH => Some(V14_STATE_BASE + 20),
+        SOUL_LANTERN => Some(V14_STATE_BASE + 21), // sitting
+        SPAWN_EGG_STRIDER => Some(V14_STATE_BASE + 23),
+        SPAWN_EGG_PIGLIN => Some(V14_STATE_BASE + 24),
+        SPAWN_EGG_HOGLIN => Some(V14_STATE_BASE + 25),
         _ => None,
     }
 }
@@ -2254,15 +2254,15 @@ pub const V15_STATE_TO_BLOCK: [u16; V15_COUNT as usize] = [
     SUGAR,
     EGG,
     POISONOUS_POTATO,
-    POPPED_ECHO_FRUIT,
-    WEEPGEIST_TEAR,
+    POPPED_CHORUS_FRUIT,
+    GHAST_TEAR,
     POTION_LEAPING,
     POTION_LEAPING_II,
     POTION_LEAPING_LONG,
     POTION_REGEN,
     POTION_REGEN_II,
     POTION_REGEN_LONG,
-    SPAWN_EGG_WEEPGEIST,
+    SPAWN_EGG_GHAST,
     SPAWN_EGG_CAVE_SPIDER,
     SPAWN_EGG_SILVERFISH,
     SPAWNER, // the cave-spider spawner state
@@ -2289,15 +2289,15 @@ pub fn v15_state(b: u16) -> Option<u16> {
         SUGAR => Some(V15_STATE_BASE + 12),
         EGG => Some(V15_STATE_BASE + 13),
         POISONOUS_POTATO => Some(V15_STATE_BASE + 14),
-        POPPED_ECHO_FRUIT => Some(V15_STATE_BASE + 15),
-        WEEPGEIST_TEAR => Some(V15_STATE_BASE + 16),
+        POPPED_CHORUS_FRUIT => Some(V15_STATE_BASE + 15),
+        GHAST_TEAR => Some(V15_STATE_BASE + 16),
         POTION_LEAPING => Some(V15_STATE_BASE + 17),
         POTION_LEAPING_II => Some(V15_STATE_BASE + 18),
         POTION_LEAPING_LONG => Some(V15_STATE_BASE + 19),
         POTION_REGEN => Some(V15_STATE_BASE + 20),
         POTION_REGEN_II => Some(V15_STATE_BASE + 21),
         POTION_REGEN_LONG => Some(V15_STATE_BASE + 22),
-        SPAWN_EGG_WEEPGEIST => Some(V15_STATE_BASE + 23),
+        SPAWN_EGG_GHAST => Some(V15_STATE_BASE + 23),
         SPAWN_EGG_CAVE_SPIDER => Some(V15_STATE_BASE + 24),
         SPAWN_EGG_SILVERFISH => Some(V15_STATE_BASE + 25),
         MELON_SLICE => Some(V15_STATE_BASE + 28),
@@ -2472,11 +2472,11 @@ pub const SPAWNER_SILVERFISH: u16 = V15_STATE_BASE + 27;
 /// 1.16: is this V14 state the HANGING soul-lantern form (the
 /// lantern/chain face-matched pattern)?
 #[inline]
-pub fn spirit_lantern_hanging(s: u16) -> bool {
+pub fn soul_lantern_hanging(s: u16) -> bool {
     s == V14_STATE_BASE + 22
 }
 
-/// 1.16: is this state (or block) one of the hollow-forest CROSS
+/// 1.16: is this state (or block) one of the nether-forest CROSS
 /// plants? (fungi / roots / sprouts — the tall-grass class: non-solid,
 /// needs a floor for placement. Vines are NOT forest plants — they
 /// hang/climb instead of rooting.)
@@ -2490,7 +2490,7 @@ pub fn is_forest_plant(s: u16) -> bool {
     } else {
         s
     };
-    matches!(b, SCARLET_FUNGUS | SCARLET_ROOTS | HOLLOW_SPROUTS | VIRIDIAN_FUNGUS | VIRIDIAN_ROOTS)
+    matches!(b, CRIMSON_FUNGUS | CRIMSON_ROOTS | NETHER_SPROUTS | WARPED_FUNGUS | WARPED_ROOTS)
 }
 
 /// 1.14: is this V11 state a LIT smelter (blast furnace / smoker)?
@@ -2778,14 +2778,14 @@ pub const LEATHER_STATE: u16 = 135;
 pub const BONE_STATE: u16 = 136;
 pub const STRING_STATE: u16 = 137;
 pub const GUNPOWDER_STATE: u16 = 138;
-pub const VOID_PEARL_STATE: u16 = 139;
+pub const ENDER_PEARL_STATE: u16 = 139;
 pub const ROTTEN_FLESH_STATE: u16 = 140;
 pub const ARROW_ITEM_STATE: u16 = 141;
 
-// fluxstone component states (Phase 3, §25 pattern — dedicated states,
+// redstone component states (Phase 3, §25 pattern — dedicated states,
 // never identity slots). CHUNK `get` truncates to u8, so every state must
 // stay ≤ 255 — this layout fits the free window 142..=227:
-// * repeater: facing(4) × delay(4: 1..4 fluxstone ticks) × powered(2) = 32,
+// * repeater: facing(4) × delay(4: 1..4 redstone ticks) × powered(2) = 32,
 //   142..=173 (LOCK is DERIVED from side repeaters at tick time — vanilla
 //   persists it, we recompute; same observable behavior)
 // * comparator: facing(4) × mode(2) × powered(2) = 16, 174..=189
@@ -2794,7 +2794,7 @@ pub const ARROW_ITEM_STATE: u16 = 141;
 // * dispenser/dropper: facing(4) = 4 each, 206..=209 / 210..=213
 // * observer: facing(4) × powered(2) = 8, 214..=221
 // * hopper: facing(5: down+n/e/s/w) = 5, 222..=226 (ENABLED is derived
-// from fluxstone power at tick time)
+// from redstone power at tick time)
 // * chest: single state 227
 pub const REPEATER_STATE_BASE: u16 = 142;
 pub const REPEATER_STATE_END: u16 = 173;
@@ -2824,30 +2824,30 @@ pub const FERMENTED_EYE_STATE: u16 = 231;
 pub const SPAWNER_STATE_BASE: u16 = 232;
 pub const SPAWNER_STATE_END: u16 = 234;
 /// Phase 10: end-portal frame state (single)
-pub const VOID_GATE_FRAME_STATE: u16 = 235;
+pub const END_PORTAL_FRAME_STATE: u16 = 235;
 // ---- Phase E1 states ----
 // The identity slots of block ids 103..=139 COLLIDE with the legacy sim
 // state ranges (wire 96..=111, lever/torch 112..=115, furnace 116..=117,
-// hollow 118..=120, brewing 121..=127, enchant 128..=129, item states
-// 130..=141) — exactly the FURNACE/HOLLOWSTONE pattern. Every new block
+// nether 118..=120, brewing 121..=127, enchant 128..=129, item states
+// 130..=141) — exactly the FURNACE/NETHERRACK pattern. Every new block
 // therefore stores one of these DEDICATED states; all world-stored states
 // stay ≤ 255 (CHUNK `get` truncates to u8). The 22 item-blocks' states
 // live at ≥ 256 — they are NEVER stored in the world (items are
 // inventory-only), so the u8 truncation never meets them.
 
-/// fluxstone lamp, lit (light 15 — read via state_emissive)
-pub const FLUXSTONE_LAMP_LIT: u16 = 236;
-/// hollow wart crop ages 0..3 (VERIFIED: 4 stages, 10%/random-tick)
+/// redstone lamp, lit (light 15 — read via state_emissive)
+pub const REDSTONE_LAMP_LIT: u16 = 236;
+/// nether wart crop ages 0..3 (VERIFIED: 4 stages, 10%/random-tick)
 pub const WART_STATE_BASE: u16 = 237;
 pub const WART_STATE_END: u16 = 240;
 /// spawner mob-kind code 3: blaze (fortress platforms — extends the
 /// Phase 5 232..=234 zombie/skeleton/spider set)
 pub const SPAWNER_BLAZE: u16 = 241;
-/// end-portal frame with an void eye inserted (activation step)
-pub const VOID_GATE_FRAME_EYE: u16 = 242;
+/// end-portal frame with an eye of ender inserted (activation step)
+pub const END_PORTAL_FRAME_EYE: u16 = 242;
 // dedicated world-block states (the last free window 243..=255)
-pub const HOLLOW_BRICKS_STATE: u16 = 243;
-pub const FLUXSTONE_LAMP_STATE: u16 = 244;
+pub const NETHER_BRICKS_STATE: u16 = 243;
+pub const REDSTONE_LAMP_STATE: u16 = 244;
 pub const CHISELED_STONE_BRICKS_STATE: u16 = 245;
 pub const CHISELED_SANDSTONE_STATE: u16 = 246;
 pub const CUT_SANDSTONE_STATE: u16 = 247;
@@ -2856,10 +2856,10 @@ pub const MUSHROOM_RED_BLOCK_STATE: u16 = 249;
 pub const MUSHROOM_BROWN_BLOCK_STATE: u16 = 250;
 pub const MUSHROOM_STEM_STATE: u16 = 251;
 pub const DRAGON_EGG_STATE: u16 = 252;
-pub const VOID_GATE_STATE: u16 = 253;
+pub const END_PORTAL_STATE: u16 = 253;
 pub const MYCELIUM_STATE: u16 = 254;
-pub const VOID_STONE_STATE: u16 = 255;
-/// item-block states (VOID_CRYSTAL..=SPAWN_EGG_MAX, ids 117..=143):
+pub const END_STONE_STATE: u16 = 255;
+/// item-block states (END_CRYSTAL..=SPAWN_EGG_MAX, ids 117..=143):
 /// `state = 256 + (block - 117)` — never stored in chunks.
 pub const ITEM_STATE_BASE: u16 = 256;
 pub const ITEM_STATE_END: u16 = 282;
@@ -2875,8 +2875,8 @@ pub const DAMAGED_ANVIL_STATE: u16 = 285;
 pub const BEACON_STATE: u16 = 286;
 /// cobblestone wall (single state — connections derive at mesh time)
 pub const COBBLE_WALL_STATE: u16 = 287;
-/// void chest
-pub const VOID_CHEST_STATE: u16 = 288;
+/// ender chest
+pub const ENDER_CHEST_STATE: u16 = 288;
 /// flower pot
 pub const FLOWER_POT_STATE: u16 = 289;
 /// item frame
@@ -2884,8 +2884,8 @@ pub const ITEM_FRAME_STATE: u16 = 290;
 /// tripwire hook: facing(4, N/E/S/W) × powered(2) = 8 states 291..=298
 pub const TRIPWIRE_HOOK_STATE_BASE: u16 = 291;
 pub const TRIPWIRE_HOOK_STATE_END: u16 = 298;
-/// blight skeleton skull
-pub const BLIGHT_SKELETON_SKULL_STATE: u16 = 299;
+/// wither skeleton skull
+pub const WITHER_SKELETON_SKULL_STATE: u16 = 299;
 /// command block
 pub const COMMAND_BLOCK_STATE: u16 = 300;
 /// E2 item-block states (EMERALD..=PUMPKIN_PIE, ids 155..=160):
@@ -2896,12 +2896,12 @@ pub const E2_ITEM_STATE_END: u16 = 306;
 pub const LAVA_STATE: u16 = 307;
 /// lava flow levels 1..7 (the same level ladder as water; the LEVEL DROP
 /// per block is dimension-dependent — 2 in the Overworld/End (3 spread),
-/// 1 in the Hollow (7 spread) — VERIFIED w/Lava flow-distance rows)
+/// 1 in the Nether (7 spread) — VERIFIED w/Lava flow-distance rows)
 pub const LAVA_FLOW_BASE: u16 = 308;
 pub const LAVA_FLOW_END: u16 = 314;
-/// Phase E2: spawner mob-kind code 4 — blight skeleton (the fortress's
-/// second platform; VERIFIED w/Blight_Skeleton: Hollow fortresses only)
-pub const SPAWNER_BLIGHT_SKELETON: u16 = 315;
+/// Phase E2: spawner mob-kind code 4 — wither skeleton (the fortress's
+/// second platform; VERIFIED w/Wither_Skeleton: Nether fortresses only)
+pub const SPAWNER_WITHER_SKELETON: u16 = 315;
 /// coal ITEM state (VERIFICATION-REPORT fix #4 — dedicated slot; the
 /// identity id 162 collides with repeater states like every E2 block)
 pub const COAL_STATE: u16 = 316;
@@ -2937,10 +2937,10 @@ pub const TRAPPED_CHEST_OPEN_STATE: u16 = 354;
 pub const LIGHT_PLATE_STATE: u16 = 345;
 /// heavy weighted pressure plate
 pub const HEAVY_PLATE_STATE: u16 = 346;
-/// block of fluxstone
-pub const FLUXSTONE_BLOCK_STATE: u16 = 347;
-/// hollow-quartz ITEM state (never world-stored)
-pub const HOLLOW_QUARTZ_STATE: u16 = 348;
+/// block of redstone
+pub const REDSTONE_BLOCK_STATE: u16 = 347;
+/// nether-quartz ITEM state (never world-stored)
+pub const NETHER_QUARTZ_STATE: u16 = 348;
 /// lead ITEM state (never world-stored)
 pub const LEAD_STATE: u16 = 349;
 /// saddle ITEM state (never world-stored)
@@ -3018,8 +3018,8 @@ pub fn plate_power(s: u16) -> u16 {
 /// 348..=350)
 #[inline]
 pub fn e3_item_block_state(b: u16) -> Option<u16> {
-    if (HOLLOW_QUARTZ..=SADDLE).contains(&b) {
-        Some(HOLLOW_QUARTZ_STATE + (b - HOLLOW_QUARTZ))
+    if (NETHER_QUARTZ..=SADDLE).contains(&b) {
+        Some(NETHER_QUARTZ_STATE + (b - NETHER_QUARTZ))
     } else {
         None
     }
@@ -3027,8 +3027,8 @@ pub fn e3_item_block_state(b: u16) -> Option<u16> {
 
 #[inline]
 pub fn e3_item_state_block(s: u16) -> Option<u16> {
-    if (HOLLOW_QUARTZ_STATE..=SADDLE_STATE).contains(&s) {
-        Some(HOLLOW_QUARTZ + (s - HOLLOW_QUARTZ_STATE))
+    if (NETHER_QUARTZ_STATE..=SADDLE_STATE).contains(&s) {
+        Some(NETHER_QUARTZ + (s - NETHER_QUARTZ_STATE))
     } else {
         None
     }
@@ -3138,8 +3138,8 @@ pub fn e2_item_state_block(s: u16) -> Option<u16> {
 /// state ↔ item-block arithmetic helpers (item ids 117..=139 ↔ 256..=278)
 #[inline]
 pub fn item_block_state(b: u16) -> Option<u16> {
-    if (VOID_CRYSTAL..=SPAWN_EGG_MAX).contains(&b) {
-        Some(ITEM_STATE_BASE + (b - VOID_CRYSTAL))
+    if (END_CRYSTAL..=SPAWN_EGG_MAX).contains(&b) {
+        Some(ITEM_STATE_BASE + (b - END_CRYSTAL))
     } else {
         None
     }
@@ -3148,7 +3148,7 @@ pub fn item_block_state(b: u16) -> Option<u16> {
 #[inline]
 pub fn item_state_block(s: u16) -> Option<u16> {
     if (ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s) {
-        Some(VOID_CRYSTAL + (s - ITEM_STATE_BASE))
+        Some(END_CRYSTAL + (s - ITEM_STATE_BASE))
     } else {
         None
     }
@@ -3189,7 +3189,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// Phase E2: anvil/beacon/wall/ender-chest/frame/tripwire/skull/command
 /// with E2 items, eggs 17..=20 and lava (283..=314)
 /// Phase E3: quartz family + stained terracotta (16) + carpets (5) +
-/// hay/sensor/trapped-chest/plates/fluxstone-block + quartz/lead/saddle
+/// hay/sensor/trapped-chest/plates/redstone-block + quartz/lead/saddle
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
@@ -3214,7 +3214,7 @@ pub const WATER_FLOW_BASE: u16 = 89;
 pub const WATER_FLOW_END: u16 = 95; // 7 flowing levels
 
 // ---------------------------------------------------------------------------
-// fluxstone sim states (§25, Phase 6)
+// redstone sim states (§25, Phase 6)
 // ---------------------------------------------------------------------------
 // Wire power 0..15 → states 96..111; lever off/on → 112/113; torch
 // lit/unlit → 114/115. NOTE: the wire/torch/lever BLOCK ids (60..62) can
@@ -3230,11 +3230,11 @@ pub const LEVER_ON: u16 = 113;
 pub const TORCH_LIT: u16 = 114;
 pub const TORCH_OFF: u16 = 115;
 // furnace (Phase 7): unlit/lit sim states — block id 63's identity slot
-// collides with the oak-slab model state, so like fluxstone the furnace
+// collides with the oak-slab model state, so like redstone the furnace
 // always stores one of these
 pub const FURNACE_STATE: u16 = 116;
 pub const FURNACE_LIT: u16 = 117;
-// hollow blocks (Phase 7 §28): identity slots 64..66 collide with the
+// nether blocks (Phase 7 §28): identity slots 64..66 collide with the
 // oak-fence model-state range — dedicated states above the sim range
 // (see the constants next to the block ids)
 
@@ -3271,8 +3271,8 @@ fn full_facing(f: usize) -> [i32; 3] {
     }
 }
 
-/// repeater state: facing(4) × delay(1..4 fluxstone ticks) × powered.
-/// VERIFIED (wiki blockstate table): "delay 1 2 3 4 ... in fluxstone
+/// repeater state: facing(4) × delay(1..4 redstone ticks) × powered.
+/// VERIFIED (wiki blockstate table): "delay 1 2 3 4 ... in redstone
 /// ticks (double game ticks)" — 1..4 rt = 2..8 game ticks.
 #[inline]
 pub fn repeater_state(facing: usize, delay_rt: u8, powered: bool) -> u16 {
@@ -3357,7 +3357,7 @@ pub fn observer_decode(s: u16) -> (usize, bool) {
 }
 
 /// hopper state: facing(5: 0=down, 1..4 = n/e/s/w). ENABLED is derived
-/// from fluxstone power at tick time (vanilla persists it; deriving is
+/// from redstone power at tick time (vanilla persists it; deriving is
 /// observably identical) — v1 transfers push down only.
 #[inline]
 pub fn hopper_state(facing: usize) -> u16 {
@@ -3389,11 +3389,11 @@ pub fn spawner_mob(s: u16) -> u8 {
         3 // fortress blaze (code 3 — fixes a LATENT Phase-E1 bug: the
           // dedicated state 241 fell through to the zombie code and
           // fortress spawners registered as zombie spawners)
-    } else if s == SPAWNER_BLIGHT_SKELETON {
+    } else if s == SPAWNER_WITHER_SKELETON {
         4 // fortress platform 2 (same latent-bug fix)
     } else if s == SPAWNER_CLEAVER {
         5 // 1.11 mansion
-    } else if s == SPAWNER_RUNECALLER {
+    } else if s == SPAWNER_EVOKER {
         6 // 1.11 mansion upper floors
     } else if s == SPAWNER_CAVESPIDER {
         7 // the completeness audit: the mineshaft spawner's own mob
@@ -3453,7 +3453,7 @@ pub fn torch_is_lit(s: u16) -> bool {
 }
 
 /// default STATE id for a freshly placed block — sim blocks (wire/torch/
-/// lever/furnace) and hollow blocks never store their identity state:
+/// lever/furnace) and nether blocks never store their identity state:
 /// those slots belong to model variants / log axes (FURNACE=63 is exactly
 /// MODEL_STATE_BASE, so a raw identity placement would render as the
 /// oak-slab model!). Prop blocks map to their FIRST state (all properties
@@ -3462,13 +3462,13 @@ pub fn torch_is_lit(s: u16) -> bool {
 #[inline]
 pub fn default_state(b: u16) -> u16 {
     match b {
-        FLUXSTONE_WIRE => wire_state(0),
-        FLUXSTONE_TORCH => torch_state(true),
+        REDSTONE_WIRE => wire_state(0),
+        REDSTONE_TORCH => torch_state(true),
         LEVER => lever_state(false),
         FURNACE => FURNACE_STATE,
-        HOLLOWSTONE => HOLLOWSTONE_STATE,
-        HOLLOW_QUARTZ_ORE => QUARTZ_ORE_STATE,
-        SPIRIT_SAND => SPIRIT_SAND_STATE,
+        NETHERRACK => NETHERRACK_STATE,
+        NETHER_QUARTZ_ORE => QUARTZ_ORE_STATE,
+        SOUL_SAND => SOUL_SAND_STATE,
         BREWING_STAND => BREWING_STAND_STATE,
         POTION_EMPTY => POTION_EMPTY_STATE,
         POTION_WATER => POTION_WATER_STATE,
@@ -3482,13 +3482,13 @@ pub fn default_state(b: u16) -> u16 {
         FERMENTED_SPIDER_EYE => FERMENTED_EYE_STATE,
         // default spawner = zombie (the 50% dungeon roll)
         SPAWNER => SPAWNER_STATE_BASE,
-        VOID_GATE_FRAME => VOID_GATE_FRAME_STATE,
+        END_PORTAL_FRAME => END_PORTAL_FRAME_STATE,
         // ---- Phase E1 defaults (dedicated states — identity slots of
         // 103..=139 collide with the legacy sim-state ranges) ----
         MYCELIUM => MYCELIUM_STATE,
-        VOID_STONE => VOID_STONE_STATE,
-        HOLLOW_BRICKS => HOLLOW_BRICKS_STATE,
-        FLUXSTONE_LAMP => FLUXSTONE_LAMP_STATE,
+        END_STONE => END_STONE_STATE,
+        NETHER_BRICKS => NETHER_BRICKS_STATE,
+        REDSTONE_LAMP => REDSTONE_LAMP_STATE,
         CHISELED_STONE_BRICKS => CHISELED_STONE_BRICKS_STATE,
         CHISELED_SANDSTONE => CHISELED_SANDSTONE_STATE,
         CUT_SANDSTONE => CUT_SANDSTONE_STATE,
@@ -3496,9 +3496,9 @@ pub fn default_state(b: u16) -> u16 {
         MUSHROOM_RED_BLOCK => MUSHROOM_RED_BLOCK_STATE,
         MUSHROOM_BROWN_BLOCK => MUSHROOM_BROWN_BLOCK_STATE,
         MUSHROOM_STEM => MUSHROOM_STEM_STATE,
-        HOLLOW_WART => WART_STATE_BASE, // age 0 (VERIFIED 4 stages)
+        NETHER_WART => WART_STATE_BASE, // age 0 (VERIFIED 4 stages)
         DRAGON_EGG => DRAGON_EGG_STATE,
-        VOID_GATE => VOID_GATE_STATE,
+        END_PORTAL => END_PORTAL_STATE,
         ENCHANT_TABLE => ENCHANT_TABLE_STATE,
         ENCHANTED_BOOK => ENCHANTED_BOOK_STATE,
         BOOK => BOOK_STATE,
@@ -3512,7 +3512,7 @@ pub fn default_state(b: u16) -> u16 {
         BONE => BONE_STATE,
         STRING => STRING_STATE,
         GUNPOWDER => GUNPOWDER_STATE,
-        VOID_PEARL => VOID_PEARL_STATE,
+        ENDER_PEARL => ENDER_PEARL_STATE,
         ROTTEN_FLESH => ROTTEN_FLESH_STATE,
         ARROW_ITEM => ARROW_ITEM_STATE,
         REPEATER => repeater_state(0, 1, false),
@@ -3531,11 +3531,11 @@ pub fn default_state(b: u16) -> u16 {
         DAMAGED_ANVIL => DAMAGED_ANVIL_STATE,
         BEACON => BEACON_STATE,
         COBBLE_WALL => COBBLE_WALL_STATE,
-        VOID_CHEST => VOID_CHEST_STATE,
+        ENDER_CHEST => ENDER_CHEST_STATE,
         FLOWER_POT => FLOWER_POT_STATE,
         ITEM_FRAME => ITEM_FRAME_STATE,
         TRIPWIRE_HOOK => tripwire_hook_state(0, false),
-        BLIGHT_SKELETON_SKULL => BLIGHT_SKELETON_SKULL_STATE,
+        WITHER_SKELETON_SKULL => WITHER_SKELETON_SKULL_STATE,
         COMMAND_BLOCK => COMMAND_BLOCK_STATE,
         LAVA => LAVA_STATE,
         COAL => COAL_STATE,
@@ -3553,7 +3553,7 @@ pub fn default_state(b: u16) -> u16 {
         TRAPPED_CHEST => TRAPPED_CHEST_STATE,
         LIGHT_WEIGHTED_PLATE => LIGHT_PLATE_STATE,
         HEAVY_WEIGHTED_PLATE => HEAVY_PLATE_STATE,
-        FLUXSTONE_BLOCK => FLUXSTONE_BLOCK_STATE,
+        REDSTONE_BLOCK => REDSTONE_BLOCK_STATE,
         // ---- F-series defaults (V2..V5 windows, merge-renumbered 2026-09-06) ----
         b if (200..200 + V2_COUNT).contains(&b) => {
             V2_STATE_BASE + (b - 200)
@@ -3587,12 +3587,12 @@ pub fn default_state(b: u16) -> u16 {
         // 1.15: nests/hives place at honey_level 0; the V12 items ride
         // their item states
         b if v12_state(b).is_some() => v12_state(b).unwrap(),
-        // 1.16 (Hollows Update, part 1): the V13 window — the anchor
+        // 1.16 (Nether Update, part 1): the V13 window — the anchor
         // places at charge 0, the target at power 0, the chain SITTING
         // (the lantern convention; the placement path writes the
         // hanging state on underside clicks), the rest identity
         b if v13_state(b).is_some() => v13_state(b).unwrap(),
-        // 1.16 (Hollows Update, part 2): the V14 window — the soul
+        // 1.16 (Nether Update, part 2): the V14 window — the soul
         // lantern places SITTING (the chain convention; the placement
         // path writes the hanging state on underside clicks), the
         // rest identity
@@ -3771,15 +3771,15 @@ pub fn state_block(s: u16) -> u16 {
         return WATER;
     }
     if is_wire_power(s) {
-        return FLUXSTONE_WIRE;
+        return REDSTONE_WIRE;
     }
     match s {
         LEVER_OFF | LEVER_ON => return LEVER,
-        TORCH_LIT | TORCH_OFF => return FLUXSTONE_TORCH,
+        TORCH_LIT | TORCH_OFF => return REDSTONE_TORCH,
         FURNACE_STATE | FURNACE_LIT => return FURNACE,
-        HOLLOWSTONE_STATE => return HOLLOWSTONE,
-        QUARTZ_ORE_STATE => return HOLLOW_QUARTZ_ORE,
-        SPIRIT_SAND_STATE => return SPIRIT_SAND,
+        NETHERRACK_STATE => return NETHERRACK,
+        QUARTZ_ORE_STATE => return NETHER_QUARTZ_ORE,
+        SOUL_SAND_STATE => return SOUL_SAND,
         BREWING_STAND_STATE => return BREWING_STAND,
         POTION_EMPTY_STATE => return POTION_EMPTY,
         POTION_WATER_STATE => return POTION_WATER,
@@ -3792,15 +3792,15 @@ pub fn state_block(s: u16) -> u16 {
         SPIDER_EYE_STATE => return SPIDER_EYE,
         FERMENTED_EYE_STATE => return FERMENTED_SPIDER_EYE,
         s if (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s) => return SPAWNER,
-        VOID_GATE_FRAME_STATE => return VOID_GATE_FRAME,
+        END_PORTAL_FRAME_STATE => return END_PORTAL_FRAME,
         // ---- Phase E1 state folding ----
-        FLUXSTONE_LAMP_LIT | FLUXSTONE_LAMP_STATE => return FLUXSTONE_LAMP,
-        s if (WART_STATE_BASE..=WART_STATE_END).contains(&s) => return HOLLOW_WART,
+        REDSTONE_LAMP_LIT | REDSTONE_LAMP_STATE => return REDSTONE_LAMP,
+        s if (WART_STATE_BASE..=WART_STATE_END).contains(&s) => return NETHER_WART,
         SPAWNER_BLAZE => return SPAWNER,
-        VOID_GATE_FRAME_EYE => return VOID_GATE_FRAME,
+        END_PORTAL_FRAME_EYE => return END_PORTAL_FRAME,
         MYCELIUM_STATE => return MYCELIUM,
-        VOID_STONE_STATE => return VOID_STONE,
-        HOLLOW_BRICKS_STATE => return HOLLOW_BRICKS,
+        END_STONE_STATE => return END_STONE,
+        NETHER_BRICKS_STATE => return NETHER_BRICKS,
         CHISELED_STONE_BRICKS_STATE => return CHISELED_STONE_BRICKS,
         CHISELED_SANDSTONE_STATE => return CHISELED_SANDSTONE,
         CUT_SANDSTONE_STATE => return CUT_SANDSTONE,
@@ -3809,7 +3809,7 @@ pub fn state_block(s: u16) -> u16 {
         MUSHROOM_BROWN_BLOCK_STATE => return MUSHROOM_BROWN_BLOCK,
         MUSHROOM_STEM_STATE => return MUSHROOM_STEM,
         DRAGON_EGG_STATE => return DRAGON_EGG,
-        VOID_GATE_STATE => return VOID_GATE,
+        END_PORTAL_STATE => return END_PORTAL,
         s if (ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s) => {
             return item_state_block(s).unwrap_or(AIR)
         }
@@ -3819,13 +3819,13 @@ pub fn state_block(s: u16) -> u16 {
         DAMAGED_ANVIL_STATE => return DAMAGED_ANVIL,
         BEACON_STATE => return BEACON,
         COBBLE_WALL_STATE => return COBBLE_WALL,
-        VOID_CHEST_STATE => return VOID_CHEST,
+        ENDER_CHEST_STATE => return ENDER_CHEST,
         FLOWER_POT_STATE => return FLOWER_POT,
         ITEM_FRAME_STATE => return ITEM_FRAME,
         s if (TRIPWIRE_HOOK_STATE_BASE..=TRIPWIRE_HOOK_STATE_END).contains(&s) => {
             return TRIPWIRE_HOOK
         }
-        BLIGHT_SKELETON_SKULL_STATE => return BLIGHT_SKELETON_SKULL,
+        WITHER_SKELETON_SKULL_STATE => return WITHER_SKELETON_SKULL,
         COMMAND_BLOCK_STATE => return COMMAND_BLOCK,
         s if (E2_ITEM_STATE_BASE..=E2_ITEM_STATE_END).contains(&s) => {
             return e2_item_state_block(s).unwrap_or(AIR)
@@ -3850,8 +3850,8 @@ pub fn state_block(s: u16) -> u16 {
         TRAPPED_CHEST_STATE => return TRAPPED_CHEST,
         LIGHT_PLATE_STATE => return LIGHT_WEIGHTED_PLATE,
         HEAVY_PLATE_STATE => return HEAVY_WEIGHTED_PLATE,
-        FLUXSTONE_BLOCK_STATE => return FLUXSTONE_BLOCK,
-        s if (HOLLOW_QUARTZ_STATE..=SADDLE_STATE).contains(&s) => {
+        REDSTONE_BLOCK_STATE => return REDSTONE_BLOCK,
+        s if (NETHER_QUARTZ_STATE..=SADDLE_STATE).contains(&s) => {
             return e3_item_state_block(s).unwrap_or(AIR)
         }
         s if (E3_EGG_STATE_BASE..=E3_EGG_STATE_END).contains(&s) => {
@@ -3867,10 +3867,10 @@ pub fn state_block(s: u16) -> u16 {
         s if (HEAVY_PLATE_POWER_BASE..=HEAVY_PLATE_POWER_END).contains(&s) => {
             return HEAVY_WEIGHTED_PLATE
         }
-        SPAWNER_BLIGHT_SKELETON => return SPAWNER,
+        SPAWNER_WITHER_SKELETON => return SPAWNER,
         // 1.11 mansion illager spawner states
         SPAWNER_CLEAVER => return SPAWNER,
-        SPAWNER_RUNECALLER => return SPAWNER,
+        SPAWNER_EVOKER => return SPAWNER,
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
         BOOK_STATE => return BOOK,
@@ -3884,7 +3884,7 @@ pub fn state_block(s: u16) -> u16 {
         BONE_STATE => return BONE,
         STRING_STATE => return STRING,
         GUNPOWDER_STATE => return GUNPOWDER,
-        VOID_PEARL_STATE => return VOID_PEARL,
+        ENDER_PEARL_STATE => return ENDER_PEARL,
         ROTTEN_FLESH_STATE => return ROTTEN_FLESH,
         ARROW_ITEM_STATE => return ARROW_ITEM,
         s if (REPEATER_STATE_BASE..=REPEATER_STATE_END).contains(&s) => return REPEATER,
@@ -3943,15 +3943,15 @@ pub fn state_block(s: u16) -> u16 {
         s if is_v12_state(s) => {
             return V12_STATE_TO_BLOCK[(s - V12_STATE_BASE) as usize];
         }
-        // 1.16 (Hollows Update, part 1): the V13 window — the anchor's
+        // 1.16 (Nether Update, part 1): the V13 window — the anchor's
         // 5 charge states and the target's 16 power states fold to
         // their parents; the chain's hanging state folds like the
         // lantern's
         s if is_v13_state(s) => {
             return V13_STATE_TO_BLOCK[(s - V13_STATE_BASE) as usize];
         }
-        // 1.16 (Hollows Update, part 2): the V14 window — all identity
-        // folds; the spirit lantern's hanging state folds like the
+        // 1.16 (Nether Update, part 2): the V14 window — all identity
+        // folds; the soul lantern's hanging state folds like the
         // lantern/chain's
         s if is_v14_state(s) => {
             return V14_STATE_TO_BLOCK[(s - V14_STATE_BASE) as usize];
@@ -3988,14 +3988,14 @@ pub fn state_block(s: u16) -> u16 {
 #[inline]
 pub fn state_description(s: u16) -> String {
     // Phase E1 properties (lit lamp / wart age / frame eye) first
-    if s == FLUXSTONE_LAMP_LIT {
-        return "Fluxstone Lamp[lit=true]".into();
+    if s == REDSTONE_LAMP_LIT {
+        return "Redstone Lamp[lit=true]".into();
     }
     if (WART_STATE_BASE..=WART_STATE_END).contains(&s) {
-        return format!("Hollow Wart[age={}]", s - WART_STATE_BASE);
+        return format!("Nether Wart[age={}]", s - WART_STATE_BASE);
     }
-    if s == VOID_GATE_FRAME_EYE {
-        return "Void Gate Frame[eye=true]".into();
+    if s == END_PORTAL_FRAME_EYE {
+        return "End Portal Frame[eye=true]".into();
     }
     // 1.13 V9 properties (F3 targeted-block lines): the pickle's count
     // and the egg's hatch stage are real vanilla blockstates
@@ -4052,7 +4052,7 @@ pub fn state_description(s: u16) -> String {
     // the chain's hanging flag (the F3 Targeted Block property lines —
     // the vanilla blockstate spellings)
     if is_v13_state(s) && s < V13_STATE_BASE + 5 {
-        return format!("Rebirth Anchor[charge={}]", anchor_charge(s));
+        return format!("Respawn Anchor[charge={}]", anchor_charge(s));
     }
     if is_v13_state(s) && (V13_STATE_BASE + 5..V13_STATE_BASE + 21).contains(&s) {
         return format!("Target[power={}]", target_power(s));
@@ -4060,10 +4060,10 @@ pub fn state_description(s: u16) -> String {
     if is_v13_state(s) && (V13_STATE_BASE + 29..=V13_STATE_BASE + 30).contains(&s) {
         return format!("Chain[hanging={}]", chain_hanging(s));
     }
-    // 1.16 V14 properties: the spirit lantern's hanging flag (the F3
+    // 1.16 V14 properties: the soul lantern's hanging flag (the F3
     // Targeted Block property line — the vanilla blockstate spelling)
     if is_v14_state(s) && (V14_STATE_BASE + 21..=V14_STATE_BASE + 22).contains(&s) {
-        return format!("Spirit Lantern[hanging={}]", spirit_lantern_hanging(s));
+        return format!("Soul Lantern[hanging={}]", soul_lantern_hanging(s));
     }
     if let Some((b, props)) = prop_state_decode(s) {
         if props.is_empty() {
@@ -4109,17 +4109,17 @@ pub fn is_model_state(s: u16) -> bool {
         // are greedy cubes (their BlockDef flags); the items ride flags
         || is_v12_state(s)
         // 1.16 V13 window: same shape — the stone-family blocks are
-        // greedy cubes (their BlockDef flags); chain + spirit fire + the
+        // greedy cubes (their BlockDef flags); chain + soul fire + the
         // items ride their flags
         || is_v13_state(s)
         // 1.16 V14 window: same shape — the stems/molds/planks/
         // polished stones are greedy cubes (their BlockDef flags); the
-        // fungi/roots/sprouts/vines + spirit torch/lantern + the eggs
+        // fungi/roots/sprouts/vines + soul torch/lantern + the eggs
         // ride their flags
         || is_v14_state(s)
         // the completeness audit V15 window: the items ride their
         // flags; the two spawner states fold to the spawner block
-        // (the SPAWNER_CLEAVER/SPAWNER_RUNECALLER pattern)
+        // (the SPAWNER_CLEAVER/SPAWNER_EVOKER pattern)
         || is_v15_state(s)
         || is_v16_state(s)
         // Sub-round 3: the armor-item identity states ride their flags
@@ -4127,7 +4127,7 @@ pub fn is_model_state(s: u16) -> bool {
         || s == SPAWNER_CAVESPIDER
         || s == SPAWNER_SILVERFISH
         || s == SPAWNER_CLEAVER
-        || s == SPAWNER_RUNECALLER
+        || s == SPAWNER_EVOKER
         // Round 13: the station identity window (BOOK/GRINDSTONE) —
         // never model states (the V17 pattern)
         || is_r13_state(s)
@@ -4144,14 +4144,14 @@ pub fn is_model_state(s: u16) -> bool {
         && !matches!(
             s,
             LEVER_OFF | LEVER_ON | TORCH_LIT | TORCH_OFF | FURNACE_STATE | FURNACE_LIT
-                | HOLLOWSTONE_STATE | QUARTZ_ORE_STATE | SPIRIT_SAND_STATE
+                | NETHERRACK_STATE | QUARTZ_ORE_STATE | SOUL_SAND_STATE
                 | BREWING_STAND_STATE
                 | POTION_EMPTY_STATE | POTION_WATER_STATE | POTION_AWKWARD_STATE
                 | POTION_MUNDANE_STATE | POTION_HEALING_STATE | POTION_HEALING_II_STATE
                 | ENCHANT_TABLE_STATE | ENCHANTED_BOOK_STATE
                 | BEEF_STATE | PORKCHOP_STATE | MUTTON_STATE | CHICKEN_RAW_STATE
                 | FEATHER_STATE | LEATHER_STATE | BONE_STATE | STRING_STATE
-                | GUNPOWDER_STATE | VOID_PEARL_STATE | ROTTEN_FLESH_STATE
+                | GUNPOWDER_STATE | ENDER_PEARL_STATE | ROTTEN_FLESH_STATE
                 | ARROW_ITEM_STATE
                 | POTION_HARMING_STATE | POTION_HARMING_II_STATE
                 | SPIDER_EYE_STATE | FERMENTED_EYE_STATE
@@ -4165,14 +4165,14 @@ pub fn is_model_state(s: u16) -> bool {
             || (HOPPER_STATE_BASE..=HOPPER_STATE_END).contains(&s)
             || (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s)
             || s == CHEST_STATE
-            || s == VOID_GATE_FRAME_STATE)
+            || s == END_PORTAL_FRAME_STATE)
         && !matches!(
             s,
-            FLUXSTONE_LAMP_LIT | FLUXSTONE_LAMP_STATE | SPAWNER_BLAZE | VOID_GATE_FRAME_EYE
-                | MYCELIUM_STATE | VOID_STONE_STATE | HOLLOW_BRICKS_STATE
+            REDSTONE_LAMP_LIT | REDSTONE_LAMP_STATE | SPAWNER_BLAZE | END_PORTAL_FRAME_EYE
+                | MYCELIUM_STATE | END_STONE_STATE | NETHER_BRICKS_STATE
                 | CHISELED_STONE_BRICKS_STATE | CHISELED_SANDSTONE_STATE | CUT_SANDSTONE_STATE
                 | SMOOTH_SANDSTONE_STATE | MUSHROOM_RED_BLOCK_STATE | MUSHROOM_BROWN_BLOCK_STATE
-                | MUSHROOM_STEM_STATE | DRAGON_EGG_STATE | VOID_GATE_STATE
+                | MUSHROOM_STEM_STATE | DRAGON_EGG_STATE | END_PORTAL_STATE
         )
         && !((WART_STATE_BASE..=WART_STATE_END).contains(&s))
         && !((ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s))
@@ -4181,15 +4181,15 @@ pub fn is_model_state(s: u16) -> bool {
         && !matches!(
             s,
             ANVIL_STATE | CHIPPED_ANVIL_STATE | DAMAGED_ANVIL_STATE | BEACON_STATE
-                | COBBLE_WALL_STATE | VOID_CHEST_STATE | FLOWER_POT_STATE | ITEM_FRAME_STATE
-                | BLIGHT_SKELETON_SKULL_STATE | COMMAND_BLOCK_STATE
+                | COBBLE_WALL_STATE | ENDER_CHEST_STATE | FLOWER_POT_STATE | ITEM_FRAME_STATE
+                | WITHER_SKELETON_SKULL_STATE | COMMAND_BLOCK_STATE
         )
         && !((TRIPWIRE_HOOK_STATE_BASE..=TRIPWIRE_HOOK_STATE_END).contains(&s))
         && !((E2_ITEM_STATE_BASE..=E2_ITEM_STATE_END).contains(&s))
         // lava source/flows ride the fluid-quad path (never models)
         && s != LAVA_STATE
         && !((LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s))
-        && s != SPAWNER_BLIGHT_SKELETON
+        && s != SPAWNER_WITHER_SKELETON
         // VERIFICATION-REPORT fix #4: the coal item state (inventory-only)
         && s != COAL_STATE
         // ---- Phase E3: every E3 state is a full-cube/cross/sim state —
@@ -4230,7 +4230,7 @@ pub fn break_time_secs(block: u16) -> f32 {
         BEDROCK => return f32::INFINITY,
         // instant (hardness 0)
         TALL_GRASS | FERN | DEAD_BUSH | FLOWER_RED | FLOWER_YELLOW
-        | WHEAT_CROP | WHEAT | FLUXSTONE_WIRE | FLUXSTONE_TORCH
+        | WHEAT_CROP | WHEAT | REDSTONE_WIRE | REDSTONE_TORCH
         | LEVER | VINE => 0.0,
         // soft ground (0.5–0.6)
         DIRT | COARSE_DIRT | PODZOL => 0.5,
@@ -4241,12 +4241,12 @@ pub fn break_time_secs(block: u16) -> f32 {
         FARMLAND => 0.6,
         MYCELIUM => 0.6,
         SNOW | SNOW_GRASS => 0.2,
-        SPIRIT_SAND => 0.5,
-        HOLLOWSTONE => 0.4,
+        SOUL_SAND => 0.5,
+        NETHERRACK => 0.4,
         // woods (2.0)
         OAK_LOG | BIRCH_LOG | SPRUCE_LOG | JUNGLE_LOG | ACACIA_LOG
         | DARK_OAK_LOG => 2.0,
-        PLANKS | JUNGLE_PLANKS | SCARLET_PLANKS => 2.0,
+        PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS => 2.0,
         CRAFTING_TABLE => 2.5,
         BOOKSHELF => 1.5,
         CHEST => 2.5,
@@ -4265,11 +4265,11 @@ pub fn break_time_secs(block: u16) -> f32 {
         CHISELED_SANDSTONE | CUT_SANDSTONE | SMOOTH_SANDSTONE
         | RED_SANDSTONE | SMOOTH_RED_SANDSTONE => 0.8,
         QUARTZ_BLOCK | CHISELED_QUARTZ => 0.8,
-        HOLLOW_BRICKS => 2.0,
-        VOID_STONE => 3.0,
+        NETHER_BRICKS => 2.0,
+        END_STONE => 3.0,
         // ores + mineral blocks (3)
-        COAL_ORE | IRON_ORE | GOLD_ORE | DIAMOND_ORE | FLUXSTONE_ORE
-        | LAPIS_ORE | EMERALD_ORE | HOLLOW_QUARTZ_ORE => 3.0,
+        COAL_ORE | IRON_ORE | GOLD_ORE | DIAMOND_ORE | REDSTONE_ORE
+        | LAPIS_ORE | EMERALD_ORE | NETHER_QUARTZ_ORE => 3.0,
         IRON_BLOCK | GOLD_BLOCK | DIAMOND_BLOCK => 5.0,
         COAL_BLOCK => 5.0,
         // utility
@@ -4310,28 +4310,28 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
             TILE_FURNACE_LIT_SIDE,
         ],
         // Phase E1: the lit lamp swaps every face to the glowing tile
-        FLUXSTONE_LAMP_LIT => [
-            TILE_FLUXSTONE_LAMP_ON,
-            TILE_FLUXSTONE_LAMP_ON,
-            TILE_FLUXSTONE_LAMP_ON,
-            TILE_FLUXSTONE_LAMP_ON,
+        REDSTONE_LAMP_LIT => [
+            TILE_REDSTONE_LAMP_ON,
+            TILE_REDSTONE_LAMP_ON,
+            TILE_REDSTONE_LAMP_ON,
+            TILE_REDSTONE_LAMP_ON,
         ],
-        // Phase E1: hollow-wart crop ages (4 stages, VERIFIED)
+        // Phase E1: nether-wart crop ages (4 stages, VERIFIED)
         s if (WART_STATE_BASE..=WART_STATE_END).contains(&s) => {
             let off = s - WART_STATE_BASE;
             let t = match off {
-                0 => TILE_HOLLOW_WART_0,
-                1 => TILE_HOLLOW_WART_1,
-                2 => TILE_HOLLOW_WART_2,
-                _ => TILE_HOLLOW_WART_3,
+                0 => TILE_NETHER_WART_0,
+                1 => TILE_NETHER_WART_1,
+                2 => TILE_NETHER_WART_2,
+                _ => TILE_NETHER_WART_3,
             };
             [t, t, t, t]
         }
         // Phase E1: frame with an eye shows the filled inset
-        VOID_GATE_FRAME_EYE => {
+        END_PORTAL_FRAME_EYE => {
             // same tile for now — the eye state is functional (activation),
             // the art carries the inset; hotbar shows the frame face
-            [TILE_VOID_GATE_FRAME, TILE_VOID_GATE_FRAME, TILE_VOID_GATE_FRAME, TILE_VOID_GATE_FRAME]
+            [TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME]
         }
         // Phase E2: anvil damage stages swap the face tile (chipped shows a
         // cracked face; damaged shows a broken face — VERIFIED w/Anvil
@@ -4459,7 +4459,7 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
             };
             [t, t, t, t]
         }
-        // ---- 1.16 (Hollows Update, part 1): the anchor's charge art —
+        // ---- 1.16 (Nether Update, part 1): the anchor's charge art —
         // the sides wake to the purple glow at charge >= 1 (the exact
         // charge rides the F3 line + the light); every other V13 state
         // is a plain identity fold through def().tiles ----
@@ -4553,7 +4553,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// highest tile index the generator must draw. Phase 4 BUG FIX: this sat
 /// at 82 while Phase 2 (tiles 83–104) and Phase 3 (tiles 105–117) kept
 /// adding art arms ABOVE it — the atlas loop `for t in 0..=TILE_MAX`
-/// never reached them, so every mob sprite, mob-drop icon, and fluxstone
+/// never reached them, so every mob sprite, mob-drop icon, and redstone
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
@@ -4636,7 +4636,7 @@ pub const PACK_OVERRIDABLE: &[(&str, u16)] = &[
     ("block/iron_ore", TILE_IRON_ORE),
     ("block/gold_ore", TILE_GOLD_ORE),
     ("block/diamond_ore", TILE_DIAMOND_ORE),
-    ("block/fluxstone_ore", TILE_FLUXSTONE_ORE),
+    ("block/redstone_ore", TILE_REDSTONE_ORE),
     ("block/lapis_ore", TILE_LAPIS_ORE),
     ("block/emerald_ore", TILE_EMERALD_ORE),
     ("block/iron_block", TILE_IRON_BLOCK),
@@ -4650,8 +4650,8 @@ pub const PACK_OVERRIDABLE: &[(&str, u16)] = &[
     ("block/furnace_side", TILE_FURNACE_SIDE),
     ("block/furnace_top", TILE_FURNACE_TOP),
     ("block/furnace_front_on", TILE_FURNACE_LIT_SIDE),
-    ("block/fluxstone_lamp", TILE_FLUXSTONE_LAMP),
-    ("block/fluxstone_lamp_on", TILE_FLUXSTONE_LAMP_ON),
+    ("block/redstone_lamp", TILE_REDSTONE_LAMP),
+    ("block/redstone_lamp_on", TILE_REDSTONE_LAMP_ON),
     ("block/spawner", TILE_SPAWNER),
     // wool (1.13+ names; our engine ships the 6-tile subset)
     ("block/white_wool", TILE_WOOL_WHITE),
@@ -4659,12 +4659,12 @@ pub const PACK_OVERRIDABLE: &[(&str, u16)] = &[
     ("block/blue_wool", TILE_WOOL_BLUE),
     ("block/yellow_wool", TILE_WOOL_YELLOW),
     ("block/black_wool", TILE_WOOL_BLACK),
-    // hollow + end
-    ("block/hollowstone", TILE_HOLLOWSTONE),
-    ("block/hollow_bricks", TILE_HOLLOW_BRICKS),
-    ("block/spirit_sand", TILE_SPIRIT_SAND),
+    // nether + end
+    ("block/netherrack", TILE_NETHERRACK),
+    ("block/nether_bricks", TILE_NETHER_BRICKS),
+    ("block/soul_sand", TILE_SOUL_SAND),
     ("block/quartz_ore", TILE_QUARTZ_ORE),
-    ("block/void_stone", TILE_VOID_STONE),
+    ("block/end_stone", TILE_END_STONE),
     ("block/dragon_egg", TILE_DRAGON_EGG),
     // plants / decor
     ("block/tall_grass", TILE_TALL_GRASS),
@@ -4732,8 +4732,8 @@ pub const TILE_ARMOR_BASE: u16 = 775;
 // piece order: helmet(0) chestplate(1) leggings(2) boots(3)
 // material order: leather(0) iron(1) gold(2) diamond(3) — tile =
 // TILE_ARMOR_BASE + material*4 + piece
-/// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, cleaver,
-/// runecaller, wisp, husk, stray) — the E1/E2/E3 egg-art convention
+/// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
+/// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
 /// mob-sprite reuse for egg items. The zombie-villager egg (kind 5)
 /// keeps its pre-existing tile in the base egg window.
@@ -4742,7 +4742,7 @@ pub const TILE_V7_EGG_END: u16 = 345;
 
 // ---- 1.12 bracket tiles (World of Color Update, live 2026-09-07;
 // reference wiki /Java_Edition_1.12 + w/Concrete, w/Concrete_Powder,
-// w/Glazed_Terracotta, w/Parrot, w/Miragecaller — raw captures in
+// w/Glazed_Terracotta, w/Parrot, w/Illusioner — raw captures in
 // scripts/v112_page_*.json) ----
 /// 16 concrete tiles, engine color order (the vanilla dye-registry order
 /// — same as the E3 stained-terracotta set, VERIFIED w/Terracotta):
@@ -4793,10 +4793,10 @@ pub const TILE_PARROT_EGG: u16 = 543;
 /// 5 parrot variant sprites (VERIFIED w/Parrot Variant NBT table:
 /// 0=red "red_blue", 1=blue, 2=green, 3=cyan "yellow_blue", 4=gray).
 pub const TILE_PARROT_BASE: u16 = 544;
-/// Miragecaller sprite (VERIFIED w/Miragecaller: 32 HP hostile illager —
+/// Illusioner sprite (VERIFIED w/Illusioner: 32 HP hostile illager —
 /// palette-only mob: vanilla has no spawn egg and it never spawns
 /// naturally, "Unused and present only in Java Edition").
-pub const TILE_MIRAGECALLER: u16 = 549;
+pub const TILE_ILLUSIONER: u16 = 549;
 
 // ---- 1.13 (Aquatic-era update) tiles: 550..=618 ----
 /// coral block tiles ×5 (tube/brain/bubble/fire/horn).
@@ -4936,93 +4936,93 @@ pub const TILE_BEEHIVE_FRONT_HONEY: u16 = 653;
 /// the bee mob billboard sprite (v115_art::bee_art).
 pub const TILE_MOB_BEE: u16 = 654;
 
-// ---- 1.16 (Hollows Update, part 1): the V13 art window, tiles
+// ---- 1.16 (Nether Update, part 1): the V13 art window, tiles
 // 655..=672 — painted from day one in v116_art.rs (the 1.13 blank-
 // window lesson; the coverage guard auto-extends). ----
-pub const TILE_SPIRIT_SOIL: u16 = 655;
+pub const TILE_SOUL_SOIL: u16 = 655;
 pub const TILE_BASALT_SIDE: u16 = 656;
 pub const TILE_BASALT_TOP: u16 = 657;
 pub const TILE_BLACKSTONE: u16 = 658;
 pub const TILE_GILDED_BLACKSTONE: u16 = 659;
-pub const TILE_WEEPING_OBSIDIAN: u16 = 660;
-/// rebirth-anchor top — the dark ring portal face.
+pub const TILE_CRYING_OBSIDIAN: u16 = 660;
+/// respawn-anchor top — the dark ring portal face.
 pub const TILE_ANCHOR_TOP: u16 = 661;
-/// rebirth-anchor sides, uncharged — the weeping-obsidian-dark shell.
+/// respawn-anchor sides, uncharged — the crying-obsidian-dark shell.
 pub const TILE_ANCHOR_SIDE: u16 = 662;
-/// rebirth-anchor sides at charge >= 1 — the purple glow wakes
+/// respawn-anchor sides at charge >= 1 — the purple glow wakes
 /// (grows visually with charge via the emissive tint class; the F3
 /// line carries the exact charge).
 pub const TILE_ANCHOR_SIDE_CHARGED: u16 = 663;
 /// the target — the concentric-ring bullseye face.
 pub const TILE_TARGET: u16 = 664;
-pub const TILE_HOLLOW_GOLD_ORE: u16 = 665;
+pub const TILE_NETHER_GOLD_ORE: u16 = 665;
 pub const TILE_ANCIENT_DEBRIS_TOP: u16 = 666;
 pub const TILE_ANCIENT_DEBRIS_SIDE: u16 = 667;
-pub const TILE_HOLLOWITE_BLOCK: u16 = 668;
+pub const TILE_NETHERITE_BLOCK: u16 = 668;
 /// the chain (sitting + hanging share the sprite; the placement
 /// state picks the offset — the lantern pattern).
 pub const TILE_CHAIN: u16 = 669;
-/// spirit fire — the blue flame cross-sprite.
-pub const TILE_SPIRIT_FIRE: u16 = 670;
-pub const TILE_HOLLOWITE_SCRAP: u16 = 671;
-pub const TILE_HOLLOWITE_INGOT: u16 = 672;
+/// soul fire — the blue flame cross-sprite.
+pub const TILE_SOUL_FIRE: u16 = 670;
+pub const TILE_NETHERITE_SCRAP: u16 = 671;
+pub const TILE_NETHERITE_INGOT: u16 = 672;
 
-// ---- 1.16 (Hollows Update, PART 2): the V14 art window, tiles
+// ---- 1.16 (Nether Update, PART 2): the V14 art window, tiles
 // 673..=705 — painted from day one in v116b_art.rs (the 1.13 blank-
 // window lesson; the coverage guard auto-extends). ----
-pub const TILE_SCARLET_STEM_SIDE: u16 = 673;
-pub const TILE_SCARLET_STEM_TOP: u16 = 674;
-/// scarlet hyphae — the all-sides "bark" form (the jungle-bark class).
-pub const TILE_SCARLET_HYPHAE: u16 = 675;
-pub const TILE_SCARLET_PLANKS: u16 = 676;
-pub const TILE_SCARLET_MOLD_TOP: u16 = 677;
-pub const TILE_SCARLET_MOLD_SIDE: u16 = 678;
-/// scarlet fungus — the red-cap mushroom sprite.
-pub const TILE_SCARLET_FUNGUS: u16 = 679;
-/// scarlet roots — the red tuft sprite.
-pub const TILE_SCARLET_ROOTS: u16 = 680;
+pub const TILE_CRIMSON_STEM_SIDE: u16 = 673;
+pub const TILE_CRIMSON_STEM_TOP: u16 = 674;
+/// crimson hyphae — the all-sides "bark" form (the jungle-bark class).
+pub const TILE_CRIMSON_HYPHAE: u16 = 675;
+pub const TILE_CRIMSON_PLANKS: u16 = 676;
+pub const TILE_CRIMSON_NYLIUM_TOP: u16 = 677;
+pub const TILE_CRIMSON_NYLIUM_SIDE: u16 = 678;
+/// crimson fungus — the red-cap mushroom sprite.
+pub const TILE_CRIMSON_FUNGUS: u16 = 679;
+/// crimson roots — the red tuft sprite.
+pub const TILE_CRIMSON_ROOTS: u16 = 680;
 /// weeping vines — the hanging red-vine sprite.
 pub const TILE_WEEPING_VINES: u16 = 681;
-pub const TILE_VIRIDIAN_STEM_SIDE: u16 = 682;
-pub const TILE_VIRIDIAN_STEM_TOP: u16 = 683;
-/// viridian hyphae — the all-sides "bark" form.
-pub const TILE_VIRIDIAN_HYPHAE: u16 = 684;
-pub const TILE_VIRIDIAN_PLANKS: u16 = 685;
-pub const TILE_VIRIDIAN_MOLD_TOP: u16 = 686;
-pub const TILE_VIRIDIAN_MOLD_SIDE: u16 = 687;
-/// viridian fungus — the teal-cap mushroom sprite.
-pub const TILE_VIRIDIAN_FUNGUS: u16 = 688;
-/// viridian roots — the teal tuft sprite.
-pub const TILE_VIRIDIAN_ROOTS: u16 = 689;
+pub const TILE_WARPED_STEM_SIDE: u16 = 682;
+pub const TILE_WARPED_STEM_TOP: u16 = 683;
+/// warped hyphae — the all-sides "bark" form.
+pub const TILE_WARPED_HYPHAE: u16 = 684;
+pub const TILE_WARPED_PLANKS: u16 = 685;
+pub const TILE_WARPED_NYLIUM_TOP: u16 = 686;
+pub const TILE_WARPED_NYLIUM_SIDE: u16 = 687;
+/// warped fungus — the teal-cap mushroom sprite.
+pub const TILE_WARPED_FUNGUS: u16 = 688;
+/// warped roots — the teal tuft sprite.
+pub const TILE_WARPED_ROOTS: u16 = 689;
 /// twisting vines — the climbing teal-vine sprite.
 pub const TILE_TWISTING_VINES: u16 = 690;
-pub const TILE_VIRIDIAN_WART_BLOCK: u16 = 691;
-/// glowcap — the glowing orange-pink fungus lamp.
-pub const TILE_GLOWCAP: u16 = 692;
-/// hollow sprouts — the teal curl sprout sprite.
-pub const TILE_HOLLOW_SPROUTS: u16 = 693;
+pub const TILE_WARPED_WART_BLOCK: u16 = 691;
+/// shroomlight — the glowing orange-pink fungus lamp.
+pub const TILE_SHROOMLIGHT: u16 = 692;
+/// nether sprouts — the teal curl sprout sprite.
+pub const TILE_NETHER_SPROUTS: u16 = 693;
 pub const TILE_POLISHED_BASALT_SIDE: u16 = 694;
 pub const TILE_POLISHED_BASALT_TOP: u16 = 695;
 pub const TILE_POLISHED_BLACKSTONE: u16 = 696;
 pub const TILE_POLISHED_BLACKSTONE_BRICKS: u16 = 697;
-/// spirit torch — the blue-flame torch sprite (light 10).
-pub const TILE_SPIRIT_TORCH: u16 = 698;
-/// spirit lantern — the blue-flame lantern sprite (sitting + hanging
+/// soul torch — the blue-flame torch sprite (light 10).
+pub const TILE_SOUL_TORCH: u16 = 698;
+/// soul lantern — the blue-flame lantern sprite (sitting + hanging
 /// share it; the placement state picks the offset — the lantern
 /// pattern).
-pub const TILE_SPIRIT_LANTERN: u16 = 699;
-/// the emberhopper spawn egg sprite (kind 42).
-pub const TILE_SPAWN_EGG_EMBERHOPPER: u16 = 700;
-/// the pigoblin spawn egg sprite (kind 43).
-pub const TILE_SPAWN_EGG_PIGOBLIN: u16 = 701;
-/// the boarling spawn egg sprite (kind 44).
-pub const TILE_SPAWN_EGG_BOARLING: u16 = 702;
-/// the emberhopper mob billboard sprite (v116b_art::emberhopper_art).
-pub const TILE_MOB_EMBERHOPPER: u16 = 703;
-/// the pigoblin mob billboard sprite (v116b_art::pigoblin_art).
-pub const TILE_MOB_PIGOBLIN: u16 = 704;
-/// the boarling mob billboard sprite (v116b_art::boarling_art).
-pub const TILE_MOB_BOARLING: u16 = 705;
+pub const TILE_SOUL_LANTERN: u16 = 699;
+/// the strider spawn egg sprite (kind 42).
+pub const TILE_SPAWN_EGG_STRIDER: u16 = 700;
+/// the piglin spawn egg sprite (kind 43).
+pub const TILE_SPAWN_EGG_PIGLIN: u16 = 701;
+/// the hoglin spawn egg sprite (kind 44).
+pub const TILE_SPAWN_EGG_HOGLIN: u16 = 702;
+/// the strider mob billboard sprite (v116b_art::strider_art).
+pub const TILE_MOB_STRIDER: u16 = 703;
+/// the piglin mob billboard sprite (v116b_art::piglin_art).
+pub const TILE_MOB_PIGLIN: u16 = 704;
+/// the hoglin mob billboard sprite (v116b_art::hoglin_art).
+pub const TILE_MOB_HOGLIN: u16 = 705;
 // ---- the 1.0-1.16.5 completeness audit (V15 window, tiles 706..=734) ----
 /// the steak / cooked-beef item sprite.
 pub const TILE_STEAK: u16 = 706;
@@ -5054,10 +5054,10 @@ pub const TILE_SUGAR: u16 = 718;
 pub const TILE_EGG: u16 = 719;
 /// the poisonous potato item sprite.
 pub const TILE_POISONOUS_POTATO: u16 = 720;
-/// the popped echo fruit item sprite.
-pub const TILE_POPPED_ECHO: u16 = 721;
-/// the weepgeist tear item sprite.
-pub const TILE_WEEPGEIST_TEAR: u16 = 722;
+/// the popped chorus fruit item sprite.
+pub const TILE_POPPED_CHORUS: u16 = 721;
+/// the ghast tear item sprite.
+pub const TILE_GHAST_TEAR: u16 = 722;
 /// the potion of leaping item sprite.
 pub const TILE_POTION_LEAPING: u16 = 723;
 /// the potion of leaping II item sprite.
@@ -5070,14 +5070,14 @@ pub const TILE_POTION_REGEN: u16 = 726;
 pub const TILE_POTION_REGEN_II: u16 = 727;
 /// the extended potion of regeneration item sprite.
 pub const TILE_POTION_REGEN_LONG: u16 = 728;
-/// the weepgeist spawn-egg sprite (kind 45).
-pub const TILE_SPAWN_EGG_WEEPGEIST: u16 = 729;
+/// the ghast spawn-egg sprite (kind 45).
+pub const TILE_SPAWN_EGG_GHAST: u16 = 729;
 /// the cave-spider spawn-egg sprite (kind 46).
 pub const TILE_SPAWN_EGG_CAVESPIDER: u16 = 730;
 /// the silverfish spawn-egg sprite (kind 47).
 pub const TILE_SPAWN_EGG_SILVERFISH: u16 = 731;
-/// the weepgeist mob billboard sprite (audit16_art::weepgeist_art).
-pub const TILE_MOB_WEEPGEIST: u16 = 732;
+/// the ghast mob billboard sprite (audit16_art::ghast_art).
+pub const TILE_MOB_GHAST: u16 = 732;
 /// the cave-spider mob billboard sprite (audit16_art::cave_spider_art).
 pub const TILE_MOB_CAVESPIDER: u16 = 733;
 /// the silverfish mob billboard sprite (audit16_art::silverfish_art).
@@ -5124,7 +5124,7 @@ pub const POTATOES: u16 = 510;
 /// §Block states: age 0-3 — HALF the wheat ladder).
 pub const BEETROOTS: u16 = 511;
 /// wheat — the harvest item (inedible; crafts into bread/hay/cake,
-// breeds cows/sheeps/shroomcows. VERIFIED w/Wheat_Crops §Breeding).
+// breeds cows/sheeps/mooshrooms. VERIFIED w/Wheat_Crops §Breeding).
 pub const WHEAT: u16 = 512;
 /// bread — the first farmable food (hunger 5 → 2.5 HP on the engine's
 /// hunger/2 scale, VERIFIED w/Bread: "Restores 5 hunger points");
@@ -5235,19 +5235,19 @@ pub fn is_item_block(b: u16) -> bool {
             | POTION_HEALING_II | POTION_HARMING | POTION_HARMING_II | ENCHANTED_BOOK
             | SPIDER_EYE | FERMENTED_SPIDER_EYE
             | BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | FEATHER | LEATHER | BONE | STRING
-            | GUNPOWDER | VOID_PEARL | ROTTEN_FLESH | ARROW_ITEM
-            | VOID_CRYSTAL | VOID_EYE | BLAZE_ROD | BLAZE_POWDER | GOLDEN_APPLE
-            | SNOWBALL | HOLLOW_BRICK
+            | GUNPOWDER | ENDER_PEARL | ROTTEN_FLESH | ARROW_ITEM
+            | END_CRYSTAL | EYE_OF_ENDER | BLAZE_ROD | BLAZE_POWDER | GOLDEN_APPLE
+            | SNOWBALL | NETHER_BRICK
             // Phase E2 items (evolution 1.3-1.4)
-            | EMERALD | HOLLOW_STAR | POTATO | BAKED_POTATO | CARROT | PUMPKIN_PIE
+            | EMERALD | NETHER_STAR | POTATO | BAKED_POTATO | CARROT | PUMPKIN_PIE
             | GOLDEN_CARROT
-            // 1.11 items (lurkshell shell, totem, the 4+1 new eggs and
+            // 1.11 items (shulker shell, totem, the 4+1 new eggs and
             // the re-added husk/stray eggs)
-            | LURKSHELL_SHELL
-            | TOTEM_OF_REVIVAL
+            | SHULKER_SHELL
+            | TOTEM_OF_UNDYING
             | SPAWN_EGG_LLAMA
             | SPAWN_EGG_CLEAVER
-            | SPAWN_EGG_RUNECALLER
+            | SPAWN_EGG_EVOKER
             | SPAWN_EGG_VEX
             | SPAWN_EGG_HUSK
             | SPAWN_EGG_STRAY
@@ -5256,8 +5256,8 @@ pub fn is_item_block(b: u16) -> bool {
             // ---- F-series item-blocks (1.7.2-1.10, merge-renumbered) ----
             | RAW_FISH | RAW_SALMON | CLOWNFISH | PUFFERFISH
             | RAW_RABBIT | COOKED_RABBIT | RABBIT_HIDE | RABBIT_FOOT
-            | ABYSSPRISM_SHARD | ABYSSPRISM_CRYSTALS
-            | ECHO_FRUIT | SKYWINGS | SHIELD
+            | PRISMARINE_SHARD | PRISMARINE_CRYSTALS
+            | CHORUS_FRUIT | ELYTRA | SHIELD
             // ---- 1.12 item-blocks (World of Color): the 16 dye palette
             // items + the 4 taming seeds + the cookie — inventory-only
             // (concrete/powder/glazed are real placeable BLOCKS) ----
@@ -5298,14 +5298,14 @@ pub fn is_item_block(b: u16) -> bool {
             | HONEYCOMB
             | HONEY_BOTTLE
             | SHEARS
-            // ---- 1.16 (Hollows Update, part 1): the hollowite material
+            // ---- 1.16 (Nether Update, part 1): the netherite material
             // items (never placeable — the ancient-debris smelt output
             // and the ingot craft input) ----
-            | HOLLOWITE_SCRAP
-            | HOLLOWITE_INGOT
+            | NETHERITE_SCRAP
+            | NETHERITE_INGOT
             // ---- the 1.0-1.16.5 completeness audit: the V15 item
             // rows — the cooked meats, the kitchen chain, the popped
-            // echo, the weepgeist tear, the two new potion families
+            // chorus, the ghast tear, the two new potion families
             // (the 3 eggs ride is_spawn_egg below) ----
             | STEAK
             | COOKED_PORKCHOP
@@ -5323,8 +5323,8 @@ pub fn is_item_block(b: u16) -> bool {
             | EGG
             | MELON_SLICE
             | POISONOUS_POTATO
-            | POPPED_ECHO_FRUIT
-            | WEEPGEIST_TEAR
+            | POPPED_CHORUS_FRUIT
+            | GHAST_TEAR
             | POTION_LEAPING
             | POTION_LEAPING_II
             | POTION_LEAPING_LONG
@@ -5348,7 +5348,7 @@ pub fn is_item_block(b: u16) -> bool {
 pub fn is_spawn_egg(b: u16) -> bool {
     (SPAWN_EGG_BASE..=SPAWN_EGG_MAX).contains(&b)
         || (E3_SPAWN_EGG_BASE..=E3_SPAWN_EGG_END).contains(&b)
-        // 1.11: the V7 egg window (llama/cleaver/runecaller/wisp + the
+        // 1.11: the V7 egg window (llama/vindicator/evoker/vex + the
         // re-added husk/stray + the 5th new zombie-villager egg)
         || (SPAWN_EGG_LLAMA..=SPAWN_EGG_STRAY).contains(&b)
         // 1.12: the V8 parrot egg (kind 30)
@@ -5361,14 +5361,14 @@ pub fn is_spawn_egg(b: u16) -> bool {
         // 1.15: the bee egg (kind 41 — changelog §Items: "Bee Spawn
         // Egg")
         || b == SPAWN_EGG_BEE
-        // 1.16: the V14 egg window (kinds 42..=44 — emberhopper/pigoblin/
-        // boarling)
-        || b == SPAWN_EGG_EMBERHOPPER
-        || b == SPAWN_EGG_PIGOBLIN
-        || b == SPAWN_EGG_BOARLING
+        // 1.16: the V14 egg window (kinds 42..=44 — strider/piglin/
+        // hoglin)
+        || b == SPAWN_EGG_STRIDER
+        || b == SPAWN_EGG_PIGLIN
+        || b == SPAWN_EGG_HOGLIN
         // the completeness audit: the three classic-mob eggs (the
-        // weepgeist/cave spider/silverfish rounds)
-        || b == SPAWN_EGG_WEEPGEIST
+        // ghast/cave spider/silverfish rounds)
+        || b == SPAWN_EGG_GHAST
         || b == SPAWN_EGG_CAVE_SPIDER
         || b == SPAWN_EGG_SILVERFISH
 }
@@ -5384,7 +5384,7 @@ pub fn egg_mob(b: u16) -> Option<u8> {
         return Some(20 + (b - E3_SPAWN_EGG_BASE) as u8);
     }
     // 1.11 bracket: kinds 23..=29 (the changelog's "5 new spawn eggs"
-    // — llama/cleaver/runecaller/wisp/zombie-villager — plus the re-added
+    // — llama/vindicator/evoker/vex/zombie-villager — plus the re-added
     // husk/stray eggs: "Eggs that were removed in Java Edition
     // 1.10-pre2 are re-added ... including: ... Husk spawn egg, Stray
     // spawn egg")
@@ -5408,21 +5408,21 @@ pub fn egg_mob(b: u16) -> Option<u8> {
         return Some(41);
     }
     // 1.16: the V14 egg window — kinds 42..=44 (the changelog's own
-    // spawn-egg list: "Emberhopper Spawn Egg", "Pigoblin Spawn Egg",
-    // "Boarling Spawn Egg" — the rotboar/brute eggs are trimmed with
+    // spawn-egg list: "Strider Spawn Egg", "Piglin Spawn Egg",
+    // "Hoglin Spawn Egg" — the zoglin/brute eggs are trimmed with
     // their mobs, disclosed)
-    if b == SPAWN_EGG_EMBERHOPPER {
+    if b == SPAWN_EGG_STRIDER {
         return Some(42);
     }
-    if b == SPAWN_EGG_PIGOBLIN {
+    if b == SPAWN_EGG_PIGLIN {
         return Some(43);
     }
-    if b == SPAWN_EGG_BOARLING {
+    if b == SPAWN_EGG_HOGLIN {
         return Some(44);
     }
-    // the completeness audit: kinds 45..=47 (the weepgeist/cave-spider/
+    // the completeness audit: kinds 45..=47 (the ghast/cave-spider/
     // silverfish eggs)
-    if b == SPAWN_EGG_WEEPGEIST {
+    if b == SPAWN_EGG_GHAST {
         return Some(45);
     }
     if b == SPAWN_EGG_CAVE_SPIDER {
@@ -5437,14 +5437,14 @@ pub fn egg_mob(b: u16) -> Option<u8> {
     Some((b - SPAWN_EGG_BASE) as u8) // 0..=19, decoded by the gameplay layer
 }
 
-/// Phase E1: state-aware emission — the lit fluxstone lamp state emits 15
+/// Phase E1: state-aware emission — the lit redstone lamp state emits 15
 /// even though the lamp BLOCK id (off) emits 0. Call sites pass the raw
 /// stored state; everything else folds to the block table value.
-/// VERIFIED w/Fluxstone_Lamp: "An active fluxstone lamp produces block light
-/// level 15. An inactive fluxstone lamp produces no light."
+/// VERIFIED w/Redstone_Lamp: "An active redstone lamp produces block light
+/// level 15. An inactive redstone lamp produces no light."
 #[inline]
 pub fn state_emissive(s: u16) -> u8 {
-    if s == FLUXSTONE_LAMP_LIT {
+    if s == REDSTONE_LAMP_LIT {
         return 15;
     }
     // 1.14: a LIT campfire emits 15 (VERIFIED w/Campfire infobox:
@@ -5461,24 +5461,24 @@ pub fn state_emissive(s: u16) -> u8 {
     if v11_smelter_lit(s) {
         return 13;
     }
-    // 1.16 (Hollows Update, part 1): the rebirth anchor's charge light —
-    // "the rebirth anchor glow with a light level of 3. Each glowstone
+    // 1.16 (Nether Update, part 1): the respawn anchor's charge light —
+    // "the respawn anchor glow with a light level of 3. Each glowstone
     // after the first increases the light level by 4, up to a maximum of
-    // 15" (VERIFIED w/Rebirth_Anchor: charges 1/2/3/4 → 3/7/11/15).
-    // Weeping obsidian (10) and spirit fire (10) ride their BLOCK rows.
+    // 15" (VERIFIED w/Respawn_Anchor: charges 1/2/3/4 → 3/7/11/15).
+    // Weeping obsidian (10) and soul fire (10) ride their BLOCK rows.
     if is_v13_state(s) && s < V13_STATE_BASE + 5 {
         return anchor_light(s);
     }
     emissive(state_block(s))
 }
 
-/// Phase E1: hollow-wart crop age (0..3) from its storage state.
+/// Phase E1: nether-wart crop age (0..3) from its storage state.
 #[inline]
 pub fn wart_age(s: u16) -> u16 {
     if (WART_STATE_BASE..=WART_STATE_END).contains(&s) {
         s - WART_STATE_BASE
     } else {
-        // a non-crop hollow-wart state (or anything else) is age 0
+        // a non-crop nether-wart state (or anything else) is age 0
         0
     }
 }
@@ -5549,7 +5549,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Iron Ore", [TILE_IRON_ORE, TILE_IRON_ORE, TILE_IRON_ORE], true, true, false, false, 0, SoundFamily::Stone),
     d("Gold Ore", [TILE_GOLD_ORE, TILE_GOLD_ORE, TILE_GOLD_ORE], true, true, false, false, 0, SoundFamily::Stone),
     d("Diamond Ore", [TILE_DIAMOND_ORE, TILE_DIAMOND_ORE, TILE_DIAMOND_ORE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Fluxstone Ore", [TILE_FLUXSTONE_ORE, TILE_FLUXSTONE_ORE, TILE_FLUXSTONE_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Redstone Ore", [TILE_REDSTONE_ORE, TILE_REDSTONE_ORE, TILE_REDSTONE_ORE], true, true, false, false, 0, SoundFamily::Stone),
     d("Lapis Ore", [TILE_LAPIS_ORE, TILE_LAPIS_ORE, TILE_LAPIS_ORE], true, true, false, false, 0, SoundFamily::Stone),
     d("Emerald Ore", [TILE_EMERALD_ORE, TILE_EMERALD_ORE, TILE_EMERALD_ORE], true, true, false, false, 0, SoundFamily::Stone),
     // mineral blocks
@@ -5587,18 +5587,18 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Oak Slab", [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], true, false, false, false, 0, SoundFamily::Wood),
     d("Cobblestone Stairs", [TILE_COBBLE, TILE_COBBLE, TILE_COBBLE], true, false, false, false, 0, SoundFamily::Stone),
     d("Oak Fence", [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], true, false, false, false, 0, SoundFamily::Wood),
-    // fluxstone core (Phase 6 §25): cross-rendered components; power lives
+    // redstone core (Phase 6 §25): cross-rendered components; power lives
     // in the sim states (wire 113..128, lever 129/130, torch 131/132)
-    d("Fluxstone Wire", [TILE_FLUXSTONE_WIRE, TILE_FLUXSTONE_WIRE, TILE_FLUXSTONE_WIRE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Fluxstone Torch", [TILE_FLUXSTONE_TORCH, TILE_FLUXSTONE_TORCH, TILE_FLUXSTONE_TORCH], false, false, true, false, 7, SoundFamily::Wood),
+    d("Redstone Wire", [TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Redstone Torch", [TILE_REDSTONE_TORCH, TILE_REDSTONE_TORCH, TILE_REDSTONE_TORCH], false, false, true, false, 7, SoundFamily::Wood),
     d("Lever", [TILE_LEVER, TILE_LEVER, TILE_LEVER], false, false, true, false, 0, SoundFamily::Wood),
     // gameplay (Phase 7): full-cube greedy-meshed, lit variant glows
     d("Furnace", [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_FURNACE_SIDE], true, true, false, false, 0, SoundFamily::Stone),
-    // hollow blocks (Phase 7 §28): full-cube greedy-meshed; quartz ore in
-    // hollowstone; spirit sand slows (§23 hook later) and sinks slightly
-    d("Hollowstone", [TILE_HOLLOWSTONE, TILE_HOLLOWSTONE, TILE_HOLLOWSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Hollow Quartz Ore", [TILE_QUARTZ_ORE, TILE_QUARTZ_ORE, TILE_QUARTZ_ORE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Spirit Sand", [TILE_SPIRIT_SAND, TILE_SPIRIT_SAND, TILE_SPIRIT_SAND], true, true, false, false, 0, SoundFamily::Sand),
+    // nether blocks (Phase 7 §28): full-cube greedy-meshed; quartz ore in
+    // netherrack; soul sand slows (§23 hook later) and sinks slightly
+    d("Netherrack", [TILE_NETHERRACK, TILE_NETHERRACK, TILE_NETHERRACK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Nether Quartz Ore", [TILE_QUARTZ_ORE, TILE_QUARTZ_ORE, TILE_QUARTZ_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Soul Sand", [TILE_SOUL_SAND, TILE_SOUL_SAND, TILE_SOUL_SAND], true, true, false, false, 0, SoundFamily::Sand),
     // brewing (Phase 7 §29): cross-rendered stand (vanilla stand is a small
     // rod — not a full cube, not solid); potion bottles are ITEM-only ids
     // that exist in inventories — is_item_block() guards placement
@@ -5623,14 +5623,14 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Bone", [TILE_BONE, TILE_BONE, TILE_BONE], false, false, true, false, 0, SoundFamily::Stone),
     d("String", [TILE_STRING, TILE_STRING, TILE_STRING], false, false, true, false, 0, SoundFamily::Grass),
     d("Gunpowder", [TILE_GUNPOWDER, TILE_GUNPOWDER, TILE_GUNPOWDER], false, false, true, false, 0, SoundFamily::Sand),
-    d("Void Pearl", [TILE_VOID_PEARL, TILE_VOID_PEARL, TILE_VOID_PEARL], false, false, true, false, 0, SoundFamily::Glass),
+    d("Ender Pearl", [TILE_ENDER_PEARL, TILE_ENDER_PEARL, TILE_ENDER_PEARL], false, false, true, false, 0, SoundFamily::Glass),
     d("Rotten Flesh", [TILE_ROTTEN_FLESH, TILE_ROTTEN_FLESH, TILE_ROTTEN_FLESH], false, false, true, false, 0, SoundFamily::Grass),
     d("Arrow", [TILE_ARROW_ITEM, TILE_ARROW_ITEM, TILE_ARROW_ITEM], false, false, true, false, 0, SoundFamily::Stone),
-    // fluxstone components (Phase 3) — cross-rendered sprites (visual
+    // redstone components (Phase 3) — cross-rendered sprites (visual
     // simplification: vanilla repeaters/comparators are flat plates;
     // mechanics are fully directional via the state props)
-    d("Fluxstone Repeater", [TILE_REPEATER, TILE_REPEATER, TILE_REPEATER], false, false, true, false, 0, SoundFamily::Wood),
-    d("Fluxstone Comparator", [TILE_COMPARATOR, TILE_COMPARATOR, TILE_COMPARATOR], false, false, true, false, 0, SoundFamily::Wood),
+    d("Redstone Repeater", [TILE_REPEATER, TILE_REPEATER, TILE_REPEATER], false, false, true, false, 0, SoundFamily::Wood),
+    d("Redstone Comparator", [TILE_COMPARATOR, TILE_COMPARATOR, TILE_COMPARATOR], false, false, true, false, 0, SoundFamily::Wood),
     d("Piston", [TILE_PISTON, TILE_PISTON, TILE_PISTON], true, false, true, false, 0, SoundFamily::Wood),
     d("Sticky Piston", [TILE_STICKY_PISTON, TILE_STICKY_PISTON, TILE_STICKY_PISTON], true, false, true, false, 0, SoundFamily::Wood),
     d("Dispenser", [TILE_DISPENSER, TILE_DISPENSER, TILE_DISPENSER], true, false, true, false, 0, SoundFamily::Wood),
@@ -5650,13 +5650,13 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Monster Spawner", [TILE_SPAWNER, TILE_SPAWNER, TILE_SPAWNER], true, false, false, false, 0, SoundFamily::Stone),
     // Phase 10: end-portal frame (stronghold portal room) — solid cube
     // with the frame inset face; eye insertion + activation out of scope
-    d("Void Gate Frame", [TILE_VOID_GATE_FRAME, TILE_VOID_GATE_FRAME, TILE_VOID_GATE_FRAME], true, false, false, false, 0, SoundFamily::Stone),
+    d("End Portal Frame", [TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME], true, false, false, false, 0, SoundFamily::Stone),
     // ---- Phase E1 rows (ids 103..=139; evolution 1.0–1.2 bracket) ----
     d("Mycelium", [TILE_MYCELIUM_TOP, TILE_DIRT, TILE_MYCELIUM_SIDE], true, true, false, false, 0, SoundFamily::Grass),
-    d("Void Stone", [TILE_VOID_STONE, TILE_VOID_STONE, TILE_VOID_STONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Hollow Bricks", [TILE_HOLLOW_BRICKS, TILE_HOLLOW_BRICKS, TILE_HOLLOW_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
-    // VERIFIED w/Fluxstone_Lamp: off = no light; lit state emits 15; opaque
-    d("Fluxstone Lamp", [TILE_FLUXSTONE_LAMP, TILE_FLUXSTONE_LAMP, TILE_FLUXSTONE_LAMP], true, true, false, false, 0, SoundFamily::Glass),
+    d("End Stone", [TILE_END_STONE, TILE_END_STONE, TILE_END_STONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Nether Bricks", [TILE_NETHER_BRICKS, TILE_NETHER_BRICKS, TILE_NETHER_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    // VERIFIED w/Redstone_Lamp: off = no light; lit state emits 15; opaque
+    d("Redstone Lamp", [TILE_REDSTONE_LAMP, TILE_REDSTONE_LAMP, TILE_REDSTONE_LAMP], true, true, false, false, 0, SoundFamily::Glass),
     d("Chiseled Stone Bricks", [TILE_CHISELED_STONE_BRICKS, TILE_CHISELED_STONE_BRICKS, TILE_CHISELED_STONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
     d("Chiseled Sandstone", [TILE_CHISELED_SANDSTONE, TILE_CHISELED_SANDSTONE, TILE_CHISELED_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
     d("Cut Sandstone", [TILE_CUT_SANDSTONE, TILE_CUT_SANDSTONE, TILE_CUT_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
@@ -5664,41 +5664,41 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Red Mushroom Block", [TILE_MUSHROOM_RED_BLOCK, TILE_MUSHROOM_RED_BLOCK, TILE_MUSHROOM_RED_BLOCK], true, true, false, false, 0, SoundFamily::Wood),
     d("Brown Mushroom Block", [TILE_MUSHROOM_BROWN_BLOCK, TILE_MUSHROOM_BROWN_BLOCK, TILE_MUSHROOM_BROWN_BLOCK], true, true, false, false, 0, SoundFamily::Wood),
     d("Mushroom Stem", [TILE_MUSHROOM_STEM, TILE_MUSHROOM_STEM, TILE_MUSHROOM_STEM], true, true, false, false, 0, SoundFamily::Wood),
-    d("Hollow Wart", [TILE_HOLLOW_WART_0, TILE_HOLLOW_WART_0, TILE_HOLLOW_WART_0], false, false, true, false, 0, SoundFamily::Grass),
+    d("Nether Wart", [TILE_NETHER_WART_0, TILE_NETHER_WART_0, TILE_NETHER_WART_0], false, false, true, false, 0, SoundFamily::Grass),
     d("Dragon Egg", [TILE_DRAGON_EGG, TILE_DRAGON_EGG, TILE_DRAGON_EGG], true, true, false, false, 1, SoundFamily::Stone),
     // the portal itself: walk-in block, no skylight-blocking opacity,
     // full block light (vanilla star-field face)
-    d("Void Gate", [TILE_VOID_GATE, TILE_VOID_GATE, TILE_VOID_GATE], true, false, false, false, 15, SoundFamily::Stone),
+    d("End Portal", [TILE_END_PORTAL, TILE_END_PORTAL, TILE_END_PORTAL], true, false, false, false, 15, SoundFamily::Stone),
     // ---- item-blocks (117..=139) — inventory-only, the potion pattern ----
-    d("Void Crystal", [TILE_VOID_CRYSTAL, TILE_VOID_CRYSTAL, TILE_VOID_CRYSTAL], false, false, true, false, 0, SoundFamily::Glass),
-    d("Eye of Void", [TILE_VOID_EYE, TILE_VOID_EYE, TILE_VOID_EYE], false, false, true, false, 0, SoundFamily::Glass),
+    d("End Crystal", [TILE_END_CRYSTAL, TILE_END_CRYSTAL, TILE_END_CRYSTAL], false, false, true, false, 0, SoundFamily::Glass),
+    d("Eye of End", [TILE_EYE_OF_ENDER, TILE_EYE_OF_ENDER, TILE_EYE_OF_ENDER], false, false, true, false, 0, SoundFamily::Glass),
     d("Blaze Rod", [TILE_BLAZE_ROD, TILE_BLAZE_ROD, TILE_BLAZE_ROD], false, false, true, false, 0, SoundFamily::Wood),
     d("Blaze Powder", [TILE_BLAZE_POWDER, TILE_BLAZE_POWDER, TILE_BLAZE_POWDER], false, false, true, false, 0, SoundFamily::Sand),
     d("Golden Apple", [TILE_GOLDEN_APPLE, TILE_GOLDEN_APPLE, TILE_GOLDEN_APPLE], false, false, true, false, 0, SoundFamily::Grass),
     d("Snowball", [TILE_SNOWBALL, TILE_SNOWBALL, TILE_SNOWBALL], false, false, true, false, 0, SoundFamily::Sand),
-    d("Hollow Brick", [TILE_HOLLOW_BRICK, TILE_HOLLOW_BRICK, TILE_HOLLOW_BRICK], false, false, true, false, 0, SoundFamily::Stone),
+    d("Nether Brick", [TILE_NETHER_BRICK, TILE_NETHER_BRICK, TILE_NETHER_BRICK], false, false, true, false, 0, SoundFamily::Stone),
     d("Snow Golem Spawn Egg", [TILE_EGG_BASE, TILE_EGG_BASE, TILE_EGG_BASE], false, false, true, false, 0, SoundFamily::Grass),
     d("Magma Cube Spawn Egg", [TILE_EGG_BASE + 1, TILE_EGG_BASE + 1, TILE_EGG_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
     d("Blaze Spawn Egg", [TILE_EGG_BASE + 2, TILE_EGG_BASE + 2, TILE_EGG_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
     d("Ocelot Spawn Egg", [TILE_EGG_BASE + 3, TILE_EGG_BASE + 3, TILE_EGG_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
     d("Iron Golem Spawn Egg", [TILE_EGG_BASE + 4, TILE_EGG_BASE + 4, TILE_EGG_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
     d("Zombie Villager Spawn Egg", [TILE_EGG_BASE + 5, TILE_EGG_BASE + 5, TILE_EGG_BASE + 5], false, false, true, false, 0, SoundFamily::Grass),
-    d("Shroomcow Spawn Egg", [TILE_EGG_BASE + 6, TILE_EGG_BASE + 6, TILE_EGG_BASE + 6], false, false, true, false, 0, SoundFamily::Grass),
+    d("Mooshroom Spawn Egg", [TILE_EGG_BASE + 6, TILE_EGG_BASE + 6, TILE_EGG_BASE + 6], false, false, true, false, 0, SoundFamily::Grass),
     d("Zombie Spawn Egg", [TILE_EGG_BASE + 7, TILE_EGG_BASE + 7, TILE_EGG_BASE + 7], false, false, true, false, 0, SoundFamily::Grass),
     d("Skeleton Spawn Egg", [TILE_EGG_BASE + 8, TILE_EGG_BASE + 8, TILE_EGG_BASE + 8], false, false, true, false, 0, SoundFamily::Grass),
-    d("Fuseling Spawn Egg", [TILE_EGG_BASE + 9, TILE_EGG_BASE + 9, TILE_EGG_BASE + 9], false, false, true, false, 0, SoundFamily::Grass),
+    d("Creeper Spawn Egg", [TILE_EGG_BASE + 9, TILE_EGG_BASE + 9, TILE_EGG_BASE + 9], false, false, true, false, 0, SoundFamily::Grass),
     d("Spider Spawn Egg", [TILE_EGG_BASE + 10, TILE_EGG_BASE + 10, TILE_EGG_BASE + 10], false, false, true, false, 0, SoundFamily::Grass),
-    d("Voidling Spawn Egg", [TILE_EGG_BASE + 11, TILE_EGG_BASE + 11, TILE_EGG_BASE + 11], false, false, true, false, 0, SoundFamily::Grass),
+    d("Enderman Spawn Egg", [TILE_EGG_BASE + 11, TILE_EGG_BASE + 11, TILE_EGG_BASE + 11], false, false, true, false, 0, SoundFamily::Grass),
     d("Cow Spawn Egg", [TILE_EGG_BASE + 12, TILE_EGG_BASE + 12, TILE_EGG_BASE + 12], false, false, true, false, 0, SoundFamily::Grass),
     d("Pig Spawn Egg", [TILE_EGG_BASE + 13, TILE_EGG_BASE + 13, TILE_EGG_BASE + 13], false, false, true, false, 0, SoundFamily::Grass),
     d("Sheep Spawn Egg", [TILE_EGG_BASE + 14, TILE_EGG_BASE + 14, TILE_EGG_BASE + 14], false, false, true, false, 0, SoundFamily::Grass),
     d("Chicken Spawn Egg", [TILE_EGG_BASE + 15, TILE_EGG_BASE + 15, TILE_EGG_BASE + 15], false, false, true, false, 0, SoundFamily::Grass),
-    // ---- Phase E2 eggs (mob kinds 17..=20: blight skeleton, witch, bat,
-    // blight — VERIFIED spawn-egg usage rule) ----
-    d("Blight Skeleton Spawn Egg", [TILE_EGG_BASE + 16, TILE_EGG_BASE + 16, TILE_EGG_BASE + 16], false, false, true, false, 0, SoundFamily::Grass),
+    // ---- Phase E2 eggs (mob kinds 17..=20: wither skeleton, witch, bat,
+    // wither — VERIFIED spawn-egg usage rule) ----
+    d("Wither Skeleton Spawn Egg", [TILE_EGG_BASE + 16, TILE_EGG_BASE + 16, TILE_EGG_BASE + 16], false, false, true, false, 0, SoundFamily::Grass),
     d("Witch Spawn Egg", [TILE_EGG_BASE + 17, TILE_EGG_BASE + 17, TILE_EGG_BASE + 17], false, false, true, false, 0, SoundFamily::Grass),
     d("Bat Spawn Egg", [TILE_EGG_BASE + 18, TILE_EGG_BASE + 18, TILE_EGG_BASE + 18], false, false, true, false, 0, SoundFamily::Grass),
-    d("Blight Spawn Egg", [TILE_EGG_BASE + 19, TILE_EGG_BASE + 19, TILE_EGG_BASE + 19], false, false, true, false, 0, SoundFamily::Grass),
+    d("Wither Spawn Egg", [TILE_EGG_BASE + 19, TILE_EGG_BASE + 19, TILE_EGG_BASE + 19], false, false, true, false, 0, SoundFamily::Grass),
     // ---- Phase E2 world blocks (evolution 1.3–1.4 bracket) ----
     // anvil family: solid, opaque; damage tiles come from state_tiles
     d("Anvil", [TILE_ANVIL, TILE_ANVIL, TILE_ANVIL], true, true, false, false, 0, SoundFamily::Metal),
@@ -5710,8 +5710,8 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // wall: solid, not opaque (fence-class boundary block — 1.5-tall
     // collision; connections at mesh time)
     d("Cobblestone Wall", [TILE_COBBLE_WALL, TILE_COBBLE_WALL, TILE_COBBLE_WALL], true, false, false, false, 0, SoundFamily::Stone),
-    // void chest: solid, opaque, light 7 (VERIFIED w/Void_Chest)
-    d("Void Chest", [TILE_VOID_CHEST, TILE_VOID_CHEST, TILE_VOID_CHEST], true, true, false, false, 7, SoundFamily::Stone),
+    // ender chest: solid, opaque, light 7 (VERIFIED w/Ender_Chest)
+    d("Ender Chest", [TILE_ENDER_CHEST, TILE_ENDER_CHEST, TILE_ENDER_CHEST], true, true, false, false, 7, SoundFamily::Stone),
     // flower pot: cross-rendered, instant break (hardness 0)
     d("Flower Pot", [TILE_FLOWER_POT, TILE_FLOWER_POT, TILE_FLOWER_POT], false, false, true, false, 0, SoundFamily::Grass),
     // item frame: cross-rendered sprite of the frame; contents ride the
@@ -5719,14 +5719,14 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Item Frame", [TILE_ITEM_FRAME, TILE_ITEM_FRAME, TILE_ITEM_FRAME], false, false, true, false, 0, SoundFamily::Wood),
     // tripwire hook: cross-rendered; facing × powered in the state
     d("Tripwire Hook", [TILE_TRIPWIRE_HOOK, TILE_TRIPWIRE_HOOK, TILE_TRIPWIRE_HOOK], false, false, true, false, 0, SoundFamily::Wood),
-    // blight skeleton skull: cross-rendered head on the ground
-    d("Blight Skeleton Skull", [TILE_BLIGHT_SKULL, TILE_BLIGHT_SKULL, TILE_BLIGHT_SKULL], false, false, true, false, 0, SoundFamily::Stone),
+    // wither skeleton skull: cross-rendered head on the ground
+    d("Wither Skeleton Skull", [TILE_WITHER_SKULL, TILE_WITHER_SKULL, TILE_WITHER_SKULL], false, false, true, false, 0, SoundFamily::Stone),
     // command block: solid opaque cube; the ON face tile glows (lit state
     // = last-fired pulse, functional only)
     d("Command Block", [TILE_COMMAND_BLOCK, TILE_COMMAND_BLOCK, TILE_COMMAND_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
     // ---- Phase E2 item-blocks (155..=160) — inventory-only ----
     d("Emerald", [TILE_EMERALD, TILE_EMERALD, TILE_EMERALD], false, false, true, false, 0, SoundFamily::Grass),
-    d("Hollow Star", [TILE_HOLLOW_STAR, TILE_HOLLOW_STAR, TILE_HOLLOW_STAR], false, false, true, false, 0, SoundFamily::Glass),
+    d("Nether Star", [TILE_NETHER_STAR, TILE_NETHER_STAR, TILE_NETHER_STAR], false, false, true, false, 0, SoundFamily::Glass),
     d("Potato", [TILE_POTATO, TILE_POTATO, TILE_POTATO], false, false, true, false, 0, SoundFamily::Grass),
     d("Baked Potato", [TILE_BAKED_POTATO, TILE_BAKED_POTATO, TILE_BAKED_POTATO], false, false, true, false, 0, SoundFamily::Grass),
     d("Carrot", [TILE_CARROT, TILE_CARROT, TILE_CARROT], false, false, true, false, 0, SoundFamily::Grass),
@@ -5772,9 +5772,9 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Trapped Chest", [TILE_CHEST, TILE_CHEST, TILE_CHEST], true, true, false, false, 0, SoundFamily::Wood),
     d("Light Weighted Pressure Plate", [TILE_PLATE_LIGHT, TILE_PLATE_LIGHT, TILE_PLATE_LIGHT], false, false, false, false, 0, SoundFamily::Stone),
     d("Heavy Weighted Pressure Plate", [TILE_PLATE_HEAVY, TILE_PLATE_HEAVY, TILE_PLATE_HEAVY], false, false, false, false, 0, SoundFamily::Stone),
-    d("Block of Fluxstone", [TILE_FLUXSTONE_BLOCK, TILE_FLUXSTONE_BLOCK, TILE_FLUXSTONE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
-    // items: hollow quartz / lead / saddle (inventory-only)
-    d("Hollow Quartz", [TILE_HOLLOW_QUARTZ, TILE_HOLLOW_QUARTZ, TILE_HOLLOW_QUARTZ], false, false, true, false, 0, SoundFamily::Stone),
+    d("Block of Redstone", [TILE_REDSTONE_BLOCK, TILE_REDSTONE_BLOCK, TILE_REDSTONE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    // items: nether quartz / lead / saddle (inventory-only)
+    d("Nether Quartz", [TILE_NETHER_QUARTZ, TILE_NETHER_QUARTZ, TILE_NETHER_QUARTZ], false, false, true, false, 0, SoundFamily::Stone),
     d("Lead", [TILE_LEAD, TILE_LEAD, TILE_LEAD], false, false, true, false, 0, SoundFamily::Grass),
     d("Saddle", [TILE_SADDLE, TILE_SADDLE, TILE_SADDLE], false, false, true, false, 0, SoundFamily::Grass),
     // E3 spawn eggs (kinds 20..=22)
@@ -5846,42 +5846,42 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Polished Andesite", [TILE_POLISHED_ANDESITE, TILE_POLISHED_ANDESITE, TILE_POLISHED_ANDESITE], true, true, false, false, 0, SoundFamily::Stone),
     d("Red Sandstone", [TILE_RED_SANDSTONE, TILE_RED_SANDSTONE, TILE_RED_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
     d("Smooth Red Sandstone", [TILE_SMOOTH_RED_SANDSTONE, TILE_SMOOTH_RED_SANDSTONE, TILE_SMOOTH_RED_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Abyssprism", [TILE_ABYSSPRISM, TILE_ABYSSPRISM, TILE_ABYSSPRISM], true, true, false, false, 0, SoundFamily::Stone),
-    d("Abyssprism Bricks", [TILE_ABYSSPRISM_BRICKS, TILE_ABYSSPRISM_BRICKS, TILE_ABYSSPRISM_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
-    d("Dark Abyssprism", [TILE_DARK_ABYSSPRISM, TILE_DARK_ABYSSPRISM, TILE_DARK_ABYSSPRISM], true, true, false, false, 0, SoundFamily::Stone),
+    d("Prismarine", [TILE_PRISMARINE, TILE_PRISMARINE, TILE_PRISMARINE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Prismarine Bricks", [TILE_PRISMARINE_BRICKS, TILE_PRISMARINE_BRICKS, TILE_PRISMARINE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    d("Dark Prismarine", [TILE_DARK_PRISMARINE, TILE_DARK_PRISMARINE, TILE_DARK_PRISMARINE], true, true, false, false, 0, SoundFamily::Stone),
     // wiki: "Emit light at a light level of 15"
     d("Sea Lantern", [TILE_SEA_LANTERN, TILE_SEA_LANTERN, TILE_SEA_LANTERN], true, true, false, false, 15, SoundFamily::Glass),
     d("Iron Trapdoor", [TILE_IRON_TRAPDOOR, TILE_IRON_TRAPDOOR, TILE_IRON_TRAPDOOR], true, false, false, false, 0, SoundFamily::Wood),
     // barrier: wiki "acts like bedrock, but is completely transparent" —
     // near-invisible tile + solid collision
     d("Barrier", [TILE_BARRIER, TILE_BARRIER, TILE_BARRIER], true, false, false, false, 0, SoundFamily::Glass),
-    // 1.8 rabbit + abyssprism items
+    // 1.8 rabbit + prismarine items
     d("Raw Rabbit", [TILE_RAW_RABBIT, TILE_RAW_RABBIT, TILE_RAW_RABBIT], false, false, true, false, 0, SoundFamily::Grass),
     d("Cooked Rabbit", [TILE_COOKED_RABBIT, TILE_COOKED_RABBIT, TILE_COOKED_RABBIT], false, false, true, false, 0, SoundFamily::Grass),
     d("Rabbit Hide", [TILE_RABBIT_HIDE, TILE_RABBIT_HIDE, TILE_RABBIT_HIDE], false, false, true, false, 0, SoundFamily::Grass),
     d("Rabbit's Foot", [TILE_RABBIT_FOOT, TILE_RABBIT_FOOT, TILE_RABBIT_FOOT], false, false, true, false, 0, SoundFamily::Grass),
-    d("Abyssprism Shard", [TILE_ABYSSPRISM_SHARD, TILE_ABYSSPRISM_SHARD, TILE_ABYSSPRISM_SHARD], false, false, true, false, 0, SoundFamily::Stone),
-    d("Abyssprism Crystals", [TILE_ABYSSPRISM_CRYSTALS, TILE_ABYSSPRISM_CRYSTALS, TILE_ABYSSPRISM_CRYSTALS], false, false, true, false, 0, SoundFamily::Stone),
+    d("Prismarine Shard", [TILE_PRISMARINE_SHARD, TILE_PRISMARINE_SHARD, TILE_PRISMARINE_SHARD], false, false, true, false, 0, SoundFamily::Stone),
+    d("Prismarine Crystals", [TILE_PRISMARINE_CRYSTALS, TILE_PRISMARINE_CRYSTALS, TILE_PRISMARINE_CRYSTALS], false, false, true, false, 0, SoundFamily::Stone),
     // ---- 1.9 bracket (V4 window) — reference wiki /Java_Edition_1.9,
     // live round 2026-09-06 ----
     d("Grass Path", [TILE_GRASS_PATH, TILE_DIRT, TILE_GRASS_PATH_SIDE], true, true, false, false, 0, SoundFamily::Grass),
-    d("Violetstone Block", [TILE_VIOLETSTONE, TILE_VIOLETSTONE, TILE_VIOLETSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Violetstone Pillar", [TILE_VIOLETSTONE, TILE_VIOLETSTONE, TILE_VIOLETSTONE_PILLAR_SIDE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Void Stone Bricks", [TILE_VOID_STONE_BRICKS, TILE_VOID_STONE_BRICKS, TILE_VOID_STONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    d("Purpur Block", [TILE_PURPUR, TILE_PURPUR, TILE_PURPUR], true, true, false, false, 0, SoundFamily::Stone),
+    d("Purpur Pillar", [TILE_PURPUR, TILE_PURPUR, TILE_PURPUR_PILLAR_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    d("End Stone Bricks", [TILE_END_STONE_BRICKS, TILE_END_STONE_BRICKS, TILE_END_STONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
     // wiki: "same brightness as torches" (14)
-    d("Void Rod", [TILE_VOID_ROD, TILE_VOID_ROD, TILE_VOID_ROD], false, false, true, false, 14, SoundFamily::Wood),
-    d("Echo Plant", [TILE_ECHO_PLANT, TILE_ECHO_PLANT, TILE_ECHO_PLANT], true, false, true, false, 0, SoundFamily::Wood),
-    d("Echo Flower", [TILE_ECHO_FLOWER, TILE_ECHO_FLOWER, TILE_ECHO_FLOWER], true, false, true, false, 0, SoundFamily::Wood),
+    d("End Rod", [TILE_END_ROD, TILE_END_ROD, TILE_END_ROD], false, false, true, false, 14, SoundFamily::Wood),
+    d("Chorus Plant", [TILE_CHORUS_PLANT, TILE_CHORUS_PLANT, TILE_CHORUS_PLANT], true, false, true, false, 0, SoundFamily::Wood),
+    d("Chorus Flower", [TILE_CHORUS_FLOWER, TILE_CHORUS_FLOWER, TILE_CHORUS_FLOWER], true, false, true, false, 0, SoundFamily::Wood),
     // 1.9 items
-    d("Echo Fruit", [TILE_ECHO_FRUIT, TILE_ECHO_FRUIT, TILE_ECHO_FRUIT], false, false, true, false, 0, SoundFamily::Grass),
-    d("Skywings", [TILE_SKYWINGS, TILE_SKYWINGS, TILE_SKYWINGS], false, false, true, false, 0, SoundFamily::Grass),
+    d("Chorus Fruit", [TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT], false, false, true, false, 0, SoundFamily::Grass),
+    d("Elytra", [TILE_ELYTRA, TILE_ELYTRA, TILE_ELYTRA], false, false, true, false, 0, SoundFamily::Grass),
     d("Shield", [TILE_SHIELD, TILE_SHIELD, TILE_SHIELD], false, false, true, false, 0, SoundFamily::Wood),
     // ---- 1.10 bracket (V5 window) — reference wiki /Java_Edition_1.10,
     // live round 2026-09-06 ----
     // magma: light level 3 (wiki /w/Magma_Block, live round)
     d("Magma Block", [TILE_MAGMA, TILE_MAGMA, TILE_MAGMA], true, true, false, false, 3, SoundFamily::Stone),
-    d("Hollow Wart Block", [TILE_HOLLOW_WART_BLOCK, TILE_HOLLOW_WART_BLOCK, TILE_HOLLOW_WART_BLOCK], true, true, false, false, 0, SoundFamily::Wool),
-    d("Red Hollow Bricks", [TILE_RED_HOLLOW_BRICKS, TILE_RED_HOLLOW_BRICKS, TILE_RED_HOLLOW_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    d("Nether Wart Block", [TILE_NETHER_WART_BLOCK, TILE_NETHER_WART_BLOCK, TILE_NETHER_WART_BLOCK], true, true, false, false, 0, SoundFamily::Wool),
+    d("Red Nether Bricks", [TILE_RED_NETHER_BRICKS, TILE_RED_NETHER_BRICKS, TILE_RED_NETHER_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
     d("Bone Block", [TILE_BONE_BLOCK, TILE_BONE_BLOCK, TILE_BONE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
     // ---- audit-fix round (1.2 jungle family + 1.4 golden carrot) ----
     d("Golden Carrot", [TILE_GOLDEN_CARROT, TILE_GOLDEN_CARROT, TILE_GOLDEN_CARROT], false, false, true, false, 0, SoundFamily::Grass),
@@ -5891,16 +5891,16 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Vine", [TILE_VINE, TILE_VINE, TILE_VINE], false, false, true, false, 0, SoundFamily::Grass),
     d("Fern", [TILE_FERN, TILE_FERN, TILE_FERN], false, false, true, false, 0, SoundFamily::Grass),
     // ---- 1.11 bracket (Exploration-era update) ----
-    d("Lurkshell Box", [TILE_LURKSHELL_BOX, TILE_LURKSHELL_BOX, TILE_LURKSHELL_BOX], true, true, false, false, 0, SoundFamily::Stone),
-    d("Lurkshell Shell", [TILE_LURKSHELL_SHELL, TILE_LURKSHELL_SHELL, TILE_LURKSHELL_SHELL], false, false, true, false, 0, SoundFamily::Stone),
+    d("Shulker Box", [TILE_SHULKER_BOX, TILE_SHULKER_BOX, TILE_SHULKER_BOX], true, true, false, false, 0, SoundFamily::Stone),
+    d("Shulker Shell", [TILE_SHULKER_SHELL, TILE_SHULKER_SHELL, TILE_SHULKER_SHELL], false, false, true, false, 0, SoundFamily::Stone),
     d("Totem of Revival", [TILE_TOTEM, TILE_TOTEM, TILE_TOTEM], false, false, true, false, 0, SoundFamily::Grass),
     // 1.11 egg items: egg-shaped tiles (TILE_V7_EGG_BASE order = the
     // egg_mob kind order 23..=29), NOT the mob billboard sprites — the
     // E1/E2/E3 egg convention
     d("Llama Spawn Egg", [TILE_V7_EGG_BASE, TILE_V7_EGG_BASE, TILE_V7_EGG_BASE], false, false, true, false, 0, SoundFamily::Stone),
-    d("Cleaver Spawn Egg", [TILE_V7_EGG_BASE + 1, TILE_V7_EGG_BASE + 1, TILE_V7_EGG_BASE + 1], false, false, true, false, 0, SoundFamily::Stone),
-    d("Runecaller Spawn Egg", [TILE_V7_EGG_BASE + 2, TILE_V7_EGG_BASE + 2, TILE_V7_EGG_BASE + 2], false, false, true, false, 0, SoundFamily::Stone),
-    d("Wisp Spawn Egg", [TILE_V7_EGG_BASE + 3, TILE_V7_EGG_BASE + 3, TILE_V7_EGG_BASE + 3], false, false, true, false, 0, SoundFamily::Stone),
+    d("Vindicator Spawn Egg", [TILE_V7_EGG_BASE + 1, TILE_V7_EGG_BASE + 1, TILE_V7_EGG_BASE + 1], false, false, true, false, 0, SoundFamily::Stone),
+    d("Evoker Spawn Egg", [TILE_V7_EGG_BASE + 2, TILE_V7_EGG_BASE + 2, TILE_V7_EGG_BASE + 2], false, false, true, false, 0, SoundFamily::Stone),
+    d("Vex Spawn Egg", [TILE_V7_EGG_BASE + 3, TILE_V7_EGG_BASE + 3, TILE_V7_EGG_BASE + 3], false, false, true, false, 0, SoundFamily::Stone),
     d("Husk Spawn Egg", [TILE_V7_EGG_BASE + 4, TILE_V7_EGG_BASE + 4, TILE_V7_EGG_BASE + 4], false, false, true, false, 0, SoundFamily::Stone),
     d("Stray Spawn Egg", [TILE_V7_EGG_BASE + 5, TILE_V7_EGG_BASE + 5, TILE_V7_EGG_BASE + 5], false, false, true, false, 0, SoundFamily::Stone),
     // ---- 1.12 bracket (World of Color Update, live-verified 2026-09-07;
@@ -6101,61 +6101,61 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Honey Bottle", [TILE_HONEY_BOTTLE, TILE_HONEY_BOTTLE, TILE_HONEY_BOTTLE], false, false, true, false, 0, SoundFamily::Glass),
     d("Shears", [TILE_SHEARS, TILE_SHEARS, TILE_SHEARS], false, false, true, false, 0, SoundFamily::Wood),
     d("Bee Spawn Egg", [TILE_SPAWN_EGG_BEE, TILE_SPAWN_EGG_BEE, TILE_SPAWN_EGG_BEE], false, false, true, false, 0, SoundFamily::Grass),
-    // ---- 1.16 (Hollows Update, part 1 — the V13 window): all VERIFIED
-    // against the v116 captures. spirit soil is the soul-sand-textured
+    // ---- 1.16 (Nether Update, part 1 — the V13 window): all VERIFIED
+    // against the v116 captures. soul soil is the soul-sand-textured
     // fire host; basalt carries the pillar top/side pair; the anchor is
     // an opaque cube (charge art through state_tiles); the target a
-    // full cube; chain + spirit fire are non-solid decorations (chain
-    // offsets like the lantern, spirit fire is the cross-sprite) ----
-    d("Spirit Soil", [TILE_SPIRIT_SOIL, TILE_SPIRIT_SOIL, TILE_SPIRIT_SOIL], true, true, false, false, 0, SoundFamily::Sand),
+    // full cube; chain + soul fire are non-solid decorations (chain
+    // offsets like the lantern, soul fire is the cross-sprite) ----
+    d("Soul Soil", [TILE_SOUL_SOIL, TILE_SOUL_SOIL, TILE_SOUL_SOIL], true, true, false, false, 0, SoundFamily::Sand),
     d("Basalt", [TILE_BASALT_TOP, TILE_BASALT_TOP, TILE_BASALT_SIDE], true, true, false, false, 0, SoundFamily::Stone),
     d("Blackstone", [TILE_BLACKSTONE, TILE_BLACKSTONE, TILE_BLACKSTONE], true, true, false, false, 0, SoundFamily::Stone),
     d("Gilded Blackstone", [TILE_GILDED_BLACKSTONE, TILE_GILDED_BLACKSTONE, TILE_GILDED_BLACKSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Weeping Obsidian", [TILE_WEEPING_OBSIDIAN, TILE_WEEPING_OBSIDIAN, TILE_WEEPING_OBSIDIAN], true, true, false, false, 10, SoundFamily::Stone),
-    d("Rebirth Anchor", [TILE_ANCHOR_TOP, TILE_ANCHOR_TOP, TILE_ANCHOR_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Crying Obsidian", [TILE_CRYING_OBSIDIAN, TILE_CRYING_OBSIDIAN, TILE_CRYING_OBSIDIAN], true, true, false, false, 10, SoundFamily::Stone),
+    d("Respawn Anchor", [TILE_ANCHOR_TOP, TILE_ANCHOR_TOP, TILE_ANCHOR_SIDE], true, true, false, false, 0, SoundFamily::Stone),
     d("Target", [TILE_TARGET, TILE_TARGET, TILE_TARGET], true, true, false, false, 0, SoundFamily::Grass),
-    d("Hollow Gold Ore", [TILE_HOLLOW_GOLD_ORE, TILE_HOLLOW_GOLD_ORE, TILE_HOLLOW_GOLD_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Nether Gold Ore", [TILE_NETHER_GOLD_ORE, TILE_NETHER_GOLD_ORE, TILE_NETHER_GOLD_ORE], true, true, false, false, 0, SoundFamily::Stone),
     d("Ancient Debris", [TILE_ANCIENT_DEBRIS_TOP, TILE_ANCIENT_DEBRIS_TOP, TILE_ANCIENT_DEBRIS_SIDE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Block of Hollowite", [TILE_HOLLOWITE_BLOCK, TILE_HOLLOWITE_BLOCK, TILE_HOLLOWITE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Block of Netherite", [TILE_NETHERITE_BLOCK, TILE_NETHERITE_BLOCK, TILE_NETHERITE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
     d("Chain", [TILE_CHAIN, TILE_CHAIN, TILE_CHAIN], false, false, true, false, 0, SoundFamily::Chain),
-    d("Spirit Fire", [TILE_SPIRIT_FIRE, TILE_SPIRIT_FIRE, TILE_SPIRIT_FIRE], false, false, true, false, 10, SoundFamily::Grass),
+    d("Soul Fire", [TILE_SOUL_FIRE, TILE_SOUL_FIRE, TILE_SOUL_FIRE], false, false, true, false, 10, SoundFamily::Grass),
     // 1.16 items — the item-row pattern (non-placeable, cross-sprited)
-    d("Hollowite Scrap", [TILE_HOLLOWITE_SCRAP, TILE_HOLLOWITE_SCRAP, TILE_HOLLOWITE_SCRAP], false, false, true, false, 0, SoundFamily::Stone),
-    d("Hollowite Ingot", [TILE_HOLLOWITE_INGOT, TILE_HOLLOWITE_INGOT, TILE_HOLLOWITE_INGOT], false, false, true, false, 0, SoundFamily::Stone),
-    // ---- 1.16 (Hollows Update, part 2 — the scarlet/viridian families):
+    d("Netherite Scrap", [TILE_NETHERITE_SCRAP, TILE_NETHERITE_SCRAP, TILE_NETHERITE_SCRAP], false, false, true, false, 0, SoundFamily::Stone),
+    d("Netherite Ingot", [TILE_NETHERITE_INGOT, TILE_NETHERITE_INGOT, TILE_NETHERITE_INGOT], false, false, true, false, 0, SoundFamily::Stone),
+    // ---- 1.16 (Nether Update, part 2 — the crimson/warped families):
     // the V14 window. All VERIFIED against the v116b captures: the
     // stems/hyphae are log-class wood-sound cubes (top/side pairs);
-    // mold carries the grass-block top/side pair; the fungi/roots/
-    // sprouts/vines are non-solid cross plants; glowcap is the
+    // nylium carries the grass-block top/side pair; the fungi/roots/
+    // sprouts/vines are non-solid cross plants; shroomlight is the
     // light-15 lamp; the polished stones are stone cubes; the soul
-    // torch + spirit lantern are the light-10 soul-lit pair ----
-    d("Scarlet Stem", [TILE_SCARLET_STEM_TOP, TILE_SCARLET_STEM_TOP, TILE_SCARLET_STEM_SIDE], true, true, false, false, 0, SoundFamily::HollowWood),
-    d("Scarlet Hyphae", [TILE_SCARLET_HYPHAE, TILE_SCARLET_HYPHAE, TILE_SCARLET_HYPHAE], true, true, false, false, 0, SoundFamily::HollowWood),
-    d("Scarlet Planks", [TILE_SCARLET_PLANKS, TILE_SCARLET_PLANKS, TILE_SCARLET_PLANKS], true, true, false, false, 0, SoundFamily::HollowWood),
-    d("Scarlet Mold", [TILE_SCARLET_MOLD_TOP, TILE_HOLLOWSTONE, TILE_SCARLET_MOLD_SIDE], true, true, false, false, 0, SoundFamily::Dirt),
-    d("Scarlet Fungus", [TILE_SCARLET_FUNGUS, TILE_SCARLET_FUNGUS, TILE_SCARLET_FUNGUS], false, false, true, false, 0, SoundFamily::Grass),
-    d("Scarlet Roots", [TILE_SCARLET_ROOTS, TILE_SCARLET_ROOTS, TILE_SCARLET_ROOTS], false, false, true, false, 0, SoundFamily::Grass),
+    // torch + soul lantern are the light-10 soul-lit pair ----
+    d("Crimson Stem", [TILE_CRIMSON_STEM_TOP, TILE_CRIMSON_STEM_TOP, TILE_CRIMSON_STEM_SIDE], true, true, false, false, 0, SoundFamily::NetherWood),
+    d("Crimson Hyphae", [TILE_CRIMSON_HYPHAE, TILE_CRIMSON_HYPHAE, TILE_CRIMSON_HYPHAE], true, true, false, false, 0, SoundFamily::NetherWood),
+    d("Crimson Planks", [TILE_CRIMSON_PLANKS, TILE_CRIMSON_PLANKS, TILE_CRIMSON_PLANKS], true, true, false, false, 0, SoundFamily::NetherWood),
+    d("Crimson Nylium", [TILE_CRIMSON_NYLIUM_TOP, TILE_NETHERRACK, TILE_CRIMSON_NYLIUM_SIDE], true, true, false, false, 0, SoundFamily::Dirt),
+    d("Crimson Fungus", [TILE_CRIMSON_FUNGUS, TILE_CRIMSON_FUNGUS, TILE_CRIMSON_FUNGUS], false, false, true, false, 0, SoundFamily::Grass),
+    d("Crimson Roots", [TILE_CRIMSON_ROOTS, TILE_CRIMSON_ROOTS, TILE_CRIMSON_ROOTS], false, false, true, false, 0, SoundFamily::Grass),
     d("Weeping Vines", [TILE_WEEPING_VINES, TILE_WEEPING_VINES, TILE_WEEPING_VINES], false, false, true, false, 0, SoundFamily::Grass),
-    d("Viridian Stem", [TILE_VIRIDIAN_STEM_TOP, TILE_VIRIDIAN_STEM_TOP, TILE_VIRIDIAN_STEM_SIDE], true, true, false, false, 0, SoundFamily::HollowWood),
-    d("Viridian Hyphae", [TILE_VIRIDIAN_HYPHAE, TILE_VIRIDIAN_HYPHAE, TILE_VIRIDIAN_HYPHAE], true, true, false, false, 0, SoundFamily::HollowWood),
-    d("Viridian Planks", [TILE_VIRIDIAN_PLANKS, TILE_VIRIDIAN_PLANKS, TILE_VIRIDIAN_PLANKS], true, true, false, false, 0, SoundFamily::HollowWood),
-    d("Viridian Mold", [TILE_VIRIDIAN_MOLD_TOP, TILE_HOLLOWSTONE, TILE_VIRIDIAN_MOLD_SIDE], true, true, false, false, 0, SoundFamily::Dirt),
-    d("Viridian Fungus", [TILE_VIRIDIAN_FUNGUS, TILE_VIRIDIAN_FUNGUS, TILE_VIRIDIAN_FUNGUS], false, false, true, false, 0, SoundFamily::Grass),
-    d("Viridian Roots", [TILE_VIRIDIAN_ROOTS, TILE_VIRIDIAN_ROOTS, TILE_VIRIDIAN_ROOTS], false, false, true, false, 0, SoundFamily::Grass),
+    d("Warped Stem", [TILE_WARPED_STEM_TOP, TILE_WARPED_STEM_TOP, TILE_WARPED_STEM_SIDE], true, true, false, false, 0, SoundFamily::NetherWood),
+    d("Warped Hyphae", [TILE_WARPED_HYPHAE, TILE_WARPED_HYPHAE, TILE_WARPED_HYPHAE], true, true, false, false, 0, SoundFamily::NetherWood),
+    d("Warped Planks", [TILE_WARPED_PLANKS, TILE_WARPED_PLANKS, TILE_WARPED_PLANKS], true, true, false, false, 0, SoundFamily::NetherWood),
+    d("Warped Nylium", [TILE_WARPED_NYLIUM_TOP, TILE_NETHERRACK, TILE_WARPED_NYLIUM_SIDE], true, true, false, false, 0, SoundFamily::Dirt),
+    d("Warped Fungus", [TILE_WARPED_FUNGUS, TILE_WARPED_FUNGUS, TILE_WARPED_FUNGUS], false, false, true, false, 0, SoundFamily::Grass),
+    d("Warped Roots", [TILE_WARPED_ROOTS, TILE_WARPED_ROOTS, TILE_WARPED_ROOTS], false, false, true, false, 0, SoundFamily::Grass),
     d("Twisting Vines", [TILE_TWISTING_VINES, TILE_TWISTING_VINES, TILE_TWISTING_VINES], false, false, true, false, 0, SoundFamily::Grass),
-    d("Viridian Wart Block", [TILE_VIRIDIAN_WART_BLOCK, TILE_VIRIDIAN_WART_BLOCK, TILE_VIRIDIAN_WART_BLOCK], true, true, false, false, 0, SoundFamily::Wool),
-    d("Glowcap", [TILE_GLOWCAP, TILE_GLOWCAP, TILE_GLOWCAP], true, true, false, false, 15, SoundFamily::Wool),
-    d("Hollow Sprouts", [TILE_HOLLOW_SPROUTS, TILE_HOLLOW_SPROUTS, TILE_HOLLOW_SPROUTS], false, false, true, false, 0, SoundFamily::Grass),
+    d("Warped Wart Block", [TILE_WARPED_WART_BLOCK, TILE_WARPED_WART_BLOCK, TILE_WARPED_WART_BLOCK], true, true, false, false, 0, SoundFamily::Wool),
+    d("Shroomlight", [TILE_SHROOMLIGHT, TILE_SHROOMLIGHT, TILE_SHROOMLIGHT], true, true, false, false, 15, SoundFamily::Wool),
+    d("Nether Sprouts", [TILE_NETHER_SPROUTS, TILE_NETHER_SPROUTS, TILE_NETHER_SPROUTS], false, false, true, false, 0, SoundFamily::Grass),
     d("Polished Basalt", [TILE_POLISHED_BASALT_TOP, TILE_POLISHED_BASALT_TOP, TILE_POLISHED_BASALT_SIDE], true, true, false, false, 0, SoundFamily::Stone),
     d("Polished Blackstone", [TILE_POLISHED_BLACKSTONE, TILE_POLISHED_BLACKSTONE, TILE_POLISHED_BLACKSTONE], true, true, false, false, 0, SoundFamily::Stone),
     d("Polished Blackstone Bricks", [TILE_POLISHED_BLACKSTONE_BRICKS, TILE_POLISHED_BLACKSTONE_BRICKS, TILE_POLISHED_BLACKSTONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
-    d("Spirit Torch", [TILE_SPIRIT_TORCH, TILE_SPIRIT_TORCH, TILE_SPIRIT_TORCH], false, false, true, false, 10, SoundFamily::Wood),
-    d("Spirit Lantern", [TILE_SPIRIT_LANTERN, TILE_SPIRIT_LANTERN, TILE_SPIRIT_LANTERN], false, false, true, false, 10, SoundFamily::Wood),
+    d("Soul Torch", [TILE_SOUL_TORCH, TILE_SOUL_TORCH, TILE_SOUL_TORCH], false, false, true, false, 10, SoundFamily::Wood),
+    d("Soul Lantern", [TILE_SOUL_LANTERN, TILE_SOUL_LANTERN, TILE_SOUL_LANTERN], false, false, true, false, 10, SoundFamily::Wood),
     // 1.16 part-2 eggs — the item-row pattern (non-placeable,
     // cross-sprited, creative picker + right-click spawn)
-    d("Emberhopper Spawn Egg", [TILE_SPAWN_EGG_EMBERHOPPER, TILE_SPAWN_EGG_EMBERHOPPER, TILE_SPAWN_EGG_EMBERHOPPER], false, false, true, false, 0, SoundFamily::Grass),
-    d("Pigoblin Spawn Egg", [TILE_SPAWN_EGG_PIGOBLIN, TILE_SPAWN_EGG_PIGOBLIN, TILE_SPAWN_EGG_PIGOBLIN], false, false, true, false, 0, SoundFamily::Grass),
-    d("Boarling Spawn Egg", [TILE_SPAWN_EGG_BOARLING, TILE_SPAWN_EGG_BOARLING, TILE_SPAWN_EGG_BOARLING], false, false, true, false, 0, SoundFamily::Grass),
+    d("Strider Spawn Egg", [TILE_SPAWN_EGG_STRIDER, TILE_SPAWN_EGG_STRIDER, TILE_SPAWN_EGG_STRIDER], false, false, true, false, 0, SoundFamily::Grass),
+    d("Piglin Spawn Egg", [TILE_SPAWN_EGG_PIGLIN, TILE_SPAWN_EGG_PIGLIN, TILE_SPAWN_EGG_PIGLIN], false, false, true, false, 0, SoundFamily::Grass),
+    d("Hoglin Spawn Egg", [TILE_SPAWN_EGG_HOGLIN, TILE_SPAWN_EGG_HOGLIN, TILE_SPAWN_EGG_HOGLIN], false, false, true, false, 0, SoundFamily::Grass),
     // ---- the 1.0-1.16.5 completeness audit: the V15 item rows ----
     // the cooked-meat family (the standing campfire.rs deferral, closed)
     d("Steak", [TILE_STEAK, TILE_STEAK, TILE_STEAK], false, false, true, false, 0, SoundFamily::Grass),
@@ -6174,8 +6174,8 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Sugar", [TILE_SUGAR, TILE_SUGAR, TILE_SUGAR], false, false, true, false, 0, SoundFamily::Grass),
     d("Egg", [TILE_EGG, TILE_EGG, TILE_EGG], false, false, true, false, 0, SoundFamily::Grass),
     d("Poisonous Potato", [TILE_POISONOUS_POTATO, TILE_POISONOUS_POTATO, TILE_POISONOUS_POTATO], false, false, true, false, 0, SoundFamily::Grass),
-    d("Popped Echo Fruit", [TILE_POPPED_ECHO, TILE_POPPED_ECHO, TILE_POPPED_ECHO], false, false, true, false, 0, SoundFamily::Grass),
-    d("Weepgeist Tear", [TILE_WEEPGEIST_TEAR, TILE_WEEPGEIST_TEAR, TILE_WEEPGEIST_TEAR], false, false, true, false, 0, SoundFamily::Grass),
+    d("Popped Chorus Fruit", [TILE_POPPED_CHORUS, TILE_POPPED_CHORUS, TILE_POPPED_CHORUS], false, false, true, false, 0, SoundFamily::Grass),
+    d("Ghast Tear", [TILE_GHAST_TEAR, TILE_GHAST_TEAR, TILE_GHAST_TEAR], false, false, true, false, 0, SoundFamily::Grass),
     // the leaping + regeneration potion rows
     d("Potion of Leaping", [TILE_POTION_LEAPING, TILE_POTION_LEAPING, TILE_POTION_LEAPING], false, false, true, false, 0, SoundFamily::Grass),
     d("Potion of Leaping II", [TILE_POTION_LEAPING_II, TILE_POTION_LEAPING_II, TILE_POTION_LEAPING_II], false, false, true, false, 0, SoundFamily::Grass),
@@ -6184,7 +6184,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Potion of Regeneration II", [TILE_POTION_REGEN_II, TILE_POTION_REGEN_II, TILE_POTION_REGEN_II], false, false, true, false, 0, SoundFamily::Grass),
     d("Potion of Regeneration (extended)", [TILE_POTION_REGEN_LONG, TILE_POTION_REGEN_LONG, TILE_POTION_REGEN_LONG], false, false, true, false, 0, SoundFamily::Grass),
     // the three classic mobs' eggs
-    d("Weepgeist Spawn Egg", [TILE_SPAWN_EGG_WEEPGEIST, TILE_SPAWN_EGG_WEEPGEIST, TILE_SPAWN_EGG_WEEPGEIST], false, false, true, false, 0, SoundFamily::Grass),
+    d("Ghast Spawn Egg", [TILE_SPAWN_EGG_GHAST, TILE_SPAWN_EGG_GHAST, TILE_SPAWN_EGG_GHAST], false, false, true, false, 0, SoundFamily::Grass),
     d("Cave Spider Spawn Egg", [TILE_SPAWN_EGG_CAVESPIDER, TILE_SPAWN_EGG_CAVESPIDER, TILE_SPAWN_EGG_CAVESPIDER], false, false, true, false, 0, SoundFamily::Grass),
     d("Silverfish Spawn Egg", [TILE_SPAWN_EGG_SILVERFISH, TILE_SPAWN_EGG_SILVERFISH, TILE_SPAWN_EGG_SILVERFISH], false, false, true, false, 0, SoundFamily::Grass),
     d("Melon Slice", [TILE_MELON_SLICE, TILE_MELON_SLICE, TILE_MELON_SLICE], false, false, true, false, 0, SoundFamily::Grass),
@@ -6192,7 +6192,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // VERIFIED w/Weather §Lightning: lightning "creating fires where it
     // strikes, igniting any nearby flammable materials, but the rain
     // usually puts the fire out before it can spread". Cross-rendered
-    // like spirit fire, emissive 15 (vanilla fire light level), burns out
+    // like soul fire, emissive 15 (vanilla fire light level), burns out
     // on random ticks — the burnout timer lives in the game layer's
     // random-tick hook (rain-accelerated).
     d("Fire", [TILE_FIRE, TILE_FIRE, TILE_FIRE], false, false, true, false, 15, SoundFamily::Grass),
@@ -6310,7 +6310,7 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     RED_SAND, PACKED_ICE, PODZOL,
     OAK_LOG, LEAVES, PLANKS, BIRCH_LOG, BIRCH_LEAVES, SPRUCE_LOG, SPRUCE_LEAVES,
     ACACIA_LOG, ACACIA_LEAVES, DARK_OAK_LOG, DARK_OAK_LEAVES,
-    COAL_ORE, IRON_ORE, GOLD_ORE, FLUXSTONE_ORE, LAPIS_ORE, EMERALD_ORE, DIAMOND_ORE,
+    COAL_ORE, IRON_ORE, GOLD_ORE, REDSTONE_ORE, LAPIS_ORE, EMERALD_ORE, DIAMOND_ORE,
     IRON_BLOCK, GOLD_BLOCK, DIAMOND_BLOCK, GLOWSTONE,
     BOOKSHELF, CRAFTING_TABLE, FURNACE, GLASS, ICE, SNOW,
     PUMPKIN, MELON, CACTUS,
@@ -6331,30 +6331,30 @@ pub const PICKER_BLOCKS: [u16; 467] = [
 
     RAW_FISH, RAW_SALMON, CLOWNFISH, PUFFERFISH,
 
-    MAGMA_BLOCK, HOLLOW_WART_BLOCK, RED_HOLLOW_BRICKS, BONE_BLOCK,
+    MAGMA_BLOCK, NETHER_WART_BLOCK, RED_NETHER_BRICKS, BONE_BLOCK,
 
-    GRASS_PATH, VIOLETSTONE_BLOCK, VIOLETSTONE_PILLAR, VOID_STONE_BRICKS, VOID_ROD,
-    ECHO_PLANT, ECHO_FLOWER, ECHO_FRUIT, SKYWINGS, SHIELD,
+    GRASS_PATH, PURPUR_BLOCK, PURPUR_PILLAR, END_STONE_BRICKS, END_ROD,
+    CHORUS_PLANT, CHORUS_FLOWER, CHORUS_FRUIT, ELYTRA, SHIELD,
 
     SLIME_BLOCK, COARSE_DIRT,
     POLISHED_GRANITE, POLISHED_DIORITE, POLISHED_ANDESITE,
     RED_SANDSTONE, SMOOTH_RED_SANDSTONE,
-    ABYSSPRISM, ABYSSPRISM_BRICKS, DARK_ABYSSPRISM, SEA_LANTERN,
+    PRISMARINE, PRISMARINE_BRICKS, DARK_PRISMARINE, SEA_LANTERN,
     IRON_TRAPDOOR, BARRIER,
     RAW_RABBIT, COOKED_RABBIT, RABBIT_HIDE, RABBIT_FOOT,
-    ABYSSPRISM_SHARD, ABYSSPRISM_CRYSTALS,
+    PRISMARINE_SHARD, PRISMARINE_CRYSTALS,
     OAK_SLAB, COBBLE_STAIRS, OAK_FENCE,
-    HOLLOWSTONE, HOLLOW_QUARTZ_ORE, SPIRIT_SAND,
+    NETHERRACK, NETHER_QUARTZ_ORE, SOUL_SAND,
     BREWING_STAND,
     POTION_EMPTY, POTION_WATER, POTION_AWKWARD, POTION_MUNDANE, POTION_HEALING, POTION_HEALING_II,
     ENCHANT_TABLE, ENCHANTED_BOOK,
 
-    MYCELIUM, VOID_STONE, HOLLOW_BRICKS, HOLLOW_BRICK,
-    FLUXSTONE_LAMP,
+    MYCELIUM, END_STONE, NETHER_BRICKS, NETHER_BRICK,
+    REDSTONE_LAMP,
     CHISELED_STONE_BRICKS, CHISELED_SANDSTONE, CUT_SANDSTONE, SMOOTH_SANDSTONE,
     MUSHROOM_RED_BLOCK, MUSHROOM_BROWN_BLOCK, MUSHROOM_STEM,
-    HOLLOW_WART, DRAGON_EGG, VOID_CRYSTAL,
-    VOID_EYE, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL,
+    NETHER_WART, DRAGON_EGG, END_CRYSTAL,
+    EYE_OF_ENDER, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL,
 
     SPAWN_EGG_BASE, SPAWN_EGG_BASE + 1, SPAWN_EGG_BASE + 2, SPAWN_EGG_BASE + 3,
     SPAWN_EGG_BASE + 4, SPAWN_EGG_BASE + 5, SPAWN_EGG_BASE + 6, SPAWN_EGG_BASE + 7,
@@ -6362,13 +6362,13 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     SPAWN_EGG_BASE + 12, SPAWN_EGG_BASE + 13, SPAWN_EGG_BASE + 14, SPAWN_EGG_BASE + 15,
 
     ANVIL, CHIPPED_ANVIL, DAMAGED_ANVIL, BEACON, COBBLE_WALL,
-    VOID_CHEST, FLOWER_POT, ITEM_FRAME, TRIPWIRE_HOOK,
-    BLIGHT_SKELETON_SKULL, COMMAND_BLOCK,
-    EMERALD, HOLLOW_STAR, POTATO, BAKED_POTATO, CARROT, PUMPKIN_PIE,
+    ENDER_CHEST, FLOWER_POT, ITEM_FRAME, TRIPWIRE_HOOK,
+    WITHER_SKELETON_SKULL, COMMAND_BLOCK,
+    EMERALD, NETHER_STAR, POTATO, BAKED_POTATO, CARROT, PUMPKIN_PIE,
     GOLDEN_CARROT, JUNGLE_LOG, JUNGLE_LEAVES, JUNGLE_PLANKS, VINE, FERN,
 
-    LURKSHELL_BOX, LURKSHELL_SHELL, TOTEM_OF_REVIVAL,
-    SPAWN_EGG_LLAMA, SPAWN_EGG_CLEAVER, SPAWN_EGG_RUNECALLER, SPAWN_EGG_VEX,
+    SHULKER_BOX, SHULKER_SHELL, TOTEM_OF_UNDYING,
+    SPAWN_EGG_LLAMA, SPAWN_EGG_CLEAVER, SPAWN_EGG_EVOKER, SPAWN_EGG_VEX,
     SPAWN_EGG_HUSK, SPAWN_EGG_STRAY,
     LAVA,
 
@@ -6378,7 +6378,7 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     SPAWN_EGG_BASE + 16, SPAWN_EGG_BASE + 17, SPAWN_EGG_BASE + 18, SPAWN_EGG_BASE + 19,
 
     COAL_BLOCK,
-    QUARTZ_BLOCK, CHISELED_QUARTZ, QUARTZ_PILLAR, HOLLOW_QUARTZ,
+    QUARTZ_BLOCK, CHISELED_QUARTZ, QUARTZ_PILLAR, NETHER_QUARTZ,
     STAINED_TERRACOTTA_BASE, STAINED_TERRACOTTA_BASE + 1, STAINED_TERRACOTTA_BASE + 2,
     STAINED_TERRACOTTA_BASE + 3, STAINED_TERRACOTTA_BASE + 4, STAINED_TERRACOTTA_BASE + 5,
     STAINED_TERRACOTTA_BASE + 6, STAINED_TERRACOTTA_BASE + 7, STAINED_TERRACOTTA_BASE + 8,
@@ -6387,7 +6387,7 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     STAINED_TERRACOTTA_BASE + 15,
     CARPET_WHITE, CARPET_RED, CARPET_YELLOW, CARPET_BLUE, CARPET_BLACK,
     HAY_BALE, DAYLIGHT_SENSOR, TRAPPED_CHEST,
-    LIGHT_WEIGHTED_PLATE, HEAVY_WEIGHTED_PLATE, FLUXSTONE_BLOCK,
+    LIGHT_WEIGHTED_PLATE, HEAVY_WEIGHTED_PLATE, REDSTONE_BLOCK,
     LEAD, SADDLE,
 
     E3_SPAWN_EGG_BASE, E3_SPAWN_EGG_BASE + 1, E3_SPAWN_EGG_BASE + 2,
@@ -6453,33 +6453,33 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     // 1.15 (Buzzy Bees): the nest/hive/honey/honeycomb blocks (the
     // comb/bottle/shears/egg items are item-blocks, never placeable)
     BEE_NEST, BEEHIVE, HONEY_BLOCK, HONEYCOMB_BLOCK,
-    // ---- 1.16 (Hollows Update, part 1 — the anchor family): the V13
+    // ---- 1.16 (Nether Update, part 1 — the anchor family): the V13
     // window's 12 placeable blocks (the scrap/ingot material items
     // are item-blocks, never placeable — the standing convention;
-    // spirit fire is the engine's only fire block, so the picker is the
+    // soul fire is the engine's only fire block, so the picker is the
     // one manual placement path — the disclosed no-flint adaptation) ----
-    SPIRIT_SOIL, BASALT, BLACKSTONE, GILDED_BLACKSTONE, WEEPING_OBSIDIAN,
-    REBIRTH_ANCHOR, TARGET, HOLLOW_GOLD_ORE, ANCIENT_DEBRIS,
-    HOLLOWITE_BLOCK, CHAIN, SPIRIT_FIRE,
-    // ---- 1.16 (Hollows Update, part 2 — the scarlet/viridian families):
+    SOUL_SOIL, BASALT, BLACKSTONE, GILDED_BLACKSTONE, CRYING_OBSIDIAN,
+    RESPAWN_ANCHOR, TARGET, NETHER_GOLD_ORE, ANCIENT_DEBRIS,
+    NETHERITE_BLOCK, CHAIN, SOUL_FIRE,
+    // ---- 1.16 (Nether Update, part 2 — the crimson/warped families):
     // the V14 window's 22 placeable blocks + the 3 spawn eggs (the
     // standing egg-picker convention since the E1 window) ----
-    SCARLET_STEM, SCARLET_HYPHAE, SCARLET_PLANKS, SCARLET_MOLD,
-    SCARLET_FUNGUS, SCARLET_ROOTS, WEEPING_VINES,
-    VIRIDIAN_STEM, VIRIDIAN_HYPHAE, VIRIDIAN_PLANKS, VIRIDIAN_MOLD,
-    VIRIDIAN_FUNGUS, VIRIDIAN_ROOTS, TWISTING_VINES, VIRIDIAN_WART_BLOCK,
-    GLOWCAP, HOLLOW_SPROUTS,
+    CRIMSON_STEM, CRIMSON_HYPHAE, CRIMSON_PLANKS, CRIMSON_NYLIUM,
+    CRIMSON_FUNGUS, CRIMSON_ROOTS, WEEPING_VINES,
+    WARPED_STEM, WARPED_HYPHAE, WARPED_PLANKS, WARPED_NYLIUM,
+    WARPED_FUNGUS, WARPED_ROOTS, TWISTING_VINES, WARPED_WART_BLOCK,
+    SHROOMLIGHT, NETHER_SPROUTS,
     POLISHED_BASALT, POLISHED_BLACKSTONE, POLISHED_BLACKSTONE_BRICKS,
-    SPIRIT_TORCH, SPIRIT_LANTERN,
-    SPAWN_EGG_EMBERHOPPER, SPAWN_EGG_PIGOBLIN, SPAWN_EGG_BOARLING,
+    SOUL_TORCH, SOUL_LANTERN,
+    SPAWN_EGG_STRIDER, SPAWN_EGG_PIGLIN, SPAWN_EGG_HOGLIN,
     // ---- the 1.0-1.16.5 completeness audit: the V15 items ----
     STEAK, COOKED_PORKCHOP, COOKED_CHICKEN, COOKED_MUTTON, COOKED_COD, COOKED_SALMON,
     APPLE, BOWL, MUSHROOM_STEW, RABBIT_STEW, BEETROOT, BEETROOT_SOUP, SUGAR, EGG,
     MELON_SLICE,
-    POISONOUS_POTATO, POPPED_ECHO_FRUIT, WEEPGEIST_TEAR,
+    POISONOUS_POTATO, POPPED_CHORUS_FRUIT, GHAST_TEAR,
     POTION_LEAPING, POTION_LEAPING_II, POTION_LEAPING_LONG,
     POTION_REGEN, POTION_REGEN_II, POTION_REGEN_LONG,
-    SPAWN_EGG_WEEPGEIST, SPAWN_EGG_CAVE_SPIDER, SPAWN_EGG_SILVERFISH,
+    SPAWN_EGG_GHAST, SPAWN_EGG_CAVE_SPIDER, SPAWN_EGG_SILVERFISH,
     // ---- backlog round (farming, 2026-09-09) ----
     FARMLAND, WHEAT_CROP, CARROTS, POTATOES, BEETROOTS,
     WHEAT, BREAD, HOE,
@@ -6493,14 +6493,14 @@ pub const PICKER_BLOCKS: [u16; 467] = [
 // (pre-1.19.3) Java creative screen, in the vanilla order, mapped onto
 // this engine's 515-block registry. Reference facts: reference wiki /
 // Creative_inventory (live 2026-09-15): the classic tab set is Building
-// Blocks, Decoration Blocks, Fluxstone, Transportation, Miscellaneous,
+// Blocks, Decoration Blocks, Redstone, Transportation, Miscellaneous,
 // Foodstuffs, Tools, Combat, Brewing (+ the Search Items and Survival
 // Inventory tabs, handled at the screen layer); "The Creative inventory
 // before Java Edition 1.12" gallery caption + the 1.7.2/1.9/1.12 history
 // rows confirm the classic layout. Membership is engine-adapted (the
 // registry is not item-for-item vanilla) and canonical-anchored: grass
-// block -> Building, poppy -> Decoration, fluxstone components ->
-// Fluxstone, saddle -> Transportation, spawn eggs -> Miscellaneous
+// block -> Building, poppy -> Decoration, redstone components ->
+// Redstone, saddle -> Transportation, spawn eggs -> Miscellaneous
 // (their 1.16.5 home), bread -> Foodstuffs, hoe -> Tools, shield ->
 // Combat, potions + brewing stand -> Brewing. No third-party asset was read,
 // copied, or traced.
@@ -6513,7 +6513,7 @@ pub const PICKER_BLOCKS: [u16; 467] = [
 pub enum CreativeTab {
     BuildingBlocks,
     DecorationBlocks,
-    Fluxstone,
+    Redstone,
     Transportation,
     Miscellaneous,
     Foodstuffs,
@@ -6528,7 +6528,7 @@ pub const CREATIVE_TAB_COUNT: usize = 9;
 pub const CREATIVE_TABS: [CreativeTab; CREATIVE_TAB_COUNT] = [
     CreativeTab::BuildingBlocks,
     CreativeTab::DecorationBlocks,
-    CreativeTab::Fluxstone,
+    CreativeTab::Redstone,
     CreativeTab::Transportation,
     CreativeTab::Miscellaneous,
     CreativeTab::Foodstuffs,
@@ -6543,7 +6543,7 @@ impl CreativeTab {
         match self {
             CreativeTab::BuildingBlocks => "Building Blocks",
             CreativeTab::DecorationBlocks => "Decoration Blocks",
-            CreativeTab::Fluxstone => "Fluxstone",
+            CreativeTab::Redstone => "Redstone",
             CreativeTab::Transportation => "Transportation",
             CreativeTab::Miscellaneous => "Miscellaneous",
             CreativeTab::Foodstuffs => "Foodstuffs",
@@ -6554,7 +6554,7 @@ impl CreativeTab {
     }
 
     /// The tab's canonical icon item (the vanilla tab icons): grass
-    /// block, peony, fluxstone dust, minecart, lava bucket, apple, iron
+    /// block, peony, redstone dust, minecart, lava bucket, apple, iron
     /// pickaxe, iron sword, brewing stand. Engine substitutes where the
     /// registry lacks the vanilla icon item (documented per arm).
     pub fn icon_block(self) -> u16 {
@@ -6563,8 +6563,8 @@ impl CreativeTab {
             CreativeTab::BuildingBlocks => GRASS,
             // vanilla icon: the peony — the engine HAS the peony block
             CreativeTab::DecorationBlocks => PEONY,
-            // vanilla icon: fluxstone dust
-            CreativeTab::Fluxstone => FLUXSTONE_WIRE,
+            // vanilla icon: redstone dust
+            CreativeTab::Redstone => REDSTONE_WIRE,
             // vanilla icon: a minecart — engine substitute: the saddle
             // (the registry's only transportation item; no rails exist)
             CreativeTab::Transportation => SADDLE,
@@ -6586,8 +6586,8 @@ impl CreativeTab {
 }
 
 /// One block's creative-tab membership. Covers every PICKER_BLOCKS entry
-/// (pinned by test) + the registry's fluxstone components (which never
-/// joined PICKER_BLOCKS — they ride the Fluxstone tab through
+/// (pinned by test) + the registry's redstone components (which never
+/// joined PICKER_BLOCKS — they ride the Redstone tab through
 /// `creative_tab_items`); anything else defaults to Miscellaneous, the
 /// vanilla "everything without a home" tab (spawn eggs live there too).
 /// The numeric ranges below are the BASE+N window ids (see the trailing
@@ -6600,12 +6600,12 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         OAK_LOG | PLANKS | GLASS | GRAVEL | SNOW => CreativeTab::BuildingBlocks,
         GRANITE | DIORITE | ANDESITE | STONE_BRICKS | BRICKS => CreativeTab::BuildingBlocks,
         MOSSY_COBBLE | SMOOTH_STONE | OBSIDIAN | COAL_ORE | IRON_ORE => CreativeTab::BuildingBlocks,
-        GOLD_ORE | DIAMOND_ORE | FLUXSTONE_ORE | LAPIS_ORE | EMERALD_ORE => CreativeTab::BuildingBlocks,
+        GOLD_ORE | DIAMOND_ORE | REDSTONE_ORE | LAPIS_ORE | EMERALD_ORE => CreativeTab::BuildingBlocks,
         IRON_BLOCK | GOLD_BLOCK | DIAMOND_BLOCK | GLOWSTONE | BOOKSHELF => CreativeTab::BuildingBlocks,
         CLAY | TERRACOTTA | PUMPKIN | MELON | ICE => CreativeTab::BuildingBlocks,
         BIRCH_LOG | SPRUCE_LOG | OAK_SLAB | COBBLE_STAIRS | OAK_FENCE => CreativeTab::BuildingBlocks,
-        HOLLOWSTONE | HOLLOW_QUARTZ_ORE | SPIRIT_SAND | MYCELIUM | VOID_STONE => CreativeTab::BuildingBlocks,
-        HOLLOW_BRICKS | CHISELED_STONE_BRICKS | CHISELED_SANDSTONE | CUT_SANDSTONE | SMOOTH_SANDSTONE => CreativeTab::BuildingBlocks,
+        NETHERRACK | NETHER_QUARTZ_ORE | SOUL_SAND | MYCELIUM | END_STONE => CreativeTab::BuildingBlocks,
+        NETHER_BRICKS | CHISELED_STONE_BRICKS | CHISELED_SANDSTONE | CUT_SANDSTONE | SMOOTH_SANDSTONE => CreativeTab::BuildingBlocks,
         MUSHROOM_RED_BLOCK | MUSHROOM_BROWN_BLOCK | MUSHROOM_STEM | COBBLE_WALL | COAL_BLOCK => CreativeTab::BuildingBlocks,
         QUARTZ_BLOCK | CHISELED_QUARTZ | QUARTZ_PILLAR | STAINED_GLASS_WHITE | STAINED_GLASS_ORANGE => CreativeTab::BuildingBlocks,
         STAINED_GLASS_MAGENTA | STAINED_GLASS_LIGHT_BLUE | STAINED_GLASS_YELLOW | STAINED_GLASS_LIME | STAINED_GLASS_PINK => CreativeTab::BuildingBlocks,
@@ -6613,14 +6613,14 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         STAINED_GLASS_BROWN | STAINED_GLASS_GREEN | STAINED_GLASS_RED | STAINED_GLASS_BLACK | RED_SAND => CreativeTab::BuildingBlocks,
         PACKED_ICE | PODZOL | ACACIA_LOG | DARK_OAK_LOG | SLIME_BLOCK => CreativeTab::BuildingBlocks,
         COARSE_DIRT | POLISHED_GRANITE | POLISHED_DIORITE | POLISHED_ANDESITE | RED_SANDSTONE => CreativeTab::BuildingBlocks,
-        SMOOTH_RED_SANDSTONE | ABYSSPRISM | ABYSSPRISM_BRICKS | SEA_LANTERN | IRON_TRAPDOOR => CreativeTab::BuildingBlocks,
-        GRASS_PATH | VIOLETSTONE_BLOCK | VIOLETSTONE_PILLAR | VOID_STONE_BRICKS | MAGMA_BLOCK => CreativeTab::BuildingBlocks,
-        HOLLOW_WART_BLOCK | RED_HOLLOW_BRICKS | BONE_BLOCK | JUNGLE_LOG | JUNGLE_PLANKS => CreativeTab::BuildingBlocks,
-        CONCRETE_BASE | CONCRETE_POWDER_BASE | HONEY_BLOCK | HONEYCOMB_BLOCK | SPIRIT_SOIL => CreativeTab::BuildingBlocks,
-        BASALT | BLACKSTONE | GILDED_BLACKSTONE | WEEPING_OBSIDIAN | HOLLOW_GOLD_ORE => CreativeTab::BuildingBlocks,
-        HOLLOWITE_BLOCK | SCARLET_STEM | SCARLET_HYPHAE | SCARLET_PLANKS | SCARLET_MOLD => CreativeTab::BuildingBlocks,
-        VIRIDIAN_STEM | VIRIDIAN_HYPHAE | VIRIDIAN_PLANKS | VIRIDIAN_MOLD | VIRIDIAN_WART_BLOCK => CreativeTab::BuildingBlocks,
-        GLOWCAP | POLISHED_BASALT | POLISHED_BLACKSTONE | POLISHED_BLACKSTONE_BRICKS | FARMLAND => CreativeTab::BuildingBlocks,
+        SMOOTH_RED_SANDSTONE | PRISMARINE | PRISMARINE_BRICKS | SEA_LANTERN | IRON_TRAPDOOR => CreativeTab::BuildingBlocks,
+        GRASS_PATH | PURPUR_BLOCK | PURPUR_PILLAR | END_STONE_BRICKS | MAGMA_BLOCK => CreativeTab::BuildingBlocks,
+        NETHER_WART_BLOCK | RED_NETHER_BRICKS | BONE_BLOCK | JUNGLE_LOG | JUNGLE_PLANKS => CreativeTab::BuildingBlocks,
+        CONCRETE_BASE | CONCRETE_POWDER_BASE | HONEY_BLOCK | HONEYCOMB_BLOCK | SOUL_SOIL => CreativeTab::BuildingBlocks,
+        BASALT | BLACKSTONE | GILDED_BLACKSTONE | CRYING_OBSIDIAN | NETHER_GOLD_ORE => CreativeTab::BuildingBlocks,
+        NETHERITE_BLOCK | CRIMSON_STEM | CRIMSON_HYPHAE | CRIMSON_PLANKS | CRIMSON_NYLIUM => CreativeTab::BuildingBlocks,
+        WARPED_STEM | WARPED_HYPHAE | WARPED_PLANKS | WARPED_NYLIUM | WARPED_WART_BLOCK => CreativeTab::BuildingBlocks,
+        SHROOMLIGHT | POLISHED_BASALT | POLISHED_BLACKSTONE | POLISHED_BLACKSTONE_BRICKS | FARMLAND => CreativeTab::BuildingBlocks,
         (292..=306) /* CONCRETE_BASE+1..+15 */ | (308..=322) /* CONCRETE_POWDER_BASE+1..+15 */ => CreativeTab::BuildingBlocks,
         // ---- DecorationBlocks (52 entries) ----
         LEAVES | TALL_GRASS | FLOWER_RED | FLOWER_YELLOW | CACTUS => CreativeTab::DecorationBlocks,
@@ -6629,18 +6629,18 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         FLOWER_POT | ITEM_FRAME | ACACIA_LEAVES | DARK_OAK_LEAVES | ALLIUM => CreativeTab::DecorationBlocks,
         AZURE_BLUET | BLUE_ORCHID | OXEYE_DAISY | ORANGE_TULIP | RED_TULIP => CreativeTab::DecorationBlocks,
         WHITE_TULIP | PINK_TULIP | SUNFLOWER | LILAC | PEONY => CreativeTab::DecorationBlocks,
-        ROSE_BUSH | VOID_ROD | ECHO_PLANT | ECHO_FLOWER | JUNGLE_LEAVES => CreativeTab::DecorationBlocks,
+        ROSE_BUSH | END_ROD | CHORUS_PLANT | CHORUS_FLOWER | JUNGLE_LEAVES => CreativeTab::DecorationBlocks,
         VINE | FERN | BAMBOO | BAMBOO_SHOOT | SWEET_BERRY_BUSH => CreativeTab::DecorationBlocks,
-        LANTERN | CORNFLOWER | LILY_OF_THE_VALLEY | SCARLET_FUNGUS | SCARLET_ROOTS => CreativeTab::DecorationBlocks,
-        WEEPING_VINES | VIRIDIAN_FUNGUS | VIRIDIAN_ROOTS | TWISTING_VINES | HOLLOW_SPROUTS => CreativeTab::DecorationBlocks,
-        SPIRIT_TORCH | SPIRIT_LANTERN => CreativeTab::DecorationBlocks,
-        // ---- Fluxstone (7 picker entries + the 10 extras below) ----
-        FLUXSTONE_LAMP | TRIPWIRE_HOOK | DAYLIGHT_SENSOR | LIGHT_WEIGHTED_PLATE | HEAVY_WEIGHTED_PLATE => CreativeTab::Fluxstone,
-        FLUXSTONE_BLOCK | TARGET => CreativeTab::Fluxstone,
-        // the registry fluxstone components (CREATIVE_FLUXSTONE_EXTRA) —
+        LANTERN | CORNFLOWER | LILY_OF_THE_VALLEY | CRIMSON_FUNGUS | CRIMSON_ROOTS => CreativeTab::DecorationBlocks,
+        WEEPING_VINES | WARPED_FUNGUS | WARPED_ROOTS | TWISTING_VINES | NETHER_SPROUTS => CreativeTab::DecorationBlocks,
+        SOUL_TORCH | SOUL_LANTERN => CreativeTab::DecorationBlocks,
+        // ---- Redstone (7 picker entries + the 10 extras below) ----
+        REDSTONE_LAMP | TRIPWIRE_HOOK | DAYLIGHT_SENSOR | LIGHT_WEIGHTED_PLATE | HEAVY_WEIGHTED_PLATE => CreativeTab::Redstone,
+        REDSTONE_BLOCK | TARGET => CreativeTab::Redstone,
+        // the registry redstone components (CREATIVE_REDSTONE_EXTRA) —
         // never in PICKER_BLOCKS, but full tab members
-        FLUXSTONE_WIRE | FLUXSTONE_TORCH | LEVER | REPEATER | COMPARATOR => CreativeTab::Fluxstone,
-        PISTON | DISPENSER | DROPPER | OBSERVER | HOPPER => CreativeTab::Fluxstone,
+        REDSTONE_WIRE | REDSTONE_TORCH | LEVER | REPEATER | COMPARATOR => CreativeTab::Redstone,
+        PISTON | DISPENSER | DROPPER | OBSERVER | HOPPER => CreativeTab::Redstone,
         // Sub-round 3: the 16 armor items ride the Combat tab (their
         // vanilla home) even though they postdate PICKER_BLOCKS
         LEATHER_CAP | LEATHER_TUNIC | LEATHER_PANTS | LEATHER_BOOTS => CreativeTab::Combat,
@@ -6651,18 +6651,18 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         // ---- Transportation (1 entries) ----
         SADDLE => CreativeTab::Transportation,
         // ---- Miscellaneous (184 entries) ----
-        CRAFTING_TABLE | FURNACE | ENCHANT_TABLE | ENCHANTED_BOOK | VOID_CRYSTAL => CreativeTab::Miscellaneous,
-        VOID_EYE | HOLLOW_BRICK | SPAWN_EGG_BASE | ANVIL | CHIPPED_ANVIL => CreativeTab::Miscellaneous,
-        DAMAGED_ANVIL | BEACON | VOID_CHEST | BLIGHT_SKELETON_SKULL | COMMAND_BLOCK => CreativeTab::Miscellaneous,
+        CRAFTING_TABLE | FURNACE | ENCHANT_TABLE | ENCHANTED_BOOK | END_CRYSTAL => CreativeTab::Miscellaneous,
+        EYE_OF_ENDER | NETHER_BRICK | SPAWN_EGG_BASE | ANVIL | CHIPPED_ANVIL => CreativeTab::Miscellaneous,
+        DAMAGED_ANVIL | BEACON | ENDER_CHEST | WITHER_SKELETON_SKULL | COMMAND_BLOCK => CreativeTab::Miscellaneous,
         // Round 13: the station-GUI pair — the grindstone block and the
         // plain book item (their vanilla 1.16.5 tab home)
         GRINDSTONE | BOOK => CreativeTab::Miscellaneous,
-        EMERALD | HOLLOW_STAR | LAVA | COAL | STAINED_TERRACOTTA_BASE => CreativeTab::Miscellaneous,
+        EMERALD | NETHER_STAR | LAVA | COAL | STAINED_TERRACOTTA_BASE => CreativeTab::Miscellaneous,
         CARPET_WHITE | CARPET_RED | CARPET_YELLOW | CARPET_BLUE | CARPET_BLACK => CreativeTab::Miscellaneous,
-        HAY_BALE | TRAPPED_CHEST | HOLLOW_QUARTZ | LEAD | E3_SPAWN_EGG_BASE => CreativeTab::Miscellaneous,
-        CLOWNFISH | PUFFERFISH | DARK_ABYSSPRISM | BARRIER | RABBIT_HIDE => CreativeTab::Miscellaneous,
-        ABYSSPRISM_SHARD | ABYSSPRISM_CRYSTALS | LURKSHELL_BOX | LURKSHELL_SHELL | TOTEM_OF_REVIVAL => CreativeTab::Miscellaneous,
-        SPAWN_EGG_LLAMA | SPAWN_EGG_CLEAVER | SPAWN_EGG_RUNECALLER | SPAWN_EGG_VEX | SPAWN_EGG_HUSK => CreativeTab::Miscellaneous,
+        HAY_BALE | TRAPPED_CHEST | NETHER_QUARTZ | LEAD | E3_SPAWN_EGG_BASE => CreativeTab::Miscellaneous,
+        CLOWNFISH | PUFFERFISH | DARK_PRISMARINE | BARRIER | RABBIT_HIDE => CreativeTab::Miscellaneous,
+        PRISMARINE_SHARD | PRISMARINE_CRYSTALS | SHULKER_BOX | SHULKER_SHELL | TOTEM_OF_UNDYING => CreativeTab::Miscellaneous,
+        SPAWN_EGG_LLAMA | SPAWN_EGG_CLEAVER | SPAWN_EGG_EVOKER | SPAWN_EGG_VEX | SPAWN_EGG_HUSK => CreativeTab::Miscellaneous,
         SPAWN_EGG_STRAY | GLAZED_TERRACOTTA_BASE | SPAWN_EGG_PARROT | DYE_BASE | MELON_SEEDS => CreativeTab::Miscellaneous,
         PUMPKIN_SEEDS | CORAL_BLOCK_BASE | DEAD_CORAL_BLOCK_BASE | CORAL_PLANT_BASE | DEAD_CORAL_PLANT_BASE => CreativeTab::Miscellaneous,
         CORAL_FAN_BASE | DEAD_CORAL_FAN_BASE | SEA_PICKLE | BLUE_ICE | KELP => CreativeTab::Miscellaneous,
@@ -6670,14 +6670,14 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         SCUTE | SPAWN_EGG_DROWNED | SPAWN_EGG_PHANTOM | SPAWN_EGG_DOLPHIN | SPAWN_EGG_COD => CreativeTab::Miscellaneous,
         SPAWN_EGG_SALMON | SPAWN_EGG_PUFFERFISH | SPAWN_EGG_TROPICAL_FISH | SPAWN_EGG_TURTLE | CAMPFIRE => CreativeTab::Miscellaneous,
         BARREL | SPAWN_EGG_FOX | STICK | CHARCOAL | BLAST_FURNACE => CreativeTab::Miscellaneous,
-        SMOKER | BEE_NEST | BEEHIVE | REBIRTH_ANCHOR | ANCIENT_DEBRIS => CreativeTab::Miscellaneous,
-        CHAIN | SPIRIT_FIRE | SPAWN_EGG_EMBERHOPPER | SPAWN_EGG_PIGOBLIN | SPAWN_EGG_BOARLING => CreativeTab::Miscellaneous,
-        POPPED_ECHO_FRUIT | SPAWN_EGG_WEEPGEIST | SPAWN_EGG_CAVE_SPIDER | SPAWN_EGG_SILVERFISH | (125..=143) /* SPAWN_EGG_BASE+1..+19 */ => CreativeTab::Miscellaneous,
+        SMOKER | BEE_NEST | BEEHIVE | RESPAWN_ANCHOR | ANCIENT_DEBRIS => CreativeTab::Miscellaneous,
+        CHAIN | SOUL_FIRE | SPAWN_EGG_STRIDER | SPAWN_EGG_PIGLIN | SPAWN_EGG_HOGLIN => CreativeTab::Miscellaneous,
+        POPPED_CHORUS_FRUIT | SPAWN_EGG_GHAST | SPAWN_EGG_CAVE_SPIDER | SPAWN_EGG_SILVERFISH | (125..=143) /* SPAWN_EGG_BASE+1..+19 */ => CreativeTab::Miscellaneous,
         (168..=182) /* STAINED_TERRACOTTA_BASE+1..+15 */ | (198..=199) /* E3_SPAWN_EGG_BASE+1..+2 */ | (324..=338) /* GLAZED_TERRACOTTA_BASE+1..+15 */ | (341..=355) /* DYE_BASE+1..+15 */ | (362..=365) /* CORAL_BLOCK_BASE+1..+4 */ => CreativeTab::Miscellaneous,
         (367..=370) /* DEAD_CORAL_BLOCK_BASE+1..+4 */ | (372..=375) /* CORAL_PLANT_BASE+1..+4 */ | (377..=380) /* DEAD_CORAL_PLANT_BASE+1..+4 */ | (382..=385) /* CORAL_FAN_BASE+1..+4 */ | (387..=390) /* DEAD_CORAL_FAN_BASE+1..+4 */ => CreativeTab::Miscellaneous,
         // ---- Foodstuffs (37 entries) ----
         GOLDEN_APPLE | POTATO | BAKED_POTATO | CARROT | PUMPKIN_PIE => CreativeTab::Foodstuffs,
-        RAW_FISH | RAW_SALMON | RAW_RABBIT | COOKED_RABBIT | ECHO_FRUIT => CreativeTab::Foodstuffs,
+        RAW_FISH | RAW_SALMON | RAW_RABBIT | COOKED_RABBIT | CHORUS_FRUIT => CreativeTab::Foodstuffs,
         WHEAT_SEEDS | BEETROOT_SEEDS | COOKIE | DRIED_KELP_BLOCK | DRIED_KELP => CreativeTab::Foodstuffs,
         SWEET_BERRIES | STEAK | COOKED_PORKCHOP | COOKED_CHICKEN | COOKED_MUTTON => CreativeTab::Foodstuffs,
         COOKED_COD | COOKED_SALMON | APPLE | BOWL | MUSHROOM_STEW => CreativeTab::Foodstuffs,
@@ -6687,12 +6687,12 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         // ---- Tools (1 entries) ----
         HOE => CreativeTab::Tools,
         // ---- Combat (5 entries) ----
-        SNOWBALL | SKYWINGS | SHIELD | TRIDENT => CreativeTab::Combat,
+        SNOWBALL | ELYTRA | SHIELD | TRIDENT => CreativeTab::Combat,
         // ---- Brewing (25 entries) ----
         BREWING_STAND | POTION_EMPTY | POTION_WATER | POTION_AWKWARD | POTION_MUNDANE => CreativeTab::Brewing,
-        POTION_HEALING | POTION_HEALING_II | HOLLOW_WART | BLAZE_ROD | BLAZE_POWDER => CreativeTab::Brewing,
+        POTION_HEALING | POTION_HEALING_II | NETHER_WART | BLAZE_ROD | BLAZE_POWDER => CreativeTab::Brewing,
         RABBIT_FOOT | GOLDEN_CARROT | PHANTOM_MEMBRANE | POTION_SLOW_FALLING | POTION_SLOW_FALLING_EXT => CreativeTab::Brewing,
-        POTION_TURTLE_MASTER | POTION_TURTLE_MASTER_II | SUGAR | WEEPGEIST_TEAR | POTION_LEAPING => CreativeTab::Brewing,
+        POTION_TURTLE_MASTER | POTION_TURTLE_MASTER_II | SUGAR | GHAST_TEAR | POTION_LEAPING => CreativeTab::Brewing,
         POTION_LEAPING_II | POTION_LEAPING_LONG | POTION_REGEN | POTION_REGEN_II | POTION_REGEN_LONG => CreativeTab::Brewing,
         // everything else — items, spawn eggs, station blocks, future
         // registry additions: the vanilla catch-all tab
@@ -6700,17 +6700,17 @@ pub fn creative_tab(b: u16) -> CreativeTab {
     }
 }
 
-/// Registry fluxstone components that predate the tab system and never
-/// joined PICKER_BLOCKS — the Fluxstone tab's core (wire, torch, lever,
+/// Registry redstone components that predate the tab system and never
+/// joined PICKER_BLOCKS — the Redstone tab's core (wire, torch, lever,
 /// repeater, comparator, piston, hopper, dispenser, dropper, observer).
-pub const CREATIVE_FLUXSTONE_EXTRA: [u16; 10] = [
-    FLUXSTONE_WIRE, FLUXSTONE_TORCH, LEVER, REPEATER, COMPARATOR,
+pub const CREATIVE_REDSTONE_EXTRA: [u16; 10] = [
+    REDSTONE_WIRE, REDSTONE_TORCH, LEVER, REPEATER, COMPARATOR,
     PISTON, DISPENSER, DROPPER, OBSERVER, HOPPER,
 ];
 
 /// The tab's items in display order: PICKER_BLOCKS order (the engine's
 /// curated version-bracket order — the vanilla-shaped stand-in for
-/// vanilla's own tab ordering) plus the fluxstone extras appended to
+/// vanilla's own tab ordering) plus the redstone extras appended to
 /// their tab.
 pub fn creative_tab_items(tab: CreativeTab) -> Vec<u16> {
     let mut out: Vec<u16> = PICKER_BLOCKS
@@ -6718,8 +6718,8 @@ pub fn creative_tab_items(tab: CreativeTab) -> Vec<u16> {
         .copied()
         .filter(|&b| creative_tab(b) == tab)
         .collect();
-    if tab == CreativeTab::Fluxstone {
-        out.extend_from_slice(&CREATIVE_FLUXSTONE_EXTRA);
+    if tab == CreativeTab::Redstone {
+        out.extend_from_slice(&CREATIVE_REDSTONE_EXTRA);
     }
     if tab == CreativeTab::Combat {
         // Sub-round 3: the 16 armor items (they postdate PICKER_BLOCKS;
@@ -6742,7 +6742,7 @@ mod creative_tab_tests {
         assert_eq!(CREATIVE_TABS.len(), 9);
         assert_eq!(CREATIVE_TABS[0], CreativeTab::BuildingBlocks);
         assert_eq!(CREATIVE_TABS[1], CreativeTab::DecorationBlocks);
-        assert_eq!(CREATIVE_TABS[2], CreativeTab::Fluxstone);
+        assert_eq!(CREATIVE_TABS[2], CreativeTab::Redstone);
         assert_eq!(CREATIVE_TABS[3], CreativeTab::Transportation);
         assert_eq!(CREATIVE_TABS[4], CreativeTab::Miscellaneous);
         assert_eq!(CREATIVE_TABS[5], CreativeTab::Foodstuffs);
@@ -6755,15 +6755,15 @@ mod creative_tab_tests {
             assert!(!items.is_empty(), "{} tab must not be empty", t.label());
             total += items.len();
         }
-        // picker entries + the 10 fluxstone extras + the 16 armor items
+        // picker entries + the 10 redstone extras + the 16 armor items
         assert_eq!(
             total,
-            PICKER_BLOCKS.len() + CREATIVE_FLUXSTONE_EXTRA.len() + 16
+            PICKER_BLOCKS.len() + CREATIVE_REDSTONE_EXTRA.len() + 16
         );
         // per-tab census (regenerates with the table; pins drift)
         assert_eq!(creative_tab_items(CreativeTab::BuildingBlocks).len(), 155);
         assert_eq!(creative_tab_items(CreativeTab::DecorationBlocks).len(), 52);
-        assert_eq!(creative_tab_items(CreativeTab::Fluxstone).len(), 17);
+        assert_eq!(creative_tab_items(CreativeTab::Redstone).len(), 17);
         assert_eq!(creative_tab_items(CreativeTab::Transportation).len(), 1);
         assert_eq!(creative_tab_items(CreativeTab::Miscellaneous).len(), 184);
         assert_eq!(creative_tab_items(CreativeTab::Foodstuffs).len(), 37);
@@ -6789,13 +6789,13 @@ mod creative_tab_tests {
         // (no plain-torch block exists in the registry — the lantern is
         // the Decoration-family light source that does)
         assert_eq!(creative_tab(LANTERN), CreativeTab::DecorationBlocks);
-        // fluxstone ore is an ORE (Building), not a fluxstone component
-        assert_eq!(creative_tab(FLUXSTONE_ORE), CreativeTab::BuildingBlocks);
-        assert_eq!(creative_tab(FLUXSTONE_WIRE), CreativeTab::Fluxstone);
-        assert_eq!(creative_tab(FLUXSTONE_TORCH), CreativeTab::Fluxstone);
-        assert_eq!(creative_tab(LEVER), CreativeTab::Fluxstone);
-        assert_eq!(creative_tab(PISTON), CreativeTab::Fluxstone);
-        assert_eq!(creative_tab(TARGET), CreativeTab::Fluxstone);
+        // redstone ore is an ORE (Building), not a redstone component
+        assert_eq!(creative_tab(REDSTONE_ORE), CreativeTab::BuildingBlocks);
+        assert_eq!(creative_tab(REDSTONE_WIRE), CreativeTab::Redstone);
+        assert_eq!(creative_tab(REDSTONE_TORCH), CreativeTab::Redstone);
+        assert_eq!(creative_tab(LEVER), CreativeTab::Redstone);
+        assert_eq!(creative_tab(PISTON), CreativeTab::Redstone);
+        assert_eq!(creative_tab(TARGET), CreativeTab::Redstone);
         assert_eq!(creative_tab(SADDLE), CreativeTab::Transportation);
         // spawn eggs live in Miscellaneous in 1.16.5 (pre-1.19.3)
         assert_eq!(creative_tab(SPAWN_EGG_LLAMA), CreativeTab::Miscellaneous);
@@ -6878,7 +6878,7 @@ mod creative_tab_tests {
     }
 
     /// Sub-round 2: the tab items are the picker's entries in picker
-    /// order plus the fluxstone extras — no duplicates, all valid ids.
+    /// order plus the redstone extras — no duplicates, all valid ids.
     #[test]
     fn tab_items_are_unique_and_valid() {
         for &t in CREATIVE_TABS.iter() {
@@ -6891,11 +6891,11 @@ mod creative_tab_tests {
             sorted.dedup();
             assert_eq!(sorted.len(), items.len(), "{} has duplicates", t.label());
         }
-        // the fluxstone extras actually ride the fluxstone tab
-        let fluxstone = creative_tab_items(CreativeTab::Fluxstone);
-        assert!(fluxstone.contains(&FLUXSTONE_WIRE));
-        assert!(fluxstone.contains(&HOPPER));
-        assert!(fluxstone.contains(&OBSERVER));
+        // the redstone extras actually ride the redstone tab
+        let redstone = creative_tab_items(CreativeTab::Redstone);
+        assert!(redstone.contains(&REDSTONE_WIRE));
+        assert!(redstone.contains(&HOPPER));
+        assert!(redstone.contains(&OBSERVER));
     }
 }
 
@@ -6968,7 +6968,7 @@ mod state_tests {
 
     /// REGRESSION (Phase 4 bug fix): TILE_MAX sat at 82 while Phases 2/3
     /// defined tiles 83–117 — the atlas loop (0..=TILE_MAX) never drew
-    /// them, so mob sprites / drop icons / fluxstone tiles rendered blank.
+    /// them, so mob sprites / drop icons / redstone tiles rendered blank.
     /// Every def-referenced tile must now be within TILE_MAX so the atlas
     /// generator provably reaches it.
     #[test]
@@ -6992,28 +6992,28 @@ mod state_tests {
     fn phase_e1_states_fold_and_emissive() {
         // lit lamp folds to the lamp block but emits 15; the OFF state
         // (the lamp's stored default) emits 0
-        assert_eq!(state_block(FLUXSTONE_LAMP_LIT), FLUXSTONE_LAMP);
-        assert_eq!(state_emissive(FLUXSTONE_LAMP_LIT), 15);
-        assert_eq!(state_block(FLUXSTONE_LAMP_STATE), FLUXSTONE_LAMP);
-        assert_eq!(state_emissive(FLUXSTONE_LAMP_STATE), 0);
-        assert_eq!(default_state(FLUXSTONE_LAMP), FLUXSTONE_LAMP_STATE);
+        assert_eq!(state_block(REDSTONE_LAMP_LIT), REDSTONE_LAMP);
+        assert_eq!(state_emissive(REDSTONE_LAMP_LIT), 15);
+        assert_eq!(state_block(REDSTONE_LAMP_STATE), REDSTONE_LAMP);
+        assert_eq!(state_emissive(REDSTONE_LAMP_STATE), 0);
+        assert_eq!(default_state(REDSTONE_LAMP), REDSTONE_LAMP_STATE);
         // warts fold + per-age tiles
         for a in 0..4u16 {
-            assert_eq!(state_block(WART_STATE_BASE + a), HOLLOW_WART);
+            assert_eq!(state_block(WART_STATE_BASE + a), NETHER_WART);
             assert_eq!(wart_age(WART_STATE_BASE + a), a);
             let t = state_tiles(WART_STATE_BASE + a);
-            assert!(t.iter().all(|&x| (TILE_HOLLOW_WART_0..=TILE_HOLLOW_WART_3).contains(&x)));
+            assert!(t.iter().all(|&x| (TILE_NETHER_WART_0..=TILE_NETHER_WART_3).contains(&x)));
         }
-        assert_eq!(default_state(HOLLOW_WART), WART_STATE_BASE);
+        assert_eq!(default_state(NETHER_WART), WART_STATE_BASE);
         // frame-with-eye folds to the frame
-        assert_eq!(state_block(VOID_GATE_FRAME_EYE), VOID_GATE_FRAME);
+        assert_eq!(state_block(END_PORTAL_FRAME_EYE), END_PORTAL_FRAME);
         // spawner blaze state folds to the spawner
         assert_eq!(state_block(SPAWNER_BLAZE), SPAWNER);
         // every new world block's default state folds back to it
         for b in [
-            MYCELIUM, VOID_STONE, HOLLOW_BRICKS, FLUXSTONE_LAMP, CHISELED_STONE_BRICKS,
+            MYCELIUM, END_STONE, NETHER_BRICKS, REDSTONE_LAMP, CHISELED_STONE_BRICKS,
             CHISELED_SANDSTONE, CUT_SANDSTONE, SMOOTH_SANDSTONE, MUSHROOM_RED_BLOCK,
-            MUSHROOM_BROWN_BLOCK, MUSHROOM_STEM, HOLLOW_WART, DRAGON_EGG, VOID_GATE,
+            MUSHROOM_BROWN_BLOCK, MUSHROOM_STEM, NETHER_WART, DRAGON_EGG, END_PORTAL,
         ] {
             assert_eq!(
                 state_block(default_state(b)),
@@ -7023,23 +7023,23 @@ mod state_tests {
             );
         }
         // item states (≥ 256, never world-stored) fold back to their items
-        for b in [VOID_CRYSTAL, VOID_EYE, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL, HOLLOW_BRICK, SPAWN_EGG_BASE, SPAWN_EGG_MAX] {
+        for b in [END_CRYSTAL, EYE_OF_ENDER, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL, NETHER_BRICK, SPAWN_EGG_BASE, SPAWN_EGG_MAX] {
             let s = item_block_state(b).unwrap();
             assert!(s >= 256, "item states must live above the u8 window");
             assert_eq!(state_block(s), b);
             assert_eq!(default_state(b), s);
             assert!(!is_model_state(s), "item state {s} must not hit the model path");
         }
-        // the void gate emits full block light through its stored state
-        assert_eq!(state_emissive(VOID_GATE_STATE), 15);
+        // the end portal emits full block light through its stored state
+        assert_eq!(state_emissive(END_PORTAL_STATE), 15);
         // dragon egg glows level 1
         assert_eq!(state_emissive(DRAGON_EGG_STATE), 1);
         // the full 236..=255 window is allocated — no spares, no overlaps
         // with the legacy ranges (this catches the MYCELIUM_STATE=140 / 140 =
         // ROTTEN_FLESH_STATE class of collision for good)
-        let legacy_top = FERMENTED_EYE_STATE.max(SPAWNER_STATE_END).max(VOID_GATE_FRAME_STATE);
+        let legacy_top = FERMENTED_EYE_STATE.max(SPAWNER_STATE_END).max(END_PORTAL_FRAME_STATE);
         assert!(legacy_top < 236, "legacy ranges must stay below 236");
-        for b in [MYCELIUM, VOID_STONE, HOLLOW_WART, DRAGON_EGG, VOID_GATE] {
+        for b in [MYCELIUM, END_STONE, NETHER_WART, DRAGON_EGG, END_PORTAL] {
             assert!(default_state(b) >= 236);
         }
     }
@@ -7065,10 +7065,10 @@ mod state_tests {
     /// New item-blocks are recognized; placeables are not.
     #[test]
     fn phase_e1_item_blocks() {
-        for b in [VOID_CRYSTAL, VOID_EYE, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL, HOLLOW_BRICK] {
+        for b in [END_CRYSTAL, EYE_OF_ENDER, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL, NETHER_BRICK] {
             assert!(is_item_block(b), "{b} must be an item block");
         }
-        for b in [MYCELIUM, VOID_STONE, HOLLOW_BRICKS, FLUXSTONE_LAMP, DRAGON_EGG] {
+        for b in [MYCELIUM, END_STONE, NETHER_BRICKS, REDSTONE_LAMP, DRAGON_EGG] {
             assert!(!is_item_block(b), "{b} must be placeable");
         }
     }
@@ -7079,7 +7079,7 @@ mod state_tests {
         for &b in PICKER_BLOCKS.iter() {
             assert!((b as usize) < BLOCK_COUNT, "picker id {b} out of range");
         }
-        for want in [MYCELIUM, VOID_STONE, FLUXSTONE_LAMP, SPAWN_EGG_BASE, SPAWN_EGG_BASE + 15] {
+        for want in [MYCELIUM, END_STONE, REDSTONE_LAMP, SPAWN_EGG_BASE, SPAWN_EGG_BASE + 15] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
         }
         // [merge scroll] the grid is a fixed 11-row window (514px) that
@@ -7164,7 +7164,7 @@ mod state_tests {
             }
             if is_wire_power(s) {
                 assert!(!is_model_state(s), "wire state {s} never routes to models");
-                assert_eq!(state_block(s), FLUXSTONE_WIRE);
+                assert_eq!(state_block(s), REDSTONE_WIRE);
                 continue;
             }
             if matches!(s, LEVER_OFF | LEVER_ON) {
@@ -7173,7 +7173,7 @@ mod state_tests {
                 continue;
             }
             if matches!(s, TORCH_LIT | TORCH_OFF) {
-                assert_eq!(state_block(s), FLUXSTONE_TORCH);
+                assert_eq!(state_block(s), REDSTONE_TORCH);
                 assert!(!is_model_state(s));
                 continue;
             }
@@ -7182,10 +7182,10 @@ mod state_tests {
                 assert!(!is_model_state(s));
                 continue;
             }
-            // hollow blocks (§28): full-cube greedy-meshed, dedicated states
-            if matches!(s, HOLLOWSTONE_STATE | QUARTZ_ORE_STATE | SPIRIT_SAND_STATE) {
-                assert!(!is_model_state(s), "hollow state {s} never routes to models");
-                assert!(s > FURNACE_LIT, "hollow states live above the sim range");
+            // nether blocks (§28): full-cube greedy-meshed, dedicated states
+            if matches!(s, NETHERRACK_STATE | QUARTZ_ORE_STATE | SOUL_SAND_STATE) {
+                assert!(!is_model_state(s), "nether state {s} never routes to models");
+                assert!(s > FURNACE_LIT, "nether states live above the sim range");
                 continue;
             }
             // brewing (§29): stand + potion item-blocks, dedicated states
@@ -7202,13 +7202,13 @@ mod state_tests {
                     | ENCHANTED_BOOK_STATE
             ) {
                 assert!(!is_model_state(s), "brewing/enchant state {s} never routes to models");
-                assert!(s > SPIRIT_SAND_STATE, "brewing states live above the sim range");
+                assert!(s > SOUL_SAND_STATE, "brewing states live above the sim range");
                 // every dedicated state folds back to its own block id
                 // (BREWING_STAND_STATE..ENCHANTED_BOOK_STATE == blocks 67..75)
                 assert_eq!(state_block(s), s - BREWING_STAND_STATE + BREWING_STAND);
                 continue;
             }
-            // Phase 2 mob-drop item states + Phase 3 fluxstone-component
+            // Phase 2 mob-drop item states + Phase 3 redstone-component
             // states + Phase 4 corruption-chain states + Phase 5 spawner
             // states: dedicated identity states (fold 1:1 to their block,
             // never model states — the components' visuals are
@@ -7217,17 +7217,17 @@ mod state_tests {
                 || (REPEATER_STATE_BASE..=CHEST_STATE).contains(&s)
                 || (POTION_HARMING_STATE..=FERMENTED_EYE_STATE).contains(&s)
                 || (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s)
-                || s == VOID_GATE_FRAME_STATE
+                || s == END_PORTAL_FRAME_STATE
                 // Phase E1 dedicated world-block states + item states
-                || (FLUXSTONE_LAMP_LIT..=VOID_STONE_STATE).contains(&s)
+                || (REDSTONE_LAMP_LIT..=END_STONE_STATE).contains(&s)
                 || (ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s)
                 // Phase E2 dedicated world-block + item states + lava
                 || (ANVIL_STATE..=E2_ITEM_STATE_END).contains(&s)
                 || s == LAVA_STATE
                 || (LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s)
-                || s == SPAWNER_BLIGHT_SKELETON
+                || s == SPAWNER_WITHER_SKELETON
                 || s == SPAWNER_CLEAVER
-                || s == SPAWNER_RUNECALLER
+                || s == SPAWNER_EVOKER
                 // VERIFICATION-REPORT fix #4: the coal item state
                 || s == COAL_STATE
                 // Phase E3 dedicated world-block + item + egg + POWER states
@@ -7251,9 +7251,9 @@ mod state_tests {
                 || is_v11_state(s)
                 // 1.15 V12 (Buzzy Bees)
                 || is_v12_state(s)
-                // 1.16 V13 (Hollows Update, part 1)
+                // 1.16 V13 (Nether Update, part 1)
                 || is_v13_state(s)
-                // 1.16 V14 (Hollows Update, part 2)
+                // 1.16 V14 (Nether Update, part 2)
                 || is_v14_state(s)
                 // the completeness audit V15
                 || is_v15_state(s)
@@ -7375,7 +7375,7 @@ mod state_tests {
                         assert_eq!(default_state(b), db, "v12 default for {b}");
                     }
                 }
-                // 1.16 V13 (Hollows Update, part 1): every state folds to
+                // 1.16 V13 (Nether Update, part 1): every state folds to
                 // its parent; the anchor's charge + the target's power
                 // re-encode; the defaults roundtrip (charge 0, power 0,
                 // chain SITTING, identities + items 1:1)
@@ -7391,8 +7391,8 @@ mod state_tests {
                         assert_eq!(default_state(b), db, "v13 default for {b}");
                     }
                 }
-                // 1.16 V14 (Hollows Update, part 2): every state folds
-                // 1:1 (identity + the spirit lantern's hanging form + the
+                // 1.16 V14 (Nether Update, part 2): every state folds
+                // 1:1 (identity + the soul lantern's hanging form + the
                 // 3 egg rows); the defaults roundtrip (lantern SITTING,
                 // the rest 1:1)
                 if is_v14_state(s) {
@@ -7442,11 +7442,11 @@ mod state_tests {
             assert!(!is_model_state(s));
         }
         assert_eq!(water_level(STONE), 255);
-        // fluxstone state roundtrips
+        // redstone state roundtrips
         for p in 0u8..=15 {
             let s = wire_state(p);
             assert_eq!(wire_power(s), p as u16, "wire power roundtrip {p}");
-            assert_eq!(state_block(s), FLUXSTONE_WIRE);
+            assert_eq!(state_block(s), REDSTONE_WIRE);
             assert!(!is_model_state(s));
         }
         assert_eq!(wire_power(STONE), 255);
@@ -7455,9 +7455,9 @@ mod state_tests {
         assert_eq!(state_block(lever_state(true)), LEVER);
         assert!(torch_is_lit(torch_state(true)));
         assert!(!torch_is_lit(torch_state(false)));
-        assert_eq!(state_block(torch_state(false)), FLUXSTONE_TORCH);
+        assert_eq!(state_block(torch_state(false)), REDSTONE_TORCH);
         // block ids 60..62 never appear as identity states (57..62 = logs)
-        for b in [FLUXSTONE_WIRE, FLUXSTONE_TORCH, LEVER] {
+        for b in [REDSTONE_WIRE, REDSTONE_TORCH, LEVER] {
             let d = def(b);
             assert!(d.cross, "{} renders as a cross plant", d.name);
         }
@@ -7499,12 +7499,12 @@ mod state_tests {
         assert_eq!(default_state(COBBLE_STAIRS), 65, "stairs → facing=north, half=bottom");
         assert_eq!(default_state(OAK_FENCE), 73, "fence → no connections");
         assert_eq!(default_state(FURNACE), FURNACE_STATE);
-        assert_eq!(default_state(HOLLOWSTONE), HOLLOWSTONE_STATE);
-        assert_eq!(default_state(HOLLOW_QUARTZ_ORE), QUARTZ_ORE_STATE);
-        assert_eq!(default_state(SPIRIT_SAND), SPIRIT_SAND_STATE);
+        assert_eq!(default_state(NETHERRACK), NETHERRACK_STATE);
+        assert_eq!(default_state(NETHER_QUARTZ_ORE), QUARTZ_ORE_STATE);
+        assert_eq!(default_state(SOUL_SAND), SOUL_SAND_STATE);
         // sim blocks keep their states
-        assert_eq!(default_state(FLUXSTONE_WIRE), wire_state(0));
-        assert_eq!(default_state(FLUXSTONE_TORCH), torch_state(true));
+        assert_eq!(default_state(REDSTONE_WIRE), wire_state(0));
+        assert_eq!(default_state(REDSTONE_TORCH), torch_state(true));
         assert_eq!(default_state(LEVER), lever_state(false));
     }
 
@@ -7538,8 +7538,8 @@ mod state_tests {
             (TRAPPED_CHEST, TRAPPED_CHEST_STATE),
             (LIGHT_WEIGHTED_PLATE, LIGHT_PLATE_STATE),
             (HEAVY_WEIGHTED_PLATE, HEAVY_PLATE_STATE),
-            (FLUXSTONE_BLOCK, FLUXSTONE_BLOCK_STATE),
-            (HOLLOW_QUARTZ, HOLLOW_QUARTZ_STATE),
+            (REDSTONE_BLOCK, REDSTONE_BLOCK_STATE),
+            (NETHER_QUARTZ, NETHER_QUARTZ_STATE),
             (LEAD, LEAD_STATE),
             (SADDLE, SADDLE_STATE),
         ];
@@ -7590,7 +7590,7 @@ mod state_tests {
             COAL_BLOCK,
             QUARTZ_BLOCK,
             QUARTZ_PILLAR,
-            HOLLOW_QUARTZ,
+            NETHER_QUARTZ,
             STAINED_TERRACOTTA_BASE,
             STAINED_TERRACOTTA_BASE + 15,
             CARPET_WHITE,
@@ -7600,7 +7600,7 @@ mod state_tests {
             TRAPPED_CHEST,
             LIGHT_WEIGHTED_PLATE,
             HEAVY_WEIGHTED_PLATE,
-            FLUXSTONE_BLOCK,
+            REDSTONE_BLOCK,
             LEAD,
             SADDLE,
             E3_SPAWN_EGG_BASE,
@@ -7626,8 +7626,8 @@ mod v110_tests {
         // 328..=331 to 476..=479 (after the E1–E3 state series)
         for (b, s) in [
             (MAGMA_BLOCK, 476u16),
-            (HOLLOW_WART_BLOCK, 477),
-            (RED_HOLLOW_BRICKS, 478),
+            (NETHER_WART_BLOCK, 477),
+            (RED_NETHER_BRICKS, 478),
             (BONE_BLOCK, 479),
         ] {
             assert_eq!(v5_state(b), Some(s), "block {b} → state {s}");
@@ -7710,12 +7710,12 @@ mod v111_tests {
     #[test]
     fn v111_v7_registry_and_spawner_states() {
         for (b, s) in [
-            (LURKSHELL_BOX, 486u16),
-            (LURKSHELL_SHELL, 487),
-            (TOTEM_OF_REVIVAL, 488),
+            (SHULKER_BOX, 486u16),
+            (SHULKER_SHELL, 487),
+            (TOTEM_OF_UNDYING, 488),
             (SPAWN_EGG_LLAMA, 489),
             (SPAWN_EGG_CLEAVER, 490),
-            (SPAWN_EGG_RUNECALLER, 491),
+            (SPAWN_EGG_EVOKER, 491),
             (SPAWN_EGG_VEX, 492),
             (SPAWN_EGG_HUSK, 493),
             (SPAWN_EGG_STRAY, 494),
@@ -7727,17 +7727,17 @@ mod v111_tests {
         assert_eq!(STATE_COUNT, 863); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_CLEAVER), SPAWNER);
-        assert_eq!(state_block(SPAWNER_RUNECALLER), SPAWNER);
+        assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
         assert_eq!(spawner_mob(SPAWNER_CLEAVER), 5);
-        assert_eq!(spawner_mob(SPAWNER_RUNECALLER), 6);
+        assert_eq!(spawner_mob(SPAWNER_EVOKER), 6);
         // THE LATENT-BUG FIX: the fortress spawner states decode to their
         // kinds (they previously fell through to the zombie code!)
         assert_eq!(spawner_mob(SPAWNER_BLAZE), 3, "fortress blaze decodes");
-        assert_eq!(spawner_mob(SPAWNER_BLIGHT_SKELETON), 4, "fortress blight-skeleton decodes");
+        assert_eq!(spawner_mob(SPAWNER_WITHER_SKELETON), 4, "fortress wither-skeleton decodes");
         // eggs decode to the 1.11 kinds (new five + re-added two)
         assert_eq!(egg_mob(SPAWN_EGG_LLAMA), Some(23));
         assert_eq!(egg_mob(SPAWN_EGG_CLEAVER), Some(24));
-        assert_eq!(egg_mob(SPAWN_EGG_RUNECALLER), Some(25));
+        assert_eq!(egg_mob(SPAWN_EGG_EVOKER), Some(25));
         assert_eq!(egg_mob(SPAWN_EGG_VEX), Some(26));
         assert_eq!(egg_mob(SPAWN_EGG_HUSK), Some(27), "re-added husk egg");
         assert_eq!(egg_mob(SPAWN_EGG_STRAY), Some(28), "re-added stray egg");
@@ -7746,16 +7746,16 @@ mod v111_tests {
         assert_eq!(egg_mob(SPAWN_EGG_BASE + 5), Some(5));
         // all six V7 eggs are usable eggs (the use-path gate)
         for b in [
-            SPAWN_EGG_LLAMA, SPAWN_EGG_CLEAVER, SPAWN_EGG_RUNECALLER,
+            SPAWN_EGG_LLAMA, SPAWN_EGG_CLEAVER, SPAWN_EGG_EVOKER,
             SPAWN_EGG_VEX, SPAWN_EGG_HUSK, SPAWN_EGG_STRAY,
         ] {
             assert!(is_spawn_egg(b), "egg {b} must pass the use gate");
         }
         // item-blocks + picker
-        assert!(is_item_block(LURKSHELL_SHELL));
-        assert!(is_item_block(TOTEM_OF_REVIVAL));
-        for b in [LURKSHELL_BOX, LURKSHELL_SHELL, TOTEM_OF_REVIVAL,
-                  SPAWN_EGG_LLAMA, SPAWN_EGG_CLEAVER, SPAWN_EGG_RUNECALLER, SPAWN_EGG_VEX,
+        assert!(is_item_block(SHULKER_SHELL));
+        assert!(is_item_block(TOTEM_OF_UNDYING));
+        for b in [SHULKER_BOX, SHULKER_SHELL, TOTEM_OF_UNDYING,
+                  SPAWN_EGG_LLAMA, SPAWN_EGG_CLEAVER, SPAWN_EGG_EVOKER, SPAWN_EGG_VEX,
                   SPAWN_EGG_HUSK, SPAWN_EGG_STRAY] {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
@@ -7764,8 +7764,8 @@ mod v111_tests {
         assert_eq!(BLOCK_TABLE[SPAWN_EGG_LLAMA as usize].tiles[0], TILE_V7_EGG_BASE);
         assert_eq!(BLOCK_TABLE[SPAWN_EGG_STRAY as usize].tiles[0], TILE_V7_EGG_BASE + 5);
         const _: () = assert!(TILE_V7_EGG_END <= TILE_MAX, "egg tiles within the atlas guard");
-        // lurkshell box is a solid placeable container
-        assert!(is_solid(LURKSHELL_BOX) && is_opaque(LURKSHELL_BOX));
+        // shulker box is a solid placeable container
+        assert!(is_solid(SHULKER_BOX) && is_opaque(SHULKER_BOX));
     }
 }
 
@@ -7901,7 +7901,7 @@ mod v112_tests {
         ] {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
-        const _: () = assert!(TILE_MAX >= TILE_MIRAGECALLER, "1.12 tiles within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
         assert_eq!(PICKER_BLOCKS.len(), 467);
         // the V9 + V10 windows are all present (the picker-gap fix)
         for want in [SEA_PICKLE, CONDUIT, SPAWN_EGG_TURTLE, BAMBOO, CAMPFIRE, BARREL, SPAWN_EGG_FOX, STICK, CHARCOAL] {
@@ -8177,7 +8177,7 @@ mod v116_tests {
         for c in 0u8..=5 {
             let s = anchor_state(c);
             assert_eq!(anchor_charge(s), c.min(4), "charge {c} clamps + decodes");
-            assert_eq!(state_block(s), REBIRTH_ANCHOR);
+            assert_eq!(state_block(s), RESPAWN_ANCHOR);
             assert!(is_v13_state(s));
         }
         assert_eq!(anchor_light(anchor_state(0)), 0);
@@ -8195,20 +8195,20 @@ mod v116_tests {
         // defaults: charge 0, power 0, chain SITTING; identity + item
         // states 1:1
         for (b, s) in [
-            (REBIRTH_ANCHOR, V13_STATE_BASE),
+            (RESPAWN_ANCHOR, V13_STATE_BASE),
             (TARGET, V13_STATE_BASE + 5),
-            (SPIRIT_SOIL, V13_STATE_BASE + 21),
+            (SOUL_SOIL, V13_STATE_BASE + 21),
             (BASALT, V13_STATE_BASE + 22),
             (BLACKSTONE, V13_STATE_BASE + 23),
             (GILDED_BLACKSTONE, V13_STATE_BASE + 24),
-            (WEEPING_OBSIDIAN, V13_STATE_BASE + 25),
-            (HOLLOW_GOLD_ORE, V13_STATE_BASE + 26),
+            (CRYING_OBSIDIAN, V13_STATE_BASE + 25),
+            (NETHER_GOLD_ORE, V13_STATE_BASE + 26),
             (ANCIENT_DEBRIS, V13_STATE_BASE + 27),
-            (HOLLOWITE_BLOCK, V13_STATE_BASE + 28),
+            (NETHERITE_BLOCK, V13_STATE_BASE + 28),
             (CHAIN, V13_STATE_BASE + 29),
-            (SPIRIT_FIRE, V13_STATE_BASE + 31),
-            (HOLLOWITE_SCRAP, V13_STATE_BASE + 32),
-            (HOLLOWITE_INGOT, V13_STATE_BASE + 33),
+            (SOUL_FIRE, V13_STATE_BASE + 31),
+            (NETHERITE_SCRAP, V13_STATE_BASE + 32),
+            (NETHERITE_INGOT, V13_STATE_BASE + 33),
         ] {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
@@ -8218,36 +8218,36 @@ mod v116_tests {
         assert!(chain_hanging(V13_STATE_BASE + 30));
         assert!(!chain_hanging(V13_STATE_BASE + 29));
         assert_eq!(state_block(V13_STATE_BASE + 30), CHAIN);
-        // spirit fire: cross-sprite, non-solid, light 10
-        assert!(is_spirit_fire(V13_STATE_BASE + 31));
-        assert!(is_spirit_fire(default_state(SPIRIT_FIRE)));
-        assert!(is_cross(SPIRIT_FIRE));
-        assert!(!is_solid(SPIRIT_FIRE));
-        assert_eq!(emissive(SPIRIT_FIRE), 10);
-        // weeping obsidian light 10; the anchor's charge light rides
+        // soul fire: cross-sprite, non-solid, light 10
+        assert!(is_soul_fire(V13_STATE_BASE + 31));
+        assert!(is_soul_fire(default_state(SOUL_FIRE)));
+        assert!(is_cross(SOUL_FIRE));
+        assert!(!is_solid(SOUL_FIRE));
+        assert_eq!(emissive(SOUL_FIRE), 10);
+        // crying obsidian light 10; the anchor's charge light rides
         // state_emissive (the state-level ladder)
-        assert_eq!(emissive(WEEPING_OBSIDIAN), 10);
+        assert_eq!(emissive(CRYING_OBSIDIAN), 10);
         assert_eq!(state_emissive(anchor_state(2)), 7);
         assert_eq!(state_emissive(anchor_state(4)), 15);
         assert_eq!(state_emissive(anchor_state(0)), 0);
         // the F3 targeted-block property lines
-        assert_eq!(state_description(anchor_state(3)), "Rebirth Anchor[charge=3]");
+        assert_eq!(state_description(anchor_state(3)), "Respawn Anchor[charge=3]");
         assert_eq!(state_description(target_state(12)), "Target[power=12]");
         assert_eq!(state_description(V13_STATE_BASE + 30), "Chain[hanging=true]");
-        assert_eq!(state_description(default_state(SPIRIT_SOIL)), "Spirit Soil");
+        assert_eq!(state_description(default_state(SOUL_SOIL)), "Soul Soil");
         // solidity classes: the stone-family blocks solid-opaque; the
-        // chain + spirit fire are non-solid cross-sprite decorations
+        // chain + soul fire are non-solid cross-sprite decorations
         for cube in [
-            SPIRIT_SOIL,
+            SOUL_SOIL,
             BASALT,
             BLACKSTONE,
             GILDED_BLACKSTONE,
-            WEEPING_OBSIDIAN,
-            REBIRTH_ANCHOR,
+            CRYING_OBSIDIAN,
+            RESPAWN_ANCHOR,
             TARGET,
-            HOLLOW_GOLD_ORE,
+            NETHER_GOLD_ORE,
             ANCIENT_DEBRIS,
-            HOLLOWITE_BLOCK,
+            NETHERITE_BLOCK,
         ] {
             assert!(is_solid(cube), "block {cube} solid");
             assert!(is_opaque(cube), "block {cube} opaque");
@@ -8255,25 +8255,25 @@ mod v116_tests {
         assert!(!is_solid(CHAIN) && !is_opaque(CHAIN));
         assert!(is_cross(CHAIN), "chain cross sprite (the lantern class)");
         // the material items are item-blocks, never picker blocks
-        for it in [HOLLOWITE_SCRAP, HOLLOWITE_INGOT] {
+        for it in [NETHERITE_SCRAP, NETHERITE_INGOT] {
             assert!(is_item_block(it), "item {it}");
             assert!(is_cross(it), "item {it} cross sprite");
             assert!(!PICKER_BLOCKS.contains(&it), "item {it} is not a picker block");
         }
         // the 12 placeables are picker blocks
         for want in [
-            SPIRIT_SOIL,
+            SOUL_SOIL,
             BASALT,
             BLACKSTONE,
             GILDED_BLACKSTONE,
-            WEEPING_OBSIDIAN,
-            REBIRTH_ANCHOR,
+            CRYING_OBSIDIAN,
+            RESPAWN_ANCHOR,
             TARGET,
-            HOLLOW_GOLD_ORE,
+            NETHER_GOLD_ORE,
             ANCIENT_DEBRIS,
-            HOLLOWITE_BLOCK,
+            NETHERITE_BLOCK,
             CHAIN,
-            SPIRIT_FIRE,
+            SOUL_FIRE,
         ] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
         }
@@ -8283,24 +8283,24 @@ mod v116_tests {
         assert_eq!(uncharged[3], TILE_ANCHOR_SIDE);
         assert_eq!(charged[3], TILE_ANCHOR_SIDE_CHARGED);
         // names (the F3 plain-name lines + the item hotbar)
-        assert_eq!(name(SPIRIT_SOIL), "Spirit Soil");
+        assert_eq!(name(SOUL_SOIL), "Soul Soil");
         assert_eq!(name(BASALT), "Basalt");
         assert_eq!(name(BLACKSTONE), "Blackstone");
         assert_eq!(name(GILDED_BLACKSTONE), "Gilded Blackstone");
-        assert_eq!(name(WEEPING_OBSIDIAN), "Weeping Obsidian");
-        assert_eq!(name(REBIRTH_ANCHOR), "Rebirth Anchor");
+        assert_eq!(name(CRYING_OBSIDIAN), "Crying Obsidian");
+        assert_eq!(name(RESPAWN_ANCHOR), "Respawn Anchor");
         assert_eq!(name(TARGET), "Target");
-        assert_eq!(name(HOLLOW_GOLD_ORE), "Hollow Gold Ore");
+        assert_eq!(name(NETHER_GOLD_ORE), "Nether Gold Ore");
         assert_eq!(name(ANCIENT_DEBRIS), "Ancient Debris");
-        assert_eq!(name(HOLLOWITE_BLOCK), "Block of Hollowite");
+        assert_eq!(name(NETHERITE_BLOCK), "Block of Netherite");
         assert_eq!(name(CHAIN), "Chain");
-        assert_eq!(name(SPIRIT_FIRE), "Spirit Fire");
-        assert_eq!(name(HOLLOWITE_SCRAP), "Hollowite Scrap");
-        assert_eq!(name(HOLLOWITE_INGOT), "Hollowite Ingot");
+        assert_eq!(name(SOUL_FIRE), "Soul Fire");
+        assert_eq!(name(NETHERITE_SCRAP), "Netherite Scrap");
+        assert_eq!(name(NETHERITE_INGOT), "Netherite Ingot");
         // tiles within the atlas guard
-        const _: () = assert!(TILE_MAX >= TILE_SPIRIT_FIRE, "spirit fire within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_SOUL_FIRE, "soul fire within the atlas guard");
         const _: () = assert!(TILE_MAX >= TILE_ANCHOR_SIDE_CHARGED, "anchor glow within the atlas guard");
-        const _: () = assert!(TILE_MAX >= TILE_HOLLOWITE_INGOT, "ingot within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_NETHERITE_INGOT, "ingot within the atlas guard");
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
@@ -8310,78 +8310,78 @@ mod v116_tests {
     }
 
     /// the V14 window (ids 454..=478, states 750..=775): the
-    /// scarlet/viridian families — all identity folds except the soul
+    /// crimson/warped families — all identity folds except the soul
     /// lantern's sitting/hanging pair (all VERIFIED against the
     /// v116b captures — the research record
     /// docs/research/phase-v116b-1.16-research.md)
     #[test]
     fn v116b_v14_registry_window() {
-        // defaults 1:1 for every family block; the spirit lantern places
+        // defaults 1:1 for every family block; the soul lantern places
         // SITTING (the chain convention); the eggs are item states
         for (b, s) in [
-            (SCARLET_STEM, V14_STATE_BASE),
-            (SCARLET_HYPHAE, V14_STATE_BASE + 1),
-            (SCARLET_PLANKS, V14_STATE_BASE + 2),
-            (SCARLET_MOLD, V14_STATE_BASE + 3),
-            (SCARLET_FUNGUS, V14_STATE_BASE + 4),
-            (SCARLET_ROOTS, V14_STATE_BASE + 5),
+            (CRIMSON_STEM, V14_STATE_BASE),
+            (CRIMSON_HYPHAE, V14_STATE_BASE + 1),
+            (CRIMSON_PLANKS, V14_STATE_BASE + 2),
+            (CRIMSON_NYLIUM, V14_STATE_BASE + 3),
+            (CRIMSON_FUNGUS, V14_STATE_BASE + 4),
+            (CRIMSON_ROOTS, V14_STATE_BASE + 5),
             (WEEPING_VINES, V14_STATE_BASE + 6),
-            (VIRIDIAN_STEM, V14_STATE_BASE + 7),
-            (VIRIDIAN_HYPHAE, V14_STATE_BASE + 8),
-            (VIRIDIAN_PLANKS, V14_STATE_BASE + 9),
-            (VIRIDIAN_MOLD, V14_STATE_BASE + 10),
-            (VIRIDIAN_FUNGUS, V14_STATE_BASE + 11),
-            (VIRIDIAN_ROOTS, V14_STATE_BASE + 12),
+            (WARPED_STEM, V14_STATE_BASE + 7),
+            (WARPED_HYPHAE, V14_STATE_BASE + 8),
+            (WARPED_PLANKS, V14_STATE_BASE + 9),
+            (WARPED_NYLIUM, V14_STATE_BASE + 10),
+            (WARPED_FUNGUS, V14_STATE_BASE + 11),
+            (WARPED_ROOTS, V14_STATE_BASE + 12),
             (TWISTING_VINES, V14_STATE_BASE + 13),
-            (VIRIDIAN_WART_BLOCK, V14_STATE_BASE + 14),
-            (GLOWCAP, V14_STATE_BASE + 15),
-            (HOLLOW_SPROUTS, V14_STATE_BASE + 16),
+            (WARPED_WART_BLOCK, V14_STATE_BASE + 14),
+            (SHROOMLIGHT, V14_STATE_BASE + 15),
+            (NETHER_SPROUTS, V14_STATE_BASE + 16),
             (POLISHED_BASALT, V14_STATE_BASE + 17),
             (POLISHED_BLACKSTONE, V14_STATE_BASE + 18),
             (POLISHED_BLACKSTONE_BRICKS, V14_STATE_BASE + 19),
-            (SPIRIT_TORCH, V14_STATE_BASE + 20),
-            (SPIRIT_LANTERN, V14_STATE_BASE + 21),
-            (SPAWN_EGG_EMBERHOPPER, V14_STATE_BASE + 23),
-            (SPAWN_EGG_PIGOBLIN, V14_STATE_BASE + 24),
-            (SPAWN_EGG_BOARLING, V14_STATE_BASE + 25),
+            (SOUL_TORCH, V14_STATE_BASE + 20),
+            (SOUL_LANTERN, V14_STATE_BASE + 21),
+            (SPAWN_EGG_STRIDER, V14_STATE_BASE + 23),
+            (SPAWN_EGG_PIGLIN, V14_STATE_BASE + 24),
+            (SPAWN_EGG_HOGLIN, V14_STATE_BASE + 25),
         ] {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
             assert!(!is_model_state(s), "state {s} never routes to models");
         }
-        // the spirit lantern's hanging form folds to the same parent;
+        // the soul lantern's hanging form folds to the same parent;
         // hanging is NOT the default (the lantern/chain pattern)
-        assert!(spirit_lantern_hanging(V14_STATE_BASE + 22));
-        assert!(!spirit_lantern_hanging(V14_STATE_BASE + 21));
-        assert_eq!(state_block(V14_STATE_BASE + 22), SPIRIT_LANTERN);
+        assert!(soul_lantern_hanging(V14_STATE_BASE + 22));
+        assert!(!soul_lantern_hanging(V14_STATE_BASE + 21));
+        assert_eq!(state_block(V14_STATE_BASE + 22), SOUL_LANTERN);
         assert_eq!(
             state_description(V14_STATE_BASE + 22),
-            "Spirit Lantern[hanging=true]"
+            "Soul Lantern[hanging=true]"
         );
         assert_eq!(
             state_description(V14_STATE_BASE + 21),
-            "Spirit Lantern[hanging=false]"
+            "Soul Lantern[hanging=false]"
         );
-        // the soul lights: torch + lantern at light 10, glowcap 15
-        assert_eq!(emissive(SPIRIT_TORCH), 10);
-        assert_eq!(emissive(SPIRIT_LANTERN), 10);
-        assert_eq!(state_emissive(default_state(SPIRIT_LANTERN)), 10);
+        // the soul lights: torch + lantern at light 10, shroomlight 15
+        assert_eq!(emissive(SOUL_TORCH), 10);
+        assert_eq!(emissive(SOUL_LANTERN), 10);
+        assert_eq!(state_emissive(default_state(SOUL_LANTERN)), 10);
         assert_eq!(state_emissive(default_state(V14_STATE_BASE + 22)), 10);
-        assert_eq!(emissive(GLOWCAP), 15);
-        // solidity classes: stems/hyphae/planks/molds/wart/glowcap/
+        assert_eq!(emissive(SHROOMLIGHT), 15);
+        // solidity classes: stems/hyphae/planks/molds/wart/shroomlight/
         // polished stones are solid-opaque cubes; the plants + soul
         // torch/lantern are non-solid cross sprites
         for cube in [
-            SCARLET_STEM,
-            SCARLET_HYPHAE,
-            SCARLET_PLANKS,
-            SCARLET_MOLD,
-            VIRIDIAN_STEM,
-            VIRIDIAN_HYPHAE,
-            VIRIDIAN_PLANKS,
-            VIRIDIAN_MOLD,
-            VIRIDIAN_WART_BLOCK,
-            GLOWCAP,
+            CRIMSON_STEM,
+            CRIMSON_HYPHAE,
+            CRIMSON_PLANKS,
+            CRIMSON_NYLIUM,
+            WARPED_STEM,
+            WARPED_HYPHAE,
+            WARPED_PLANKS,
+            WARPED_NYLIUM,
+            WARPED_WART_BLOCK,
+            SHROOMLIGHT,
             POLISHED_BASALT,
             POLISHED_BLACKSTONE,
             POLISHED_BLACKSTONE_BRICKS,
@@ -8390,15 +8390,15 @@ mod v116_tests {
             assert!(is_opaque(cube), "block {cube} opaque");
         }
         for plant in [
-            SCARLET_FUNGUS,
-            SCARLET_ROOTS,
+            CRIMSON_FUNGUS,
+            CRIMSON_ROOTS,
             WEEPING_VINES,
-            VIRIDIAN_FUNGUS,
-            VIRIDIAN_ROOTS,
+            WARPED_FUNGUS,
+            WARPED_ROOTS,
             TWISTING_VINES,
-            HOLLOW_SPROUTS,
-            SPIRIT_TORCH,
-            SPIRIT_LANTERN,
+            NETHER_SPROUTS,
+            SOUL_TORCH,
+            SOUL_LANTERN,
         ] {
             assert!(!is_solid(plant), "plant {plant} non-solid");
             assert!(!is_opaque(plant), "plant {plant} transparent");
@@ -8406,11 +8406,11 @@ mod v116_tests {
         }
         // the forest-plant classifier (the placement + mob-repel helper)
         for p in [
-            SCARLET_FUNGUS,
-            SCARLET_ROOTS,
-            HOLLOW_SPROUTS,
-            VIRIDIAN_FUNGUS,
-            VIRIDIAN_ROOTS,
+            CRIMSON_FUNGUS,
+            CRIMSON_ROOTS,
+            NETHER_SPROUTS,
+            WARPED_FUNGUS,
+            WARPED_ROOTS,
         ] {
             assert!(is_forest_plant(p), "forest plant {p}");
             assert!(is_forest_plant(default_state(p)), "forest plant state");
@@ -8420,66 +8420,66 @@ mod v116_tests {
         assert!(!is_forest_plant(WEEPING_VINES));
         assert!(!is_forest_plant(TWISTING_VINES));
         // the eggs: kinds 42..=44, item-blocks, picker blocks
-        assert_eq!(egg_mob(SPAWN_EGG_EMBERHOPPER), Some(42));
-        assert_eq!(egg_mob(SPAWN_EGG_PIGOBLIN), Some(43));
-        assert_eq!(egg_mob(SPAWN_EGG_BOARLING), Some(44));
-        for e in [SPAWN_EGG_EMBERHOPPER, SPAWN_EGG_PIGOBLIN, SPAWN_EGG_BOARLING] {
+        assert_eq!(egg_mob(SPAWN_EGG_STRIDER), Some(42));
+        assert_eq!(egg_mob(SPAWN_EGG_PIGLIN), Some(43));
+        assert_eq!(egg_mob(SPAWN_EGG_HOGLIN), Some(44));
+        for e in [SPAWN_EGG_STRIDER, SPAWN_EGG_PIGLIN, SPAWN_EGG_HOGLIN] {
             assert!(is_item_block(e), "egg {e} item-block");
             assert!(is_spawn_egg(e), "egg {e}");
             assert!(PICKER_BLOCKS.contains(&e), "egg {e} in picker");
         }
         // the 22 placeables are picker blocks
         for want in [
-            SCARLET_STEM,
-            SCARLET_HYPHAE,
-            SCARLET_PLANKS,
-            SCARLET_MOLD,
-            SCARLET_FUNGUS,
-            SCARLET_ROOTS,
+            CRIMSON_STEM,
+            CRIMSON_HYPHAE,
+            CRIMSON_PLANKS,
+            CRIMSON_NYLIUM,
+            CRIMSON_FUNGUS,
+            CRIMSON_ROOTS,
             WEEPING_VINES,
-            VIRIDIAN_STEM,
-            VIRIDIAN_HYPHAE,
-            VIRIDIAN_PLANKS,
-            VIRIDIAN_MOLD,
-            VIRIDIAN_FUNGUS,
-            VIRIDIAN_ROOTS,
+            WARPED_STEM,
+            WARPED_HYPHAE,
+            WARPED_PLANKS,
+            WARPED_NYLIUM,
+            WARPED_FUNGUS,
+            WARPED_ROOTS,
             TWISTING_VINES,
-            VIRIDIAN_WART_BLOCK,
-            GLOWCAP,
-            HOLLOW_SPROUTS,
+            WARPED_WART_BLOCK,
+            SHROOMLIGHT,
+            NETHER_SPROUTS,
             POLISHED_BASALT,
             POLISHED_BLACKSTONE,
             POLISHED_BLACKSTONE_BRICKS,
-            SPIRIT_TORCH,
-            SPIRIT_LANTERN,
+            SOUL_TORCH,
+            SOUL_LANTERN,
         ] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
         }
         // names (the F3 plain-name lines + the item hotbar)
-        assert_eq!(name(SCARLET_STEM), "Scarlet Stem");
-        assert_eq!(name(SCARLET_PLANKS), "Scarlet Planks");
-        assert_eq!(name(SCARLET_MOLD), "Scarlet Mold");
-        assert_eq!(name(SCARLET_FUNGUS), "Scarlet Fungus");
-        assert_eq!(name(SCARLET_ROOTS), "Scarlet Roots");
+        assert_eq!(name(CRIMSON_STEM), "Crimson Stem");
+        assert_eq!(name(CRIMSON_PLANKS), "Crimson Planks");
+        assert_eq!(name(CRIMSON_NYLIUM), "Crimson Nylium");
+        assert_eq!(name(CRIMSON_FUNGUS), "Crimson Fungus");
+        assert_eq!(name(CRIMSON_ROOTS), "Crimson Roots");
         assert_eq!(name(WEEPING_VINES), "Weeping Vines");
-        assert_eq!(name(VIRIDIAN_STEM), "Viridian Stem");
-        assert_eq!(name(VIRIDIAN_PLANKS), "Viridian Planks");
-        assert_eq!(name(VIRIDIAN_MOLD), "Viridian Mold");
-        assert_eq!(name(VIRIDIAN_FUNGUS), "Viridian Fungus");
-        assert_eq!(name(VIRIDIAN_ROOTS), "Viridian Roots");
+        assert_eq!(name(WARPED_STEM), "Warped Stem");
+        assert_eq!(name(WARPED_PLANKS), "Warped Planks");
+        assert_eq!(name(WARPED_NYLIUM), "Warped Nylium");
+        assert_eq!(name(WARPED_FUNGUS), "Warped Fungus");
+        assert_eq!(name(WARPED_ROOTS), "Warped Roots");
         assert_eq!(name(TWISTING_VINES), "Twisting Vines");
-        assert_eq!(name(VIRIDIAN_WART_BLOCK), "Viridian Wart Block");
-        assert_eq!(name(GLOWCAP), "Glowcap");
-        assert_eq!(name(HOLLOW_SPROUTS), "Hollow Sprouts");
+        assert_eq!(name(WARPED_WART_BLOCK), "Warped Wart Block");
+        assert_eq!(name(SHROOMLIGHT), "Shroomlight");
+        assert_eq!(name(NETHER_SPROUTS), "Nether Sprouts");
         assert_eq!(name(POLISHED_BASALT), "Polished Basalt");
         assert_eq!(name(POLISHED_BLACKSTONE), "Polished Blackstone");
         assert_eq!(name(POLISHED_BLACKSTONE_BRICKS), "Polished Blackstone Bricks");
-        assert_eq!(name(SPIRIT_TORCH), "Spirit Torch");
-        assert_eq!(name(SPIRIT_LANTERN), "Spirit Lantern");
+        assert_eq!(name(SOUL_TORCH), "Soul Torch");
+        assert_eq!(name(SOUL_LANTERN), "Soul Lantern");
         // tiles within the atlas guard
-        const _: () = assert!(TILE_MAX >= TILE_SPIRIT_LANTERN, "spirit lantern within the atlas guard");
-        const _: () = assert!(TILE_MAX >= TILE_GLOWCAP, "glowcap within the atlas guard");
-        const _: () = assert!(TILE_MAX >= TILE_MOB_BOARLING, "boarling sprite within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_SOUL_LANTERN, "soul lantern within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_SHROOMLIGHT, "shroomlight within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_MOB_HOGLIN, "hoglin sprite within the atlas guard");
         // bounds + window shape
         assert_eq!(V14_COUNT, 26);
         assert_eq!(V14_STATE_BASE + V14_COUNT, 776);
@@ -8516,15 +8516,15 @@ mod v116_tests {
             (SUGAR, V15_STATE_BASE + 12),
             (EGG, V15_STATE_BASE + 13),
             (POISONOUS_POTATO, V15_STATE_BASE + 14),
-            (POPPED_ECHO_FRUIT, V15_STATE_BASE + 15),
-            (WEEPGEIST_TEAR, V15_STATE_BASE + 16),
+            (POPPED_CHORUS_FRUIT, V15_STATE_BASE + 15),
+            (GHAST_TEAR, V15_STATE_BASE + 16),
             (POTION_LEAPING, V15_STATE_BASE + 17),
             (POTION_LEAPING_II, V15_STATE_BASE + 18),
             (POTION_LEAPING_LONG, V15_STATE_BASE + 19),
             (POTION_REGEN, V15_STATE_BASE + 20),
             (POTION_REGEN_II, V15_STATE_BASE + 21),
             (POTION_REGEN_LONG, V15_STATE_BASE + 22),
-            (SPAWN_EGG_WEEPGEIST, V15_STATE_BASE + 23),
+            (SPAWN_EGG_GHAST, V15_STATE_BASE + 23),
             (SPAWN_EGG_CAVE_SPIDER, V15_STATE_BASE + 24),
             (SPAWN_EGG_SILVERFISH, V15_STATE_BASE + 25),
             (MELON_SLICE, V15_STATE_BASE + 28),
@@ -8539,15 +8539,15 @@ mod v116_tests {
         assert_eq!(spawner_mob(SPAWNER_CAVESPIDER), 7);
         assert_eq!(spawner_mob(SPAWNER_SILVERFISH), 8);
         // the egg roundtrip: kinds 45..=47
-        assert_eq!(egg_mob(SPAWN_EGG_WEEPGEIST), Some(45));
+        assert_eq!(egg_mob(SPAWN_EGG_GHAST), Some(45));
         assert_eq!(egg_mob(SPAWN_EGG_CAVE_SPIDER), Some(46));
         assert_eq!(egg_mob(SPAWN_EGG_SILVERFISH), Some(47));
         // names + tiles
         assert_eq!(name(STEAK), "Steak");
         assert_eq!(name(RABBIT_STEW), "Rabbit Stew");
         assert_eq!(name(POISONOUS_POTATO), "Poisonous Potato");
-        assert_eq!(name(POPPED_ECHO_FRUIT), "Popped Echo Fruit");
-        assert_eq!(name(WEEPGEIST_TEAR), "Weepgeist Tear");
+        assert_eq!(name(POPPED_CHORUS_FRUIT), "Popped Chorus Fruit");
+        assert_eq!(name(GHAST_TEAR), "Ghast Tear");
         assert_eq!(name(POTION_LEAPING), "Potion of Leaping");
         // tiles within the atlas guard
         const _: () = assert!(TILE_MAX >= TILE_MOB_SILVERFISH, "silverfish sprite within the atlas guard");

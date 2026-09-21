@@ -49,33 +49,53 @@ cargo run --release --no-default-features
 
 #### Linux input (mouse / pointer capture) — troubleshooting
 
-Look-around uses a three-rung pointer-capture ladder `Locked → Confined →
-delta-look`, tried in that order at every capture: `Locked` (a real winit
-grab — relative motion via raw `DeviceEvent`s), `Confined` (winit 0.29's
-X11 backend rejects `Locked` outright, so Linux lands here; on Wayland
-`Confined` delivers the same raw relative motion), and `Delta` (no
-pointer-lock protocol available: the cursor stays visible and look input
-is fed from cursor position deltas — the guaranteed-delivery channel).
-The engine never hides the cursor without a working grab and never feeds
-two motion streams at once; if the first click after a menu finds the
-grab lost, it re-attempts the ladder. Every rung logs a `pointer:` line
-through the boot-log sinks (visible with `--debug`, mirrored to
-`logs/latest.log`).
+Look-around uses a pointer-capture ladder `Locked → Confined → delta-look`.
+**Linux never asks for `Locked`** (X11 cannot honor it — an X pointer grab IS
+a confinement; Wayland's `Confined` delivers the identical raw relative
+motion AND keeps `CursorMoved` flowing as the watchdog's recovery channel):
+the Linux ladder is `Confined → Delta`. `Locked` is only attempted on
+Windows/macOS. `Delta` (no pointer-lock protocol available) keeps the cursor
+visible and feeds look input from cursor position deltas — the
+guaranteed-delivery channel. The engine never hides the cursor without a
+working grab and never feeds two motion streams at once; if the first click
+after a menu finds the grab lost, it re-attempts the ladder. Every rung logs
+a `pointer:` line through the boot-log sinks (visible with `--debug`,
+mirrored to `logs/latest.log`), and the boot carries a
+`pointer env: session=… wayland_display=… winit_unix_backend=… VC_POINTER=…`
+line so every input bug report self-describes its environment.
+
+The 2026-09-21 build wires the full click-side routing hardening (ported
+from the owner's parallel track):
+
+- **Pointer-starvation watchdog**: every capture arms an evidence window —
+  `CursorMoved` and raw `DeviceEvent::MouseMotion` counters, judged every
+  frame. A real grab where the user demonstrably moves the mouse (>= 3
+  `CursorMoved`) but not ONE raw motion arrives > 1 s into the capture is
+  demoted to delta-look automatically: grab released, cursor visible, the
+  broken rung marked sticky-unreliable (never retried this process). You
+  see the cursor come back and keep playing instead of a frozen camera.
+- **`VC_POINTER=auto|delta|confined|locked`** env override — the documented
+  manual escape hatch AND the first diagnostic step for a pointer report.
+- **Raw-button click routing**: quick physical clicks that arrive ONLY as
+  raw `DeviceEvent::Button` (never as `WindowEvent::MouseInput` — the
+  classic X11-under-grab case behind "click sound but nothing happens") are
+  routed through the same authoritative click path, with a dedup guard for
+  platforms delivering both forms of one physical click. Short clicks
+  (press+release inside one input batch, before the next tick) are latched
+  as taps so they still act exactly once.
+- A fresh screen re-derives hover from the current cursor position
+  immediately (the initial cursor can sit on a button with no `CursorMoved`
+  ever arriving — the painted highlight and the hit-test table now agree
+  from the first frame).
 
 - Run with `--debug` and read the `pointer:` line to see which rung your
-  compositor actually granted (`locked` / `confined to the window` /
-  `lock unavailable — delta-look fallback`).
+  compositor actually granted (`locked` / `confined to the window (raw
+  motion + watchdog)` / `lock unavailable — delta-look fallback`).
 - Want a hidden-cursor lock on a Wayland session? Force the XWayland
   path, which uses XInput2 raw motion: `WINIT_UNIX_BACKEND=x11 ./voxelcraft-*`.
 - Edge note: in delta-look mode the camera stops turning when the (visible)
   cursor reaches the screen edge — inherent to position-delta input; pull the
   mouse back toward the center to keep turning.
-- The upstream reconciliation (2026-09-19) preserved in git history a
-  parallel owner track with an evidence-based starvation watchdog (demote
-  to delta-look when the mouse demonstrably moves but no raw motion ever
-  arrives) and a `VC_POINTER=delta|confined|locked|auto` env override; both
-  are pending selective porting onto this lineage and are NOT yet wired
-  into the current build.
 
 ### 3. Build & serve the browser (WebGPU) version
 
@@ -128,7 +148,7 @@ crates/
   vc-mesh/        greedy mesher + skylight BFS + per-vertex AO
   vc-particles/   break/hit particle pool (vanilla physics)
   vc-gameplay/    crafting, furnaces, brewing, enchanting, villagers
-  vc-sim/         20 Hz tick loop, fluids, fluxstone, item entities
+  vc-sim/         20 Hz tick loop, fluids, redstone, item entities
   vc-anvil/       vanilla 1.16.5 save/load (NBT + .mca regions)
   vc-render/      wgpu renderer, atlas, FSR 1.0, shader packs, UI canvas
   vc-audio/       synthesized sound bank + rodio/WebAudio backends

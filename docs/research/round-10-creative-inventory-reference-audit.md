@@ -6,7 +6,7 @@ Wiki pages fetched LIVE 2026-09-15 (saved under `diag/wiki/`):
 
 ## 1. What the live wiki says (the facts this round is built on)
 
-### Creative_inventory (minecraft.wiki, rev 3761325, fetched live 2026-09-15)
+### Creative_inventory (the reference wiki, rev 3761325, fetched live 2026-09-15)
 
 - The **current** wiki describes the modern (1.19.3+) screen: 11 sections
   (Building Blocks, Colored Blocks, Natural Blocks, Functional Blocks,

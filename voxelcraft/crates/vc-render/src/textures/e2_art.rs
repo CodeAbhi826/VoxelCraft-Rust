@@ -115,9 +115,9 @@ pub(super) fn cobble_wall_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// Void chest — dark obsidian body with a glowing teal center eye
-/// (light 7, VERIFIED w/Void_Chest).
-pub(super) fn void_chest_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// End chest — dark obsidian body with a glowing teal center eye
+/// (light 7, VERIFIED w/Ender_Chest).
+pub(super) fn ender_chest_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let body = [28, 24, 40];
     noise_fill(a, t, body, 10, rng);
     // lid seam
@@ -229,9 +229,9 @@ pub(super) fn tripwire_hook_art(a: &mut [u8], t: u16, powered: bool) {
     });
 }
 
-/// Blight skeleton skull — the blackened skull (summon component + 2.5%
-/// drop, VERIFIED w/Blight_Skeleton).
-pub(super) fn blight_skull_art(a: &mut [u8], t: u16) {
+/// Wither skeleton skull — the blackened skull (summon component + 2.5%
+/// drop, VERIFIED w/Wither_Skeleton).
+pub(super) fn wither_skull_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "................",
@@ -315,9 +315,9 @@ pub(super) fn emerald_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// Hollow star — pale four-point star with a warm core (the blight's
-/// drop, VERIFIED w/Blight).
-pub(super) fn hollow_star_art(a: &mut [u8], t: u16) {
+/// Nether star — pale four-point star with a warm core (the wither's
+/// drop, VERIFIED w/Wither).
+pub(super) fn nether_star_art(a: &mut [u8], t: u16) {
     for y in 0..16i32 {
         for x in 0..16i32 {
             let dx = (x - 8).abs();
@@ -459,10 +459,10 @@ pub(super) fn pumpkin_pie_art(a: &mut [u8], t: u16) {
 
 // ---- mob sprites (billboards; clean-room, ours) ----
 
-/// The Blight — three-headed dark boss (VERIFIED w/Blight: 300 HP, 3.5
+/// The Wither — three-headed dark boss (VERIFIED w/Wither: 300 HP, 3.5
 /// blocks tall). Engine adaptation: single sprite carrying the
 /// three-head silhouette.
-pub(super) fn blight_art(a: &mut [u8], t: u16) {
+pub(super) fn wither_art(a: &mut [u8], t: u16) {
     let rows = [
         "K...........K..",
         "KKK.......KKK..",
@@ -489,9 +489,9 @@ pub(super) fn blight_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// Blight Skeleton — tall blackened skeleton with a stone sword
-/// (VERIFIED w/Blight_Skeleton: 20 HP, 2.4 tall, stone sword).
-pub(super) fn blight_skeleton_art(a: &mut [u8], t: u16) {
+/// Wither Skeleton — tall blackened skeleton with a stone sword
+/// (VERIFIED w/Wither_Skeleton: 20 HP, 2.4 tall, stone sword).
+pub(super) fn wither_skeleton_art(a: &mut [u8], t: u16) {
     let rows = [
         "....KKKK....",
         "....KRRK....",
@@ -586,9 +586,9 @@ pub(super) fn bat_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// Blight skull projectile — the black skull bomb the blight fires
-/// (8 HP + Blight II on Normal, VERIFIED w/Blight).
-pub(super) fn blight_skull_proj_art(a: &mut [u8], t: u16) {
+/// Wither skull projectile — the black skull bomb the wither fires
+/// (8 HP + Wither II on Normal, VERIFIED w/Wither).
+pub(super) fn wither_skull_proj_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "................",
@@ -614,13 +614,13 @@ pub(super) fn blight_skull_proj_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// Phase E2 egg palettes (kinds 17..=20: blight skeleton, witch, bat,
-/// blight) — appended to the E1 16-entry table at the call site.
+/// Phase E2 egg palettes (kinds 17..=20: wither skeleton, witch, bat,
+/// wither) — appended to the E1 16-entry table at the call site.
 pub const E2_EGG_PALETTES: [(i32, i32, i32, i32, i32, i32); 4] = [
-    (44, 40, 42, 190, 60, 50),   // blight skeleton: black + red eyes
+    (44, 40, 42, 190, 60, 50),   // wither skeleton: black + red eyes
     (60, 40, 90, 70, 120, 70),   // witch: purple hat + green skin
     (96, 72, 58, 74, 56, 44),    // bat: brown + dark wings
-    (30, 26, 32, 220, 60, 60),   // blight: black + red
+    (30, 26, 32, 220, 60, 60),   // wither: black + red
 ];
 
 /// Coal — the fuel item (VERIFICATION-REPORT mechanical fix #4; VERIFIED

@@ -3,7 +3,7 @@ name = "vc-sim"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
-description = "Deterministic 20 Hz simulation: fluids, fluxstone, entities, block entities"
+description = "Deterministic 20 Hz simulation: fluids, redstone, entities, block entities"
 
 [dependencies]
 vc-chunk = { workspace = true }

@@ -6,8 +6,8 @@
 //! glowstone-upgraded II.
 //!
 //! Engine adaptations (documented, palette-bounded):
-//! - blaze powder → HOLLOWSTONE as the fuel item (hollow-native, plentiful)
-//! - hollow wart → MUSHROOM_RED as the base ingredient (red like wart)
+//! - blaze powder → NETHERRACK as the fuel item (nether-native, plentiful)
+//! - nether wart → MUSHROOM_RED as the base ingredient (red like wart)
 //! - glistering melon → MUSHROOM_BROWN as the effect ingredient
 //! - glowstone upgrade is exactly vanilla
 
@@ -19,12 +19,12 @@ use crate::effects::EffectKind;
 
 /// vanilla: 400 game ticks per brew (20 s)
 pub const BREW_TICKS: i32 = 400;
-/// vanilla: one blaze powder fuels 20 operations (§29 adaptation: hollowstone)
+/// vanilla: one blaze powder fuels 20 operations (§29 adaptation: netherrack)
 pub const FUEL_OPERATIONS: i32 = 20;
 
 /// is this block a valid brewing fuel?
 pub fn is_fuel(b: u16) -> bool {
-    b == HOLLOWSTONE
+    b == NETHERRACK
 }
 
 /// one brewing recipe: `ingredient` + `input` bottle → `output` bottle
@@ -84,7 +84,7 @@ pub const BREW_RECIPES: &[BrewRecipe] = &[
         output: POTION_HARMING_II,
     },
     // VERIFIED: a fermented spider eye is a BASE ingredient — water + eye
-    // brews the no-effect Mundane potion (like fluxstone/glowstone bases)
+    // brews the no-effect Mundane potion (like redstone/glowstone bases)
     BrewRecipe {
         input: POTION_WATER,
         ingredient: FERMENTED_SPIDER_EYE,
@@ -113,16 +113,16 @@ pub const BREW_RECIPES: &[BrewRecipe] = &[
         ingredient: GLOWSTONE,
         output: POTION_TURTLE_MASTER_II,
     },
-    // NOTE: the fluxstone-dust EXTENDED forms (slow falling 4:00,
+    // NOTE: the redstone-dust EXTENDED forms (slow falling 4:00,
     // turtle master 3:00) are palette-absent — the engine has no
-    // fluxstone-dust ITEM (disclosed; POTION_SLOW_FALLING_EXT exists as
+    // redstone-dust ITEM (disclosed; POTION_SLOW_FALLING_EXT exists as
     // a registry row for future rounds)
     // ---- the 1.0-1.16.5 completeness audit: the 1.8 rabbit's-foot
     // deferral, unblocked (the foot item landed in 1.8; the 1.8 round
     // deferred "Potion of Leaping (brewing needs the rabbit's-foot
     // recipe hook)" — the hook is this table). VERIFIED (live
     // 2026-09-08, capture scripts/audit16_page_Potion.json — the
-    // ingredient chart lists Rabbit's Foot and Weepgeist Tear; the
+    // ingredient chart lists Rabbit's Foot and Ghast Tear; the
     // glowstone-enhanced forms follow the healing family's pattern) ----
     // leaping: awkward + rabbit's foot -> Potion of Leaping (3:00)
     BrewRecipe {
@@ -136,12 +136,12 @@ pub const BREW_RECIPES: &[BrewRecipe] = &[
         ingredient: GLOWSTONE,
         output: POTION_LEAPING_II,
     },
-    // regeneration: awkward + weepgeist tear -> Potion of Regeneration
-    // (0:45) — "Weepgeists ... are the only source of weepgeist tears"
-    // (VERIFIED w/Weepgeist; the weepgeist itself lands this round)
+    // regeneration: awkward + ghast tear -> Potion of Regeneration
+    // (0:45) — "Ghasts ... are the only source of ghast tears"
+    // (VERIFIED w/Ghast; the ghast itself lands this round)
     BrewRecipe {
         input: POTION_AWKWARD,
-        ingredient: WEEPGEIST_TEAR,
+        ingredient: GHAST_TEAR,
         output: POTION_REGEN,
     },
     // regeneration II: glowstone enhancement (0:22)
@@ -173,19 +173,19 @@ pub fn potion_effects(b: u16) -> &'static [(EffectKind, u8, i32)] {
         POTION_LEAPING => &[(JumpBoost, 0, 3600)],
         // Jump Boost II, 1:30 (the glowstone-enhanced form)
         POTION_LEAPING_II => &[(JumpBoost, 1, 1800)],
-        // fluxstone-extended 8:00 (the registry-row convention, gated)
+        // redstone-extended 8:00 (the registry-row convention, gated)
         POTION_LEAPING_LONG => &[(JumpBoost, 0, 9600)],
         // Regeneration I, 0:45 ("applied every 25 ticks" per the
         // engine's effect tick — the level-I row)
         POTION_REGEN => &[(Regeneration, 0, 900)],
         // Regeneration II, 0:22 (the glowstone-enhanced form)
         POTION_REGEN_II => &[(Regeneration, 1, 440)],
-        // fluxstone-extended 1:30 (registry row, fluxstone-gated)
+        // redstone-extended 1:30 (registry row, redstone-gated)
         POTION_REGEN_LONG => &[(Regeneration, 0, 1800)],
         // "Gives the player the Slow Falling status effect for 1:30"
         POTION_SLOW_FALLING => &[(SlowFalling, 0, 1800)],
-        // fluxstone-extended 4:00 (the item row exists; brewing it is
-        // fluxstone-item-gated — disclosed)
+        // redstone-extended 4:00 (the item row exists; brewing it is
+        // redstone-item-gated — disclosed)
         POTION_SLOW_FALLING_EXT => &[(SlowFalling, 0, 4800)],
         // "Gives Slowness IV and Resistance III for 1 minute"
         // (amplifiers are 0-based: IV → 3, III → 2)
@@ -400,7 +400,7 @@ mod tests {
                 ItemStack::EMPTY,
             ],
             ingredient: ItemStack::new(FERMENTED_SPIDER_EYE, 1),
-            fuel: ItemStack::new(HOLLOWSTONE, 1),
+            fuel: ItemStack::new(NETHERRACK, 1),
             ..Default::default()
         };
         let mut completions = 0;
@@ -426,7 +426,7 @@ mod tests {
                 ItemStack::new(POTION_WATER, 1),
             ],
             ingredient: ItemStack::new(MUSHROOM_RED, 1),
-            fuel: ItemStack::new(HOLLOWSTONE, 1),
+            fuel: ItemStack::new(NETHERRACK, 1),
             ..Default::default()
         };
         let mut completions = 0;
@@ -467,7 +467,7 @@ mod tests {
         b.bottles[0] = ItemStack::new(POTION_WATER, 1);
         b.bottles[1] = ItemStack::new(POTION_HEALING, 1);
         b.ingredient = ItemStack::new(MUSHROOM_RED, 1);
-        b.fuel = ItemStack::new(HOLLOWSTONE, 1);
+        b.fuel = ItemStack::new(NETHERRACK, 1);
         for _ in 0..600 {
             assert!(!b.tick());
         }
@@ -479,7 +479,7 @@ mod tests {
         let mut b = BrewingState::default();
         b.bottles[0] = ItemStack::new(POTION_HEALING, 1);
         b.ingredient = ItemStack::new(GLOWSTONE, 1);
-        b.fuel = ItemStack::new(HOLLOWSTONE, 1);
+        b.fuel = ItemStack::new(NETHERRACK, 1);
         for _ in 0..BREW_TICKS + 1 {
             b.tick();
         }
@@ -491,7 +491,7 @@ mod tests {
         let mut b = BrewingState::default();
         b.bottles[0] = ItemStack::new(POTION_AWKWARD, 1);
         b.ingredient = ItemStack::new(MUSHROOM_BROWN, 1);
-        b.fuel = ItemStack::new(HOLLOWSTONE, 1);
+        b.fuel = ItemStack::new(NETHERRACK, 1);
         for _ in 0..BREW_TICKS + 1 {
             b.tick();
         }
@@ -502,10 +502,10 @@ mod tests {
     fn one_fuel_item_funds_twenty_brews() {
         // vanilla: each stand slot holds ONE bottle (potions don't stack),
         // so we re-fill the slot between cycles — the fuel charge pool must
-        // fund exactly 20 operations from one hollowstone item
+        // fund exactly 20 operations from one netherrack item
         let mut b = BrewingState {
             ingredient: ItemStack::new(MUSHROOM_RED, 64),
-            fuel: ItemStack::new(HOLLOWSTONE, 1),
+            fuel: ItemStack::new(NETHERRACK, 1),
             ..Default::default()
         };
         let mut completions = 0;
@@ -521,7 +521,7 @@ mod tests {
             }
             ticks += 1;
         }
-        assert_eq!(completions, 20, "one hollowstone = exactly 20 operations");
+        assert_eq!(completions, 20, "one netherrack = exactly 20 operations");
         assert!(b.fuel.is_empty());
         assert_eq!(b.fuel_charges, 0);
     }
@@ -531,7 +531,7 @@ mod tests {
         let mut b = BrewingState::default();
         b.bottles[0] = ItemStack::new(POTION_WATER, 1);
         b.ingredient = ItemStack::new(MUSHROOM_RED, 1);
-        b.fuel = ItemStack::new(HOLLOWSTONE, 1);
+        b.fuel = ItemStack::new(NETHERRACK, 1);
         for _ in 0..200 {
             b.tick();
         }
@@ -549,7 +549,7 @@ mod tests {
         let mut st = BrewingState::default();
         st.bottles[0] = ItemStack::new(POTION_WATER, 1);
         st.ingredient = ItemStack::new(MUSHROOM_RED, 1);
-        st.fuel = ItemStack::new(HOLLOWSTONE, 1);
+        st.fuel = ItemStack::new(NETHERRACK, 1);
         bs.map.insert([1, 65, 1], st);
         for _ in 0..BREW_TICKS {
             bs.tick();
@@ -575,7 +575,7 @@ mod tests {
     /// falling "Brewed with phantom membrane"; turtle master "brew
     /// the potion of the Turtle Master from an awkward potion" +
     /// glowstone "enhances the effects to Slowness VI and Resistance
-    /// IV". The fluxstone extended forms are fluxstone-item-gated
+    /// IV". The redstone extended forms are redstone-item-gated
     /// (disclosed).
     #[test]
     fn v113_aquatic_brews() {
@@ -600,7 +600,7 @@ mod tests {
     /// 1.13: the duration windows applied on drink (VERIFIED changelog
     /// §Items: slow falling "for 1:30"; turtle master "Slowness IV and
     /// Resistance III for 1 minute"; the extended 4:00 row exists as
-    /// an item but is fluxstone-gated — its window is still correct).
+    /// an item but is redstone-gated — its window is still correct).
     #[test]
     fn v113_potion_effect_windows() {
         use crate::effects::EffectKind;
@@ -634,8 +634,8 @@ mod tests {
         assert_eq!(brew_result(POTION_AWKWARD, RABBIT_FOOT), Some(POTION_LEAPING));
         // glowstone enhances: 1:30 Jump Boost II
         assert_eq!(brew_result(POTION_LEAPING, GLOWSTONE), Some(POTION_LEAPING_II));
-        // regeneration: awkward + weepgeist tear -> 0:45 Regeneration I
-        assert_eq!(brew_result(POTION_AWKWARD, WEEPGEIST_TEAR), Some(POTION_REGEN));
+        // regeneration: awkward + ghast tear -> 0:45 Regeneration I
+        assert_eq!(brew_result(POTION_AWKWARD, GHAST_TEAR), Some(POTION_REGEN));
         // glowstone enhances: 0:22 Regeneration II
         assert_eq!(brew_result(POTION_REGEN, GLOWSTONE), Some(POTION_REGEN_II));
         // the effect rows: durations exact (3:00 = 3600, 1:30 = 1800,
@@ -647,9 +647,9 @@ mod tests {
         assert_eq!(potion_effects(POTION_REGEN), &[(EffectKind::Regeneration, 0, 900)]);
         assert_eq!(potion_effects(POTION_REGEN_II), &[(EffectKind::Regeneration, 1, 440)]);
         assert_eq!(potion_effects(POTION_REGEN_LONG), &[(EffectKind::Regeneration, 0, 1800)]);
-        // no fluxstone item: the long rows are registry-only (the
+        // no redstone item: the long rows are registry-only (the
         // SLOW_FALLING_EXT convention — nothing brews them)
-        for ing in [GLOWSTONE, RABBIT_FOOT, WEEPGEIST_TEAR, MUSHROOM_RED] {
+        for ing in [GLOWSTONE, RABBIT_FOOT, GHAST_TEAR, MUSHROOM_RED] {
             assert_eq!(brew_result(POTION_LEAPING, ing), if ing == GLOWSTONE {
                 Some(POTION_LEAPING_II)
             } else {

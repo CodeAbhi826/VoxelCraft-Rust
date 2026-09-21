@@ -188,7 +188,7 @@ mod tests {
         assert!((difficulty_scale(3.0, Difficulty::Easy) - 2.5).abs() < 1e-6);
         assert!((difficulty_scale(3.0, Difficulty::Normal) - 3.0).abs() < 1e-6);
         assert!((difficulty_scale(3.0, Difficulty::Hard) - 4.5).abs() < 1e-6);
-        // voidling: 4.5 / 7 / 10.5 — hard = 1.5× again
+        // enderman: 4.5 / 7 / 10.5 — hard = 1.5× again
         assert!((difficulty_scale(7.0, Difficulty::Hard) - 10.5).abs() < 1e-6);
         assert!((difficulty_scale(7.0, Difficulty::Easy) - 4.5).abs() < 1e-6);
         // easy clamps LOW damage: 1 → min(1, 1.5) = 1 (unchanged)

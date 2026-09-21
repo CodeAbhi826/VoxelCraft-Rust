@@ -1,6 +1,6 @@
 # vc-sim — deterministic simulation core
 
-The 20 Hz heartbeat: fluids, gravity and item entities, fluxstone
+The 20 Hz heartbeat: fluids, gravity and item entities, redstone
 wire/torch propagation, and the block-entity ticker that drives
 furnaces, brewing stands and enchanting tables. Fixed timestep,
 seeded randomness, replayable.
@@ -59,4 +59,4 @@ for _ in 0..20 {                       // one vanilla second
 
 ## Spec reference
 
-Master Spec §9 (Deterministic Simulation), §24/§25 (Fluids, Fluxstone)
+Master Spec §9 (Deterministic Simulation), §24/§25 (Fluids, Redstone)

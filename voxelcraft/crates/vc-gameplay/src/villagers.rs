@@ -306,7 +306,7 @@ pub fn trades(profession: u8) -> &'static [Trade] {
         tr((EMERALD_ORE, 9), (DIAMOND_BLOCK, 1), 3),
         tr((DIAMOND_ORE, 3), (EMERALD_ORE, 2), 4),
         tr((EMERALD_ORE, 12), (OBSIDIAN, 4), 4),
-        tr((FLUXSTONE_ORE, 10), (EMERALD_ORE, 1), 5),
+        tr((REDSTONE_ORE, 10), (EMERALD_ORE, 1), 5),
         tr((EMERALD_ORE, 3), (GLOWSTONE, 2), 5),
     ];
     // (Butcher 1) meat trader
@@ -336,7 +336,7 @@ pub fn trades(profession: u8) -> &'static [Trade] {
         tr((EMERALD_ORE, 8), (ENCHANTED_BOOK, 1), 5),
     ];
     // (Cleric 3) VERIFIED vanilla shape: buys Rotten Flesh, sells
-    // potions / void pearls / glowstone
+    // potions / ender pearls / glowstone
     const CLERIC: &[Trade] = &[
         tr((ROTTEN_FLESH, 12), (EMERALD_ORE, 1), 1),
         tr((EMERALD_ORE, 1), (POTION_HEALING, 1), 1),
@@ -346,7 +346,7 @@ pub fn trades(profession: u8) -> &'static [Trade] {
         tr((EMERALD_ORE, 3), (GLOWSTONE, 2), 3),
         tr((GUNPOWDER, 8), (EMERALD_ORE, 1), 4),
         tr((EMERALD_ORE, 4), (POTION_HARMING, 1), 4),
-        tr((EMERALD_ORE, 5), (VOID_PEARL, 1), 5),
+        tr((EMERALD_ORE, 5), (ENDER_PEARL, 1), 5),
         tr((FERMENTED_SPIDER_EYE, 6), (EMERALD_ORE, 1), 5),
     ];
     // (Farmer 4) crop trader
@@ -373,7 +373,7 @@ pub fn trades(profession: u8) -> &'static [Trade] {
         tr((EMERALD_ORE, 2), (BONE, 12), 3),
         tr((ROTTEN_FLESH, 12), (EMERALD_ORE, 1), 4),
         tr((EMERALD_ORE, 3), (LEATHER, 6), 4),
-        tr((VOID_PEARL, 1), (EMERALD_ORE, 4), 5),
+        tr((ENDER_PEARL, 1), (EMERALD_ORE, 4), 5),
         tr((EMERALD_ORE, 4), (SPIDER_EYE, 6), 5),
     ];
     // (Fletcher 6) VERIFIED vanilla shape: buys String + feathers,

@@ -5,14 +5,14 @@ against which live page, and every disagreement/adaptation. Raw page
 fetches: `voxelcraft/scripts/v112_page_*.json` (+ `_text.txt`
 extracts), fetched live 2026-09-07 pre-implementation.
 
-## Verified live (minecraft.wiki unless noted)
+## Verified live (the reference wiki unless noted)
 
 | Value | Page | Note |
 |---|---|---|
 | 1.12 "World of Color Update", released 2017-06-07; headline: vibrant palette, glazed terracotta, concrete, colored beds; 2 new mobs (illusioner, parrot); advancements + functions | w/Java_Edition_1.12 (changelog capture) | the bracket's scope source |
 | Concrete: created when concrete powder contacts still/flowing water; hardness 1.8 | w/Concrete + changelog | |
 | Concrete powder: 16 colors, gravity affected (like sand/gravel); turns into concrete when it touches water; recipe 4 sand + 4 gravel + 1 dye → 8, **shapeless** | w/Concrete_Powder + changelog §Blocks | both sources agree "shapeless"; the engine's first truly shapeless 9-slot recipe |
-| Glazed terracotta: smelt any stained terracotta; 4-directional facing; hardness 1.4; smelting 0.1 XP | w/Glazed_Terracotta | the per-rotation top/bottom art is clean-room (the wiki texture is Mojang's) |
+| Glazed terracotta: smelt any stained terracotta; 4-directional facing; hardness 1.4; smelting 0.1 XP | w/Glazed_Terracotta | the per-rotation top/bottom art is clean-room (the wiki texture is the original publisher's) |
 | Parrot: 6 HP, passive, tamable, spawns in jungle biomes; speed 0.2 (infobox) | w/Parrot | |
 | Parrot taming: wheat/melon/pumpkin/beetroot/torchflower/pitcher seeds; **1⁄10 chance per feed**; once tamed, interacting toggles sit | w/Parrot §Taming | engine: seeds as a palette item (no crop system for the exotic seeds — disclosed) |
 | Tamed parrot follows the player, **teleports at 12 blocks** distance | w/Parrot §Taming | |

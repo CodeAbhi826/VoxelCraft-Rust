@@ -6,7 +6,7 @@ Wiki pages fetched LIVE 2026-09-15 (the earlier fetches cached under
 
 ## 1. What the live wiki says (the facts this round is built on)
 
-### Options (minecraft.wiki, fetched live 2026-09-15)
+### Options (the reference wiki, fetched live 2026-09-15)
 
 - "The number of available GUI scales ... can be calculated using this
   formula: `max(1, min(floor(width / 320), floor(height / 240)))`"

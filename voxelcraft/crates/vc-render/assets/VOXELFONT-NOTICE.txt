@@ -33,3 +33,11 @@ from scratch inside this project. No third-party font file was read,
 copied, traced, transformed or bundled at any point of the pipeline.
 
 Regenerate with:  python3 scripts/make_voxelfont.py
+
+ENGINE-FONT STATUS (2026-09-21)
+------------------------------
+The ACTIVE engine font is Monocraft (IdreesInc, SIL OFL 1.1 — see
+OFL-Monocraft.txt in this directory), chosen as the closest legally
+usable pixel font. Voxelfont.ttf remains in-repo as the project's own
+generated spare font (scripts/make_voxelfont.py); the engine binary
+embeds Monocraft.ttf, not this file.

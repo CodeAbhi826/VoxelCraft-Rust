@@ -9,12 +9,12 @@ phantom,trident}.*`) per the user's standing multi-source verification
 directive; every headline mob/weapon value was cross-checked across
 the two wikis.
 
-## Verified live (minecraft.wiki unless noted)
+## Verified live (the reference wiki unless noted)
 
 | Value | Page | Note |
 |---|---|---|
 | 1.13 "Update Aquatic", released 2018-07-18; headline: the ocean overhaul, drowned, turtles, fish, phantoms, dolphins, conduits, data packs | w/Java_Edition_1.13 (changelog capture) + Fandom 1.13 | both sources agree on the bracket's scope |
-| Ocean split: warm/lukewarm/cold/frozen ocean biomes added; "minecraft:frozen_ocean ... now generates again" | changelog §World generation | the temp-field selection + `is_ocean()` family gate |
+| Ocean split: warm/lukewarm/cold/frozen ocean biomes added; "frozen_ocean ... now generates again" | changelog §World generation | the temp-field selection + `is_ocean()` family gate |
 | Kelp: "Generate in ocean biomes, **except warm oceans**"; "Can grow multiple blocks high"; smelts into dried kelp | changelog §Blocks | the exclusion is tested both ways (present cold, absent warm) |
 | Seagrass: "Generates in oceans (including underwater caves), rivers, and swamplands" | changelog §Blocks | swamp pools carry their own 20% roll |
 | Coral reefs: "composed of coral, coral blocks and coral fans"; 5 colors tube/brain/bubble/fire/horn; warm oceans only | changelog §Blocks + w/Coral_Block | patch-noise fields; dead variants carried as registry rows |
@@ -38,7 +38,7 @@ the two wikis.
 | Slow Falling physics: "terminal velocity of 9.8 m/s, and is unable to take fall damage" | w/Slow_Falling | −9.8 b/s clamp + fall-damage negation |
 | Water Breathing: "the breath meter does not run out" | w/Effect §Water Breathing | the air-drain freeze |
 | Trident: melee 9 HP; thrown by drowned; 8.5% drop | changelog §Items + w/Trident + Fandom Trident | melee row deferred with the fists-only `held_attack` (no player-weapon system — standing deferral) |
-| Data packs ("Items, blocks and functions can be 'tagged'") | changelog §Gameplay | the engine's Phase 9 data-pack system (Mojang's 1.16.5 format) ALREADY covers this — the 1.13 flagship was forward-ported in Phase 9; noted as satisfied |
+| Data packs ("Items, blocks and functions can be 'tagged'") | changelog §Gameplay | the engine's Phase 9 data-pack system (the 1.16.5-era format) ALREADY covers this — the 1.13 flagship was forward-ported in Phase 9; noted as satisfied |
 | Movement: "When sprinting while in water, the player now swims on the surface. Much faster than walking" | changelog §Gameplay | the engine's verified sprint-swim 3.918 b/s (research-verdicts round) |
 | 8 spawn eggs (drowned/phantom/dolphin/cod/salmon/pufferfish/tropical fish/turtle) | changelog §Items | V9 egg window, kinds 32..=39 |
 
@@ -57,7 +57,7 @@ the two wikis.
   "Behavior: Hostile" — treated hostile (zombie parity), disclosed on
   the enum.
 - **Fandom cross-check**: the Fandom 1.13/drowned/phantom/trident
-  captures agree with minecraft.wiki on every cross-checked value
+  captures agree with the reference wiki on every cross-checked value
   (insomnia gate, conversion timer, trident throw cadence/damage,
   membrane drop) — no source disagreements to resolve on the headline
   mechanics.

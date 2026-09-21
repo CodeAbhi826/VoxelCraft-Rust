@@ -1,7 +1,7 @@
 //! 1.12 bracket (World of Color Update) procedural tiles — concrete +
 //! concrete powder + glazed terracotta (with pixel-rotated facing
 //! variants), the 16 dye palette items, 4 seed items, the cookie, the
-//! parrot egg + 5 parrot variant sprites + the miragecaller sprite.
+//! parrot egg + 5 parrot variant sprites + the illusioner sprite.
 //! Clean-room art (no third-party assets), a child module of textures.rs
 //! (shares put/jit/noise_fill/art helpers). All row/palette values are
 //! live-verified where the wiki publishes them (see
@@ -286,12 +286,12 @@ pub(super) fn cookie_art(a: &mut [u8], t: u16) {
 
 /// parrot sprite (5 variants — VERIFIED w/Parrot Variant NBT table:
 /// 0 red "red_blue", 1 blue, 2 green, 3 cyan "yellow_blue", 4 gray).
-/// One clean-room silhouette (scarlet-macaw posture: crested head,
+/// One clean-room silhouette (crimson-macaw posture: crested head,
 /// long tail feathers) with per-variant palettes.
 pub(super) fn parrot_art(a: &mut [u8], t: u16, variant: u8, rng: &mut Rng) {
     // (head+crest, body, wing edge, tail)
     const PALETTES: [[i32; 3]; 4] = [
-        [206, 48, 36],  // red — scarlet macaw
+        [206, 48, 36],  // red — crimson macaw
         [38, 88, 172],  // blue — hyacinth macaw
         [74, 158, 62],  // green — black-billed amazon
         [168, 84, 40],  // gray — cockatiel
@@ -344,10 +344,10 @@ pub(super) fn parrot_art(a: &mut [u8], t: u16, variant: u8, rng: &mut Rng) {
     let _ = rng;
 }
 
-/// miragecaller sprite: a gray-robed illager holding a bow (VERIFIED
-/// w/Miragecaller: "Natural equipment: Bow (right hand: 95%...)"). Rendered
-/// like the runecaller/cleaver family — tall robe, hood, hidden face.
-pub(super) fn miragecaller_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// illusioner sprite: a gray-robed illager holding a bow (VERIFIED
+/// w/Illusioner: "Natural equipment: Bow (right hand: 95%...)"). Rendered
+/// like the evoker/vindicator family — tall robe, hood, hidden face.
+pub(super) fn illusioner_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "....GGGG........",
         "...GGGGGG.......",

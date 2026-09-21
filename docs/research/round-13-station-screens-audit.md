@@ -1,6 +1,6 @@
 # Round 13 — Station GUIs research audit (anvil / beacon / grindstone)
 
-All facts live-fetched 2026-09-15 (UTC) from minecraft.wiki via the
+All facts live-fetched 2026-09-15 (UTC) from the reference wiki via the
 page_reader pipeline. Sources: w/Anvil, w/Anvil_mechanics, w/Beacon,
 w/Grindstone, w/Enchanting, w/Armor. GUI geometry cross-derived from
 the wiki's own GUI screenshots (Beacon_GUI.png, Grindstone_GUI.png,

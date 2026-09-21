@@ -54,7 +54,7 @@ pub fn family_index(f: SoundFamily) -> usize {
         SoundFamily::Metal => 2,
         SoundFamily::Plant => 0,
         SoundFamily::Chain => 2,
-        SoundFamily::HollowWood => 3,
+        SoundFamily::NetherWood => 3,
     }
 }
 
@@ -304,9 +304,9 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
             );
             clamp_amp(c)
         }
-        // hollow wood: the wood recipe pitched down + a hollow thump
-        // (the scarlet/viridian "hollow_wood" class)
-        SoundFamily::HollowWood => {
+        // nether wood: the wood recipe pitched down + a hollow thump
+        // (the crimson/warped "nether_wood" class)
+        SoundFamily::NetherWood => {
             let mut w = thump(112.0 * j, 0.17 * dec_scale, 0.55 * amp);
             mix_into(
                 &mut w,
@@ -427,7 +427,7 @@ fn death_recipe() -> Vec<f32> {
     clamp_amp(v)
 }
 
-/// fuseling priming: the rising hiss — filtered noise swell
+/// creeper priming: the rising hiss — filtered noise swell
 fn priming_recipe() -> Vec<f32> {
     let n = (1.5 * RATE as f32) as usize;
     let mut v: Vec<f32> = (0..n)
@@ -631,8 +631,8 @@ fn wooden_door_recipe() -> Vec<f32> {
     clamp_amp(d)
 }
 
-/// lurkshell box: the peeling clatter (a quick metallic rattle).
-fn lurkshell_recipe() -> Vec<f32> {
+/// shulker box: the peeling clatter (a quick metallic rattle).
+fn shulker_recipe() -> Vec<f32> {
     let mut s = Vec::new();
     for k in 0..5u32 {
         let seg = ping(1500.0 + 260.0 * k as f32, 0.03, 0.24, 220 + k as u64);
@@ -760,9 +760,9 @@ fn music_pad_underwater() -> Vec<f32> {
     clamp_amp(lp)
 }
 
-/// music.hollow: a dark, dissonant-leaning pad (the hollow track's
+/// music.nether: a dark, dissonant-leaning pad (the nether track's
 /// ominous character).
-fn music_pad_hollow() -> Vec<f32> {
+fn music_pad_nether() -> Vec<f32> {
     let n = (6.0 * RATE as f32) as usize;
     let mut out = vec![0.0f32; n];
     for (f, g) in [(139.0, 0.17), (208.0, 0.11), (277.0, 0.09), (415.0, 0.05)] {
@@ -798,7 +798,7 @@ impl SoundBank {
                 SoundFamily::Metal => "metal",
                 SoundFamily::Plant => "plant",
                 SoundFamily::Chain => "chain",
-                SoundFamily::HollowWood => "hollow_wood",
+                SoundFamily::NetherWood => "nether_wood",
             }
         };
         // Sub-round 5: the fourteen LAND families (water keeps its splash
@@ -818,7 +818,7 @@ impl SoundBank {
             SoundFamily::Metal,
             SoundFamily::Plant,
             SoundFamily::Chain,
-            SoundFamily::HollowWood,
+            SoundFamily::NetherWood,
         ];
         for f in families {
             for v in 0..2 {
@@ -863,7 +863,7 @@ impl SoundBank {
             ("entity/player/hurt", hurt_recipe()),
             ("entity/zombie/ambient", zombie_groan_recipe()),
             ("entity/generic/death", death_recipe()),
-            ("entity/fuseling/priming", priming_recipe()),
+            ("entity/creeper/priming", priming_recipe()),
             ("entity/explode", explosion_recipe()),
             ("entity/skeleton/shoot", bow_recipe()),
             ("entity/cow/ambient", cow_recipe()),
@@ -876,7 +876,7 @@ impl SoundBank {
             ("block/chest_close", chest_close_recipe()),
             ("block/iron_door", iron_door_recipe()),
             ("block/wooden_door", wooden_door_recipe()),
-            ("block/lurkshell", lurkshell_recipe()),
+            ("block/shulker", shulker_recipe()),
             ("entity/xp_orb", xp_orb_recipe()),
             ("ambient/water_enter", water_enter_recipe()),
             ("ambient/water_exit", water_exit_recipe()),
@@ -887,7 +887,7 @@ impl SoundBank {
             ("music/pad_menu", music_pad_menu()),
             ("music/pad_creative", music_pad_creative()),
             ("music/pad_underwater", music_pad_underwater()),
-            ("music/pad_hollow", music_pad_hollow()),
+            ("music/pad_nether", music_pad_nether()),
         ] {
             names.push(n.into());
             data.push(d);
@@ -1179,11 +1179,11 @@ pub const SOUNDS_JSON: &str = r##"{
   "block.chain.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/chain"}]},
   "block.chain.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/chain"}]},
   "block.chain.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/chain"}]},
-  "block.hollow_wood.break": {"category": "blocks", "pitch": [0.85, 1.05], "sounds": [{"name": "dig/hollow_wood1", "weight": 2}, {"name": "dig/hollow_wood2", "weight": 1}]},
-  "block.hollow_wood.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/hollow_wood"}]},
-  "block.hollow_wood.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/hollow_wood"}]},
-  "block.hollow_wood.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/hollow_wood"}]},
-  "block.hollow_wood.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/hollow_wood"}]},
+  "block.nether_wood.break": {"category": "blocks", "pitch": [0.85, 1.05], "sounds": [{"name": "dig/nether_wood1", "weight": 2}, {"name": "dig/nether_wood2", "weight": 1}]},
+  "block.nether_wood.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/nether_wood"}]},
+  "block.nether_wood.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/nether_wood"}]},
+  "block.nether_wood.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/nether_wood"}]},
+  "block.nether_wood.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/nether_wood"}]},
   "block.water.splash": {"category": "blocks", "volume": 0.8, "pitch": [0.8, 1.2], "attenuation": 12, "sounds": [{"name": "dig/water1", "weight": 2}, {"name": "dig/water2", "weight": 1}]},
   "block.water.step": {"category": "blocks", "volume": 0.4, "pitch": [0.8, 1.2], "sounds": [{"name": "step/water"}]},
   "block.lever.click": {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.1], "sounds": [{"name": "block/lever"}]},
@@ -1204,7 +1204,7 @@ pub const SOUNDS_JSON: &str = r##"{
   "entity.player.hurt": {"category": "players", "volume": 0.8, "pitch": [0.9, 1.15], "sounds": [{"name": "entity/player/hurt"}]},
   "entity.zombie.ambient": {"category": "hostile", "volume": 0.6, "pitch": [0.8, 1.1], "attenuation": 14, "sounds": [{"name": "entity/zombie/ambient"}]},
   "entity.generic.death": {"category": "hostile", "volume": 0.7, "pitch": [0.85, 1.1], "attenuation": 14, "sounds": [{"name": "entity/generic/death"}]},
-  "entity.fuseling.priming": {"category": "hostile", "volume": 0.9, "pitch": [1.0, 1.0], "attenuation": 16, "sounds": [{"name": "entity/fuseling/priming"}]},
+  "entity.creeper.priming": {"category": "hostile", "volume": 0.9, "pitch": [1.0, 1.0], "attenuation": 16, "sounds": [{"name": "entity/creeper/priming"}]},
   "entity.generic.explode": {"category": "hostile", "volume": 1.0, "pitch": [0.9, 1.1], "attenuation": 24, "sounds": [{"name": "entity/explode"}]},
   "entity.skeleton.shoot": {"category": "hostile", "volume": 0.6, "pitch": [0.9, 1.1], "attenuation": 16, "sounds": [{"name": "entity/skeleton/shoot"}]},
   "entity.cow.ambient": {"category": "neutral", "volume": 0.55, "pitch": [0.9, 1.1], "attenuation": 14, "sounds": [{"name": "entity/cow/ambient"}]},
@@ -1213,12 +1213,12 @@ pub const SOUNDS_JSON: &str = r##"{
   "entity.chicken.ambient": {"category": "neutral", "volume": 0.5, "pitch": [0.95, 1.15], "attenuation": 12, "sounds": [{"name": "entity/chicken/ambient"}]},
   "block.chest.open": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/chest_open"}]},
   "block.chest.close": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/chest_close"}]},
-  "block.void_chest.open": {"category": "blocks", "volume": 0.6, "pitch": [1.1, 1.3], "attenuation": 12, "sounds": [{"name": "block/chest_open"}]},
-  "block.void_chest.close": {"category": "blocks", "volume": 0.6, "pitch": [1.1, 1.3], "attenuation": 12, "sounds": [{"name": "block/chest_close"}]},
+  "block.ender_chest.open": {"category": "blocks", "volume": 0.6, "pitch": [1.1, 1.3], "attenuation": 12, "sounds": [{"name": "block/chest_open"}]},
+  "block.ender_chest.close": {"category": "blocks", "volume": 0.6, "pitch": [1.1, 1.3], "attenuation": 12, "sounds": [{"name": "block/chest_close"}]},
   "block.barrel.open": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/chest_open"}]},
   "block.barrel.close": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/chest_close"}]},
-  "block.lurkshell_box.open": {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "block/lurkshell"}]},
-  "block.lurkshell_box.close": {"category": "blocks", "volume": 0.6, "pitch": [0.8, 1.0], "attenuation": 12, "sounds": [{"name": "block/lurkshell"}]},
+  "block.shulker_box.open": {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "block/shulker"}]},
+  "block.shulker_box.close": {"category": "blocks", "volume": 0.6, "pitch": [0.8, 1.0], "attenuation": 12, "sounds": [{"name": "block/shulker"}]},
   "block.iron_door.open": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/iron_door"}]},
   "block.iron_door.close": {"category": "blocks", "volume": 0.7, "pitch": [0.85, 0.95], "attenuation": 12, "sounds": [{"name": "block/iron_door"}]},
   "block.wooden_door.open": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/wooden_door"}]},
@@ -1236,7 +1236,7 @@ pub const SOUNDS_JSON: &str = r##"{
   "music.game": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_day", "stream": true}]},
   "music.creative": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_creative", "stream": true}]},
   "music.under_water": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_underwater", "stream": true}]},
-  "music.hollow": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_hollow", "stream": true}]}
+  "music.nether": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_nether", "stream": true}]}
 }"##;
 
 /// distance attenuation + stereo pan for one positioned sound relative to
@@ -1301,7 +1301,7 @@ pub fn family_event(f: SoundFamily, kind: FamilyEvent) -> &'static str {
         (SF::Metal, "block.metal.break", "block.metal.place", "block.metal.hit", "block.metal.step", "block.metal.fall"),
         (SF::Plant, "block.plant.break", "block.plant.place", "block.plant.hit", "block.plant.step", "block.plant.fall"),
         (SF::Chain, "block.chain.break", "block.chain.place", "block.chain.hit", "block.chain.step", "block.chain.fall"),
-        (SF::HollowWood, "block.hollow_wood.break", "block.hollow_wood.place", "block.hollow_wood.hit", "block.hollow_wood.step", "block.hollow_wood.fall"),
+        (SF::NetherWood, "block.nether_wood.break", "block.nether_wood.place", "block.nether_wood.hit", "block.nether_wood.step", "block.nether_wood.fall"),
         (SF::Water, "block.water.splash", "block.water.splash", "block.water.splash", "block.water.step", "block.water.splash"),
         (SF::None, "block.stone.break", "block.stone.place", "block.stone.hit", "block.stone.step", "block.stone.fall"),
     ];

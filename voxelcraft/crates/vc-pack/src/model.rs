@@ -409,7 +409,7 @@ fn compile_face(
     // corner order: CCW viewed from outside; uv[0] of each pair maps to the
     // corner's (u,v). Side faces: v = 16 − y (texture y-down = block top).
     // Face texture rotation (0/90/180/270) permutes which corner gets which
-    // uv — implemented as a corner permutation at the void.
+    // uv — implemented as a corner permutation at the end.
     let (base_verts, base_uv): ([[f32; 3]; 4], [[f32; 2]; 4]) = match dir {
         FaceDir::Up => {
             let v = [

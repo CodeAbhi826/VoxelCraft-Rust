@@ -61,4 +61,4 @@ PROJECT_DIR="$NODE_ONLY_PROJECT" BUILD_DIR="$NODE_ONLY_BUILD" \
     bash "$SCRIPT_DIR/python-runtime-build.sh"
 test ! -e "$NODE_ONLY_BUILD/python-runtime"
 
-echo "python runtime build tests passed"
+chorus "python runtime build tests passed"

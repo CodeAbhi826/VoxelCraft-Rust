@@ -79,6 +79,14 @@ pub struct Input {
     pub sprint: bool,
     pub break_hold: bool,
     pub place_hold: bool,
+    /// 2026-09-21 (click-side routing): latched on mouse-down, cleared
+    /// only by the update() tick that consumed it — a short physical
+    /// click (press+release inside one 30-80 ms input batch, BEFORE the
+    /// next tick ran) otherwise evaporates: both hold flags are already
+    /// false again when the tick finally looks. The tap makes every
+    /// press seen exactly once, hold or tap.
+    pub break_tap: bool,
+    pub place_tap: bool,
     mouse_dx: f32,
     mouse_dy: f32,
 }
@@ -87,6 +95,20 @@ impl Input {
     pub fn add_mouse(&mut self, dx: f32, dy: f32) {
         self.mouse_dx += dx;
         self.mouse_dy += dy;
+    }
+    /// does this tick want block-breaking? (hold OR the latched tap)
+    pub fn wants_break(&self) -> bool {
+        self.break_hold || self.break_tap
+    }
+    /// does this tick want placing/using? (hold OR the latched tap)
+    pub fn wants_place(&self) -> bool {
+        self.place_hold || self.place_tap
+    }
+    /// clear the latched taps — called at the END of the update() tick
+    /// that consumed them (each press is acted on exactly once)
+    pub fn clear_taps(&mut self) {
+        self.break_tap = false;
+        self.place_tap = false;
     }
     fn take_mouse(&mut self) -> (f32, f32) {
         let r = (self.mouse_dx, self.mouse_dy);
@@ -106,13 +128,13 @@ pub struct SoundEvent {
 /// height" (wiki §Slime Block) → v ratio = sqrt(0.6)
 pub const SLIME_RESTITUTION: f32 = 0.7746;
 
-/// 1.9 skywings glide ceiling (b/s): the wiki's sustained cruising speed is
+/// 1.9 elytra glide ceiling (b/s): the wiki's sustained cruising speed is
 /// in the ~25–33 b/s band (33.5 with firework boost — boost is out of
 /// scope); 25 preserves the documented 10:1 glide ratio at −2.5 b/s sink
-pub const SKYWINGS_MAX_SPEED: f32 = 25.0;
-/// 1.9 skywings descent clamp (b/s): preserves the wiki's "approximately 10
+pub const ELYTRA_MAX_SPEED: f32 = 25.0;
+/// 1.9 elytra descent clamp (b/s): preserves the wiki's "approximately 10
 /// blocks of horizontal distance for each block of altitude lost"
-pub const SKYWINGS_DESCENT: f32 = 2.5;
+pub const ELYTRA_DESCENT: f32 = 2.5;
 
 /// audit-fix (1.2 vines): ladder-class climb speed (b/s) — VERIFIED
 /// w/Ladder §Climbing: "moves upward at about 2.35 blocks per second"
@@ -138,8 +160,8 @@ pub struct Player {
     /// (VERIFIED w/Vines + w/Ladder §Climbing)
     pub on_vine: bool,
     /// 1.11: absorption buffer (HP-scale) — granted by the Absorption
-    /// effect (totem of revival: 8 points for Absorption II, VERIFIED
-    /// w/Totem_of_Revival); consumed by damage BEFORE health.
+    /// effect (totem of undying: 8 points for Absorption II, VERIFIED
+    /// w/Totem_of_Undying); consumed by damage BEFORE health.
     pub absorption: f32,
     /// Sub-round 1 (2026-09-14 Survival HUD round): the hurt flash +
     /// hearts-shake timer, the engine's analog of vanilla's `hurtTime`
@@ -170,7 +192,7 @@ pub struct Player {
     /// F key moves the selected item to and from the hotbar slot and
     /// the off-hand slot").
     pub offhand: vc_inventory::inventory::ItemStack,
-    /// Phase E2: timed status effects (blight/poison/regen + beacon stat
+    /// Phase E2: timed status effects (wither/poison/regen + beacon stat
     /// effects — VERIFIED w/Effect rows; see vc_gameplay::effects)
     pub effects: vc_gameplay::effects::Effects,
     /// Round 17 (2026-09-18): the vanilla FoodData model — foodLevel /
@@ -215,7 +237,7 @@ pub struct Player {
     /// "1 HP every tick (although damage immunity reduces this to once
     /// every half-second)")
     pending_hazard_dmg: f32,
-    /// 1.16: spirit-fire contact accumulator (2 HP per 0.5 s — twice
+    /// 1.16: soul-fire contact accumulator (2 HP per 0.5 s — twice
     /// the campfire rate, the shared damage-immunity window)
     spiritfire_accum: f32,
     /// 1.10: auto-jump hop cooldown (seconds) — one hop per obstacle
@@ -703,19 +725,19 @@ impl Player {
             self.hazard_accum = 0.0;
         }
 
-        // ---- 1.16 (Hollows Update, part 1): spirit fire contact. VERIFIED
-        // w/Spirit_Fire: "the fire inflicts damage at a rate of 2 HP per
+        // ---- 1.16 (Nether Update, part 1): soul fire contact. VERIFIED
+        // w/Soul_Fire: "the fire inflicts damage at a rate of 2 HP per
         // tick, twice as many as with the normal fire (although damage
         // immunity reduces this to once every half-second)" → 2 HP per
         // 0.5 s through the shared immunity window (the bush/campfire
         // class, doubled). Soul fire fills the whole cell (a cross
         // plant) — the feet cell is the contact test. ----
-        let in_spirit_fire = vc_blocks::blocks::is_spirit_fire(world.get_state(
+        let in_soul_fire = vc_blocks::blocks::is_soul_fire(world.get_state(
             self.pos.x.floor() as i32,
             self.pos.y.floor() as i32,
             self.pos.z.floor() as i32,
         ));
-        if in_spirit_fire {
+        if in_soul_fire {
             self.spiritfire_accum += dt;
             while self.spiritfire_accum >= 0.5 {
                 self.spiritfire_accum -= 0.5;
@@ -1033,22 +1055,22 @@ impl Player {
         // descent is clamped at −9.8 b/s while the effect runs — the
         // fall-damage half lands in the landing branch below.
         let slow_falling = vc_gameplay::effects::slow_falling_active(&self.effects);
-        // 1.9 skywings glide (ADAPTATION, cited): vanilla's per-tick
+        // 1.9 elytra glide (ADAPTATION, cited): vanilla's per-tick
         // lift/drag aerodynamics redirect momentum along the look vector
         // with pitch-driven lift; ours implements the OBSERVABLE shape
-        // from the wiki's Skywings §Flight numbers — horizontal speed
+        // from the wiki's Elytra §Flight numbers — horizontal speed
         // steered toward the look direction up to ~25 b/s with descent
         // clamped at −3.2 b/s, which preserves the wiki's "approximately
         // 10 blocks of horizontal distance for each block of altitude
         // lost" glide ratio. Vanilla equips it in the chest slot; ours
-        // activates when the SELECTED item is the skywings (no armor slots
+        // activates when the SELECTED item is the elytra (no armor slots
         // yet — documented). Activate: airborne + falling + jump held.
         let gliding = !self.flying
             && !self.in_water
             && !self.on_ground
             && self.vel.y < 0.0
             && input.jump
-            && self.held().block == SKYWINGS
+            && self.held().block == ELYTRA
             && !self.held().is_empty();
         if !self.flying && !self.in_water && !gliding && !on_vine {
             self.tick_accum += dt;
@@ -1076,7 +1098,7 @@ impl Player {
             self.tick_accum = 0.0;
         }
 
-        // 1.9 skywings glide physics (the adaptation described above): run
+        // 1.9 elytra glide physics (the adaptation described above): run
         // on the same fixed 20 Hz cadence, steering horizontal velocity
         // toward the look vector and clamping descent to −GLIDE_DESCENT.
         // Gliding never accumulates fall distance (the wiki: a slow
@@ -1094,10 +1116,10 @@ impl Player {
                 let dir_z = look.z / lh;
                 // steer + accelerate toward the look heading
                 let accel = 1.6; // b/s per tick steering strength
-                self.vel.x += (dir_x * SKYWINGS_MAX_SPEED - self.vel.x).min(accel).max(-accel);
-                self.vel.z += (dir_z * SKYWINGS_MAX_SPEED - self.vel.z).min(accel).max(-accel);
+                self.vel.x += (dir_x * ELYTRA_MAX_SPEED - self.vel.x).min(accel).max(-accel);
+                self.vel.z += (dir_z * ELYTRA_MAX_SPEED - self.vel.z).min(accel).max(-accel);
                 // descent: gentle sink (not the −78.4 terminal dive)
-                self.vel.y = (self.vel.y + GRAVITY * TICK_DT * 0.25).max(-SKYWINGS_DESCENT);
+                self.vel.y = (self.vel.y + GRAVITY * TICK_DT * 0.25).max(-ELYTRA_DESCENT);
                 if self.vel.y.is_nan() {
                     self.vel.y = 0.0;
                 }
@@ -1973,28 +1995,28 @@ mod v19_tests {
     use super::*;
 
 
-    /// 1.9 skywings: the glide constants preserve the wiki's 10:1 ratio
+    /// 1.9 elytra: the glide constants preserve the wiki's 10:1 ratio
     /// ("approximately 10 blocks of horizontal distance for each block of
-    /// altitude lost" — /w/Skywings §Flight, live 2026-09-06)
+    /// altitude lost" — /w/Elytra §Flight, live 2026-09-06)
     #[test]
-    fn skywings_glide_ratio() {
+    fn elytra_glide_ratio() {
         // at cruise: 25 b/s horizontal over a 2.5 b/s sink = 10:1
-        let ratio = SKYWINGS_MAX_SPEED / SKYWINGS_DESCENT;
+        let ratio = ELYTRA_MAX_SPEED / ELYTRA_DESCENT;
         assert!((ratio - 10.0).abs() < 0.01, "ratio {ratio}");
     }
 
-    /// the glide gate: airborne + falling + jump + selected skywings
+    /// the glide gate: airborne + falling + jump + selected elytra
     #[test]
-    fn skywings_gate_requires_holding_jump_and_item() {
-        // a player whose selected slot holds the skywings
+    fn elytra_gate_requires_holding_jump_and_item() {
+        // a player whose selected slot holds the elytra
         let mut p = Player::new(glam::Vec3::new(0.0, 80.0, 0.0));
-        p.inv.slots[p.selected] = vc_inventory::inventory::ItemStack::new(SKYWINGS, 1);
-        assert_eq!(p.held().block, SKYWINGS);
+        p.inv.slots[p.selected] = vc_inventory::inventory::ItemStack::new(ELYTRA, 1);
+        assert_eq!(p.held().block, ELYTRA);
         // the item registers in the 1.9 window ([merge renumber] the V4
         // window moved from pre-merge 326 to 474 — V4 = 466..=475 after
         // the E-series state ids)
-        assert_eq!(vc_blocks::blocks::v4_state(SKYWINGS), Some(474));
-        assert_eq!(vc_blocks::blocks::state_block(474), SKYWINGS);
+        assert_eq!(vc_blocks::blocks::v4_state(ELYTRA), Some(474));
+        assert_eq!(vc_blocks::blocks::state_block(474), ELYTRA);
     }
 }
 
@@ -2260,26 +2282,26 @@ mod v116_tests {
         w
     }
 
-    /// 1.16 (Hollows Update, part 1): spirit fire contact — 2 HP per
+    /// 1.16 (Nether Update, part 1): soul fire contact — 2 HP per
     /// half-second through the shared damage-immunity window (VERIFIED
-    /// w/Spirit_Fire: "the fire inflicts damage at a rate of 2 HP per tick,
+    /// w/Soul_Fire: "the fire inflicts damage at a rate of 2 HP per tick,
     /// twice as many as with the normal fire (although damage immunity
     /// reduces this to once every half-second)"). 0.6 s of standing in
     /// the flame queues exactly one 2.0 HP packet.
     #[test]
-    fn spirit_fire_contact_doubles_the_campfire_rate() {
+    fn soul_fire_contact_doubles_the_campfire_rate() {
         let mut w = flat_floor();
         let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p.flying = false;
         let mut input = Input::default();
-        w.set_block(0, 65, 0, vc_blocks::blocks::SPIRIT_FIRE);
+        w.set_block(0, 65, 0, vc_blocks::blocks::SOUL_FIRE);
         // 0.6 s at 60 Hz: the first 0.5 s window fires (2.0 HP), the
         // remainder accumulates but has not fired yet
         for _ in 0..36 {
             let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
         }
         let dmg = p.take_pending_hazard_damage();
-        assert_eq!(dmg, 2.0, "spirit fire queues 2 HP per 0.5 s window, got {dmg}");
+        assert_eq!(dmg, 2.0, "soul fire queues 2 HP per 0.5 s window, got {dmg}");
         // leaving the flame resets the accumulator (no bleed-over packet)
         w.set_block(0, 65, 0, vc_blocks::blocks::AIR);
         for _ in 0..6 {
@@ -2295,12 +2317,12 @@ mod v116_tests {
     /// player for exactly this reason — see the restored determinism
     /// hardening in e2e_v116).
     #[test]
-    fn spirit_fire_contact_at_e2e_cadence() {
+    fn soul_fire_contact_at_e2e_cadence() {
         let mut w = flat_floor();
         let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p.flying = false;
         let mut input = Input::default();
-        w.set_block(0, 65, 0, vc_blocks::blocks::SPIRIT_FIRE);
+        w.set_block(0, 65, 0, vc_blocks::blocks::SOUL_FIRE);
         for _ in 0..6 {
             let _ = p.update(0.1, 0.0, &w, &mut input, 1.0, true);
         }

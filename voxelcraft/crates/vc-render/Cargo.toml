@@ -7,7 +7,7 @@ description = "wgpu renderer: 5 pipelines, texture atlas, FSR 1.0, shader-pack A
 
 [dependencies]
 # Luanti-style runtime font rasterization (FreeType-equivalent, pure
-# Rust, wasm-safe) for the embedded in-project Voxelfont pixel font
+# Rust, wasm-safe) for the embedded Monocraft pixel font (SIL OFL 1.1)
 ab_glyph = "0.2.32"
 serde_json = { workspace = true }
 winit = { workspace = true }

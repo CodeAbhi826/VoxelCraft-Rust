@@ -5,7 +5,7 @@
 //!
 //! VERIFIED (the reference wiki, 2026-09-04): hopper transfer cooldown is 8
 //! game ticks (2.5 items/s); dispenser/dropper eject ONE item on the
-//! rising edge of a fluxstone signal with a 4 game tick delay.
+//! rising edge of a redstone signal with a 4 game tick delay.
 
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
@@ -15,10 +15,10 @@ use vc_inventory::inventory::ItemStack;
 pub fn slot_count(block: u16) -> Option<usize> {
     Some(match block {
         CHEST => 27,
-        // 1.11 (VERIFIED w/Lurkshell_Box: "All lurkshell boxes have 27
+        // 1.11 (VERIFIED w/Shulker_Box: "All shulker boxes have 27
         // inventory slots, the same as a barrel, a single chest, or an
-        // void chest")
-        LURKSHELL_BOX => 27,
+        // ender chest")
+        SHULKER_BOX => 27,
         // 1.14 (VERIFIED w/Barrel: "Barrels have a container inventory
         // with 27 slots, which is the same as a single chest")
         BARREL => 27,

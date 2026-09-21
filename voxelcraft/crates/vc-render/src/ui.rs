@@ -58,7 +58,7 @@ pub fn live_ui_h() -> usize {
 
 // ------------------------------------------------- quad-text switch --
 // The Luanti-style font round: when armed, every text* method routes
-// through the runtime font engine (embedded Voxelfont, glyph quads on
+// through the runtime font engine (embedded Monocraft, glyph quads on
 // the GPU — see gui/font.rs) instead of rasterizing the 5×7 bitmap
 // into the canvas. THREAD-LOCAL because the text_width family is
 // STATIC (layout code measures before any canvas exists) and the
@@ -1213,7 +1213,7 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
 /// (added 1.16.2 pre1), Show Subtitles (the Java 1.9 subtitle system's
 /// toggle — grayed here: no subtitle overlay renderer in the engine).
 /// Rows the modern wiki lists that are NOT 1.16.5 are omitted by
-/// version-scoping: Darkness Pulsing (1.19, the Depthbrute), High Contrast
+/// version-scoping: Darkness Pulsing (1.19, the Warden), High Contrast
 /// (1.20.5), Text Background Opacity (the modern accessibility split —
 /// 1.16.5's chat background rides Chat Opacity in Chat Settings).
 pub fn layout_access() -> Vec<Widget> {
@@ -1225,7 +1225,7 @@ pub fn layout_access() -> Vec<Widget> {
         btn_h(ID_ACC_SNEAK, 248, 152, 465, 30, "SNEAK", "HOLD", true),
         // 1.16.2 pre1: "Added 'Distortion Effects' and 'FOV effects'
         // sliders to video and accessibility settings" — the engine has
-        // no hollow-portal/nausea screen warp yet, so the slider is
+        // no nether-portal/nausea screen warp yet, so the slider is
         // registered + grayed with that reason (the spec's own rule)
         slider_h(
             ID_ACC_DISTORT_SLIDER,
@@ -2318,9 +2318,9 @@ impl UiCanvas {
     /// Phase 5: variable glyph advance (measured ink width + 1, space
     /// fixed 4) and the shadow at (x+1, y+1) in foreground x 0.25.
     /// Luanti font round: when the GPU text path is armed this routes
-    /// to `GuiFrame::text` — Voxelfont glyph quads rasterized at
+    /// to `GuiFrame::text` — Monocraft glyph quads rasterized at
     /// device resolution, drawn OVER the chrome quads (true-case
-    /// rendering — Voxelfont has real lowercase, the 1.16 look).
+    /// rendering — Monocraft has real lowercase, the 1.16 look).
     pub fn text(&mut self, x: i32, y: i32, s: &str, c: Color, scale: i32) -> i32 {
         if text_quads_active() {
             return self
@@ -2436,7 +2436,7 @@ impl UiCanvas {
     /// letters (i l t) pack tight like the vanilla font. '∞' gets a
     /// dedicated 5-wide glyph. Returns the drawn width.
     /// Luanti font round: the engine renders TRUE case natively
-    /// (Voxelfont has real lowercase) — routed when armed.
+    /// (Monocraft has real lowercase) — routed when armed.
     pub fn text_flat_case(&mut self, x: i32, y: i32, s: &str, c: Color, scale: i32) -> i32 {
         if text_quads_active() {
             return self
@@ -2556,7 +2556,7 @@ impl UiCanvas {
         }
         // source bitmap: yellow glyphs + 1px dark outline, 2-px pad.
         // Luanti font round: the runtime engine bakes the glyph run
-        // (Voxelfont at the 16-px cell — the same size the old 5x7
+        // (Monocraft at the 16-px cell — the same size the old 5x7
         // bitmap had at scale 2) when the quad path is armed; the
         // clean-room bitmap otherwise. The outline/rotation technique
         // below is unchanged.
@@ -3623,7 +3623,7 @@ impl UiCanvas {
         }
     }
 
-    /// Phase E1: the voider-dragon boss bar — VERIFIED w/Void_Wyrm:
+    /// Phase E1: the voider-dragon boss bar — VERIFIED w/Ender_Dragon:
     /// "a light purple health bar ... at the top of the player's screen",
     /// the name above it, width matches the hotbar band. `frac` = the
     /// dragon's remaining health fraction (0..1).
@@ -5213,7 +5213,7 @@ impl UiCanvas {
         };
 
         // ---- tab strip (12 tabs: 9 content + Search + Saved Hotbars +
-        // Inventory) — vanilla order: Building, Decoration, Fluxstone,
+        // Inventory) — vanilla order: Building, Decoration, Redstone,
         // Transport, Misc, Food, Tools, Combat, Brewing, Search,
         // Hotbar, Inventory (VERIFIED w/Creative_inventory, live
         // 2026-09-17: "There are also Search Items, Saved Hotbars and
@@ -5221,7 +5221,7 @@ impl UiCanvas {
         let tab_labels: [&str; 12] = [
             "BUILDING BLOCKS",
             "DECORATION BLOCKS",
-            "FLUXSTONE",
+            "REDSTONE",
             "TRANSPORTATION",
             "MISCELLANEOUS",
             "FOODSTUFFS",
@@ -5260,8 +5260,8 @@ impl UiCanvas {
                 blk::CREATIVE_TABS[t as usize].icon_block()
             } else if t == 9 {
                 // Search tab icon: the compass — engine substitute: the
-                // void eye (the registry's search-est item; no compass)
-                blk::VOID_EYE
+                // eye of ender (the registry's search-est item; no compass)
+                blk::EYE_OF_ENDER
             } else if t == 10 {
                 // Round 15b: the Saved Hotbars tab icon — vanilla's is a
                 // book-family icon; the BOOK item is the registry's
@@ -5269,9 +5269,9 @@ impl UiCanvas {
                 blk::BOOK
             } else {
                 // Inventory tab icon: the player head — engine
-                // substitute: the blight-skeleton skull (the registry's
+                // substitute: the wither-skeleton skull (the registry's
                 // only head-shaped block; no player-skin item exists)
-                blk::BLIGHT_SKELETON_SKULL
+                blk::WITHER_SKELETON_SKULL
             };
             let tile = blk::def(icon).tiles[0];
             blit_tile(
@@ -7569,8 +7569,8 @@ mod screen_tests {
         let mut ui = UiCanvas::new();
         ui.set_chrome_enabled(false);
         ui.clear();
-        let items = blk::creative_tab_items(blk::CreativeTab::Fluxstone);
-        assert!(items.len() <= 45, "fluxstone tab is one page");
+        let items = blk::creative_tab_items(blk::CreativeTab::Redstone);
+        assert!(items.len() <= 45, "redstone tab is one page");
         let hotbar = [vc_inventory::inventory::ItemStack::EMPTY; 9];
         let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
         let g = ui.creative_screen(
@@ -7578,7 +7578,7 @@ mod screen_tests {
             &atlas,
             9, // Search tab
             0,
-            "fluxstone",
+            "redstone",
             true,
             &items,
             &hotbar,

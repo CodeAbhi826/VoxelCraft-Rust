@@ -36,8 +36,8 @@
 //! 3 passes (shadow/terrain/water). New: binds = 3 + 2·regions·passes;
 //! draws = chunks (loop path) or regions (MDI path).
 
-use std::collections::HashMap;
 use vc_world::world::ChunkPos;
+use rustc_hash::FxHashMap;
 
 /// chunks per mesh-region side (8 → 128×128 blocks, ≈1–16 MB arena)
 pub const REGION_CHUNKS: i32 = 8;
@@ -264,7 +264,7 @@ pub fn aabb_visible(min: &[f32; 3], max: &[f32; 3], planes: &[[f32; 4]; 6]) -> b
 /// Otherwise returns the set of drawable chunks: the camera's own column
 /// plus every column with a reachable geometry band.
 pub fn occlusion_visible(
-    chunks: &HashMap<ChunkPos, ChunkGpu>,
+    chunks: &FxHashMap<ChunkPos, ChunkGpu>,
     cam_chunk: ChunkPos,
     cam_band: u8,
 ) -> Option<std::collections::HashSet<ChunkPos>> {
@@ -333,7 +333,7 @@ pub struct OcclCache {
 /// The returned reference borrows the CACHE (the `chunks` borrow ends at
 /// the call — the renderer's disjoint-field borrows of `self` stay valid).
 pub fn occlusion_visible_cached<'a>(
-    chunks: &HashMap<ChunkPos, ChunkGpu>,
+    chunks: &FxHashMap<ChunkPos, ChunkGpu>,
     cam_chunk: ChunkPos,
     cam_band: u8,
     mesh_rev: u64,
@@ -400,7 +400,7 @@ pub fn order_by_region(vis: &[VisEntry], cam: (f32, f32), reverse: bool) -> Vec<
 /// `water` selects the water slot; `max_dist2` filters (shadow radius);
 /// missing/empty chunks are skipped exactly like the old inline loops.
 pub fn build_draw_list(
-    chunks: &HashMap<ChunkPos, ChunkGpu>,
+    chunks: &FxHashMap<ChunkPos, ChunkGpu>,
     order: &[VisEntry],
     water: bool,
     max_dist2: Option<f32>,
@@ -701,7 +701,7 @@ mod tests {
 
     #[test]
     fn draw_list_and_runs() {
-        let mut chunks = HashMap::new();
+        let mut chunks = FxHashMap::default();
         chunks.insert(
             (0, 0),
             ChunkGpu {
@@ -863,7 +863,7 @@ mod tests {
     /// with a surface band is visible
     #[test]
     fn occlusion_surface_world_sees_all_surfaces() {
-        let mut chunks = HashMap::new();
+        let mut chunks = FxHashMap::default();
         for dz in -2..=2 {
             for dx in -2..=2 {
                 chunks.insert((dx, dz), col(0b1111_1110, 1 << 4)); // bands 4..10 air, geo band 4
@@ -883,7 +883,7 @@ mod tests {
     /// below the sealed ceiling). The camera's column is always drawn.
     #[test]
     fn occlusion_culls_sealed_cave_column() {
-        let mut chunks = HashMap::new();
+        let mut chunks = FxHashMap::default();
         // camera column: air bands 3..7 (walls + planes open), geo at 4
         chunks.insert((0, 0), col(0b1111_1000, 1 << 4));
         // neighbor columns: air bands 3..7 open (connected), but their geo
@@ -909,7 +909,7 @@ mod tests {
     /// via that band → the column is drawn
     #[test]
     fn occlusion_keeps_tunnel_connected_cave() {
-        let mut chunks = HashMap::new();
+        let mut chunks = FxHashMap::default();
         chunks.insert((0, 0), col(0b1111_1000, 1 << 4));
         let mut g = col(0b1111_1000, 1 << 1);
         g.occl.sides &= !(0xF << 4); // band-1 walls all closed…
@@ -932,7 +932,7 @@ mod tests {
     /// missing camera chunk → None (caller must skip occlusion culling)
     #[test]
     fn occlusion_camera_chunk_missing_is_none() {
-        let mut chunks = HashMap::new();
+        let mut chunks = FxHashMap::default();
         chunks.insert((1, 0), col(0b1111_1110, 1 << 4));
         assert!(occlusion_visible(&chunks, (0, 0), 5).is_none());
     }
@@ -959,7 +959,7 @@ mod tests {
     /// mesh-revision bump after the world changes recomputes.
     #[test]
     fn occlusion_cache_hits_and_invalidates() {
-        let mut chunks = HashMap::new();
+        let mut chunks = FxHashMap::default();
         for dz in -2..=2 {
             for dx in -2..=2 {
                 chunks.insert((dx, dz), col(0b1111_1110, 1 << 4));
@@ -999,7 +999,7 @@ mod tests {
     /// retries next frame — the conservative fallback stays cheap)
     #[test]
     fn occlusion_cache_none_is_transient() {
-        let mut chunks = HashMap::new();
+        let mut chunks = FxHashMap::default();
         let mut cache = OcclCache::default();
         assert!(occlusion_visible_cached(&chunks, (0, 0), 5, 1, &mut cache).is_none());
         // camera chunk arrives (mesh upload → rev 2)

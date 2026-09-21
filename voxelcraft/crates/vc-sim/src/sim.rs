@@ -108,12 +108,12 @@ pub struct Sim {
     pub wither: vc_gameplay::wither::WitherSystem,
     /// Phase E2: beacon states (position-keyed; the pyramid + powers,
     /// VERIFIED w/Beacon)
-    pub beacons: std::collections::HashMap<[i32; 3], vc_gameplay::beacon::BeaconState>,
+    pub beacons: rustc_hash::FxHashMap<[i32; 3], vc_gameplay::beacon::BeaconState>,
     /// Round 13: anvil station slots (target + sacrifice, position-
     /// keyed; items return to the player on screen close — vanilla)
-    pub anvils: std::collections::HashMap<[i32; 3], vc_gameplay::anvil::StationSlots>,
+    pub anvils: rustc_hash::FxHashMap<[i32; 3], vc_gameplay::anvil::StationSlots>,
     /// Round 13: grindstone station slots (top + bottom, position-keyed)
-    pub grindstones: std::collections::HashMap<[i32; 3], vc_gameplay::anvil::StationSlots>,
+    pub grindstones: rustc_hash::FxHashMap<[i32; 3], vc_gameplay::anvil::StationSlots>,
     /// 1.13 (Aquatic-era update): placed conduits (position-keyed; the
     /// frame scan + Conduit Power application live in the game layer
     /// — VERIFIED w/Conduit)
@@ -125,11 +125,11 @@ pub struct Sim {
     /// containers (Phase 3): chests/dispensers/droppers/hoppers
     pub containers: crate::containers::Containers,
     /// dispenser/dropper previous powered state (rising-edge detect)
-    dispenser_prev: std::collections::HashMap<[i32; 3], bool>,
+    dispenser_prev: rustc_hash::FxHashMap<[i32; 3], bool>,
     /// dispenser/dropper eject countdowns (VERIFIED 4 game tick delay)
-    pending_eject: std::collections::HashMap<[i32; 3], u64>,
+    pending_eject: rustc_hash::FxHashMap<[i32; 3], u64>,
     /// hopper transfer cooldowns (VERIFIED 8 game ticks)
-    hopper_cd: std::collections::HashMap<[i32; 3], u64>,
+    hopper_cd: rustc_hash::FxHashMap<[i32; 3], u64>,
     acc: f32,
     /// total sim ticks executed (stats/F3/E2E)
     pub ticks: u64,
@@ -159,15 +159,15 @@ impl Sim {
             sky_factor: 1.0,
             dragon: vc_gameplay::dragon::DragonSystem::new(seed ^ 0xDA60_0005),
             wither: vc_gameplay::wither::WitherSystem::new(seed ^ 0xB055_0002),
-            beacons: std::collections::HashMap::new(),
-            anvils: std::collections::HashMap::new(),
-            grindstones: std::collections::HashMap::new(),
+            beacons: rustc_hash::FxHashMap::default(),
+            anvils: rustc_hash::FxHashMap::default(),
+            grindstones: rustc_hash::FxHashMap::default(),
             conduits: std::collections::HashSet::new(),
             conduit_attack_t: 0,
             containers: crate::containers::Containers::default(),
-            dispenser_prev: std::collections::HashMap::new(),
-            pending_eject: std::collections::HashMap::new(),
-            hopper_cd: std::collections::HashMap::new(),
+            dispenser_prev: rustc_hash::FxHashMap::default(),
+            pending_eject: rustc_hash::FxHashMap::default(),
+            hopper_cd: rustc_hash::FxHashMap::default(),
             acc: 0.0,
             ticks: 0,
             dragon_events: Vec::new(),

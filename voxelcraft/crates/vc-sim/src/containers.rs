@@ -86,7 +86,7 @@ impl ContainerInv {
 
 #[derive(Default)]
 pub struct Containers {
-    pub map: std::collections::HashMap<[i32; 3], ContainerInv>,
+    pub map: rustc_hash::FxHashMap<[i32; 3], ContainerInv>,
     /// positions whose container was destroyed — the game layer spills
     /// these as item drops
     pub spilled: Vec<([i32; 3], Vec<ItemStack>)>,

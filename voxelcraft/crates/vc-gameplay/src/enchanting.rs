@@ -17,7 +17,7 @@
 //! - per-slot option-level curve and the enchant-weighted pick are a
 //!   close approximation of vanilla's (documented, deterministic)
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
 use vc_rng::rng::Rng;
@@ -692,7 +692,7 @@ impl EnchantState {
 /// vanilla container)
 #[derive(Default)]
 pub struct Enchants {
-    pub map: HashMap<[i32; 3], EnchantState>,
+    pub map: FxHashMap<[i32; 3], EnchantState>,
     /// total enchants applied since boot (stats/F3/E2E)
     pub total_enchanted: u64,
 }

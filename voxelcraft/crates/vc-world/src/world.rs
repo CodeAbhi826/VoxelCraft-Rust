@@ -235,6 +235,52 @@ impl World {
         }
     }
 
+    /// Direction and strength of the flowing-water current at a cell
+    /// (the entity push of vanilla's fluid flow, ≈0.014 b/t per level
+    /// of surface drop). The vector points downstream: toward the
+    /// weakest-fed horizontal neighbor (the highest level number), or
+    /// toward an air cell the water can spill into (the strongest
+    /// signal); over a falling edge (air below, no horizontal spill)
+    /// it points straight down. The magnitude carries the level
+    /// differential (1..=8); zero when the cell is still water (a
+    /// source with no outflow) or not water at all.
+    pub fn water_flow(&self, x: i32, y: i32, z: i32) -> [f32; 3] {
+        let level = water_level(self.get_state(x, y, z));
+        if level == 255 {
+            return [0.0; 3];
+        }
+        let mut fx = 0.0f32;
+        let mut fz = 0.0f32;
+        let best = level as f32;
+        for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
+            let ns = self.get_state(x + dx, y, z + dz);
+            // an air neighbor is a spill target — the surface there is
+            // effectively "below the last flowing level" (level 8)
+            let eff = if state_block(ns) == AIR {
+                8.0
+            } else {
+                let nl = water_level(ns);
+                if nl == 255 {
+                    f32::MIN // solid/other: no signal this way
+                } else {
+                    nl as f32
+                }
+            };
+            if eff > best {
+                fx += dx as f32 * (eff - level as f32);
+                fz += dz as f32 * (eff - level as f32);
+            }
+        }
+        if fx != 0.0 || fz != 0.0 {
+            return [fx, 0.0, fz];
+        }
+        // no horizontal outflow: a falling edge still pulls entities down
+        if state_block(self.get_state(x, y - 1, z)) == AIR {
+            return [0.0, -1.0, 0.0];
+        }
+        [0.0; 3]
+    }
+
     /// Biome id of the column at (wx, wz); 0 (Ocean fallback) when the
     /// chunk is not loaded. Phase E1: biome-gated mechanics (snow golem
     /// heat damage, mushroom-fields spawn rules).

@@ -1,9 +1,16 @@
 name: Build WASM
 
-# Auto-builds the Rust engine to a browser-ready WASM bundle and commits it
-# back to public/ so nobody ever has to compile locally again.
-# Re-trigger guard: only fires on Rust-source changes (public/** changes are
-# excluded from paths) AND the artifact commit message carries [skip ci].
+# Auto-builds the Rust engine to a browser-ready WASM bundle and uploads
+# it as workflow ARTIFACTS (30-day retention).
+#
+# 2026-09-21 repo slim-down: the bundle is NEVER committed back to the
+# repo anymore — the old commit-back loop pushed a ~6MB binary blob on
+# every Rust change (171 versions ≈ 687MB of git history, most of the
+# 130MB GitHub pack). The bundle for a deployed site is now built where
+# it runs:
+#   * locally:  voxelcraft/scripts/rebuild-web-bundle.sh (locked pair)
+#   * CI:       the "voxelcraft-wasm-bundle" artifact from this workflow
+# The re-trigger guard stays (Rust-source paths only).
 
 on:
   push:
@@ -14,7 +21,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: wasm-build-${{ github.ref }}
@@ -126,20 +133,14 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      - name: Commit & push bundle back to main
+      - name: Bundle summary (artifacts only — never committed)
         run: |
-          git config user.name  "voxelcraft-ci"
-          git config user.email "actions@github.com"
-          git add public/voxelcraft.js public/voxelcraft_bg.wasm \
-                  public/voxelcraft.d.ts public/voxelcraft_bg.wasm.d.ts
-          git add public/voxelcraft-pack
-          if git diff --cached --quiet; then
-            chorus "Bundle unchanged - nothing to commit."
-          else
-            git commit -m "ci(wasm): auto-rebuild bundle for ${GITHUB_SHA::12} [skip ci]"
-            git push
-            chorus "PUSHED_BUNDLE=1" >> "$GITHUB_ENV"
-          fi
+          echo "wasm bundle built and uploaded as workflow artifacts:"
+          ls -la public/voxelcraft* 2>/dev/null || true
+          echo "NOTE (2026-09-21 repo slim-down): the bundle is NOT committed"
+          echo "anymore — 171 auto-committed rebuilds had grown the git pack to"
+          echo "~130MB. Download the 'voxelcraft-wasm-bundle' artifact, or build"
+          echo "locally with voxelcraft/scripts/rebuild-web-bundle.sh."
 
   native-check:
     name: cargo check (native, audio on)

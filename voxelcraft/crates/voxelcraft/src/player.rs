@@ -156,6 +156,10 @@ pub struct Player {
     pub head_in_water: bool,
     /// Phase E2: feet in lava (contact damage + slow — VERIFIED w/Lava)
     pub in_lava: bool,
+    /// horizontal collision this frame (any axis-0/2 move clamped) —
+    /// drives the 1.13 surface hop out of water (vanilla's
+    /// `horizontalCollision` flag in LivingEntity.aiStep)
+    pub collided_h: bool,
     /// audit-fix (1.2): lower half inside a vine — climbing engaged
     /// (VERIFIED w/Vines + w/Ladder §Climbing)
     pub on_vine: bool,
@@ -325,6 +329,7 @@ impl Player {
             tick_accum: 0.0,
             air_accum: 0.0,
             was_on_ground: false,
+            collided_h: false,
             pending_trample: None,
         }
     }
@@ -588,19 +593,36 @@ impl Player {
             return sounds;
         }
 
-        // water state
-        let feet_block = world.get_block(
-            self.pos.x.floor() as i32,
-            (self.pos.y + 0.4).floor() as i32,
-            self.pos.z.floor() as i32,
-        );
-        let head_block = world.get_block(
-            self.pos.x.floor() as i32,
-            (self.pos.y + EYE_HEIGHT).floor() as i32,
-            self.pos.z.floor() as i32,
-        );
-        self.in_water = feet_block == WATER;
-        self.head_in_water = head_block == WATER;
+        // water state — fluid-HEIGHT aware (the 2026-09-21b swimming
+        // round): a cell counts as water only where its actual surface
+        // (sources 14/16, flows (8−l)/9, falling columns full-height)
+        // covers the sampled point. A thin level-7 film (~0.11) no
+        // longer reads as a full cell — you walk through shallow flows
+        // instead of swimming in them (the old full-cell test made
+        // every flow feel like a deep pool — the "completely
+        // artificial" mechanics report).
+        let fx = self.pos.x.floor() as i32;
+        let fz = self.pos.z.floor() as i32;
+        let feet_y = (self.pos.y + 0.4).floor() as i32;
+        let feet_state = world.get_state(fx, feet_y, fz);
+        let feet_fl = water_level(feet_state);
+        self.in_water = feet_fl != 255 && {
+            let above_is_water =
+                state_block(world.get_state(fx, feet_y + 1, fz)) == WATER;
+            let surface = feet_y as f32 + fluid_height(feet_fl, above_is_water);
+            surface > self.pos.y + 0.2
+        };
+        let eye_y = self.pos.y + EYE_HEIGHT;
+        let head_y = eye_y.floor() as i32;
+        let head_state = world.get_state(fx, head_y, fz);
+        let head_fl = water_level(head_state);
+        self.head_in_water = head_fl != 255 && {
+            let above_is_water =
+                state_block(world.get_state(fx, head_y + 1, fz)) == WATER;
+            let surface = head_y as f32 + fluid_height(head_fl, above_is_water);
+            surface > eye_y
+        };
+        let feet_block = state_block(feet_state); // folded id (lava/vine)
         // Phase E2 (VERIFIED w/Lava): contact damage 4 HP per 10 ticks
         // (the every-tick damage is reduced by the half-second damage
         // immunity window); the game layer applies the timed damage.
@@ -811,7 +833,15 @@ impl Player {
                 WALK_SPEED
             } * stat_mult;
             let target = wish * speed;
-            let rate = if self.on_ground { 12.0 } else { 2.5 };
+            // water control rate: between the ground snap and the air
+            // drift — vanilla's in-water moveRelative + 0.8/t drag feel
+            let rate = if self.in_water {
+                4.0
+            } else if self.on_ground {
+                12.0
+            } else {
+                2.5
+            };
             let f = (rate * dt).min(1.0);
             self.vel.x += (target.x - self.vel.x) * f;
             self.vel.z += (target.z - self.vel.z) * f;
@@ -832,14 +862,16 @@ impl Player {
             }
 
             if self.in_water {
-                // buoyant swimming
-                let target_y = if input.jump { 3.5 } else { -2.2 };
-                self.vel.y += (target_y - self.vel.y) * (6.0 * dt).min(1.0);
-                self.vel.y -= 4.0 * dt;
-                self.vel.y = self.vel.y.clamp(-4.0, 5.0);
-                // no per-tick gravity while buoyant — also freeze the
-                // substep accumulator so leaving water starts fresh
-                self.tick_accum = 0.0;
+                // 2026-09-21b swimming round: the vertical water physics
+                // moved to the post-integration tick block — the EXACT
+                // vanilla per-tick travel() form (v ← v×0.8 − 0.02 b/t,
+                // +0.04 swim-up on jump, −0.04 sink on sneak, flowing
+                // current push) replacing this old target-smoothing
+                // approximation (which hard-clamped a dive to −4 b/s in
+                // one frame, ignored sneak, and never let you out at a
+                // shore). The surface hop (after the move) handles the
+                // shore lip; the horizontal swim targets above (the
+                // VERIFIED wiki speeds) keep the water control rate.
             } else if on_vine {
                 // ---- audit-fix: vine climbing (the "collisionless
                 // ladder" physics). Up while jump held (~2.35 b/s,
@@ -976,7 +1008,13 @@ impl Player {
         let max_comp = delta.x.abs().max(delta.y.abs()).max(delta.z.abs());
         let steps = (max_comp / 0.4).ceil().max(1.0) as i32;
         let step = delta / steps as f32;
+        // pre-integration horizontal velocity: move_axis ZEROES the
+        // clamped axis, so the surface-hop probe below needs the
+        // direction we were actually moving in
+        let pre_vx = self.vel.x;
+        let pre_vz = self.vel.z;
         self.on_ground = false;
+        self.collided_h = false;
         for _ in 0..steps {
             self.move_axis(world, 0, step.x);
             self.move_axis(world, 1, step.y);
@@ -987,6 +1025,30 @@ impl Player {
             let probe = self.pos.y - 0.06;
             if Self::collides(world, Vec3::new(self.pos.x, probe, self.pos.z)) {
                 self.on_ground = true;
+            }
+        }
+
+        // ---- 1.13 surface hop (2026-09-21b): swim out at a shore lip ----
+        // vanilla LivingEntity.aiStep pops entities up at 0.3 b/t
+        // (6 b/s) on horizontal collision while in water with jump
+        // held and a climbable step ahead — the probe pattern is the
+        // proven 1.10 auto-jump's (lip solid at feet, free at +1.05,
+        // headroom above). Without it you bob stuck ~0.3 blocks below
+        // a same-level shore — the "trapped in the water" report.
+        if self.in_water && self.collided_h && input.jump && !self.flying {
+            let hs = (pre_vx * pre_vx + pre_vz * pre_vz).sqrt();
+            if hs > 1e-3 {
+                let ax = self.pos.x + pre_vx / hs * 0.5;
+                let az = self.pos.z + pre_vz / hs * 0.5;
+                let lip_solid =
+                    Self::collides(world, Vec3::new(ax, self.pos.y + 0.05, az));
+                let above_free =
+                    !Self::collides(world, Vec3::new(ax, self.pos.y + 1.05, az));
+                let headroom =
+                    !Self::collides(world, Vec3::new(self.pos.x, self.pos.y + 1.95, self.pos.z));
+                if lip_solid && above_free && headroom {
+                    self.vel.y = 0.3 * TPS;
+                }
             }
         }
 
@@ -1072,23 +1134,79 @@ impl Player {
             && input.jump
             && self.held().block == ELYTRA
             && !self.held().is_empty();
-        if !self.flying && !self.in_water && !gliding && !on_vine {
+        // 2026-09-21b swimming round: WATER and LAVA now run the EXACT
+        // vanilla per-tick travel() form on this same fixed 20 Hz
+        // substep (previously a per-frame target-smoothing
+        // approximation that clamped a dive to −4 b/s in ONE frame,
+        // ignored sneak-descent, and had no current or shore exit):
+        //   water: v ← v×0.8 − 0.02 b/t  (+0.04 b/t swim-up while jump
+        //          is held — aiStep's water jump; −0.04 b/t sink on
+        //          sneak, the 1.13+ swim controls)
+        //   lava:  v ← v×0.5 − 0.02 b/t  (+0.04 b/t on jump) — the
+        //          heavy 0.5 lava drag (vanilla waterSlowDown)
+        // Steady-state sink ≈ −0.10 b/t = −2 b/s, swim-up saturates at
+        // +0.10 b/t = +2 b/s; a −78 b/s dive decays smoothly through
+        // the 0.8/t drag in ~9 ticks. Fall distance only accumulates
+        // OUTSIDE fluids (water/lava zero it above).
+        let feet_flow_cell = (
+            self.pos.x.floor() as i32,
+            (self.pos.y + 0.4).floor() as i32,
+            self.pos.z.floor() as i32,
+        );
+        if !self.flying && !gliding && !on_vine {
             self.tick_accum += dt;
             let mut ticks = 0u8;
             while self.tick_accum >= TICK_DT && ticks < 40 {
                 self.tick_accum -= TICK_DT;
                 ticks += 1;
-                // vanilla fallDistance: the distance THIS tick's motion
-                // covered (the pre-update velocity is what moved us)
                 let v_bpt = self.vel.y / TPS;
-                if v_bpt < 0.0 {
-                    self.fall_dist += -v_bpt;
-                }
-                let v1 = (v_bpt - 0.08) * 0.98;
+                let v1 = if self.in_water || self.in_lava {
+                    let drag = if self.in_lava { 0.5 } else { 0.8 };
+                    let mut t = v_bpt * drag - 0.02;
+                    if input.jump {
+                        t += 0.04;
+                    }
+                    if input.sneak && self.in_water {
+                        t -= 0.04;
+                    }
+                    t
+                } else {
+                    (v_bpt - 0.08) * 0.98
+                };
                 self.vel.y = v1 * TPS;
-                if slow_falling {
-                    // 1.13: terminal velocity 9.8 b/s (VERIFIED)
-                    self.vel.y = self.vel.y.max(-9.8);
+                // flowing-water current (vanilla's fluid flow push,
+                // ≈0.014 b/t per level of surface drop): pushes the
+                // player downstream — rivers/waterfalls now CARRY you
+                if self.in_water {
+                    let f = world.water_flow(
+                        feet_flow_cell.0,
+                        feet_flow_cell.1,
+                        feet_flow_cell.2,
+                    );
+                    let mag = (f[0] * f[0] + f[1] * f[1] + f[2] * f[2]).sqrt();
+                    if mag > 1e-4 {
+                        // scale: differential (1..=8) → accel up to
+                        // ~0.28 b/s per tick (steady drift ≈ 1.4 b/s
+                        // in a spill current, a gentle river ≈ 0.3)
+                        let s = 0.014 * TPS * mag.min(4.0) * 0.25;
+                        self.vel.x += f[0] / mag * s;
+                        self.vel.z += f[2] / mag * s;
+                        if f[1] < 0.0 {
+                            // over a falls edge: a gentle downward pull
+                            self.vel.y -= 0.6 * TICK_DT * TPS;
+                        }
+                    }
+                }
+                if !self.in_water && !self.in_lava {
+                    // vanilla fallDistance: the distance THIS tick's
+                    // motion covered (the pre-update velocity moved us)
+                    if v_bpt < 0.0 {
+                        self.fall_dist += -v_bpt;
+                    }
+                    if slow_falling {
+                        // 1.13: terminal velocity 9.8 b/s (VERIFIED)
+                        self.vel.y = self.vel.y.max(-9.8);
+                    }
                 }
                 if self.vel.y.is_nan() {
                     self.vel.y = 0.0;
@@ -1298,10 +1416,17 @@ impl Player {
         if !Self::collides(world, q) {
             self.pos = q;
         }
-        match axis {
-            0 => self.vel.x = 0.0,
-            1 => self.vel.y = 0.0,
-            _ => self.vel.z = 0.0,
+        if axis == 1 {
+            self.vel.y = 0.0;
+        } else {
+            // horizontal clamp — the surface-hop signal (vanilla's
+            // `horizontalCollision` flag in LivingEntity.aiStep)
+            self.collided_h = true;
+            if axis == 0 {
+                self.vel.x = 0.0;
+            } else {
+                self.vel.z = 0.0;
+            }
         }
     }
 
@@ -1720,7 +1845,13 @@ mod tests {
     /// 40 ticks (30 air / 4 ticks)
     #[test]
     fn air_depletes_drowns_and_regenerates() {
-        // head submerged: eye 1.62 over a pool floor
+        // head submerged: eye 1.62 over a pool floor. 2026-09-21b: the
+        // player starts AT REST on the pool floor — with fluid-height
+        // head detection (sources surface at 14/16, not the full cell)
+        // an eye SINKING through a source cell's top 1/8 band is
+        // legitimately above the surface for ~2-3 ticks and would
+        // regen a little air; resting statically keeps the eye solidly
+        // under the surface for the full 300-tick drain.
         let mut w = flat_floor();
         for y in 62..=70i32 {
             for z in -2..=2i32 {
@@ -1729,7 +1860,7 @@ mod tests {
                 }
             }
         }
-        let mut p = Player::new(Vec3::new(0.5, 64.0, 0.5));
+        let mut p = Player::new(Vec3::new(0.5, 62.001, 0.5));
         p.flying = false;
         let mut input = Input::default();
         // 300 ticks = 15 s at the fixed step

@@ -9007,7 +9007,13 @@ impl GameApp {
         // 1.14: the pre-break state (the berry bush's
         // age — captured BEFORE the AIR write clears it)
         let broke_state = self.world.get_state(pos[0], pos[1], pos[2]);
-        let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+        // face light (max of the 6 neighbors): the still-solid cell
+        // itself reads (0,0) — the 2026-09-21 "black break burst/drops"
+        // root cause; see face_light_at. The BFS is async, so the
+        // post-AIR-write light would be stale — sample the neighbors
+        // BEFORE the write.
+        let (biome, _, _) = light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+        let (sky, blk) = face_light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
         if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR) {
             self.light
                 .on_block_changed(&self.world, pos[0], pos[1], pos[2], old, new);
@@ -9488,7 +9494,10 @@ impl GameApp {
         }
         let stage = ((m.progress * 10.0) as i32).clamp(0, 9) as u16;
         let tile = TILE_DESTROY_BASE + stage;
-        let (_biome, sky, blk) = light_at(&self.world, &self.light, m.pos[0], m.pos[1], m.pos[2]);
+        // face light — the solid cell itself is (0,0) (the black-overlay
+        // half of the 2026-09-21 "black breaking" report)
+        let (sky, blk) =
+            face_light_at(&self.world, &self.light, m.pos[0], m.pos[1], m.pos[2]);
         let light = vc_particles::particles::particle_light(sky, blk);
         // atlas UV of the stage tile
         let tx = (tile % 32) as f32;
@@ -11999,7 +12008,9 @@ impl GameApp {
         if b == AIR || b == BEDROCK {
             return;
         }
-        let (biome, sky, blk) = light_at(&self.world, &self.light, x, y, z);
+        // face light — the solid cell itself reads (0,0)
+        let (biome, _, _) = light_at(&self.world, &self.light, x, y, z);
+        let (sky, blk) = face_light_at(&self.world, &self.light, x, y, z);
         if let Some((old, new)) = self.world.set_block(x, y, z, AIR) {
             self.light.on_block_changed(&self.world, x, y, z, old, new);
         }
@@ -14237,9 +14248,11 @@ impl GameApp {
             }
         }
 
-        // item pickup: entities in radius land in the hotbar
+        // item pickup: entities in the inflated player AABB land in the
+        // hotbar (feet-anchored — the 2026-09-21 fix; the old eye-radius
+        // never reached grounded items)
         if self.screen == Screen::Game {
-            for b in self.sim.collect_items(self.player.eye().to_array()) {
+            for b in self.sim.collect_items(self.player.pos.to_array()) {
                 let leftover = self.player.inv.add(b, 1);
                 if leftover == 0 {
                     let toast = name(b);
@@ -16932,8 +16945,12 @@ impl GameApp {
             if !self.sim.campfires.done.is_empty() {
                 let done: Vec<([i32; 3], u16)> = std::mem::take(&mut self.sim.campfires.done);
                 for (pos, item) in done {
-                    let (biome, sky, blk) =
+                    // face light — the campfire cell itself is (0,0)
+                    // (black cooked-item drops, same 2026-09-21 family)
+                    let (biome, _, _) =
                         light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+                    let (sky, blk) =
+                        face_light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
                     self.sim
                         .items
                         .drop_block(pos[0], pos[1] + 1, pos[2], item, biome, sky, blk);
@@ -17137,8 +17154,10 @@ impl GameApp {
                                     ]),
                                     0.45,
                                 );
-                                let (biome, sky, blk) =
+                                let (biome, _, _) =
                                     light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+                                let (sky, blk) =
+                                    face_light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
                                 self.particles
                                     .spawn_hit(pos[0], pos[1], pos[2], b, biome, sky, blk);
                             }
@@ -22035,9 +22054,15 @@ impl GameApp {
             self.particles
                 .build_vertices(right, up, &mut self.particle_verts);
             // item entities share the billboard pipeline (§22 progressive)
-            self.sim
-                .items
-                .build_vertices(self.time, right, up, &mut self.particle_verts);
+            // — 3D spinning mini-blocks since the 2026-09-21 round
+            // (needs the camera dir for the painter face order)
+            self.sim.items.build_vertices(
+                self.time,
+                right,
+                up,
+                dir,
+                &mut self.particle_verts,
+            );
             // §27/§29 villagers: crossed-quad sprites, villager scale
             vc_gameplay::villagers::build_vertices(
                 &self.sim.villagers.list,
@@ -22613,6 +22638,41 @@ fn light_at(
     (biome, sky, blk)
 }
 
+/// Face light for effects anchored ON a block cell (break bursts, crack
+/// overlays, hit particles, item drops). ROOT CAUSE of the 2026-09-21
+/// "black breaking / black drops" report: the light engine's column
+/// scan stores sky=0/blk=0 INSIDE opaque cells (light.rs), so sampling
+/// a solid block's OWN cell yields pitch black — every particle/drop
+/// baked from it rendered as a black square. The mesher never has this
+/// problem because it samples the NEIGHBOR air cell; effects that span
+/// the whole block take the MAX over the 6 neighbors (its brightest
+/// face). Do NOT sample after the AIR write instead: the light BFS
+/// commits asynchronously (working→commit), so world.light is stale at
+/// that instant.
+fn face_light_at(
+    world: &World,
+    light: &vc_world::light::LightEngine,
+    wx: i32,
+    wy: i32,
+    wz: i32,
+) -> (u8, u8) {
+    let mut best_sky = 0u8;
+    let mut best_blk = 0u8;
+    for (dx, dy, dz) in [
+        (1i32, 0i32, 0i32),
+        (-1, 0, 0),
+        (0, 1, 0),
+        (0, -1, 0),
+        (0, 0, 1),
+        (0, 0, -1),
+    ] {
+        let (_, s, b) = light_at(world, light, wx + dx, wy + dy, wz + dz);
+        best_sky = best_sky.max(s);
+        best_blk = best_blk.max(b);
+    }
+    (best_sky, best_blk)
+}
+
 /// after an edit at (wx, wy, wz), refresh the connection states of any fence
 /// blocks among the 4 horizontal neighbors (and the position itself if the
 /// edit placed a fence — handled by the caller passing its own state).
@@ -22638,7 +22698,6 @@ fn update_fence_neighbors(world: &mut World, wx: i32, wy: i32, wz: i32) {
         }
     }
 }
-
 /// §12 streaming geometry bands: for each of the 8 neighbors of a newly
 /// generated chunk, the sections whose y-bands touch the new chunk's
 /// non-air cells along the shared face (face culling + AO read ±1 cells).

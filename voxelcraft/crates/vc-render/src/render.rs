@@ -235,13 +235,15 @@ pub struct RenderStats {
 /// The shared billboard-stream vertex budget (particles + modeled
 /// entity boxes + items/villagers/arrows/orbs):
 /// 4096 particles × 6 verts + 128 mobs × 360 verts (the 10-box spider
-/// rig worst case: 10 boxes × 6 faces × 6 verts) + 8192 margin.
+/// rig worst case: 10 boxes × 6 faces × 6 verts) + 16384 margin.
 /// The buffer is sized to this AND the per-frame write is clamped to
 /// it — the old particles-only size was overflowable the moment mobs
 /// and items joined the stream (write_buffer with an oversized slice
 /// is a wgpu validation error), and the jointed entity models would
-/// have tripped it routinely.
-const PARTICLE_VERT_BUDGET: usize = 4096 * 6 + 128 * 360 + 8192;
+/// have tripped it routinely. 2026-09-21: the margin covers the 3D
+/// item cuboids (256 items × 36 verts = 9216, up from the old 6-vert
+/// billboards) alongside the particle + rig worst cases.
+const PARTICLE_VERT_BUDGET: usize = 4096 * 6 + 128 * 360 + 16384;
 
 // ---------------------------------------------------------------- shaders
 
@@ -418,8 +420,22 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     //     sampling — mip 3/4 are never selected, so tiles can never
     //     bleed; the distant cost is one mip level of extra shimmer,
     //     far less visible than the dark lattice it kills.
-    let fuv = clamp(fract(in.uv), vec2<f32>(0.03125), vec2<f32>(0.9375));
-    let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
+    // (5) LOD-AWARE INSET (2026-09-21b, the ROOT CAUSE of the RETURNED
+    //     dark lattice): a FIXED mip-0 inset cannot protect deeper mip
+    //     levels. Bilinear at mip L is only tile-safe inside
+    //     [2^L/32, 1 - 2^L/32] (mip 1: [0.0625, 0.9375]; mip 2:
+    //     [0.125, 0.875]) — the old constant pair (0.03125, 0.9375) let
+    //     every mip-1/2 footprint blend 25-37.5% of the NEIGHBORING
+    //     atlas tile into the outer half-texel of each face edge: a dark
+    //     rim on every block = the lattice. The band is derived from the
+    //     SAME capped gradient the sampler uses: half a texel of the
+    //     effective mip level (tgrad*16 texels -> 2^L/32 in face-uv),
+    //     clamped to the cap's [mip 0, mip 2] range. Up close the band
+    //     is the mip-0 half-texel (identical fidelity); at the cap it is
+    //     the mip-2 half-texel (sub-pixel crop, invisible at distance).
+    //     The spec's LOD metric (max per-component |derivative|) never
+    //     exceeds the vector-length metric used here, so the band is
+    //     always >= the truly-needed one — never under-protected.
     var gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
     var gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
     let glen = max(length(gdx), length(gdy));
@@ -429,6 +445,12 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         gdx = gdx * gs;
         gdy = gdy * gs;
     }
+    // capped gradient in FACE-uv units (tile = 1.0); tgrad*16 = mip-0
+    // texels per pixel = the LOD the sampler will select (<= 4 under cap)
+    let tgrad = max(length(gdx), length(gdy)) * 32.0;
+    let band = clamp(max(tgrad * 16.0, 1.0), 1.0, 4.0) / 32.0;
+    let fuv = clamp(fract(in.uv), vec2<f32>(band), vec2<f32>(1.0 - band));
+    let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     if (c.a < 0.5) { discard; }
     let day = G.misc.x;
@@ -591,13 +613,14 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // the old /16 was 32× too large — dark-grid-at-distance — and the
     // 2026-09-09 /512 under-mipped ~4 levels; /32 is exact).
     let scroll = vec2<f32>(G.misc.y * 0.06, G.misc.y * 0.025);
-    let fuv = clamp(fract(in.uv + scroll), vec2<f32>(0.03125), vec2<f32>(0.9375));
-    let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
-    // MIP-2 LOD CAP — same as TERRAIN_SHADER (4) (2026-09-21 distant
-    // dark-lattice fix): clamp the gradient-ellipse LENGTH to the mip-2
-    // texel footprint (4/512) so mip 3/4 are never selected — the water
-    // tile can never bleed its atlas neighbors; aniso ratio is preserved
-    // by scaling the ellipse uniformly.
+    // gradients FIRST — the inset band must be derived from the SAME
+    // (capped) gradient the sampler uses (see TERRAIN_SHADER comment (5),
+    // the 2026-09-21b root-cause fix of the returned dark lattice: a fixed
+    // mip-0 inset bleeds 25-37.5% of the neighboring tile at mip 1/2 —
+    // for water that meant TILE_GLASS black dots + drifting dark fringes,
+    // the measured ~60px dark grid on the surface). The scroll offset is
+    // uniform across the surface (ZERO derivative contribution), so the
+    // analytic gradients still come from the pre-fract `in.uv`.
     var gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
     var gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
     let glen = max(length(gdx), length(gdy));
@@ -607,6 +630,10 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         gdx = gdx * gs;
         gdy = gdy * gs;
     }
+    let tgrad = max(length(gdx), length(gdy)) * 32.0;
+    let band = clamp(max(tgrad * 16.0, 1.0), 1.0, 4.0) / 32.0;
+    let fuv = clamp(fract(in.uv + scroll), vec2<f32>(band), vec2<f32>(1.0 - band));
+    let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     let day = G.misc.x;
     // water is a flat plane — the up normal is exact
@@ -620,6 +647,11 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let d = distance(in.world, G.cam.xyz);
     let f = smoothstep(G.fog_color.w, G.sun_dir.w, d);
     rgb = mix(rgb, G.fog_color.rgb, f);
+    // underwater camera: same blue tint the terrain pass applies
+    // (G.misc.z) so the surface reads consistently from below.
+    if (G.misc.z > 0.5) {
+        rgb = rgb * vec3<f32>(0.60, 0.78, 1.10);
+    }
     return vec4<f32>(rgb, 0.62);
 }
 "#;
@@ -6410,10 +6442,15 @@ mod shader_tests {
     /// in BOTH the terrain and water fragment shaders —
     /// 1. `textureSampleGrad` (explicit gradients: no implicit-derivative
     ///    LOD explosion at fract() discontinuities),
-    /// 2. the texel-boundary inset `clamp(fract(...), 0.03125, 0.9375)`
-    ///    (bilinear/mipmap/aniso footprints stay inside the tile — the
-    ///    upper bound is 15/16, NOT 15.5/16: 15.5 sits on the tile border
-    ///    and blends the neighbor tile into every face edge),
+    /// 2. the LOD-AWARE texel-boundary inset (2026-09-21b): the clamp band
+    ///    is DERIVED from the capped gradient — `band = clamp(max(tgrad*16,
+    ///    1.0), 1.0, 4.0)/32.0` — so at mip L the inset is the half-texel
+    ///    of that mip level (mip 0: 1/32, mip 2: 4/32). The OLD fixed pair
+    ///    (0.03125, 0.9375) was only mip-0/mip-1-safe and let mip-1/2
+    ///    bilinear taps blend 25-37.5% of the NEIGHBOR tile into every
+    ///    block edge — the returned "black outlines on distant blocks"
+    ///    lattice (2026-09-21 regression report). A fixed constant pair
+    ///    here is FORBIDDEN — it is exactly how the bug came back.
     /// 3. gradients taken from the PRE-fract uv (`dpdx(in.uv)`, not of the
     ///    clamped/fract'ed coordinate), and
     /// 4. the gradient divided by 32 — the derivative of the ATLAS
@@ -6436,8 +6473,16 @@ mod shader_tests {
                 "{name}: texel-boundary inset clamp missing"
             );
             assert!(
-                src.contains("vec2<f32>(0.03125), vec2<f32>(0.9375)"),
-                "{name}: inset bounds must be the tile-safe pair (0.5/16, 15/16)"
+                src.contains("let band = clamp(max(tgrad * 16.0, 1.0), 1.0, 4.0) / 32.0;"),
+                "{name}: LOD-aware inset band derivation missing — a FIXED constant pair is the returned dark-lattice bug, do not reintroduce"
+            );
+            assert!(
+                src.contains("vec2<f32>(band), vec2<f32>(1.0 - band)"),
+                "{name}: the inset clamp must use the derived LOD-aware band on both bounds"
+            );
+            assert!(
+                !src.contains("vec2<f32>(0.03125), vec2<f32>(0.9375)"),
+                "{name}: the fixed mip-0 inset pair is the 2026-09-21 returned-lattice root cause — the band must be LOD-derived"
             );
             assert!(
                 src.contains("dpdx(in.uv) / vec2<f32>(32.0, 32.0)"),
@@ -6486,6 +6531,27 @@ mod shader_tests {
             WATER_SHADER.contains("scroll"),
             "water: the uv scroll (the vanilla surface motion) must stay"
         );
+    }
+
+    /// The built-in terrain/water shaders must parse AND type-check as
+    /// valid WGSL (naga front+validate, same machinery as the pack
+    /// pipeline). The 2026-09-21b LOD-aware inset edit touched live
+    /// shader math (clamp/max/exp-free band derivation) — a syntax or
+    /// type error here would otherwise only surface at GPU boot.
+    #[test]
+    fn builtin_terrain_water_shaders_are_valid_wgsl() {
+        for (name, src) in [("terrain", TERRAIN_SHADER), ("water", WATER_SHADER)] {
+            let mut fe = naga::front::wgsl::Frontend::new();
+            let module = fe
+                .parse(src)
+                .unwrap_or_else(|e| panic!("{name}: WGSL parse error: {e}"));
+            let mut val = naga::valid::Validator::new(
+                naga::valid::ValidationFlags::all(),
+                naga::valid::Capabilities::all(),
+            );
+            val.validate(&module)
+                .unwrap_or_else(|e| panic!("{name}: WGSL validation error: {e:?}"));
+        }
     }
 
     /// FSR 1.0 EASU at EXACT 1:1 input/output scale must be the identity:

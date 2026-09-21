@@ -27,6 +27,10 @@ vc-render = { path = "crates/vc-render" }
 vc-audio = { path = "crates/vc-audio" }
 
 # shared external versions
+# 2026-09-21 perf round: mimalloc — the drop-in global allocator with
+# consistent wins on alloc-heavy game loops (chunk meshing + worldgen);
+# native-only (wasm keeps the system allocator)
+mimalloc = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 bytemuck = { version = "1", features = ["derive"] }
@@ -54,7 +58,13 @@ web-time = "0.2"
 [profile.release]
 # keep the engine's release profile at the workspace root
 opt-level = 3
-lto = "thin"
+# 2026-09-21 perf round: fat LTO + single codegen unit — the classic
+# zero-code-risk release win for game workloads (cross-crate inlining
+# across the 15-crate graph: meshing/worldgen hot loops live in
+# vc-mesh/vc-world but their callers in vc-render/voxelcraft inline
+# through). Costs link time only; CI budgets already cover it.
+lto = "fat"
+codegen-units = 1
 # single-file game releases (linux-game.yml) ship the raw binary —
 # stripped symbols keep the download small; debug builds are unaffected
 strip = true

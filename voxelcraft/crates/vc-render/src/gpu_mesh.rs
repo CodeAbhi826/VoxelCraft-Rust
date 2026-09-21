@@ -165,6 +165,22 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
 }
 fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 862u)]; }
 fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 532u)]; }
+// water level of a STATE: 0 = source, 1..7 = flowing, 255 = not water
+// (port of vc_blocks::blocks::water_level; the flow-state id range
+// 89..=95 is asserted against WATER_FLOW_BASE/END by the Rust-side
+// mesh parity tests — if the registry ever moves, those fail first)
+fn water_level_s(s: u32) -> u32 {
+    if s == B_WATER { return 0u; }
+    if s >= 89u && s <= 95u { return s - 88u; }
+    return 255u;
+}
+// fluid surface height (port of vc_blocks::blocks::fluid_height):
+// sources 14/16, flows (8−l)/9, falling columns (water above) full
+fn fluid_height_w(level: u32, water_above: bool) -> f32 {
+    if level == 0u { return 0.875; }
+    if water_above { return 1.0; }
+    return max((8.0 - f32(level)) / 9.0, 1.0 / 9.0);
+}
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];
@@ -221,14 +237,30 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
     let fnb = fl(nb);
 
     if (fb & F_WATER) != 0u {
-        // water key: 1 | l<<1 | aw<<6 | bl<<7 | wt<<11 (all in lo)
-        if face_visible(fb, fnb) {
+        // water key: 1 | l<<1 | aw<<6 | bl<<7 | wt<<11 | level<<19
+        // 2026-09-21b: the WATER LEVEL rides bits 19..21 (runs never
+        // merge across levels; the emit stage renders per-level
+        // fluid heights) and side faces between different-height water
+        // cells become step faces (the taller side renders the shared
+        // vertical face) — bit-parity with the CPU mesher's rule.
+        let wl = select(0u, min(water_level_s(bs), 7u), b == B_WATER);
+        var vis = face_visible(fb, fnb);
+        if (b == B_WATER) && (nb == B_WATER) && (d != 1u) {
+            let nbs = job_getb(j, ncell[0], ncell[1], ncell[2]);
+            let nwl = water_level_s(nbs);
+            let above = job_getb(j, cell[0], cell[1] + 1, cell[2]);
+            let nabove = job_getb(j, ncell[0], ncell[1] + 1, ncell[2]);
+            let my_h = fluid_height_w(water_level_s(bs), above == b);
+            let nb_h = fluid_height_w(nwl, nabove == b);
+            vis = my_h > nb_h + 0.0001;
+        }
+        if vis {
             let l = job_get_sky(j, ncell[0], ncell[1], ncell[2]);
             let bl = job_get_blk(j, ncell[0], ncell[1], ncell[2]);
             let above = job_getb(j, cell[0], cell[1] + 1, cell[2]);
             let aw = select(0u, 1u, above == B_WATER);
             let wt = tint_packed(b, false, biome_at(j, cell[0], cell[2]));
-            wmask[t] = 1u | (l << 1u) | (aw << 6u) | (bl << 7u) | (wt << 11u);
+            wmask[t] = 1u | (l << 1u) | (aw << 6u) | (bl << 7u) | (wt << 11u) | (wl << 19u);
         }
         return;
     }
@@ -317,7 +349,7 @@ fn normal_index(d: u32, dir: i32) -> u32 {
 // [0]=solid_v_off(words) [1]=solid_i_off [2]=water_v_off [3]=water_i_off
 // [4]=solid section-local vertex base [5]=water section-local vertex base
 fn emit_quad(state: u32, ao_pack: u32, sky_pack: u32, bl: u32, tint: u32,
-             is_solid: bool, water_aw: u32, d: u32, dir: i32, sl: i32, ylo: u32,
+             is_solid: bool, water_aw: u32, water_lv: u32, d: u32, dir: i32, sl: i32, ylo: u32,
              off_u: u32, off_v: u32, ui: u32, vi: u32, w: u32, h: u32,
              gunit: u32, qi: u32) {
     let u = (d + 1u) % 3u;
@@ -343,6 +375,9 @@ fn emit_quad(state: u32, ao_pack: u32, sky_pack: u32, bl: u32, tint: u32,
         t11 = vec2<f32>(wf, 0.0); t01 = vec2<f32>(0.0, 0.0);
     }
     let water_top_open = !is_solid && (water_aw == 0u);
+    // 2026-09-21b: per-level fluid surface — sources 14/16, flows
+    // (8−l)/9, falling columns full (bit-parity with the CPU mesher)
+    let wdrop = 1.0 - fluid_height_w(water_lv, water_aw == 1u);
     // per-STATE tiles (log axis rotation: rings on the ±axis faces)
     let tile_i = select(
         select(tile_of(state, 3u), tile_of(state, 2u), d == 0u),
@@ -370,11 +405,11 @@ fn emit_quad(state: u32, ao_pack: u32, sky_pack: u32, bl: u32, tint: u32,
         p[v] = cy[ci] + f32(off_v);
         if !is_solid {
             if (d == 1u) && (dir > 0) {
-                p[1] = p[1] - 0.125;                       // water surface 14/16
+                p[1] = p[1] - wdrop;               // fluid surface (per level)
             } else if (d == 0u) && (cx[ci] == f32(ui + w)) && water_top_open {
-                p[1] = p[1] - 0.125;                       // side-face top edge
+                p[1] = p[1] - wdrop;               // side-face top edge
             } else if (d == 2u) && (cy[ci] == f32(vi + h)) && water_top_open {
-                p[1] = p[1] - 0.125;
+                p[1] = p[1] - wdrop;
             }
         }
         let packed = packv(p[0], p[1], p[2], tu[ci], tv[ci], tile_i,
@@ -436,7 +471,7 @@ fn scan_solid(emit: bool, d: u32, dir: i32, sl: i32, ylo: u32,
                     let sky_pack = (klo >> 4u) & 0xFFFFu;
                     let bl = klo & 0xFu;
                     let tint = (khi >> 4u) & 0xFFu;
-                    emit_quad(state, ao_pack, sky_pack, bl, tint, true, 0u,
+                    emit_quad(state, ao_pack, sky_pack, bl, tint, true, 0u, 0u,
                               d, dir, sl, ylo, off_u, off_v, ui, vi, w, h,
                               gunit, quads);
                 }
@@ -489,8 +524,9 @@ fn scan_water(emit: bool, d: u32, dir: i32, sl: i32, ylo: u32,
                     let aw = (klo >> 6u) & 1u;
                     let bl = (klo >> 7u) & 0xFu;
                     let wt = (klo >> 11u) & 0xFFu;
+                    let wl = (klo >> 19u) & 7u;
                     let sky_pack = (l << 12u) | (l << 8u) | (l << 4u) | l;
-                    emit_quad(B_WATER, 0xFFu, sky_pack, bl, wt, false, aw,
+                    emit_quad(B_WATER, 0xFFu, sky_pack, bl, wt, false, aw, wl,
                               d, dir, sl, ylo, off_u, off_v, ui, vi, w, h,
                               gunit, quads);
                 }

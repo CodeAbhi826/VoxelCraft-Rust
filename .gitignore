@@ -116,3 +116,20 @@ bench_run.json
 build-artifact/
 .agents/sentinel_*
 .agents/teamwork_*
+
+# ---- 2026-09-21 repo slim-down: build outputs are BUILT, never committed
+# (171 auto-committed wasm rebuilds = 687MB of history bloat; the bundle
+# is produced by voxelcraft/scripts/rebuild-web-bundle.sh locally or by
+# the wasm-build workflow's artifacts — never git-tracked again)
+public/voxelcraft.js
+public/voxelcraft_bg.wasm
+public/voxelcraft.d.ts
+public/voxelcraft_bg.wasm.d.ts
+public/voxelcraft-pack/
+public/voxelcraft-pack-classic-art/
+build-release/
+dist/
+
+# dev diagnostic artifacts (stay local, never in the repo)
+diag-shots/
+docs/screenshots/

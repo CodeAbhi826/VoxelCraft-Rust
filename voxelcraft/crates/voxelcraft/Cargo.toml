@@ -55,6 +55,9 @@ web-time = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rayon = { workspace = true }
+# 2026-09-21 perf round: mimalloc global allocator on native targets only
+# (the F3 Counting telemetry wrapper in alloc_stats.rs layers on top of it)
+mimalloc = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { workspace = true, features = ["webgl"] }

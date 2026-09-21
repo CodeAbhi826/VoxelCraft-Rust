@@ -536,9 +536,11 @@ impl Sim {
     }
 
     /// player pickup collection (called by the game each frame with the
-    /// player eye) — routed into the hotbar by the caller
-    pub fn collect_items(&mut self, eye: [f32; 3]) -> Vec<u16> {
-        self.items.collect(eye)
+    /// player FEET position — the 2026-09-21 fix: the old eye-anchored
+    /// radius never reached grounded items) — routed into the hotbar
+    /// by the caller
+    pub fn collect_items(&mut self, feet: [f32; 3]) -> Vec<u16> {
+        self.items.collect(feet)
     }
 }
 

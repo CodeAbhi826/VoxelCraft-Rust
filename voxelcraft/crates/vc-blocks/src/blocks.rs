@@ -3647,6 +3647,23 @@ pub fn water_state(level: u8) -> u16 {
     }
 }
 
+/// Surface height of a water cell as a fraction of the block (0..1):
+/// sources sit at 14/16 (the vanilla surface), flowing levels descend
+/// like vanilla's liquid height ((8 − level)/9), and a cell fed from
+/// above (a falling column) is a full-height sheet. Used by the
+/// mesher (per-level render heights) and the physics (submersion
+/// depth — a thin level-7 film no longer reads as a full cell).
+#[inline]
+pub fn fluid_height(level: u16, water_above: bool) -> f32 {
+    if level == 0 {
+        0.875 // 14/16 — the vanilla source surface
+    } else if water_above {
+        1.0 // falling column: full-height sheet
+    } else {
+        ((8u32.saturating_sub(level as u32)) as f32 / 9.0).max(1.0 / 9.0)
+    }
+}
+
 // ---------------------------------------------------------------------------
 // property-driven states (Phase 1, Master Spec §5.1)
 // ---------------------------------------------------------------------------

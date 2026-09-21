@@ -379,19 +379,22 @@ fn leaves(a: &mut [u8], t: u16, rng: &mut Rng) {
 }
 
 fn water(a: &mut [u8], t: u16, rng: &mut Rng) {
+    // DESATURATED base art (2026-09-21b water-color fix): the water
+    // shader multiplies the biome water tint #3F76E4 (63,118,228) into
+    // this tile — the old art was ALREADY saturated #3F76E4, so the
+    // double tint rendered (16,55,204): an almost-black navy, the
+    // "broken/too-dark water" report. Vanilla parity is a near-gray
+    // base (like vanilla's water_still frames) with soft horizontal
+    // ripple banding; the tint supplies the hue, and the product
+    // averages back to ~#3F76E4 with natural animated variation.
     for y in 0..16 {
+        // triangle-wave ripple bands (period ~11 rows, amplitude 0..5)
+        let wave = (y * 5) % 11;
+        let band = if wave < 6 { wave } else { 10 - wave };
         for x in 0..16 {
             let s = if rng.next_f32() < 0.12 { 14 } else { 0 };
-            put(
-                a,
-                t,
-                x,
-                y,
-                jit(63 + s, 7, rng),
-                jit(118 + s, 9, rng),
-                jit(228, 6, rng),
-                255,
-            );
+            let v = (204 + band * 6 + s + jit(10, 4, rng)).clamp(0, 255);
+            put(a, t, x, y, v, v, v, 255);
         }
     }
 }

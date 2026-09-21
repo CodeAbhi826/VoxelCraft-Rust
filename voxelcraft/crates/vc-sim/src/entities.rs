@@ -154,18 +154,34 @@ impl ItemSystem {
         self.items.retain(|it| it.age < DESPAWN_TICKS);
     }
 
-    /// vanilla pickup: entities within 1.0 of the player (and past the
-    /// delay) get collected. Returns the picked-up block ids (the caller
-    /// routes them into the inventory).
-    pub fn collect(&mut self, eye: [f32; 3]) -> Vec<u16> {
+    /// vanilla pickup: the item must intersect the player's AABB
+    /// (0.6×1.8×0.6, feet-anchored) INFLATED by (1.0, 0.5, 1.0) — and be
+    /// past the 10-tick pickup delay. Returns the picked-up block ids
+    /// (the caller routes them into the inventory).
+    ///
+    /// 2026-09-21 root cause of "nothing gets into the inventory": the
+    /// old test measured 3D distance from the EYE with radius 1.0 — an
+    /// item resting at the player's FEET is ≥1.57 below the eye
+    /// (d² ≥ 2.46 > 1.0, ALWAYS out of reach), so items only ever
+    /// entered the inventory by never landing. The feet-anchored box
+    /// is the vanilla rule (ItemEntity.playerTouch: AABB grow +
+    /// intersect). The old unit test passed only because it handed in
+    /// a fabricated "eye" at item height.
+    pub fn collect(&mut self, feet: [f32; 3]) -> Vec<u16> {
+        const PLAYER_HALF: f32 = 0.3;
+        const PLAYER_HEIGHT: f32 = 1.8;
+        const INFLATE_H: f32 = 1.0;
+        const INFLATE_Y: f32 = 0.5;
+        let hh = PLAYER_HALF + INFLATE_H;
         let mut picked = Vec::new();
         let mut i = 0;
         while i < self.items.len() {
             let it = &self.items[i];
-            let d2 = (it.pos[0] - eye[0]).powi(2)
-                + (it.pos[1] - eye[1]).powi(2)
-                + (it.pos[2] - eye[2]).powi(2);
-            if d2 < 1.0 && it.age > PICKUP_DELAY {
+            let near = (it.pos[0] - feet[0]).abs() <= hh
+                && (it.pos[2] - feet[2]).abs() <= hh
+                && it.pos[1] >= feet[1] - INFLATE_Y
+                && it.pos[1] <= feet[1] + PLAYER_HEIGHT + INFLATE_Y;
+            if near && it.age > PICKUP_DELAY {
                 picked.push(it.block);
                 self.items.remove(i);
             } else {
@@ -176,78 +192,162 @@ impl ItemSystem {
         picked
     }
 
-    /// billboard quads: two crossed quads rotating slowly around Y (the
-    /// vanilla block-item "spin"), bobbing vertically. Emitted into the
-    /// particle vertex stream (§16.2 pass 4 shares the pipeline).
+    /// 3D mini-block rendering (2026-09-21 "the broken stuff on the
+    /// ground is just black stuff" round): a 0.25-block cuboid with
+    /// per-face tiles (state_tiles), vanilla face shading
+    /// (top 1.0 / bottom 0.5 / X 0.6 / Z 0.8), spinning around Y with
+    /// the vanilla bob — replacing the old flat billboard quad
+    /// ("not the item in 3D moving like the real game"). Faces are
+    /// painter-ordered far→near by the face normal vs the camera
+    /// direction (the shared billboard pipeline has no depth-write,
+    /// exactly like push_held_item's cube and the entity models).
     pub fn build_vertices(
         &self,
         time: f32,
         right: [f32; 3],
         up: [f32; 3],
+        dir: [f32; 3],
         out: &mut Vec<vc_particles::particles::ParticleVertex>,
     ) {
+        let _ = (right, up); // basis unused: the cube is world-space
+        let half = 0.125f32; // 0.25-block item cuboid (vanilla)
         for it in self.items.iter() {
-            let tile = state_tiles(it.block)[3];
-            // [1.12 fix] 32-tile atlas rows (was %16//16)
-            let tx = (tile % 32) as f32;
-            let ty = (tile / 32) as f32;
-            // spin: the right basis rotated around the world Y axis
+            let tiles = state_tiles(it.block);
+            let bob = (time * 2.2 + it.pos[0] + it.pos[2]).sin() * 0.04;
+            let cy = it.pos[1] + half + 0.1 + bob; // hover just off the floor
             let ang = time * 1.6;
             let (s, c) = (ang.sin(), ang.cos());
-            let rr = [
-                c * right[0] + s * right[2],
-                0.0,
-                -s * right[0] + c * right[2],
+            // world-space Y rotation of a local (x, y, z) offset
+            let rot = |x: f32, z: f32| [c * x + s * z, -s * x + c * z];
+            let col = |k: f32| {
+                [
+                    it.light * it.tint[0] * k,
+                    it.light * it.tint[1] * k,
+                    it.light * it.tint[2] * k,
+                ]
+            };
+            // (corners CCW seen from outside, normal, shade, tile, uv per corner)
+            let faces: [(
+                [[f32; 3]; 4],
+                [f32; 3],
+                f32,
+                u16,
+            ); 6] = [
+                // +Y top
+                (
+                    [
+                        [-half, half, -half],
+                        [half, half, -half],
+                        [half, half, half],
+                        [-half, half, half],
+                    ],
+                    [0.0, 1.0, 0.0],
+                    1.0,
+                    tiles[0],
+                ),
+                // −Y bottom
+                (
+                    [
+                        [-half, -half, half],
+                        [half, -half, half],
+                        [half, -half, -half],
+                        [-half, -half, -half],
+                    ],
+                    [0.0, -1.0, 0.0],
+                    0.5,
+                    tiles[1],
+                ),
+                // +X
+                (
+                    [
+                        [half, -half, -half],
+                        [half, half, -half],
+                        [half, half, half],
+                        [half, -half, half],
+                    ],
+                    [1.0, 0.0, 0.0],
+                    0.6,
+                    tiles[2],
+                ),
+                // −X
+                (
+                    [
+                        [-half, -half, half],
+                        [-half, half, half],
+                        [-half, half, -half],
+                        [-half, -half, -half],
+                    ],
+                    [-1.0, 0.0, 0.0],
+                    0.6,
+                    tiles[2],
+                ),
+                // +Z
+                (
+                    [
+                        [half, -half, half],
+                        [half, half, half],
+                        [-half, half, half],
+                        [-half, -half, half],
+                    ],
+                    [0.0, 0.0, 1.0],
+                    0.8,
+                    tiles[3],
+                ),
+                // −Z
+                (
+                    [
+                        [-half, -half, -half],
+                        [-half, half, -half],
+                        [half, half, -half],
+                        [half, -half, -half],
+                    ],
+                    [0.0, 0.0, -1.0],
+                    0.8,
+                    tiles[3],
+                ),
             ];
-            let ru = up;
-            let half = 0.15f32;
-            let bob = (time * 2.2 + it.pos[0] + it.pos[2]).sin() * 0.04;
-            let col = [
-                it.light * it.tint[0],
-                it.light * it.tint[1],
-                it.light * it.tint[2],
-            ];
-            let corners = [
-                (
+            // painter order: farthest-from-camera face first (its normal
+            // points most WITH the view direction); nearest last
+            let mut order: [usize; 6] = [0, 1, 2, 3, 4, 5];
+            order.sort_by(|a, b| {
+                let na = rot(faces[*a].1[0], faces[*a].1[2]);
+                let nb = rot(faces[*b].1[0], faces[*b].1[2]);
+                let da = na[0] * dir[0] + na[1] * dir[2];
+                let db = nb[0] * dir[0] + nb[1] * dir[2];
+                db.partial_cmp(&da).unwrap_or(std::cmp::Ordering::Equal)
+            });
+            for fi in order {
+                let (corners, _nrm, shade, tile) = &faces[fi];
+                // [1.12 fix] 32-tile atlas rows (was %16//16)
+                let tx = (tile % 32) as f32;
+                let ty = (tile / 32) as f32;
+                let col = col(*shade);
+                // UV: v flipped so texture top = block top (side faces);
+                // top/bottom map the tile straight on
+                let uvs = if fi < 2 {
                     [
-                        -rr[0] * half - ru[0] * half,
-                        -rr[1] * half - ru[1] * half,
-                        -rr[2] * half - ru[2] * half,
-                    ],
-                    [tx / 32.0, (ty + 1.0) / 32.0],
-                ),
-                (
+                        [tx / 32.0, (ty + 1.0) / 32.0],
+                        [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
+                        [(tx + 1.0) / 32.0, ty / 32.0],
+                        [tx / 32.0, ty / 32.0],
+                    ]
+                } else {
                     [
-                        rr[0] * half - ru[0] * half,
-                        rr[1] * half - ru[1] * half,
-                        rr[2] * half - ru[2] * half,
-                    ],
-                    [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
-                ),
-                (
-                    [
-                        rr[0] * half + ru[0] * half,
-                        rr[1] * half + ru[1] * half,
-                        rr[2] * half + ru[2] * half,
-                    ],
-                    [(tx + 1.0) / 32.0, ty / 32.0],
-                ),
-                (
-                    [
-                        -rr[0] * half + ru[0] * half,
-                        -rr[1] * half + ru[1] * half,
-                        -rr[2] * half + ru[2] * half,
-                    ],
-                    [tx / 32.0, ty / 32.0],
-                ),
-            ];
-            for ci in [0usize, 1, 2, 0, 2, 3] {
-                let (c, uv) = corners[ci];
-                out.push(vc_particles::particles::ParticleVertex {
-                    pos: [it.pos[0] + c[0], it.pos[1] + c[1] + bob, it.pos[2] + c[2]],
-                    uv: [uv[0], uv[1]],
-                    col,
-                });
+                        [tx / 32.0, (ty + 1.0) / 32.0],
+                        [tx / 32.0, ty / 32.0],
+                        [(tx + 1.0) / 32.0, ty / 32.0],
+                        [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
+                    ]
+                };
+                for ci in [0usize, 1, 2, 0, 2, 3] {
+                    let cn = corners[ci];
+                    let rz = rot(cn[0], cn[2]);
+                    out.push(vc_particles::particles::ParticleVertex {
+                        pos: [it.pos[0] + rz[0], cy + cn[1], it.pos[2] + rz[1]],
+                        uv: [uvs[ci][0], uvs[ci][1]],
+                        col,
+                    });
+                }
             }
         }
     }
@@ -569,42 +669,55 @@ mod tests {
         let mut is = ItemSystem::new(4);
         let w = flat_world();
         is.drop_block(0, 66, 0, DIRT, 2, 15, 0);
-        // before the delay: no pickup
+        // before the delay: no pickup — the player stands right on the
+        // item's cell (feet-anchored box semantics, 2026-09-21)
         for _ in 0..5 {
             is.tick(&w, (0, 0), i32::MAX);
         }
         assert!(
-            is.collect([0.5, 66.0, 0.5]).is_empty(),
+            is.collect([0.5, 65.001, 0.5]).is_empty(),
             "pickup delay guards"
         );
-        // after the delay: player near → collected
+        // after the delay: collected — the item RESTS AT THE FEET, the
+        // exact case the old eye-radius test could never cover honestly
+        // (it fabricated an "eye" at item height to pass)
         for _ in 0..10 {
             is.tick(&w, (0, 0), i32::MAX);
         }
-        let got = is.collect([0.5, 65.8, 0.5]);
+        let got = is.collect([0.5, 65.001, 0.5]);
         assert_eq!(got, vec![DIRT]);
         assert_eq!(is.len(), 0);
         assert_eq!(is.picked_total, 1);
-        // far away: no pickup
+        // far away: no pickup — 4 blocks off horizontally is outside
+        // the 1.3 half-width inflated AABB
         is.drop_block(4, 66, 4, STONE, 2, 15, 0);
         for _ in 0..20 {
             is.tick(&w, (0, 0), i32::MAX);
         }
-        assert!(is.collect([0.5, 66.0, 0.5]).is_empty(), "distance guards");
+        assert!(is.collect([0.5, 65.001, 0.5]).is_empty(), "distance guards");
         assert_eq!(is.len(), 1);
     }
 
     #[test]
-    fn item_vertices_are_two_crossed_quads() {
+    fn item_vertices_are_a_3d_cuboid() {
         let mut is = ItemSystem::new(5);
         is.drop_block(0, 70, 0, GRASS, 3, 15, 0);
         let mut out = Vec::new();
-        is.build_vertices(1.0, [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], &mut out);
-        assert_eq!(out.len(), 6, "one billboard quad per item");
+        is.build_vertices(
+            1.0,
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, -1.0],
+            &mut out,
+        );
+        // 2026-09-21: a full painter-ordered cuboid — 6 faces × 6
+        // verts — replaces the old single billboard quad ("not the
+        // item in 3D moving like the real game")
+        assert_eq!(out.len(), 36, "six faces per item cuboid");
         // tint baked: Forest grass
         let c = out[0].col;
         assert!(c[1] > c[0], "green-dominant: {c:?}");
-        // UVs inside the grass tile (tile 16 col? — any valid atlas UV)
+        // UVs inside the atlas (any valid atlas UV)
         for v in &out {
             assert!((0.0..=1.0).contains(&v.uv[0]));
             assert!((0.0..=1.0).contains(&v.uv[1]));

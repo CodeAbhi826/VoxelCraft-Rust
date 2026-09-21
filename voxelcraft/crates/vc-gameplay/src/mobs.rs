@@ -5758,13 +5758,42 @@ fn physics_tick(m: &mut Mob, world: &World) {
         m.pos[2] as i32,
     );
     let in_water = body_block == WATER;
-    if m.kind.aquatic() && in_water {
-        // buoyancy: relax toward zero vertical speed, water drag on all
-        // axes (vanilla swim drag 0.8-ish; engine approximation)
-        m.vel[1] *= 0.8;
-        m.vel[0] *= 0.92;
-        m.vel[2] *= 0.92;
+    if in_water {
+        // ---- 2026-09-21b swimming round: ALL mob kinds get the vanilla
+        // water travel() form (previously ONLY aquatic kinds had water
+        // physics — land mobs sank at full gravity through water and
+        // even took fall damage on the pool floor): v ← v×0.8 − 0.02
+        // b/t. Land mobs paddle up (+0.04 b/t, the vanilla in-water
+        // "jump" their AI holds) ONLY while moving — a chasing zombie
+        // swims, an idle one settles on the floor and stays submerged
+        // (the 1.13 drowned-conversion mechanic keeps its 30 s
+        // continuous-submersion semantics). Aquatic kinds get +0.02
+        // (neutral buoyancy hover, the old behavior) and steer with
+        // their 3D AI. Horizontal water drag 0.8/t (vanilla).
+        let moving = m.vel[0].abs() + m.vel[2].abs() > 0.05;
+        let mut t = m.vel[1] / 20.0 * 0.8 - 0.02;
+        if m.kind.aquatic() {
+            t += 0.02;
+        } else if moving {
+            t += 0.04;
+        }
+        m.vel[1] = t * 20.0;
+        m.vel[0] *= 0.8;
+        m.vel[2] *= 0.8;
         m.fall_dist = 0.0; // water breaks falls (the player rule)
+        // flowing-water current: the same push the player gets —
+        // rivers now carry mobs downstream too
+        let f = world.water_flow(
+            m.pos[0] as i32,
+            (m.pos[1] + d.height * 0.5) as i32,
+            m.pos[2] as i32,
+        );
+        let mag = (f[0] * f[0] + f[1] * f[1] + f[2] * f[2]).sqrt();
+        if mag > 1e-4 {
+            let s = 0.014 * 20.0 * mag.min(4.0) * 0.25;
+            m.vel[0] += f[0] / mag * s;
+            m.vel[2] += f[2] / mag * s;
+        }
     } else if m.kind.aquatic() {
         // fish out of water: flop + suffocate (the fish family only —
         // dolphins/turtles/drowned breathe air)
@@ -5778,24 +5807,29 @@ fn physics_tick(m: &mut Mob, world: &World) {
             m.vel[2] *= 0.9;
         }
     }
-    // Vanilla entity gravity, EXACT per-tick form (VERIFIED,
-    // research-verdicts.md: v1 = (v0 − 0.08) × 0.98 in b/t). Velocities
-    // here are b/s, so the per-tick step on b/s units is
-    // v ← (v − 1.6) × 0.98 (0.08 b/t × 20 = 1.6 b/s; drag is unitless).
-    // Terminal −78.4 b/s (−3.92 b/t) is the inherent fixed point — no
-    // clamp. (This also fixes a latent 20× unit bug: the old code
-    // subtracted the per-tick 0.08 from a b/s velocity, giving 1.6 b/s²
-    // gravity and a 3.92 b/s "terminal" — mobs fell 20× too slow.)
-    // FLYING mobs (phantom/vex/bat/parrot — MobKind::flies) are exempt:
-    // vanilla FlyingMobs have no gravity, and a constant −1.568 b/s
-    // pull dragged the phantom's orbit 3 blocks below its 12-block
-    // spec height (VERIFIED w/Phantom §Behavior: "circles ... at a
-    // height of approximately 12 blocks above the player").
-    if !m.kind.flies() {
-        m.vel[1] = (m.vel[1] - 1.6) * 0.98;
-    } else {
-        // gentle flight drag instead (no fixed point — decays to 0)
-        m.vel[1] *= 0.98;
+    if !in_water {
+        // Vanilla entity gravity, EXACT per-tick form (VERIFIED,
+        // research-verdicts.md: v1 = (v0 − 0.08) × 0.98 in b/t). Velocities
+        // here are b/s, so the per-tick step on b/s units is
+        // v ← (v − 1.6) × 0.98 (0.08 b/t × 20 = 1.6 b/s; drag is unitless).
+        // Terminal −78.4 b/s (−3.92 b/t) is the inherent fixed point — no
+        // clamp. (This also fixes a latent 20× unit bug: the old code
+        // subtracted the per-tick 0.08 from a b/s velocity, giving 1.6 b/s²
+        // gravity and a 3.92 b/s "terminal" — mobs fell 20× too slow.)
+        // FLYING mobs (phantom/vex/bat/parrot — MobKind::flies) are exempt:
+        // vanilla FlyingMobs have no gravity, and a constant −1.568 b/s
+        // pull dragged the phantom's orbit 3 blocks below its 12-block
+        // spec height (VERIFIED w/Phantom §Behavior: "circles ... at a
+        // height of approximately 12 blocks above the player").
+        // 2026-09-21b: gated on !in_water — the water branch above owns
+        // the vertical integration while submerged (previously land mobs
+        // took FULL gravity + fall damage inside water).
+        if !m.kind.flies() {
+            m.vel[1] = (m.vel[1] - 1.6) * 0.98;
+        } else {
+            // gentle flight drag instead (no fixed point — decays to 0)
+            m.vel[1] *= 0.98;
+        }
     }
     // fall damage (MC-12357, same as the player): distance-based — the
     // old impact-speed inversion (v²/0.16) was dead code in practice

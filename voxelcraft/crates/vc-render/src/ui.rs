@@ -56,6 +56,22 @@ pub fn live_ui_h() -> usize {
     LIVE_UI_H.with(|f| f.get())
 }
 
+/// 2026-09-24 bottom-row anchoring (the 720p clipped-buttons round): the
+/// fixed layouts were authored against the 960×540 reference canvas, but
+/// the vanilla GUI-scale model produces SMALLER live canvases at common
+/// window sizes — 1280×720 at auto scale 3 is 853×480, so every button
+/// row at reference y≥470 (all settings-screen DONE rows at 470..500,
+/// the world screens' CANCEL / row-B at 480..510) fell off the bottom
+/// edge and was invisible + unclickable. This converts a reference-canvas
+/// Y into the live canvas by preserving the distance from the BOTTOM
+/// edge: y' = live_h − (540 − y). Identity at the 540 reference (1080p),
+/// pulls the rows up into view on shorter canvases. Applied ONLY to the
+/// bottom action rows (y≥440 in the authored layouts) — top-anchored
+/// content and scrollable list rows keep their fixed positions.
+pub fn anchor_y(y: i32) -> i32 {
+    live_ui_h() as i32 - (UI_H as i32 - y)
+}
+
 // ------------------------------------------------- quad-text switch --
 // The Luanti-style font round: when armed, every text* method routes
 // through the runtime font engine (embedded Monocraft, glyph quads on
@@ -877,7 +893,7 @@ pub fn layout_options() -> Vec<Widget> {
         btn_h(
             ID_OPT_DONE,
             (live_ui_w() as i32 - 300) / 2,
-            470,
+            anchor_y(470),
             300,
             30,
             "DONE",
@@ -977,7 +993,7 @@ pub fn layout_video() -> Vec<Widget> {
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
-            470,
+            anchor_y(470),
             300,
             30,
             "DONE",
@@ -1043,7 +1059,7 @@ pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> V
     v.push(btn_h(
         ID_SHDR_DONE,
         (live_ui_w() as i32 - 300) / 2,
-        470,
+        anchor_y(470),
         300,
         30,
         "DONE",
@@ -1108,7 +1124,7 @@ pub fn layout_engine() -> Vec<Widget> {
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
-            470,
+            anchor_y(470),
             300,
             30,
             "DONE",
@@ -1196,7 +1212,7 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
     v.push(btn_h(
         ID_OPT_DONE2,
         (live_ui_w() as i32 - 300) / 2,
-        470,
+        anchor_y(470),
         300,
         30,
         "DONE",
@@ -1256,7 +1272,7 @@ pub fn layout_access() -> Vec<Widget> {
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
-            470,
+            anchor_y(470),
             300,
             30,
             "DONE",
@@ -1354,7 +1370,7 @@ pub fn layout_skin(
         btn_h(
             ID_SKIN_DONE,
             (live_ui_w() as i32 - 300) / 2,
-            470,
+            anchor_y(470),
             300,
             30,
             "DONE",
@@ -1461,7 +1477,7 @@ pub fn layout_chat_settings() -> Vec<Widget> {
         btn_h(
             ID_CHAT_DONE,
             (live_ui_w() as i32 - 300) / 2,
-            470,
+            anchor_y(470),
             300,
             30,
             "DONE",
@@ -1513,7 +1529,7 @@ pub fn layout_music_sound() -> Vec<Widget> {
     v.push(btn_h(
         ID_SND_DONE,
         (live_ui_w() as i32 - 300) / 2,
-        470,
+        anchor_y(470),
         300,
         30,
         "DONE",
@@ -1575,14 +1591,23 @@ pub fn layout_controls(labels: &[(bool, &str, &str)]) -> Vec<Widget> {
     v.push(btn_h(
         ID_CTRL_RESET,
         l,
-        440,
+        anchor_y(440),
         210,
         30,
         "RESET KEYS",
         "",
         true,
     ));
-    v.push(btn_h(ID_CTRL_DONE, l + 230, 440, 210, 30, "DONE", "", true));
+    v.push(btn_h(
+        ID_CTRL_DONE,
+        l + 230,
+        anchor_y(440),
+        210,
+        30,
+        "DONE",
+        "",
+        true,
+    ));
     v
 }
 
@@ -1595,7 +1620,7 @@ pub fn layout_language() -> Vec<Widget> {
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
-            470,
+            anchor_y(470),
             300,
             30,
             "DONE",
@@ -1677,7 +1702,7 @@ pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) ->
     v.push(btn_h(
         ID_WS_PLAY,
         248,
-        440,
+        anchor_y(440),
         225,
         30,
         "PLAY SELECTED WORLD",
@@ -1687,7 +1712,7 @@ pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) ->
     v.push(btn_h(
         ID_WS_CREATE,
         487,
-        440,
+        anchor_y(440),
         225,
         30,
         "CREATE NEW WORLD",
@@ -1697,11 +1722,11 @@ pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) ->
     let four = 150i32; // 4 × 100-wide vanilla buttons at 1.5x
     let gap = 12i32;
     let x0 = (live_ui_w() as i32 - (four * 4 + gap * 3)) / 2;
-    v.push(btn_h(ID_WS_EDIT, x0, 480, four, 30, "EDIT", "", can_play));
+    v.push(btn_h(ID_WS_EDIT, x0, anchor_y(480), four, 30, "EDIT", "", can_play));
     v.push(btn_h(
         ID_WS_DELETE,
         x0 + four + gap,
-        480,
+        anchor_y(480),
         four + gap * 2,
         30,
         if delete_armed {
@@ -1715,7 +1740,7 @@ pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) ->
     v.push(btn_h(
         ID_WS_RECREATE,
         x0 + (four + gap) * 2,
-        480,
+        anchor_y(480),
         four,
         30,
         "RE-CREATE",
@@ -1725,7 +1750,7 @@ pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) ->
     v.push(btn_h(
         ID_WS_SEARCH,
         x0 + (four + gap) * 3,
-        480,
+        anchor_y(480),
         four,
         30,
         "SEARCH",
@@ -1784,7 +1809,7 @@ pub fn layout_world_create(
         v.push(btn_h(
             ID_WC_CREATE,
             248,
-            440,
+            anchor_y(440),
             225,
             30,
             "CREATE NEW WORLD",
@@ -1794,14 +1819,14 @@ pub fn layout_world_create(
         v.push(btn_h(
             ID_WC_MORE,
             487,
-            440,
+            anchor_y(440),
             225,
             30,
             "MORE WORLD OPTIONS...",
             "",
             true,
         ));
-        v.push(btn_h(ID_WC_CANCEL, 330, 480, 300, 30, "CANCEL", "", true));
+        v.push(btn_h(ID_WC_CANCEL, 330, anchor_y(480), 300, 30, "CANCEL", "", true));
     } else {
         v.push(text_field_h(
             ID_WC_SEED,
@@ -1844,8 +1869,8 @@ pub fn layout_world_create(
             true,
         ));
         // vanilla page 2: [Done...] returns to page 1
-        v.push(btn_h(ID_WC_MORE, 487, 440, 225, 30, "DONE...", "", true));
-        v.push(btn_h(ID_WC_CANCEL, 330, 480, 300, 30, "CANCEL", "", true));
+        v.push(btn_h(ID_WC_MORE, 487, anchor_y(440), 225, 30, "DONE...", "", true));
+        v.push(btn_h(ID_WC_CANCEL, 330, anchor_y(480), 300, 30, "CANCEL", "", true));
     }
     v
 }
@@ -1859,7 +1884,7 @@ pub fn layout_world_edit(name: &str) -> Vec<Widget> {
         btn_h(ID_WE_DELETE, 487, 200, 225, 30, "DELETE", "", true),
         btn_h(ID_WE_COPY, 248, 240, 225, 30, "COPY WORLD", "", true),
         btn_h(ID_WE_DONE, 487, 240, 225, 30, "DONE", "", true),
-        btn_h(ID_WC_CANCEL, 330, 480, 300, 30, "CANCEL", "", true),
+        btn_h(ID_WC_CANCEL, 330, anchor_y(480), 300, 30, "CANCEL", "", true),
     ]
 }
 

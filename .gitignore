@@ -133,3 +133,6 @@ dist/
 # dev diagnostic artifacts (stay local, never in the repo)
 diag-shots/
 docs/screenshots/
+
+# 2026-09-24: headless in-game browser-test campaign artifacts (57 screenshots)
+ingame-test/

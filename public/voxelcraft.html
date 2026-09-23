@@ -61,8 +61,26 @@
       window.voxelcraftRequestLock = function () {
         try {
           var p = canvas.requestPointerLock && canvas.requestPointerLock({ unadjustedMovement: false });
-          if (p && p.catch) p.catch(function () { /* pointerlockerror handles it */ });
-        } catch (e) { try { canvas.requestPointerLock(); } catch (e2) {} }
+          if (p && p.catch) {
+            // 2026-09-24: a REJECTED PROMISE does not always fire the
+            // pointerlockerror event (e.g. requests made without user
+            // activation reject with NotAllowedError and no event) — the
+            // old empty catch assumed the event always fired, so the
+            // drag-look fallback never engaged and canvas clicks went
+            // dead until a page reload. Route the rejection into the
+            // same fallback the event handler uses.
+            p.catch(function () {
+              if (!locked() && !dragLook) {
+                dragLook = true;
+                push(['ple', 1, 0, 0]);
+              }
+            });
+          }
+        } catch (e) {
+          try {
+            canvas.requestPointerLock();
+          } catch (e2) {}
+        }
       };
       window.voxelcraftRequestUnlock = function () {
         try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) {}

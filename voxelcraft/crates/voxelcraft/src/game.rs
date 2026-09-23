@@ -9594,8 +9594,18 @@ impl GameApp {
             let (_biome, sky, blk) = light_at(&self.world, &self.light, bx, by, bz);
             vc_particles::particles::particle_light(sky, blk).max(0.35)
         };
-        // camera-space anchor of the view model
-        let ax = -0.42_f32;
+        // camera-space anchor of the view model.
+        // 2026-09-24 root cause of "the hand/item is invisible": the old
+        // anchor was (-0.42, -0.36, 0.55) — LEFT of center and low enough
+        // that at FOV 70 the item cube sat half below the bottom edge and
+        // the forearm ~95% below it (NDC y ≈ -0.94..-1.9), so players saw
+        // nothing or a 2-px sleeve sliver. Vanilla's right-hand rest pose
+        // is bottom-RIGHT with the item's top edge ~half visible: flip x
+        // to +0.42 and keep y/z; the forearm box below is enlarged to
+        // reach up past the bottom edge (vanilla's bare arm fills the
+        // bottom-right corner). NDC at FOV 70/16:9: cube x +0.39..+0.83,
+        // top edge y -0.55 — the vanilla silhouette.
+        let ax = 0.42_f32;
         let ay = -0.36_f32;
         let az = 0.55_f32;
         // equip: rises from below on slot change
@@ -9705,16 +9715,17 @@ impl GameApp {
                 emit_face(&fc, tile, shade, &mut self.particle_verts);
             }
             // the forearm tucked under-right-behind the block (skin-tone
-            // box, TILE_ARM)
+            // box, TILE_ARM) — 2026-09-24: raised/lengthened so the arm
+            // reads ABOVE the bottom edge beside the block (vanilla)
             let arm = [
-                to_world(ax + 0.05, ay - 0.42, az - 0.28),
-                to_world(ax + 0.15, ay - 0.42, az - 0.28),
-                to_world(ax + 0.05, ay - 0.05, az - 0.28),
-                to_world(ax + 0.15, ay - 0.05, az - 0.28),
-                to_world(ax + 0.05, ay - 0.42, az + 0.02),
-                to_world(ax + 0.15, ay - 0.42, az + 0.02),
-                to_world(ax + 0.05, ay - 0.05, az + 0.02),
-                to_world(ax + 0.15, ay - 0.05, az + 0.02),
+                to_world(ax + 0.04, ay - 0.52, az - 0.28),
+                to_world(ax + 0.16, ay - 0.52, az - 0.28),
+                to_world(ax + 0.04, ay + 0.10, az - 0.28),
+                to_world(ax + 0.16, ay + 0.10, az - 0.28),
+                to_world(ax + 0.04, ay - 0.52, az + 0.02),
+                to_world(ax + 0.16, ay - 0.52, az + 0.02),
+                to_world(ax + 0.04, ay + 0.10, az + 0.02),
+                to_world(ax + 0.16, ay + 0.10, az + 0.02),
             ];
             let arm_faces: [([usize; 4], f32); 6] = [
                 ([1, 3, 7, 5], 0.6),
@@ -9729,16 +9740,21 @@ impl GameApp {
                 emit_face(&fc, TILE_ARM, shade, &mut self.particle_verts);
             }
         } else {
-            // empty hand: just the forearm, angled slightly inward
+            // empty hand: just the forearm, angled slightly inward.
+            // 2026-09-24: the old box (y ay-0.40..ay+0.02, 0.12 wide) sat
+            // almost entirely BELOW the bottom edge (top at NDC -0.88) —
+            // the bare-arm hand was a sliver. Vanilla's bare arm rises
+            // from the bottom-right corner to ~2/3 screen height: taller
+            // (ay-0.55..ay+0.22) and wider (0.20) so it reads at any FOV.
             let arm = [
-                to_world(ax - 0.05, ay - 0.40, az - 0.30),
-                to_world(ax + 0.07, ay - 0.40, az - 0.30),
-                to_world(ax - 0.05, ay + 0.02, az - 0.30),
-                to_world(ax + 0.07, ay + 0.02, az - 0.30),
-                to_world(ax - 0.05, ay - 0.40, az + 0.10),
-                to_world(ax + 0.07, ay - 0.40, az + 0.10),
-                to_world(ax - 0.05, ay + 0.02, az + 0.10),
-                to_world(ax + 0.07, ay + 0.02, az + 0.10),
+                to_world(ax - 0.10, ay - 0.55, az - 0.30),
+                to_world(ax + 0.10, ay - 0.55, az - 0.30),
+                to_world(ax - 0.10, ay + 0.22, az - 0.30),
+                to_world(ax + 0.10, ay + 0.22, az - 0.30),
+                to_world(ax - 0.10, ay - 0.55, az + 0.10),
+                to_world(ax + 0.10, ay - 0.55, az + 0.10),
+                to_world(ax - 0.10, ay + 0.22, az + 0.10),
+                to_world(ax + 0.10, ay + 0.22, az + 0.10),
             ];
             let arm_faces: [([usize; 4], f32); 6] = [
                 ([1, 3, 7, 5], 0.6),
@@ -21522,7 +21538,15 @@ impl GameApp {
             Screen::Game => {}
         }
 
-        // in-game HUD
+        // in-game HUD. 2026-09-24 vanilla-parity fix: the HUD is HIDDEN
+        // while a container overlay (survival inventory / crafting /
+        // chest / creative picker) is open — vanilla 1.16.5 does not
+        // draw the crosshair, hearts, hunger or the world hotbar under
+        // an open GUI (the container panel carries its own hotbar row),
+        // and the crosshair visibly bleeding through the inventory was
+        // reported in the live in-game test round.
+        let hud_hidden = self.container.is_some() || self.picker_open;
+        if !hud_hidden {
         self.ui.crosshair();
         let toast = self
             .item_toast
@@ -21645,6 +21669,7 @@ impl GameApp {
             let a = (self.held_name_t / 2.0).min(1.0);
             self.ui.held_item_name(&self.held_name, a);
         }
+        } // !hud_hidden — the F3 overlay below stays over containers
 
         if self.show_debug {
             // vanilla 1.16.5 F3 overlay — two columns, per-line strips,
@@ -23234,6 +23259,45 @@ mod settings_tests {
         assert_eq!(b.w, 320, "size unchanged — vanilla px stay put");
         // restore for the other tests
         vc_render::ui::set_live_ui_size(960, 540);
+    }
+
+    /// 2026-09-24 regression (the 720p clipped-buttons round): every
+    /// settings screen's DONE row and the world screens' CANCEL/row-B
+    /// live at reference y 470/480 — authored against the 540 canvas,
+    /// they fell off the bottom edge at 1280×720 (auto scale 3 → 853×480
+    /// live canvas). anchor_y must pull them up by exactly the height
+    /// deficit, and be the identity at the reference size.
+    #[test]
+    fn bottom_rows_anchor_into_short_canvases() {
+        use vc_render::ui::{self, ID_OPT_DONE, ID_WC_CANCEL, ID_WS_EDIT};
+        // reference canvas: identity
+        ui::set_live_ui_size(960, 540);
+        let ws = ui::layout_options();
+        let done = ws.iter().find(|w| w.id == ID_OPT_DONE).unwrap();
+        assert_eq!(done.y, 470, "identity at the 540 reference");
+        // 720p canvas (853×480): rows shift up by the 60px deficit
+        ui::set_live_ui_size(854, 480);
+        let ws = ui::layout_options();
+        let done = ws.iter().find(|w| w.id == ID_OPT_DONE).unwrap();
+        assert_eq!(done.y, 480 - (540 - 470), "DONE anchored into view");
+        assert!(done.y + done.h <= 480, "fully inside the live canvas");
+        let ws = ui::layout_world_select(0, false, false);
+        let edit = ws.iter().find(|w| w.id == ID_WS_EDIT).unwrap();
+        assert_eq!(edit.y, 480 - (540 - 480), "world-select row B anchored");
+        assert!(edit.y + edit.h <= 480, "row B fully inside");
+        let ws = ui::layout_world_create(true, "New World", "", "Leave blank", "SURVIVAL", "DEFAULT", true, false);
+        let cancel = ws.iter().find(|w| w.id == ID_WC_CANCEL).unwrap();
+        assert!(cancel.y + cancel.h <= 480, "page-2 CANCEL fully inside");
+        let ws = ui::layout_world_create(false, "New World", "", "Leave blank", "SURVIVAL", "DEFAULT", true, false);
+        let cancel = ws.iter().find(|w| w.id == ID_WC_CANCEL).unwrap();
+        assert!(cancel.y + cancel.h <= 480, "page-1 CANCEL fully inside");
+        // scale-4 720p (640×360) — every bottom row still inside
+        ui::set_live_ui_size(640, 360);
+        let ws = ui::layout_options();
+        let done = ws.iter().find(|w| w.id == ID_OPT_DONE).unwrap();
+        assert!(done.y + done.h <= 360, "DONE inside even at 360 tall");
+        // restore for the other tests
+        ui::set_live_ui_size(960, 540);
     }
 
     /// Round 12 — the double-chest partner scan: two adjacent CHESTs

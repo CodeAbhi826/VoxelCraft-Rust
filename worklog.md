@@ -46,7 +46,7 @@ Work Log:
 - cargo test --workspace --no-default-features: 727+ tests green across vc-blocks(43) vc-chunk(7) vc-inventory(6) vc-particles(5) vc-audio(5) vc-sim(62) vc-gameplay(289) vc-render(193) voxelcraft(90, incl. the new anchor regression test) vc-world non-gen(17). ZERO failures.
 - Known-slow (pre-existing, untouched this round): vc-world::gen statistical worldgen tests (~60 tests, 60s+ each on 2 debug cores) — not run to completion; several sampled individually green in earlier partial runs.
 - Repo state: history ALREADY slim (7.73 MiB pack, 183 commits — the prior session's rewrite). No filter-repo needed. Bundle files in public/ are untracked (CI builds them) — correct policy.
-- Committed: ui.rs + game.rs + public/voxelcraft.html + worklog + .gitignore(ingame-test/). Force-pushed main to origin with the user's token.
+- Committed: ui.rs + game.rs + public/voxelcraft.html + worklog + .gitignore(ingame-test/). Pushed main (1838d5d) to origin with the user's token — the remote already carried the slim history at 9100a78, so this round fast-forwarded on top. Remote verified via ls-remote: main = 1838d5d.
 
 Stage Summary:
 - All fixes committed and pushed; remote at the slim 183-commit history with this round's in-game-test fixes on top.

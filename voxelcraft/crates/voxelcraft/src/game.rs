@@ -23994,6 +23994,7 @@ mod tests {
     // watchdog decision + the VC_POINTER override parsing ----
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))] // native-only: PointerLockMode is the winit grab ladder
     fn watchdog_demotes_on_positive_starvation_evidence() {
         // the user is demonstrably moving (3 CursorMoved) but not ONE
         // raw motion arrived >1 s into a real grab → demote
@@ -24007,6 +24008,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn watchdog_never_demotes_a_healthy_channel() {
         // raw motion flows → the grab works, keep it
         assert!(!should_demote_to_delta(
@@ -24019,6 +24021,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn watchdog_ignores_an_idle_user() {
         // no CursorMoved evidence = nobody is moving the mouse — an
         // idle grab is not starvation (a screensaver-quiet session must
@@ -24028,6 +24031,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn watchdog_respects_the_grace_window() {
         // positive evidence but inside the 1 s grace → not yet
         assert!(!should_demote_to_delta(PointerLockMode::Confined, 0.5, 5, 0));
@@ -24040,12 +24044,14 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn watchdog_delta_is_immune() {
         // Delta IS the fallback — nothing to demote
         assert!(!should_demote_to_delta(PointerLockMode::Delta, 10.0, 100, 0));
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))] // native-only: PointerEnvOverride is the desktop env hatch
     fn vc_pointer_override_parses_all_four_modes() {
         assert_eq!(
             PointerEnvOverride::parse(Some("delta")),

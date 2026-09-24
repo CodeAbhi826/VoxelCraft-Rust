@@ -83,7 +83,7 @@ jobs:
           # 1. it must be a real x86_64 ELF executable
           file "$BIN_NAME"
           # 2. the builtin pack must be INSIDE the binary (build.rs embed):
-          #    the pack.mcmeta description string is baked into .rodata
+          #    the pack.json description string is baked into .rodata
           grep -a -o -m1 "VoxelCraft builtin pack" "$BIN_NAME" \
             || { echo "FAIL: embedded-pack marker not found in the binary"; exit 1; }
           # 3. show the shared-library surface (informational — every
@@ -245,7 +245,10 @@ jobs:
             exit 1
           fi
           echo "F3 overlay LIVE - the two dumps differ"
-          for f in builtin-pack/pack.mcmeta options.txt logs/latest.log \
+          # 2026-09-24: the pack descriptor is pack.json (this project's own
+          # clean-room namespace — no third-party pack.mcmeta), verified live:
+          # the boot log extracts all 16 embedded files on first run.
+          for f in builtin-pack/pack.json options.txt logs/latest.log \
                    saves resourcepacks shader-packs; do
             test -e "run2/$f" || { echo "FAIL: first-run $f did not materialize"; exit 1; }
           done

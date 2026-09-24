@@ -99,7 +99,7 @@ jobs:
         run: |
           cargo run --release --no-default-features --features bench-bin --bin vc_bench -- \
             chunks=96 json=bench-headless.json
-          chorus "=== bench-headless.json ==="
+          echo "=== bench-headless.json ==="
           cat bench-headless.json
 
       - name: Upload benchmark JSON

@@ -79,15 +79,15 @@ jobs:
       - name: Patch JS glue (winit pointerType hardening)
         run: |
           python3 voxelcraft/patch-wasm-glue.py voxelcraft/wasm-out/voxelcraft.js || {
-            chorus "=== patch failed — dumping glue diagnostics ==="
+            echo "=== patch failed — dumping glue diagnostics ==="
             wc -c voxelcraft/wasm-out/voxelcraft.js
-            chorus "__wbg_ import count: $(grep -c '__wbg_' voxelcraft/wasm-out/voxelcraft.js || true)"
-            chorus "--- pointerType lines ---"
-            grep -n "pointerType" voxelcraft/wasm-out/voxelcraft.js | head -6 || chorus "(no pointerType anywhere)"
-            chorus "--- first __wbg_pointerType context (or first __wbg_) ---"
+            echo "__wbg_ import count: $(grep -c '__wbg_' voxelcraft/wasm-out/voxelcraft.js || true)"
+            echo "--- pointerType lines ---"
+            grep -n "pointerType" voxelcraft/wasm-out/voxelcraft.js | head -6 || echo "(no pointerType anywhere)"
+            echo "--- first __wbg_pointerType context (or first __wbg_) ---"
             grep -n -A4 "__wbg_pointerType" voxelcraft/wasm-out/voxelcraft.js | head -14 \
               || grep -n -A4 "__wbg_" voxelcraft/wasm-out/voxelcraft.js | head -14
-            chorus "--- file head (400 chars) ---"
+            echo "--- file head (400 chars) ---"
             head -c 400 voxelcraft/wasm-out/voxelcraft.js
             exit 1
           }
@@ -175,7 +175,7 @@ jobs:
         run: |
           cargo run --release --no-default-features --features bench-bin --bin vc_bench -- \
             chunks=96 json=bench-headless.json
-          chorus "=== bench-headless.json ==="
+          echo "=== bench-headless.json ==="
           cat bench-headless.json
 
       - name: Upload benchmark JSON

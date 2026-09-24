@@ -1174,7 +1174,11 @@ void main() {
     }
 }
 
-#[cfg(test)]
+// native-only: the folder scan walks a real temp dir and scan_pack_files
+// itself is #[cfg(not(target_arch = "wasm32"))]) — without this gate the
+// wasm32 `cargo test --no-run` leg fails E0425 (the same class as the
+// ravine-module gate).
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod folder_tests {
     use super::*;
 

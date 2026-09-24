@@ -101,7 +101,7 @@ jobs:
           cp -r builtin-pack "../$DIR/"
           cp BUILD.md "../$DIR/README.md"
           if [ "${{ matrix.features }}" = "--no-default-features" ]; then
-            chorus "NOTE: this build has audio disabled (cross-compiled without an ALSA sysroot)." >> "../$DIR/README.md"
+            echo "NOTE: this build has audio disabled (cross-compiled without an ALSA sysroot)." >> "../$DIR/README.md"
           fi
           cd ..
           if [ "${{ runner.os }}" = "Windows" ]; then
@@ -142,7 +142,7 @@ jobs:
         working-directory: voxelcraft
         run: |
           VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
-          chorus "workspace version: ${VERSION}"
+          echo "workspace version: ${VERSION}"
           rm -f ./*.tar.gz
           rm -rf .stage && mkdir .stage
           # 1. copy every library to a staging dir and rewrite its manifest
@@ -159,7 +159,7 @@ jobs:
           for dir in .stage/vc-*/; do
             name=$(basename "$dir")
             tar czf "${name}-${VERSION}-source.tar.gz" -C .stage "${name}"
-            chorus "packaged ${name} -> ${name}-${VERSION}-source.tar.gz ($(du -h ${name}-${VERSION}-source.tar.gz | cut -f1))"
+            echo "packaged ${name} -> ${name}-${VERSION}-source.tar.gz ($(du -h ${name}-${VERSION}-source.tar.gz | cut -f1))"
           done
           # 3. the library index ships as its own small asset too
           cp LIBRARIES.md vc-libraries-index.md

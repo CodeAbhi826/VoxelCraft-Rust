@@ -3032,6 +3032,48 @@ impl UiCanvas {
         );
     }
 
+    /// Canvas-fallback dirt backdrop: tiles the 16x16 darkened
+    /// options-background sprite at 32 canvas px — the same tiling the
+    /// GPU quad path draws (gui_render DIRT_DST), so the no-GPU/CI path
+    /// and headless snapshots match the game instead of a flat fill.
+    fn dirt_tile_backdrop(&mut self) {
+        const DST: i32 = 32;
+        const SRC: usize = 16;
+        let mut tile = vec![0u8; SRC * SRC * 4];
+        crate::textures::gui_art::draw_options_dirt(&mut tile, SRC);
+        // upscale to the 32px destination cell (nearest)
+        let mut big = vec![0u8; (DST as usize) * (DST as usize) * 4];
+        for y in 0..DST as usize {
+            let sy = y * SRC / DST as usize;
+            for x in 0..DST as usize {
+                let sx = x * SRC / DST as usize;
+                let s = (sy * SRC + sx) * 4;
+                let d = (y * DST as usize + x) * 4;
+                big[d..d + 4].copy_from_slice(&tile[s..s + 4]);
+            }
+        }
+        let w = self.live_w as i32;
+        let h = self.live_h as i32;
+        let stride = w as usize * 4;
+        let mut ty = 0;
+        while ty * DST < h {
+            let mut tx = 0;
+            while tx * DST < w {
+                let x0 = tx * DST;
+                let y0 = ty * DST;
+                let rows = DST.min(h - y0) as usize;
+                let cols = DST.min(w - x0) as usize;
+                for row in 0..rows {
+                    let d = (y0 as usize + row) * stride + (x0 as usize) * 4;
+                    let s = row * DST as usize * 4;
+                    self.px[d..d + cols * 4].copy_from_slice(&big[s..s + cols * 4]);
+                }
+                tx += 1;
+            }
+            ty += 1;
+        }
+    }
+
     /// Generic settings screen (the vanilla 1.16.5 pattern): dark
     /// backdrop, big centered title, then the vanilla hover-tooltip slot
     /// — up to two centered gray hint lines drawn directly under the
@@ -3051,7 +3093,10 @@ impl UiCanvas {
         // ships the 0.25-brightness tile; canvas fallback paints flat.
         self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
-            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+            // canvas fallback: real darkened-dirt TILES (the GPU path
+            // draws the sprite quads; this must match it, not paint a
+            // flat fill — the 0.25-brightness tile is baked dark)
+            self.dirt_tile_backdrop();
         }
         self.text_center(18, title, [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
@@ -3069,7 +3114,10 @@ impl UiCanvas {
         // settings_screen) + darker sunken LIST panels retained
         self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
-            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+            // canvas fallback: real darkened-dirt TILES (the GPU path
+            // draws the sprite quads; this must match it, not paint a
+            // flat fill — the 0.25-brightness tile is baked dark)
+            self.dirt_tile_backdrop();
         }
         self.text_center(18, "RESOURCE PACKS", [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
@@ -3102,7 +3150,10 @@ impl UiCanvas {
         // 2026-09-25: vanilla dirt backdrop (see settings_screen)
         self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
-            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+            // canvas fallback: real darkened-dirt TILES (the GPU path
+            // draws the sprite quads; this must match it, not paint a
+            // flat fill — the 0.25-brightness tile is baked dark)
+            self.dirt_tile_backdrop();
         }
         self.text_center(18, "SHADERS", [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
@@ -3141,7 +3192,10 @@ impl UiCanvas {
         // 2026-09-25: vanilla dirt backdrop (see settings_screen)
         self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
-            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+            // canvas fallback: real darkened-dirt TILES (the GPU path
+            // draws the sprite quads; this must match it, not paint a
+            // flat fill — the 0.25-brightness tile is baked dark)
+            self.dirt_tile_backdrop();
         }
         self.text_center(18, "SELECT WORLD", [255, 255, 255, 255], 3);
         // sunken list backdrop behind the entries (vanilla look) —
@@ -3255,7 +3309,10 @@ impl UiCanvas {
         // 2026-09-25: vanilla dirt backdrop (see settings_screen)
         self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
-            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+            // canvas fallback: real darkened-dirt TILES (the GPU path
+            // draws the sprite quads; this must match it, not paint a
+            // flat fill — the 0.25-brightness tile is baked dark)
+            self.dirt_tile_backdrop();
         }
         self.text_center(18, "CREATE NEW WORLD", [255, 255, 255, 255], 3);
         if !page2 {
@@ -3287,7 +3344,10 @@ impl UiCanvas {
         // 2026-09-25: vanilla dirt backdrop (see settings_screen)
         self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
-            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+            // canvas fallback: real darkened-dirt TILES (the GPU path
+            // draws the sprite quads; this must match it, not paint a
+            // flat fill — the 0.25-brightness tile is baked dark)
+            self.dirt_tile_backdrop();
         }
         self.text_center(18, "EDIT WORLD", [255, 255, 255, 255], 3);
         self.text_center(
@@ -7067,12 +7127,43 @@ mod screen_tests {
                 ((center - 1280).abs() <= 2,
                 "{name}: block center {center} vs canvas mid 1280 (min {min_x} max {max_x})",
             );
-        }
-        // and the 960 identity: ref_x(248) == 248 at the reference
+        }        // and the 960 identity: ref_x(248) == 248 at the reference
         set_live_ui_size(960, 540);
         let ws = layout_options();
         let music = ws.iter().find(|w| w.id == ID_OPT_MUSIC).unwrap();
         assert_eq!(music.x, 248, "960-reference geometry must be unchanged");
+    }
+
+    /// 2026-09-25: the canvas-fallback menu backdrop must tile the real
+    /// darkened dirt sprite (32px cells, full bleed) — not a flat fill.
+    /// Guards the headless/CI snapshot path staying faithful to the GPU
+    /// quad path the game draws.
+    #[test]
+    fn settings_backdrop_tiles_dirt_not_flat_fill() {
+        set_live_ui_size(1024, 640);
+        let mut c = UiCanvas::new();
+        c.resize(1024, 640);
+        let ws = layout_options();
+        c.settings_screen(&ws, None, "OPTIONS", &[]);
+        // opposite corners + two adjacent points a tile apart differ —
+        // a flat fill would be constant everywhere
+        let px = |x: usize, y: usize| -> [u8; 3] {
+            let d = (y * 1024 + x) * 4;
+            [c.px[d], c.px[d + 1], c.px[d + 2]]
+        };
+        let corners = [px(4, 4), px(1018, 4), px(4, 634), px(1018, 634)];
+        for (i, corner) in corners.iter().enumerate() {
+            assert!(
+                corner[0] > corner[2] && corner[0] < 90,
+                "corner {i} {corner:?} is not darkened-dirt (r>b, dim)"
+            );
+        }
+        // texture: 32px-apart samples differ somewhere in a 64px span
+        let textured = (0..64)
+            .filter(|o| px(100 + o, 300) != px(100, 300))
+            .count();
+        assert!(textured >= 8, "backdrop is flat, not tiled ({textured}/64 vary)");
+        set_live_ui_size(960, 540);
     }
 
     fn title_layout_is_vanilla_stack() {

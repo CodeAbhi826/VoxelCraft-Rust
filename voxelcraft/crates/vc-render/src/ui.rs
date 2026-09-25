@@ -3945,8 +3945,19 @@ impl UiCanvas {
         // an ungated raster would cover the sprite)
         self.gui_frame.slot(x, y, false);
         // 2026-09-25: the vanilla slot sprite (SlotEmpty cell) IS the
-        // well — the old dark canvas overlay fought it on the fallback
-        // path; nothing else to paint here.
+        // well on the quad path. The CANVAS fallback now matches it:
+        // vanilla-exact 32px well (2× of the 16px cell) — body #8B8B8B,
+        // top/left #373737, bottom/right #FFFFFF (wiki GUI colors), so
+        // the self-healing path and VC_GUI_CANVAS dumps show real slot
+        // wells instead of a bare panel.
+        if self.chrome_enabled {
+            const S: i32 = 32; // SLOT_SRC * GUI_SCALE — matches the quad
+            self.rect(x, y, S, S, [139, 139, 139, 255]);
+            self.rect(x, y, S, 2, [55, 55, 55, 255]);
+            self.rect(x, y, 2, S, [55, 55, 55, 255]);
+            self.rect(x, y + S - 2, S, 2, [255, 255, 255, 255]);
+            self.rect(x + S - 2, y, 2, S, [255, 255, 255, 255]);
+        }
         self.draw_stack(s, x, y, atlas);
     }
 

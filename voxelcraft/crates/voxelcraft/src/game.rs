@@ -3076,8 +3076,15 @@ impl GameApp {
                     "gui quad renderer armed: chrome -> GPU quads (canvas chrome off)",
                 );
             }
-            app.ui
-                .set_chrome_enabled(gui_cfg.chrome_in_canvas || !app.renderer.gui_quads_ready());
+            app.ui.set_chrome_enabled(
+                gui_cfg.chrome_in_canvas
+                    || !app.renderer.gui_quads_ready()
+                    // visual-review knob: VC_GUI_CANVAS=1 forces the
+                    // canvas to rasterize chrome even with quads armed —
+                    // the headless screenshot path (dumps show the real
+                    // grey 9-slice panels instead of a stale frame)
+                    || std::env::var("VC_GUI_CANVAS").as_deref() == Ok("1"),
+            );
             // Luanti font round: arm the GPU text path (Monocraft glyph
             // quads) alongside the chrome quads — same self-healing rule:
             // if the quad pass (or the embedded font) is unavailable the

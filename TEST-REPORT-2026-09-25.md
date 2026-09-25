@@ -172,3 +172,58 @@ Zero third-party assets in the tested tree; all textures/fonts/sounds procedural
 3. Font upgrade to 8 px proportional with descenders + 25 % shadow.
 4. F3 right-column detail (`Mem: 0MB` stub) + F3+sub-hotkeys.
 5. Container panel widths matched to the 176-vanilla-eq pixel spec (theme itself is now correct).
+
+## 13. Night-round 4 addendum — UI geometry + wiring + native-first verification (`4ce1d51`→`9780af4`)
+
+**User-reported: "options hug one corner instead of centering" — CONFIRMED and FIXED.**
+The settings-family layouts hardcoded x from the 960×540 reference (`(960−464)/2=248`),
+so at any other live canvas width the widget block slid left — at the CI runner's
+2560×1440 it sat literally in the corner (proven from the runner's own `widget table`
+log). All ~12 settings-family layouts + 2 painter backdrops now re-anchor x via a
+centered-block helper; geometry is identical at 960 (identity) and pixel-verified
+centered (skew=0) at 1920×1080 and 2560×1440. Regression test
+`settings_layouts_stay_centered_at_any_live_width` pins the contract at 2560.
+
+**Vision pass (ui_snapshots --size, new):** the headless snapshot tool now accepts
+`--size WxH` and drives `set_live_ui_size` exactly like the game, so every menu can be
+shot at any resolution. Pixel audit: options/video L=R margins at both 1920 and 2560.
+
+**Canvas-fallback fidelity (GPU-vs-CPU divergence the user warned about):**
+- Menu backdrop: the canvas path painted a flat `[24,20,16]` fill while the GPU path
+  tiles darkened dirt — the fallback now tiles the same 16×16 sprite at 32 px
+  (regression test `settings_backdrop_tiles_dirt_not_flat_fill`).
+- Container slots: the fallback painted no slot wells (the GPU quad layer owns them).
+  It now paints the wiki-exact 32 px well (body #8B8B8B, top/left #373737,
+  bottom/right #FFFFFF), so the self-healing no-GPU path is vanilla-correct.
+- New `VC_GUI_CANVAS=1` knob forces canvas chrome for headless screenshot review;
+  with it, native chest+furnace dumps under Xvfb show the full #C6C6C6 panel + wells
+  (previously the dump captured a stale frame because quads own the chrome).
+
+**Settings wiring audit (user: "a lot unwired"):** scripted diff of all 116 widget IDs
+across 17 layouts vs game handlers — every ID is wired. The one real dead control
+found and FIXED: **COPY WORLD on native** (was web-only + a "not implemented" log).
+New `save::copy_world_dir` clones level.dat + region/ recursively, rewrites LevelName
+to vanilla's `"<name> copy"` (dir sanitized, display space preserved, `-2` suffix on
+repeats), refreshes the list with the copy selected; covered by
+`copy_world_dir_clones_level_dat_and_regions`. The 10-slider Music & Sound screen and
+the GUI Scale cycle (Auto/1–4) were confirmed fully wired end-to-end: sliders →
+`set_sound_slider` → `cat_volumes` → `play_event` category gains → `soundCategory_*`
+persistence (report §12 items 1–2 were stale; closed).
+
+**Native-first verification (per user directive, Linux binary before wasm):**
+- E2E suites on the artifact binary under Xvfb(lavapipe): v114/v114b/v114c/v115/
+  v116/v116b/audit16/audit16b/containers — ALL green (campfire cook contract, blast
+  furnace 2× cook, bees lifecycle, respawn anchor, bartering, smelting, chest/furnace
+  screens with grey chrome + PNG dumps).
+- Settings-tree menu walk (`E2E_MENU`): title→options→video→engine→shaders→packs→
+  access→musicsound→…→title, exiting 0, across two live sizes (1280×696 and
+  2560×1392 mid-walk via a GUI-scale change) — the centering fix holds under real
+  clicks.
+- F3 dynamism pair (F3_DUMP/F3_DUMP2): 2560×1392 dumps differ; overlay columns intact.
+- Native bench (this host): remesh 11 ms deterministic, drawprep 12.4 µs/frame,
+  binds 459→27 (17×), 10.3 KiB/chunk; `--benchmark` GPU run: MDI path (16 calls/34
+  binds), stream 0.00 ms; 10 fps avg is lavapipe software-Vulkan in this VM (the GPU
+  readback watchdog fired once and correctly degraded one batch to the CPU path).
+- Wasm HEAD bundle reinstalled and booted: title/panorama/splash render, `__vcStats`
+  pipeline live (fps/draw-path/counters), console clean. Wasm secondary per directive.
+- CI: 3/3 green at `9780af4` (also `4ce1d51`, `f56fb9a`).

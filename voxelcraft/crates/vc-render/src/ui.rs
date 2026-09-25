@@ -801,8 +801,19 @@ pub fn layout_title(is_web: bool) -> Vec<Widget> {
 /// vanilla-grayed pattern as the title screen's MULTIPLAYER button.
 /// ENGINE SETTINGS is the one disclosed deviation (our extra subsystems
 /// need a home; vanilla has no equivalent page).
+/// 2026-09-25 centering fix (user report: options screens hugging the
+/// left corner at 2560×1440): the settings layouts were authored at the
+/// 960×540 reference width — fixed x = 248/487 IS centered there
+/// ((960−464)/2 = 248) but at any other live-canvas width the block
+/// stays pinned at 248. This derives the left edge from the LIVE width,
+/// preserving the 960 identity exactly (same numbers at the reference,
+/// so every pinned geometry test holds) and centering everywhere else.
+fn ref_x(left_offset: i32) -> i32 {
+    live_ui_w() as i32 / 2 - (UI_W as i32 / 2 - left_offset)
+}
+
 pub fn layout_options() -> Vec<Widget> {
-    let (l, r, bw) = (248, 487, 225);
+    let (l, r, bw) = (ref_x(248), ref_x(487), 225);
     let rows = [72, 108, 144, 180, 216];
     vec![
         slider_h(ID_OPT_MUSIC, l, rows[0], bw, 30, "MUSIC", 0.6),
@@ -855,7 +866,7 @@ pub fn layout_options() -> Vec<Widget> {
         btn_h(ID_OPT_CONTROLS, r, rows[4], bw, 30, "CONTROLS...", "", true),
         btn_h(
             ID_OPT_ENGINE,
-            248,
+            l,
             252,
             465,
             30,
@@ -865,12 +876,12 @@ pub fn layout_options() -> Vec<Widget> {
         ),
         // vanilla 1.16.5 Options-screen option (default ON): the walk-cycle
         // camera/hand sway
-        btn_h(ID_OPT_BOB, 248, 292, 465, 30, "VIEW BOBBING", "ON", true),
+        btn_h(ID_OPT_BOB, l, 292, 465, 30, "VIEW BOBBING", "ON", true),
         // Round 14: the vanilla Music & Sound sub-screen (ten category
         // sliders) — full-width row under VIEW BOBBING
         btn_h(
             ID_OPT_MUSICSND,
-            248,
+            l,
             332,
             465,
             30,
@@ -882,7 +893,7 @@ pub fn layout_options() -> Vec<Widget> {
         // toggles + Main Hand screen)
         btn_h(
             ID_OPT_SKIN,
-            248,
+            l,
             372,
             465,
             30,
@@ -911,10 +922,10 @@ pub fn layout_options() -> Vec<Widget> {
 /// 2026-09-20: one DISCLOSED extra row — SHADERS... (the OptiFine/Iris
 /// 1.16.5-modded entry; the owner welcomes modern-version extras).
 pub fn layout_video() -> Vec<Widget> {
-    let (l, r, bw) = (248, 487, 225);
+    let (l, r, bw) = (ref_x(248), ref_x(487), 225);
     let rows = [108, 144, 180, 216];
     vec![
-        slider_h(ID_OPT_RD, 248, 72, 465, 30, "RENDER DISTANCE", 0.4),
+        slider_h(ID_OPT_RD, l, 72, 465, 30, "RENDER DISTANCE", 0.4),
         btn_h(
             ID_OPT_GRAPHICS,
             l,
@@ -979,17 +990,17 @@ pub fn layout_video() -> Vec<Widget> {
         ),
         // vanilla brightness slider carries NO label; the hover tooltip
         // reads Moody/Bright from the live value
-        slider_h(ID_OPT_BRIGHT, 248, 252, 465, 30, "", 0.1),
-        slider_h(ID_OPT_BIOME, 248, 288, 465, 30, "BIOME BLEND", 0.5),
+        slider_h(ID_OPT_BRIGHT, l, 252, 465, 30, "", 0.1),
+        slider_h(ID_OPT_BIOME, l, 288, 465, 30, "BIOME BLEND", 0.5),
         // 2026-09-20: the modern (1.17+) Entity Distance option — a
         // 50%..100% multiplier on the entity render radius (the label
         // updates from the live value in refresh_widgets)
-        slider_h(ID_OPT_ENTDIST, 248, 324, 465, 30, "ENTITY DISTANCE", 1.0),
+        slider_h(ID_OPT_ENTDIST, l, 324, 465, 30, "ENTITY DISTANCE", 1.0),
         // 2026-09-20: the OptiFine/Iris-style SHADERS... entry (engine
         // extra beyond vanilla 1.16.5 — the owner's call that modern
         // extra options are welcome; the screen lists external packs
         // from shader-packs/ only, never built-ins)
-        btn_h(ID_OPT_SHADERS, 248, 360, 465, 30, "SHADERS...", "", true),
+        btn_h(ID_OPT_SHADERS, l, 360, 465, 30, "SHADERS...", "", true),
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
@@ -1019,9 +1030,10 @@ pub fn layout_video() -> Vec<Widget> {
 pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> Vec<Widget> {
     let mut v = Vec::new();
     // the pinned "(none)" row — value shows the live selection
+    let l = ref_x(148);
     v.push(btn_h(
         ID_SHDR_NONE,
-        148,
+        l,
         86,
         660,
         30,
@@ -1032,7 +1044,7 @@ pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> V
     for (i, name) in packs.iter().take(MAX_SHDR_ENTRIES).enumerate() {
         v.push(btn_h(
             ID_SHDR_BASE + i as u16,
-            148,
+            l,
             124 + i as i32 * 34,
             660,
             30,
@@ -1048,7 +1060,7 @@ pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> V
     // the labPBR materials toggle
     v.push(btn_h(
         ID_SHDR_LABPBR,
-        148,
+        l,
         376,
         660,
         30,
@@ -1073,7 +1085,7 @@ pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> V
 /// texture/AA quality, sim distance, frame cap, upscaling, sun shadows)
 /// live on their own page so the Video screen stays vanilla-exact.
 pub fn layout_engine() -> Vec<Widget> {
-    let (l, r, bw) = (248, 487, 225);
+    let (l, r, bw) = (ref_x(248), ref_x(487), 225);
     let rows = [72, 108, 144, 180, 216];
     vec![
         slider_h(ID_OPT_SIMDIST, l, rows[0], bw, 30, "SIM DISTANCE", 0.25),
@@ -1151,10 +1163,14 @@ pub fn layout_engine() -> Vec<Widget> {
 /// `UiCanvas::resource_pack_screen`; the DONE button applies the edits.
 pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
     let mut v = Vec::new();
+    // 2026-09-25 centering fix: derive both columns from the LIVE width
+    // (authored at the 960 reference: avail 30..450, sel 510..862)
+    let la = ref_x(30);
+    let ls = ref_x(510);
     for (i, name) in avail.iter().take(MAX_RPACK_ENTRIES).enumerate() {
         v.push(btn_h(
             ID_RPACK_AVAIL_BASE + i as u16,
-            30,
+            la,
             92 + i as i32 * 34,
             420,
             28,
@@ -1166,7 +1182,7 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
     for (i, name) in sel.iter().take(MAX_RPACK_ENTRIES).enumerate() {
         v.push(btn_h(
             ID_RPACK_SEL_BASE + i as u16,
-            510,
+            ls,
             92 + i as i32 * 34,
             352,
             28,
@@ -1201,7 +1217,7 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
     let dy = 92 + sel.len().min(MAX_RPACK_ENTRIES) as i32 * 34;
     v.push(btn_h(
         ID_RPACK_DEFAULT,
-        510,
+        ls,
         dy,
         352,
         28,
@@ -1233,31 +1249,32 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
 /// (1.20.5), Text Background Opacity (the modern accessibility split —
 /// 1.16.5's chat background rides Chat Opacity in Chat Settings).
 pub fn layout_access() -> Vec<Widget> {
+    let l = ref_x(248);
     vec![
-        btn_h(ID_OPT_AUTOJUMP, 248, 72, 465, 30, "AUTO-JUMP", "ON", true),
+        btn_h(ID_OPT_AUTOJUMP, l, 72, 465, 30, "AUTO-JUMP", "ON", true),
         // Round 14b: the Sprint/Sneak Hold-vs-Toggle pair (1.15 19w41a —
         // live rows: the toggle flips the key's latched state)
-        btn_h(ID_ACC_SPRINT, 248, 112, 465, 30, "SPRINT", "HOLD", true),
-        btn_h(ID_ACC_SNEAK, 248, 152, 465, 30, "SNEAK", "HOLD", true),
+        btn_h(ID_ACC_SPRINT, l, 112, 465, 30, "SPRINT", "HOLD", true),
+        btn_h(ID_ACC_SNEAK, l, 152, 465, 30, "SNEAK", "HOLD", true),
         // 1.16.2 pre1: "Added 'Distortion Effects' and 'FOV effects'
         // sliders to video and accessibility settings" — the engine has
         // no nether-portal/nausea screen warp yet, so the slider is
         // registered + grayed with that reason (the spec's own rule)
         slider_h(
             ID_ACC_DISTORT_SLIDER,
-            248,
+            l,
             192,
             465,
             30,
             "DISTORTION EFFECTS",
             1.0,
         ),
-        slider_h(ID_ACC_FOVEFF, 248, 232, 465, 30, "FOV EFFECTS", 1.0),
+        slider_h(ID_ACC_FOVEFF, l, 232, 465, 30, "FOV EFFECTS", 1.0),
         // the Java 1.9 subtitle toggle (also on Music & Sounds in JE —
         // grayed: no subtitle overlay renderer)
         btn_h(
             ID_ACC_SUBTITLES,
-            248,
+            l,
             272,
             465,
             30,
@@ -1268,7 +1285,7 @@ pub fn layout_access() -> Vec<Widget> {
         // the Fog cycle stays as the engine's own live row (the round-14
         // addition; vanilla 1.16.5 has no accessibility fog row — the
         // engine's fog is a renderer feature surfaced here, disclosed)
-        btn_h(ID_ACC_FOG, 248, 312, 465, 30, "FOG", "FAST", true),
+        btn_h(ID_ACC_FOG, l, 312, 465, 30, "FOG", "FAST", true),
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
@@ -1304,11 +1321,12 @@ pub fn layout_skin(
     main_hand_left: bool,
 ) -> Vec<Widget> {
     let onoff = |b: bool| if b { "ON" } else { "OFF" };
+    let l = ref_x(248);
     vec![
-        btn_h(ID_SKIN_CAPE, 248, 72, 465, 30, "CAPE", onoff(cape), true),
+        btn_h(ID_SKIN_CAPE, l, 72, 465, 30, "CAPE", onoff(cape), true),
         btn_h(
             ID_SKIN_JACKET,
-            248,
+            l,
             112,
             465,
             30,
@@ -1318,7 +1336,7 @@ pub fn layout_skin(
         ),
         btn_h(
             ID_SKIN_LSLEEVE,
-            248,
+            l,
             152,
             465,
             30,
@@ -1328,7 +1346,7 @@ pub fn layout_skin(
         ),
         btn_h(
             ID_SKIN_RSLEEVE,
-            248,
+            l,
             192,
             465,
             30,
@@ -1338,7 +1356,7 @@ pub fn layout_skin(
         ),
         btn_h(
             ID_SKIN_LPANTS,
-            248,
+            l,
             232,
             465,
             30,
@@ -1348,7 +1366,7 @@ pub fn layout_skin(
         ),
         btn_h(
             ID_SKIN_RPANTS,
-            248,
+            l,
             272,
             465,
             30,
@@ -1356,10 +1374,10 @@ pub fn layout_skin(
             onoff(rpants),
             true,
         ),
-        btn_h(ID_SKIN_HAT, 248, 312, 465, 30, "HAT", onoff(hat), true),
+        btn_h(ID_SKIN_HAT, l, 312, 465, 30, "HAT", onoff(hat), true),
         btn_h(
             ID_SKIN_MAINHAND,
-            248,
+            l,
             352,
             465,
             30,
@@ -1387,7 +1405,7 @@ pub fn layout_skin(
 /// live-behavior row is REAL: Reduced Debug Info (gates the F3
 /// overlay's detail rows). Narrator is grayed — no TTS in scope.
 pub fn layout_chat_settings() -> Vec<Widget> {
-    let (l, r, bw) = (248, 487, 225);
+    let (l, r, bw) = (ref_x(248), ref_x(487), 225);
     let rows = [72, 108, 144, 180, 216, 252];
     vec![
         btn_h(
@@ -1456,7 +1474,7 @@ pub fn layout_chat_settings() -> Vec<Widget> {
         ),
         btn_h(
             ID_CHAT_REDUCEDDEBUG,
-            248,
+            l,
             292,
             225,
             30,
@@ -1466,7 +1484,7 @@ pub fn layout_chat_settings() -> Vec<Widget> {
         ),
         btn_h(
             ID_CHAT_NARRATOR,
-            487,
+            r,
             292,
             225,
             30,
@@ -1494,7 +1512,7 @@ pub fn layout_chat_settings() -> Vec<Widget> {
 /// category"). Values are patched in by the caller (game.rs) — the
 /// layout pins only the geometry. Slider ids 160..170 (ID_SND_BASE..).
 pub fn layout_music_sound() -> Vec<Widget> {
-    let l = 248;
+    let l = ref_x(248);
     let bw = 465;
     let rows = [72, 106, 140, 174, 208, 242, 276, 310, 344, 378];
     let names = [
@@ -1546,7 +1564,9 @@ pub fn layout_music_sound() -> Vec<Widget> {
 /// 180.. (ID_CTRL_BIND_BASE..); the caller patches the key labels.
 pub fn layout_controls(labels: &[(bool, &str, &str)]) -> Vec<Widget> {
     // (is_header, action, key) — headers are non-button category rows
-    let l = 130;
+    // 2026-09-25 centering fix: the 130-left block was authored at the
+    // 960 reference — derive it from the LIVE width
+    let l = ref_x(130);
     let name_w = 300;
     let key_w = 120;
     let r = l + name_w + 10;
@@ -1674,11 +1694,16 @@ pub fn layout_pause() -> Vec<Widget> {
 /// on a live selection (vanilla disables both without one).
 pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) -> Vec<Widget> {
     let mut v = Vec::new();
+    // 2026-09-25 centering fix: every x derives from the LIVE width
+    let lrow = ref_x(227); // list rows 506 wide
+    let lsearch = ref_x(176); // search field
+    let l2 = ref_x(248); // two-col rows
+    let r2 = ref_x(487);
     // world rows (hit-test only — the painter draws the two-line body)
     for i in 0..n_rows.min(MAX_LISTED_WORLDS) {
         v.push(btn_h(
             ID_WS_WORLD_BASE + i as u16,
-            227,
+            lrow,
             96 + i as i32 * 50,
             506,
             46,
@@ -1690,7 +1715,7 @@ pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) ->
     // top-left search field (vanilla "Search worlds..." box)
     v.push(text_field_h(
         ID_WS_SEARCHFIELD,
-        176,
+        lsearch,
         44,
         225,
         30,
@@ -1701,7 +1726,7 @@ pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) ->
     // row A + row B (vanilla bottom stacks, 1.5x geometry)
     v.push(btn_h(
         ID_WS_PLAY,
-        248,
+        l2,
         anchor_y(440),
         225,
         30,
@@ -1711,7 +1736,7 @@ pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) ->
     ));
     v.push(btn_h(
         ID_WS_CREATE,
-        487,
+        r2,
         anchor_y(440),
         225,
         30,
@@ -1783,10 +1808,15 @@ pub fn layout_world_create(
     bonus: bool,
 ) -> Vec<Widget> {
     let mut v = Vec::new();
+    // 2026-09-25 centering fix: all x derive from the LIVE width
+    let lfield = ref_x(236); // the 488-wide text fields
+    let l2 = ref_x(248); // two-col rows
+    let r2 = ref_x(487);
+    let cmode = ref_x(330); // the 300-wide centered buttons
     if !page2 {
         v.push(text_field_h(
             ID_WC_NAME,
-            236,
+            lfield,
             84,
             488,
             30,
@@ -1798,7 +1828,7 @@ pub fn layout_world_create(
         // two-line description under it
         v.push(btn_h(
             ID_WC_MODE,
-            330,
+            cmode,
             150,
             300,
             30,
@@ -1808,7 +1838,7 @@ pub fn layout_world_create(
         ));
         v.push(btn_h(
             ID_WC_CREATE,
-            248,
+            l2,
             anchor_y(440),
             225,
             30,
@@ -1818,7 +1848,7 @@ pub fn layout_world_create(
         ));
         v.push(btn_h(
             ID_WC_MORE,
-            487,
+            r2,
             anchor_y(440),
             225,
             30,
@@ -1826,11 +1856,11 @@ pub fn layout_world_create(
             "",
             true,
         ));
-        v.push(btn_h(ID_WC_CANCEL, 330, anchor_y(480), 300, 30, "CANCEL", "", true));
+        v.push(btn_h(ID_WC_CANCEL, cmode, anchor_y(480), 300, 30, "CANCEL", "", true));
     } else {
         v.push(text_field_h(
             ID_WC_SEED,
-            236,
+            lfield,
             84,
             488,
             30,
@@ -1840,7 +1870,7 @@ pub fn layout_world_create(
         ));
         v.push(btn_h(
             ID_WC_TYPE,
-            248,
+            l2,
             160,
             225,
             30,
@@ -1850,7 +1880,7 @@ pub fn layout_world_create(
         ));
         v.push(btn_h(
             ID_WC_STRUCT,
-            487,
+            r2,
             160,
             225,
             30,
@@ -1860,7 +1890,7 @@ pub fn layout_world_create(
         ));
         v.push(btn_h(
             ID_WC_BONUS,
-            248,
+            l2,
             200,
             225,
             30,
@@ -1869,8 +1899,8 @@ pub fn layout_world_create(
             true,
         ));
         // vanilla page 2: [Done...] returns to page 1
-        v.push(btn_h(ID_WC_MORE, 487, anchor_y(440), 225, 30, "DONE...", "", true));
-        v.push(btn_h(ID_WC_CANCEL, 330, anchor_y(480), 300, 30, "CANCEL", "", true));
+        v.push(btn_h(ID_WC_MORE, r2, anchor_y(440), 225, 30, "DONE...", "", true));
+        v.push(btn_h(ID_WC_CANCEL, cmode, anchor_y(480), 300, 30, "CANCEL", "", true));
     }
     v
 }
@@ -1878,13 +1908,18 @@ pub fn layout_world_create(
 /// 2026-09-14 parity round: the vanilla Edit World screen — title, the
 /// world-name field, then [RENAME] [DELETE] / [COPY WORLD] [DONE].
 pub fn layout_world_edit(name: &str) -> Vec<Widget> {
+    // 2026-09-25 centering fix: all x derive from the LIVE width
+    let lfield = ref_x(236);
+    let l2 = ref_x(248);
+    let r2 = ref_x(487);
+    let c = ref_x(330);
     vec![
-        text_field_h(ID_WE_NAME, 236, 84, 488, 30, "", name, ""),
-        btn_h(ID_WE_RENAME, 248, 200, 225, 30, "RENAME", "", true),
-        btn_h(ID_WE_DELETE, 487, 200, 225, 30, "DELETE", "", true),
-        btn_h(ID_WE_COPY, 248, 240, 225, 30, "COPY WORLD", "", true),
-        btn_h(ID_WE_DONE, 487, 240, 225, 30, "DONE", "", true),
-        btn_h(ID_WC_CANCEL, 330, anchor_y(480), 300, 30, "CANCEL", "", true),
+        text_field_h(ID_WE_NAME, lfield, 84, 488, 30, "", name, ""),
+        btn_h(ID_WE_RENAME, l2, 200, 225, 30, "RENAME", "", true),
+        btn_h(ID_WE_DELETE, r2, 200, 225, 30, "DELETE", "", true),
+        btn_h(ID_WE_COPY, l2, 240, 225, 30, "COPY WORLD", "", true),
+        btn_h(ID_WE_DONE, r2, 240, 225, 30, "DONE", "", true),
+        btn_h(ID_WC_CANCEL, c, anchor_y(480), 300, 30, "CANCEL", "", true),
     ]
 }
 
@@ -3074,8 +3109,8 @@ impl UiCanvas {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
         }
         // sunken list backdrop behind the pack rows (the modern
-        // list-background family, full width)
-        self.rect(140, 80, 676, 304, [0, 0, 0, 150]);
+        // list-background family, full width) — LIVE-width centered
+        self.rect(ref_x(140), 80, 676, 304, [0, 0, 0, 150]);
         self.draw_widgets(ws, hover);
     }
 
@@ -3109,9 +3144,10 @@ impl UiCanvas {
             self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
         }
         self.text_center(18, "SELECT WORLD", [255, 255, 255, 255], 3);
-        // sunken list backdrop behind the entries (vanilla look)
+        // sunken list backdrop behind the entries (vanilla look) —
+        // 2026-09-25: x derives from the LIVE width (was 960-ref 221)
         self.rect(
-            221,
+            ref_x(221),
             90,
             518,
             6 + MAX_LISTED_WORLDS as i32 * 50,
@@ -6998,6 +7034,47 @@ mod screen_tests {
     /// Title layout: vanilla 1.16.5 stack — two full-width buttons then the
     /// half-width Options/Quit pair, all 30px tall, MULTIPLAYER disabled.
     #[test]
+    /// 2026-09-25 centering fix (user report: options hugging the left
+    /// corner at 2560×1440): every settings-family screen must lay out
+    /// centered at ANY live width — the widget block's center stays on
+    /// the canvas midline — while preserving the exact 960-reference
+    /// geometry (ref_x is identity there, so the pinned tests hold).
+    #[test]
+    fn settings_layouts_stay_centered_at_any_live_width() {
+        // 2560×1440 live canvas (the CI runner's auto-scale-2 space —
+        // exactly where the corner-hug was observed). Set BEFORE any
+        // layout call — the layouts read the live size at build time.
+        set_live_ui_size(2560, 1440);
+        let cases: Vec<(&str, Vec<Widget>)> = vec![
+            ("options", layout_options()),
+            ("video", layout_video()),
+            ("engine", layout_engine()),
+            ("access", layout_access()),
+            ("chat", layout_chat_settings()),
+            ("musicsound", layout_music_sound()),
+            ("skin", layout_skin(true, true, true, true, true, true, true, false)),
+            (
+                "worldselect",
+                layout_world_select(2, true, false),
+            ),
+        ];
+        for (name, ws) in &cases {
+            let (min_x, max_x) = ws.iter().fold((i32::MAX, i32::MIN), |(a, b), w| {//
+                ((a.min(w.x)), (b.max(w.x + w.w)))
+            });
+            let center = (min_x + max_x) / 2;
+            assert!
+                ((center - 1280).abs() <= 2,
+                "{name}: block center {center} vs canvas mid 1280 (min {min_x} max {max_x})",
+            );
+        }
+        // and the 960 identity: ref_x(248) == 248 at the reference
+        set_live_ui_size(960, 540);
+        let ws = layout_options();
+        let music = ws.iter().find(|w| w.id == ID_OPT_MUSIC).unwrap();
+        assert_eq!(music.x, 248, "960-reference geometry must be unchanged");
+    }
+
     fn title_layout_is_vanilla_stack() {
         let ws = layout_title(false);
         assert_eq!(ws.len(), 4);

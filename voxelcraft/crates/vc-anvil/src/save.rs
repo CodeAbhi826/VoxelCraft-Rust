@@ -1218,6 +1218,60 @@ pub fn delete_world(dir: &Path) -> bool {
     }
 }
 
+/// COPY WORLD (the Edit World screen's native path): recursively clone a
+/// world directory into `"<name> copy"` (vanilla's naming), suffixed
+/// `-2`, `-3`, … on repeats. Copies every file/subdirectory verbatim
+/// (level.dat, level.dat_old, region/, playerdata, icons) and rewrites
+/// the copy's `LevelName` so the list shows vanilla's name. Returns the
+/// new directory on success.
+pub fn copy_world_dir(src: &Path) -> std::io::Result<PathBuf> {
+    let meta = read_level_dat(src)?.ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::InvalidData, "not a world (no level.dat)")
+    })?;
+    let base = sanitize_world_name(&format!("{} copy", meta.name));
+    // place the copy NEXT TO the source (in-game that is saves_root/, so
+    // list_worlds() picks it up; hermetic for tests with a temp-dir src)
+    let parent = src.parent().unwrap_or_else(|| Path::new("."));
+    let mut dst = parent.join(&base);
+    let mut suffix = 1usize; // 1 = the unsuffixed first copy
+    while dst.exists() {
+        suffix += 1;
+        dst = parent.join(format!("{base}-{suffix}"));
+    }
+    // display name keeps vanilla's space ("Alpha copy"; dir sanitizes to
+    // Alpha_copy) — repeats carry the same suffix the dir got, so list
+    // names stay unique
+    let display = if suffix == 1 {
+        format!("{} copy", meta.name)
+    } else {
+        format!("{} copy-{}", meta.name, suffix)
+    };
+    fs::create_dir_all(&dst)?;
+    copy_rec(src, &dst)?;
+    // rewrite the copy's LevelName to the vanilla display name
+    if let Ok(Some(mut m)) = read_level_dat(&dst) {
+        m.name = display;
+        let _ = write_level_dat(&dst, &m);
+    }
+    Ok(dst)
+}
+
+/// recursive copy of every regular file + subdirectory under `src`
+fn copy_rec(src: &Path, dst: &Path) -> std::io::Result<()> {
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let from = entry.path();
+        let to = dst.join(entry.file_name());
+        if from.is_dir() {
+            fs::create_dir_all(&to)?;
+            copy_rec(&from, &to)?;
+        } else {
+            fs::copy(&from, &to)?;
+        }
+    }
+    Ok(())
+}
+
 /// Persist one chunk into its region file (Anvil write, zlib like vanilla).
 pub fn store_chunk(
     world_dir: &Path,
@@ -1751,5 +1805,53 @@ mod tests {
         assert_eq!(mismatches, 0, "saved terrain diverged from regeneration");
         // biome columns survive too
         assert_eq!(loaded.biome.as_ref(), fresh.biome.as_ref());
+    }
+
+    /// COPY WORLD (Edit World, native): the directory clone lands next
+    /// to the source under vanilla's "<name> copy", carries a full copy
+    /// of level.dat + region files, and re-lists as its own world.
+    #[test]
+    fn copy_world_dir_clones_level_dat_and_regions() {
+        let root = tmp_dir("copyworld");
+        let src = root.join("Alpha");
+        fs::create_dir_all(src.join("region")).unwrap();
+        let meta = WorldMeta {
+            name: "Alpha".into(),
+            seed: 12345,
+            game_type: 0,
+            hardcore: false,
+            flat: false,
+            structures: true,
+            hardcore_dead: false,
+            ..WorldMeta::default()
+        };
+        write_level_dat(&src, &meta).unwrap();
+        // a region file + a subdirectory file to prove the recursion
+        fs::write(src.join("region"), b"regiondata").unwrap_or(());
+        let rdir = src.join("region");
+        fs::write(rdir.join("r.0.0.mca"), b"anvil-bytes").unwrap();
+        fs::write(src.join("icon.png"), b"png").unwrap();
+
+        let dst = copy_world_dir(&src).expect("copy succeeds");
+        // dir name is the SANITIZED vanilla name; display name keeps the space
+        assert_eq!(dst.file_name().unwrap(), "Alpha_copy");
+        // level.dat present and readable in the copy
+        let copied = read_level_dat(&dst).expect("read").expect("level.dat");
+        assert_eq!(copied.name, "Alpha copy", "copy rewrites its list name");
+        assert_eq!(copied.seed, 12345, "seed carried over");
+        // region file cloned through the subdirectory
+        assert_eq!(
+            fs::read(dst.join("region").join("r.0.0.mca")).unwrap(),
+            b"anvil-bytes"
+        );
+        assert_eq!(fs::read(dst.join("icon.png")).unwrap(), b"png");
+        // second copy suffixes (vanilla duplicate naming)
+        let dst2 = copy_world_dir(&src).expect("second copy");
+        assert_eq!(dst2.file_name().unwrap(), "Alpha_copy-2");
+        let copied2 = read_level_dat(&dst2).unwrap().unwrap();
+        assert_eq!(copied2.name, "Alpha copy-2");
+        // source untouched
+        assert!(read_level_dat(&src).unwrap().is_some());
+        let _ = fs::remove_dir_all(&root);
     }
 }

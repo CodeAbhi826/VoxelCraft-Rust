@@ -6101,11 +6101,29 @@ impl GameApp {
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            // native: region-file cloning is out of scope this round —
-            // the button stays honest and reports it
-            vc_render::render::report_boot_log(
-                "copy world: native directory clone not implemented (web lists support it)",
-            );
+            // native: clone the save directory (level.dat + region files)
+            // under vanilla's "<name> copy" name, then refresh the list
+            let src = self
+                .we_index
+                .and_then(|i| self.worlds.get(i).cloned())
+                .map(|e| e.dir);
+            if let Some(src) = src {
+                match vc_anvil::save::copy_world_dir(&src) {
+                    Ok(_dst) => {
+                        self.worlds = vc_anvil::save::list_worlds();
+                        self.ws_selected = self
+                            .worlds
+                            .iter()
+                            .position(|w| w.meta.name.ends_with("copy"));
+                    }
+                    Err(e) => vc_render::render::report_boot_log(&format!(
+                        "copy world: directory clone failed: {e}"
+                    )),
+                }
+            }
+            self.set_screen(Screen::WorldSelect);
+            self.refresh_widgets();
+            self.ui.dirty = true;
         }
     }
 

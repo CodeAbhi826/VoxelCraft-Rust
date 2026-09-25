@@ -21,6 +21,32 @@ fn snap(name: &str, paint: &dyn Fn(&mut UiCanvas)) {
 }
 
 fn main() {
+    // `--size WxH` shoots the whole set at a different live canvas size
+    // (e.g. 1920x1080, 2560x1440) through the SAME set_live_ui_size path
+    // the game uses — the visual-proof source for the multi-resolution
+    // centering contract. Default (no flag) stays 960x540 with unchanged
+    // filenames.
+    let mut w = ui::UI_W;
+    let mut h = ui::UI_H;
+    if let Some(pos) = std::env::args().position(|a| a == "--size") {
+        if let Some(spec) = std::env::args().nth(pos + 1) {
+            let mut it = spec.splitn(2, 'x');
+            if let (Some(pw), Some(ph)) = (it.next(), it.next()) {
+                if let (Ok(pw), Ok(ph)) = (pw.parse::<usize>(), ph.parse::<usize>()) {
+                    w = pw;
+                    h = ph;
+                }
+            }
+        }
+    }
+    let tag = if (w, h) == (ui::UI_W, ui::UI_H) {
+        String::new()
+    } else {
+        format!("_{w}x{h}")
+    };
+    // drive layouts through the same live-size path the game does —
+    // widget geometry (cx2 centering, anchor_y bottom rows) reads this
+    ui::set_live_ui_size(w, h);
     let out = std::env::args().nth(1).unwrap_or_else(|| ".".to_string());
     let _ = std::fs::create_dir_all(&out);
     let cwd = std::env::current_dir().unwrap_or_default();
@@ -31,9 +57,9 @@ fn main() {
     };
     let snap_at = |name: &str, paint: &dyn Fn(&mut UiCanvas)| {
         let mut ui = UiCanvas::new();
-        ui.resize(ui::UI_W, ui::UI_H);
+        ui.resize(w, h);
         paint(&mut ui);
-        let p = format!("{base}/{name}.png");
+        let p = format!("{base}/{name}{tag}.png");
         ui.dump_png_flat(&p, PANO);
         println!("wrote {p}");
     };

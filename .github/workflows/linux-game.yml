@@ -242,7 +242,7 @@ jobs:
             exit 1
           fi
           grep -q "e2e: containers chest geom(27+36)=true" containers.log
-          grep -q "canvas-grey=true" containers.log
+          grep -q "chrome=true" containers.log
           grep -q "furnace slots=true" containers.log
           test -s run-chest.png || { echo "FAIL: chest dump missing"; exit 1; }
           test -s run-furnace.png || { echo "FAIL: furnace dump missing"; exit 1; }

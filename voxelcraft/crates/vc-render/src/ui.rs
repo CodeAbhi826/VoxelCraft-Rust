@@ -3009,13 +3009,15 @@ impl UiCanvas {
         title: &str,
         tooltip: &[String],
     ) {
-        // 2026-09-20 modern look (owner directive — clean-room, similar
-        // to the reference family): the OPAQUE 1.16.5 dirt tile backdrop
-        // is replaced by the current-generation translucent dark menu
-        // overlay — the blurred panorama (title) or the frozen live
-        // world (pause) shows THROUGH it. The dirt sheet stays compiled
-        // for resource packs that ship an options background.
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 100]);
+        // 2026-09-25 direction flip (owner directive — closer to the
+        // 1.16.5 reference): the OPAQUE dirt-tile backdrop is BACK on
+        // every menu sub-screen (the iconic vanilla look; the translucent
+        // modern overlay it replaced is recorded here). The dirt sheet
+        // ships the 0.25-brightness tile; canvas fallback paints flat.
+        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        if self.chrome_enabled {
+            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+        }
         self.text_center(18, title, [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
@@ -3028,10 +3030,12 @@ impl UiCanvas {
     /// tooltip lines under the title, DONE at the bottom (the widgets
     /// themselves carry the rows + arrows).
     pub fn resource_pack_screen(&mut self, ws: &[Widget], hover: Option<u16>, tooltip: &[String]) {
-        // 2026-09-20 modern translucent menu backdrop (see
-        // settings_screen) + the darker sunken LIST panels (the
-        // modern list-background family — deeper than the base overlay)
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 100]);
+        // 2026-09-25: vanilla dirt backdrop (direction flip, see
+        // settings_screen) + darker sunken LIST panels retained
+        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        if self.chrome_enabled {
+            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+        }
         self.text_center(18, "RESOURCE PACKS", [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
@@ -3060,8 +3064,11 @@ impl UiCanvas {
     /// line rides the tooltip slot (the caller feeds it when the scan
     /// found nothing).
     pub fn shader_screen(&mut self, ws: &[Widget], hover: Option<u16>, tooltip: &[String]) {
-        // 2026-09-20 modern translucent backdrop (see settings_screen)
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 100]);
+        // 2026-09-25: vanilla dirt backdrop (see settings_screen)
+        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        if self.chrome_enabled {
+            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+        }
         self.text_center(18, "SHADERS", [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
@@ -3096,8 +3103,11 @@ impl UiCanvas {
         total: usize,
         filtering: bool,
     ) {
-        // 2026-09-20 modern translucent backdrop over the panorama
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 110]);
+        // 2026-09-25: vanilla dirt backdrop (see settings_screen)
+        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        if self.chrome_enabled {
+            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+        }
         self.text_center(18, "SELECT WORLD", [255, 255, 255, 255], 3);
         // sunken list backdrop behind the entries (vanilla look)
         self.rect(
@@ -3111,10 +3121,12 @@ impl UiCanvas {
         // "Showing x of y" while filtering)
         if filtering {
             let sub = format!("{total} MATCH(ES)");
-            self.text_center(64, &sub, [170, 170, 170, 255], 1);
+            self.text_center(78, &sub, [170, 170, 170, 255], 1);
         } else if total == 0 {
+            // 2026-09-25 (B-6): the hint lives INSIDE the list area now —
+            // at y=64 it collided with the search field (y=44..74)
             self.text_center(
-                64,
+                220,
                 "NO SAVED WORLDS YET - CREATE ONE BELOW",
                 [170, 170, 170, 255],
                 1,
@@ -3204,8 +3216,11 @@ impl UiCanvas {
         page2: bool,
         mode_desc: (&str, &str),
     ) {
-        // 2026-09-20 modern translucent backdrop over the panorama
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 110]);
+        // 2026-09-25: vanilla dirt backdrop (see settings_screen)
+        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        if self.chrome_enabled {
+            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+        }
         self.text_center(18, "CREATE NEW WORLD", [255, 255, 255, 255], 3);
         if !page2 {
             self.text_center(
@@ -3233,8 +3248,11 @@ impl UiCanvas {
 
     /// 2026-09-14 parity round: the vanilla Edit World screen.
     pub fn world_edit_screen(&mut self, ws: &[Widget], hover: Option<u16>, time: f32) {
-        // 2026-09-20 modern translucent backdrop over the panorama
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 110]);
+        // 2026-09-25: vanilla dirt backdrop (see settings_screen)
+        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        if self.chrome_enabled {
+            self.rect(0, 0, self.live_w as i32, self.live_h as i32, [24, 20, 16, 255]);
+        }
         self.text_center(18, "EDIT WORLD", [255, 255, 255, 255], 3);
         self.text_center(
             64,
@@ -3830,11 +3848,9 @@ impl UiCanvas {
         // canvas draws chrome (the canvas blits after the quad pass —
         // an ungated raster would cover the sprite)
         self.gui_frame.slot(x, y, false);
-        if self.chrome_enabled {
-            self.rect(x, y, 36, 36, [52, 52, 52, 200]);
-            self.frame(x, y, 36, 36, [24, 24, 24, 255]); // inner shadow
-            self.frame(x + 1, y + 1, 34, 34, [110, 110, 110, 255]);
-        }
+        // 2026-09-25: the vanilla slot sprite (SlotEmpty cell) IS the
+        // well — the old dark canvas overlay fought it on the fallback
+        // path; nothing else to paint here.
         self.draw_stack(s, x, y, atlas);
     }
 
@@ -4001,9 +4017,18 @@ impl UiCanvas {
         } else {
             x0 - 14
         };
-        self.rect(px0, y0 - 30, pw, panel_h + 30, [26, 26, 30, 235]);
-        self.frame(px0, y0 - 30, pw, panel_h + 30, [60, 60, 66, 255]);
-        self.frame(px0 + 1, y0 - 29, pw - 2, panel_h + 28, [12, 12, 14, 255]);
+        // 2026-09-25 vanilla container chrome: the #C6C6C6 9-slice panel
+        // (drawn on the quad layer via GuiFrame::panel; the canvas
+        // fallback keeps a light-grey flat + bevel so both paths read
+        // the same). VERIFIED reference wiki GUI: body #C6C6C6,
+        // outer #555555, inner #FFFFFF — the sprite is gui_art's
+        // Panel cell, wiki-exact.
+        self.gui_frame.panel(px0, y0 - 30, pw, panel_h + 30);
+        if self.chrome_enabled {
+            self.rect(px0, y0 - 30, pw, panel_h + 30, [198, 198, 198, 255]);
+            self.frame(px0, y0 - 30, pw, panel_h + 30, [85, 85, 85, 255]);
+            self.frame(px0 + 1, y0 - 29, pw - 2, panel_h + 28, [255, 255, 255, 255]);
+        }
 
         let title = match kind {
             ContainerKind::Inventory => "INVENTORY  (E / ESC to close)",
@@ -4034,7 +4059,7 @@ impl UiCanvas {
                 .map(|m| m.kind_label.as_str())
                 .unwrap_or("MOUNT"),
         };
-        self.text(px0 + 12, y0 - 24, title, [255, 220, 120, 255], 1);
+        self.text(px0 + 12, y0 - 24, title, [64, 64, 64, 255], 1);
 
         let mut geom = ContainerGeom {
             inv: Vec::with_capacity(36),
@@ -4453,7 +4478,7 @@ impl UiCanvas {
                     px0 + 12,
                     y0 - 24,
                     &format!("VILLAGER: {} — {}", tv.profession, tv.level_name),
-                    [255, 220, 120, 255],
+                    [64, 64, 64, 255],
                     1,
                 );
                 let bx = px0 + pw - 130;
@@ -4683,8 +4708,8 @@ impl UiCanvas {
                     self.rect(px0 + 242, y0 + 48, 24, 24, [90, 220, 90, 255]);
                     self.frame(px0 + 242, y0 + 48, 24, 24, [30, 60, 30, 255]);
                 }
-                self.text(px0 + 12, y0 + 20, "PRIMARY POWER", [255, 220, 120, 255], 1);
-                self.text(px0 + 260, y0 + 20, "SECONDARY", [255, 220, 120, 255], 1);
+                self.text(px0 + 12, y0 + 20, "PRIMARY POWER", [64, 64, 64, 255], 1);
+                self.text(px0 + 260, y0 + 20, "SECONDARY", [64, 64, 64, 255], 1);
                 // the 2x2 grid + the 5th below-left (audit §2)
                 let mut prim_pos = [(0, 0); 5];
                 for (i, p) in powers.iter().enumerate() {
@@ -5316,10 +5341,13 @@ impl UiCanvas {
             geom.tabs[t as usize] = Some((tx, ty, tab_w, tab_h));
         }
 
-        // ---- panel ----
-        self.rect(px0, py0, pw, ph, [26, 26, 30, 235]);
-        self.frame(px0, py0, pw, ph, [60, 60, 66, 255]);
-        self.frame(px0 + 1, py0 + 1, pw - 2, ph - 2, [12, 12, 14, 255]);
+        // ---- panel (2026-09-25: vanilla #C6C6C6 9-slice chrome) ----
+        self.gui_frame.panel(px0, py0, pw, ph);
+        if self.chrome_enabled {
+            self.rect(px0, py0, pw, ph, [198, 198, 198, 255]);
+            self.frame(px0, py0, pw, ph, [85, 85, 85, 255]);
+            self.frame(px0 + 1, py0 + 1, pw - 2, ph - 2, [255, 255, 255, 255]);
+        }
 
         // ---- title / search field ----
         if tab == 9 {
@@ -5349,7 +5377,7 @@ impl UiCanvas {
             } else {
                 tab_labels[tab as usize].to_string()
             };
-            self.text(x0, title_y + 4, &label, [255, 220, 120, 255], 1);
+            self.text(x0, title_y + 4, &label, [64, 64, 64, 255], 1);
         }
 
         // ---- the 9x5 grid ----

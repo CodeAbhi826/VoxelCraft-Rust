@@ -13556,17 +13556,15 @@ impl GameApp {
                 .filter(|q| q.src.x == 5 * 20 && q.src.y == 0)
                 .count();
             let chrome_ok = panel_quads >= 1;
-            // (c) pixels: the canvas fallback painted #C6C6C6 inside
-            // the panel rect (gui_art PANEL_BODY)
-            let px = self.ui.px.as_chunks::<4>().0;
-            let stride = self.ui.live_w as usize;
-            let (mx, my) = (stride / 2, self.ui.live_h as usize / 2);
-            let grey = px[my * stride + mx];
-            let pixel_ok = grey[0] == 0xC6 && grey[1] == 0xC6 && grey[2] == 0xC6;
+            // (c) the canvas-fallback pixel pin lives in the unit test
+            // (container_screen_paints_vanilla_grey_panel_on_both_paths) —
+            // on the GPU path canvas chrome is DISABLED by design
+            // (set_chrome_enabled(false) when gui_quads_ready), so the
+            // runtime chrome proof is the quad layer, not the pixels
             self.ui.dump_png(&chest_png);
             verdicts.push(format!(
-                "chest geom(27+36)={} panel-quads={} canvas-grey={} chrome={}",
-                geom_ok, panel_quads, pixel_ok, chrome_ok
+                "chest geom(27+36)={} panel-quads={} chrome={}",
+                geom_ok, panel_quads, chrome_ok
             ));
         }
         self.close_container();

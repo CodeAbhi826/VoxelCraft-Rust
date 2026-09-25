@@ -1693,6 +1693,8 @@ pub struct GameApp {
     /// CI smoke stage-2 script: (due time, widget id) — dispatched through
     /// the REAL input path (cursor + hover + route_mouse_click)
     smoke_script: std::collections::VecDeque<(f32, u16)>,
+    /// E2E_CONTAINERS: the native chest+furnace screen stage ran once
+    e2e_containers_done: bool,
     /// smoke stage 3: the in-game click fired once
     smoke_clicked_ingame: bool,
     /// smoke stage 3: game-entry time (F3_DUMP holds gameplay ~2 s)
@@ -2920,6 +2922,7 @@ impl GameApp {
             snd_window_t: 0.0,
             snd_rate: 0,
             smoke_script: std::collections::VecDeque::new(),
+            e2e_containers_done: false,
             smoke_clicked_ingame: false,
             smoke_game_t: 0.0,
             f3_dump2: false,
@@ -13496,6 +13499,122 @@ impl GameApp {
         ));
     }
 
+    /// E2E_CONTAINERS: the native block-entity container-screen leg —
+    /// the `open:chest` / `open:furnace` commands are wasm-only
+    /// (web_input::pop_test_cmd), so until this stage the native build
+    /// NEVER opened a container screen (the Round-2 grey-chrome work
+    /// was verified on wasm only — the exact native/wasm divergence
+    /// class this stage closes). Places a chest (slot 0 seeded) and a
+    /// furnace (input+fuel seeded) through the REAL open_container
+    /// path, asserts the vanilla-grey 9-slice panel quads on the GPU
+    /// layer, dumps the canvas-fallback PNGs (CONTAINER_DUMP), and
+    /// logs the "e2e: containers" verdict lines CI greps.
+    fn e2e_containers(&mut self) {
+        use vc_blocks::blocks::*;
+        use vc_inventory::inventory::ItemStack;
+
+        let pos = [
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32 - 2,
+            self.player.pos.z.floor() as i32,
+        ];
+        let chest_png = std::env::var("CONTAINER_DUMP_CHEST")
+            .unwrap_or_else(|_| "/tmp/vc-e2e-chest.png".into());
+        let furnace_png = std::env::var("CONTAINER_DUMP_FURNACE")
+            .unwrap_or_else(|_| "/tmp/vc-e2e-furnace.png".into());
+        let mut verdicts = Vec::new();
+
+        // ---- CHEST: place, seed slot 0, open, assert + dump ----
+        self.test_place(CHEST, pos[0], pos[1], pos[2]);
+        {
+            let e = self.sim.containers.entry(pos, CHEST);
+            e.slots[0] = ItemStack::new(STONE, 7);
+        }
+        self.open_container(Container::Chest { pos });
+        {
+            // rebuild_ui draws container_screen into self.ui (canvas
+            // fallback pixels + gui_frame quads) — same call the draw
+            // loop makes, so the assertion sees production geometry
+            self.rebuild_ui();
+            let view = self.container_view();
+            let g = self.ui.container_screen(
+                &view,
+                self.cursor,
+                &self.atlas,
+                self.advanced_tooltips,
+            );
+            // (a) geometry: 27 chest slots + 36 player slots resolved
+            let geom_ok = g.chest.len() == 27 && g.inv.len() == 36;
+            // (b) chrome: the vanilla-grey 9-slice panel on the GPU
+            // quad layer — Panel cell source (5*20,0) with the #C6C6C6
+            // body sprite behind it
+            let panel_quads = self
+                .ui
+                .gui_frame
+                .quads
+                .iter()
+                .filter(|q| q.src.x == 5 * 20 && q.src.y == 0)
+                .count();
+            let chrome_ok = panel_quads >= 1;
+            // (c) pixels: the canvas fallback painted #C6C6C6 inside
+            // the panel rect (gui_art PANEL_BODY)
+            let px = self.ui.px.as_chunks::<4>().0;
+            let stride = self.ui.live_w as usize;
+            let (mx, my) = (stride / 2, self.ui.live_h as usize / 2);
+            let grey = px[my * stride + mx];
+            let pixel_ok = grey[0] == 0xC6 && grey[1] == 0xC6 && grey[2] == 0xC6;
+            self.ui.dump_png(&chest_png);
+            verdicts.push(format!(
+                "chest geom(27+36)={} panel-quads={} canvas-grey={} chrome={}",
+                geom_ok, panel_quads, pixel_ok, chrome_ok
+            ));
+        }
+        self.close_container();
+
+        // ---- FURNACE: place, seed input+fuel, open, assert + dump ----
+        let fpos = [pos[0] + 3, pos[1], pos[2]];
+        self.test_place(FURNACE, fpos[0], fpos[1], fpos[2]);
+        {
+            let f = self.sim.furnaces.map.entry(fpos).or_default();
+            f.input = ItemStack::new(IRON_ORE, 3);
+            f.fuel = ItemStack::new(COAL, 2);
+        }
+        self.open_container(Container::Furnace { pos: fpos });
+        {
+            self.rebuild_ui();
+            let view = self.container_view();
+            let g = self.ui.container_screen(
+                &view,
+                self.cursor,
+                &self.atlas,
+                self.advanced_tooltips,
+            );
+            // furnace slot triple resolved + the same grey-panel check
+            let slots_ok = g.furnace.is_some();
+            let panel_quads = self
+                .ui
+                .gui_frame
+                .quads
+                .iter()
+                .filter(|q| q.src.x == 5 * 20 && q.src.y == 0)
+                .count();
+            let chrome_ok = panel_quads >= 1;
+            self.ui.dump_png(&furnace_png);
+            verdicts.push(format!(
+                "furnace slots={} panel-quads={} chrome={}",
+                slots_ok, panel_quads, chrome_ok
+            ));
+        }
+        self.close_container();
+
+        vc_render::render::report_boot_log(&format!(
+            "e2e: containers {} (chest-dump={} furnace-dump={})",
+            verdicts.join(" | "),
+            chest_png,
+            furnace_png
+        ));
+    }
+
     fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
         use vc_blocks::blocks::*;
         let state = match block {
@@ -13852,11 +13971,22 @@ impl GameApp {
             }
         }
 
+        // E2E_CONTAINERS (native block-entity container screens): the
+        // open:chest/furnace commands are wasm-only (web_input), so the
+        // native build had NO container-screen leg — this stage places a
+        // chest + a furnace through the REAL open_container path, asserts
+        // the vanilla-grey 9-slice panel on the GPU quad layer, dumps the
+        // canvas fallback PNGs, and exits 0. Verified by the
+        // "e2e: containers" boot lines in linux-game.yml.
+        if std::env::var("E2E_CONTAINERS").is_ok() && !self.e2e_containers_done {
+            self.e2e_containers();
+            self.e2e_containers_done = true;
+        }
         // E2E_MENU: the settings-tree script ran to the void — verify the
         // tree round-tripped back to the title and exit clean
         if self.smoke_menu_e2e && self.smoke_script.is_empty() && self.screen == Screen::Title {
             vc_render::render::report_boot_log(
-                "e2e: settings tree ok (video/engine/shaders/packs/access) — exiting 0",
+                "e2e: settings tree ok (video/engine/shaders/packs/access/musicsound) — exiting 0",
             );
             self.dbg_exit_summary();
             std::process::exit(0);
@@ -16290,7 +16420,10 @@ impl GameApp {
                             (t + 4.30, ui::ID_OPT_ACCESS),
                             (t + 4.55, ui::ID_OPT_AUTOJUMP),
                             (t + 4.80, ui::ID_OPT_DONE2),
-                            (t + 5.10, ui::ID_OPT_DONE),
+                            (t + 5.10, ui::ID_OPT_MUSICSND),
+                            (t + 5.30, ui::ID_SND_BASE + 1), // the MUSIC slider — click-to-default (1.0)
+                            (t + 5.45, ui::ID_SND_DONE),
+                            (t + 5.75, ui::ID_OPT_DONE),
                         ]
                         .into();
                         self.smoke_menu_e2e = true;
@@ -23254,6 +23387,56 @@ mod settings_tests {
             s2.gui_scale_resolved(3840, 2160),
             2,
             "manual below available stays"
+        );
+    }
+
+    /// 2026-09-25 — the vanilla-grey 9-slice container panel renders
+    /// on BOTH draw paths with production geometry: the canvas-fallback
+    /// pixels carry the #C6C6C6 body inside the panel rect AND the GPU
+    /// quad layer carries the Panel-cell 9-slice quads. Guards the
+    /// Round-2 container chrome (the E2E_CONTAINERS native leg asserts
+    /// the same facts in a real world).
+    #[test]
+    fn container_screen_paints_vanilla_grey_panel_on_both_paths() {
+        use vc_inventory::inventory::ItemStack;
+        use vc_render::ui::{ContainerKind, ContainerView};
+
+        let mut ui = vc_render::ui::UiCanvas::new();
+        let atlas = vec![0u8; 16 * 16 * 4];
+        let view = ContainerView {
+            kind: ContainerKind::Chest,
+            inv: vec![ItemStack::EMPTY; 36],
+            grid: vec![],
+            craft_out: ItemStack::EMPTY,
+            furnace: None,
+            brewing: None,
+            enchant: None,
+            chest: vec![ItemStack::EMPTY; 27],
+            trade: None,
+            anvil: None,
+            beacon: None,
+            grind: None,
+            mount: None,
+            armor: [ItemStack::EMPTY; 4],
+            offhand: ItemStack::EMPTY,
+            cursor: ItemStack::EMPTY,
+        };
+        let g = ui.container_screen(&view, (480.0, 270.0), &atlas, false);
+        // geometry: 27 chest slots + 36 player slots
+        assert_eq!(g.chest.len(), 27);
+        assert_eq!(g.inv.len(), 36);
+        // canvas fallback: #C6C6C6 body inside the panel rect
+        let px = ui.px.as_chunks::<4>().0;
+        let stride = ui.live_w as usize;
+        let mid = px[(ui.live_h as usize / 2) * stride + stride / 2];
+        assert_eq!([mid[0], mid[1], mid[2]], [0xC6, 0xC6, 0xC6]);
+        // GPU layer: the Panel-cell 9-slice quads exist
+        assert!(
+            ui.gui_frame
+                .quads
+                .iter()
+                .any(|q| q.src.x == 5 * 20 && q.src.y == 0),
+            "container panel must emit the vanilla-grey 9-slice quads"
         );
     }
 

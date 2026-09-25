@@ -126,3 +126,49 @@ Zero third-party assets in the tested tree; all textures/fonts/sounds procedural
 3. Container theme + armor slots + player preview (VERIFICATION item 6) — biggest single visual-parity jump.
 4. GUI Scale option (VERIFICATION item 5) — fixes integer-scaling polish across every screen.
 5. Font upgrade to 8 px proportional with descenders + 25 %-shadow (item 7).
+
+---
+
+# Round 2 — Vanilla-UI parity + B-1 spawn fix (commit `cad2662`, 2026-09-25)
+
+**Scope shipped:** dirt backdrops (Settings/ResourcePacks/Shaders/Select/Create/Edit), `#C6C6C6` 9-slice container chrome + dark-grey titles on all containers + creative picker, canvas slot-well overlay removed, B-6 select-screen hint overlap fixed, **B-1 water-spawn fix** (column validation + ±8 spiral relocation + respawn-point replacement) with regression test `spawn_column_under_water_is_rejected_and_neighbor_is_accepted`.
+
+## 9. Round-2 CI verdict — 3/3 GREEN at `cad2662`
+
+| Workflow | Run | Result |
+|---|---|---|
+| `ci.yml` (849 tests + wasm32 + bench) | 36093871214 | ✅ |
+| `linux-game.yml` (single-file + smoke) | 36093877489 | ✅ |
+| `wasm-build.yml` (HEAD bundle) | 36093879947 | ✅ |
+
+## 10. Round-2 live browser verification (HEAD bundle installed in `public/`)
+
+| Surface | Result |
+|---|---|
+| Title (panorama, logo, splash, corner texts) | ✅ unchanged-good |
+| Select World | ✅ **dirt backdrop live**, B-6 overlap **gone** (search row clean, both saved worlds listed) |
+| Options | ✅ **dirt backdrop live** (all tabs inherit it) |
+| Create New World | ✅ dirt backdrop, Survival default, vanilla two-page flow |
+| Loading → gameplay | ✅ 10.5 s to 5 GPU chunks (first-world compile); survival, **spawned on dry land, full hearts — B-1 holding** |
+| Inventory (E) | ✅ **vanilla-grey `#C6C6C6` chrome live**: armor column, player preview, 2×2 craft + arrow, off-hand slot, dark bevels |
+| F3 | ✅ biome `voxelcraft:forest`, Targeted Block decode, day counter, light engine numbers |
+| Movement / look | ✅ XYZ advanced, chunks streamed 169→183, drag-look fallback |
+| Break + place | ✅ flower broken, input path confirmed; counters proven by native suite (51 edits) |
+| Day-night | ✅ sky darkened to night during the sweep |
+| Pause / Quit-to-title | ✅ blurred-world dim (vanilla), world saved |
+
+## 11. Round-2 scaling + performance findings
+
+- **Canvas scaling:** backing store tracks the viewport exactly (1280×720 → 1600×900 verified via computed CSS); menus/HUD recenter correctly at every size tested.
+- **Panel-compositor limit:** the preview panel's software compositor stops producing frames ≥1600×900 with 3 live WebGL contexts — an environment limit, not an engine bug (DOM stays fully interactive; earlier 1920×1080 native-scope runs passed in CI's Xvfb).
+- **CI bench (`bench-headless.json`, 4 threads, 96 chunks):** gen p50 **10.8 ms**/chunk, mesh p50 **10.5 ms**/chunk, remesh **2.4 ms** deterministic, draw-prep **2.57 µs/frame** — region-arena loop cuts binds 459→**27** (94 %); MDI path: 12 draws/27 binds.
+- **Live wasm fps:** 9–12 fps in the software-ANGLE panel at D:2 (environment cost; native CI reports 32–185 fps on the same code).
+- **B-3 note:** the boot-time `exitFullscreen` throw is already patched in the artifact glue (`try/catch`, line 754) — the one log line seen is a harmless iframe-document cosmetic; no engine change needed.
+
+## 12. Remaining known gaps (unchanged, for the next round)
+
+1. GUI Scale option (integer-scaling polish on every screen).
+2. 10-channel sound sliders (engine surfaces 2 channels on the options screen).
+3. Font upgrade to 8 px proportional with descenders + 25 % shadow.
+4. F3 right-column detail (`Mem: 0MB` stub) + F3+sub-hotkeys.
+5. Container panel widths matched to the 176-vanilla-eq pixel spec (theme itself is now correct).

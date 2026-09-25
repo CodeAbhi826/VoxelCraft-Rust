@@ -217,8 +217,36 @@ jobs:
           # the (none) row in between)
           grep -q "\[screen\] video -> shaders" menu.log
           grep -q "\[screen\] shaders -> video" menu.log
-          grep -q "e2e: settings tree ok (video/engine/shaders/packs/access)" menu.log
+          # 2026-09-25: the Music & Sound leg — the 10-slider screen via
+          # the real input path (a MUSIC slider click resets it to 1.0)
+          grep -q "\[screen\] options -> musicsound" menu.log
+          grep -q "\[screen\] musicsound -> options" menu.log
+          grep -q "e2e: settings tree ok (video/engine/shaders/packs/access/musicsound)" menu.log
           echo "SMOKE OK - pointer ladder + boot + world entry + 1.14 nature-half + settings tree all verified"
+
+          # 2026-09-25: the NATIVE block-entity container screens (chest +
+          # furnace) — the open:<container> commands are wasm-only, so
+          # this E2E_CONTAINERS stage is the native leg: real
+          # open_container path, vanilla-grey 9-slice panel asserted on
+          # the GPU quad layer, canvas-fallback PNG dumps written.
+          set +e
+          timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan E2E_CONTAINERS=1 \
+            CONTAINER_DUMP_CHEST=run-chest.png CONTAINER_DUMP_FURNACE=run-furnace.png \
+            "./$BIN_NAME" --smoke --debug 2>&1 | tee containers.log
+          CODE=$?
+          set -e
+          echo "containers smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: container-screen E2E did not exit cleanly (see containers.log)"
+            exit 1
+          fi
+          grep -q "e2e: containers chest geom(27+36)=true" containers.log
+          grep -q "canvas-grey=true" containers.log
+          grep -q "furnace slots=true" containers.log
+          test -s run-chest.png || { echo "FAIL: chest dump missing"; exit 1; }
+          test -s run-furnace.png || { echo "FAIL: furnace dump missing"; exit 1; }
+          echo "CONTAINERS OK - native chest + furnace screens: geometry, grey 9-slice chrome, PNG dumps"
 
           # F3 debug overlay regression guard (user-reported "everything in
           # F3 was static"): same binary, FRESH directory (also proves the

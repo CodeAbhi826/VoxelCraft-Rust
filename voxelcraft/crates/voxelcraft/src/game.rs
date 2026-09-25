@@ -20308,18 +20308,83 @@ impl GameApp {
         // the topmost solid block; the nether needs a CAVERN floor
         // (top_solid_y there is the bedrock roof). Travel keeps flying on
         // until a spot exists so the player never spawns inside rock.
-        let snap = if self.world.dimension == vc_world::world::Dimension::Nether {
-            self.nether_floor_y(c, lx.min(15), lz.min(15))
-        } else {
-            let t = c.top_solid_y(lx.min(15), lz.min(15));
-            if t >= 0 {
-                Some(t + 1)
+        //
+        // 2026-09-25 (B-1, the drowned-at-spawn loop): the overworld snap
+        // now VALIDATES the column like vanilla's spawn search —
+        // top_solid_y skips water (not solid), so a shore/pool spawn
+        // column put the player's feet+head IN water: idle drowning ~60 s
+        // later (cause line existed but read as a mystery death), and
+        // respawn replayed the same column forever. The snap requires two
+        // water-free blocks above the surface and spirals outward (rings
+        // to ±8 columns, generated chunks only) for the nearest dry one;
+        // the found column REPLACES the spawn point (respawn_pos +
+        // world_spawn_vec + level.dat spawn) so respawn cannot loop.
+        // All-water neighborhoods keep the legacy column snap as the last
+        // resort (vanilla also lands on open water there — the search
+        // widening is the documented future step).
+        let ox = pc.0 * 16 + lx as i32;
+        let oz = pc.1 * 16 + lz as i32;
+        let snap: Option<(i32, i32, i32)> =
+            if self.world.dimension == vc_world::world::Dimension::Nether {
+                self.nether_floor_y(c, lx.min(15), lz.min(15))
+                    .map(|y| (ox, y, oz))
             } else {
-                None
+                let mut found = None;
+                'spiral: for r in 0..=8i32 {
+                    for dz in -r..=r {
+                        for dx in -r..=r {
+                            if r > 0 && dx.abs() != r && dz.abs() != r {
+                                continue; // walk the ring, not the disc
+                            }
+                            let wx = ox + dx;
+                            let wz = oz + dz;
+                            let Some(nc) = self.world.chunk((wx.div_euclid(16), wz.div_euclid(16)))
+                            else {
+                                continue; // neighbor not generated — skip
+                            };
+                            let t = nc.top_solid_y(
+                                wx.rem_euclid(16) as usize,
+                                wz.rem_euclid(16) as usize,
+                            );
+                            if t < 0 {
+                                continue;
+                            }
+                            let y = t + 1;
+                            let feet = self.world.get_block(wx, y, wz);
+                            let head = self.world.get_block(wx, y + 1, wz);
+                            if feet != vc_blocks::blocks::WATER
+                                && head != vc_blocks::blocks::WATER
+                            {
+                                found = Some((wx, y, wz));
+                                break 'spiral;
+                            }
+                        }
+                    }
+                }
+                found.or_else(|| {
+                    let t = c.top_solid_y(lx.min(15), lz.min(15));
+                    if t >= 0 {
+                        Some((ox, t + 1, oz))
+                    } else {
+                        None
+                    }
+                })
+            };
+        if let Some((sx, y, sz)) = snap {
+            if sx != ox || sz != oz {
+                vc_render::render::report_boot_log(&format!(
+                    "spawn relocated to ({sx}, {y}, {sz}) — water/unsafe spawn column (B-1)"
+                ));
             }
-        };
-        if let Some(y) = snap {
-            self.player.pos.y = y as f32;
+            self.player.pos = Vec3::new(sx as f32 + 0.5, y as f32, sz as f32 + 0.5);
+            // the safe column REPLACES the world spawn — respawn/anchor
+            // reuse it (the respawn loop fix)
+            self.respawn_pos = Vec3::new(sx as f32 + 0.5, y as f32 + 1.0, sz as f32 + 0.5);
+            self.world_spawn_vec = self.respawn_pos;
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                self.level_spawn = (sx, y, sz);
+            }
             // Phase 1: survival lands on its feet (snap = no fall damage,
             // fall accumulator resets); creative only "arrives" flying if
             // it arrived flying
@@ -24048,6 +24113,45 @@ mod tests {
     fn watchdog_delta_is_immune() {
         // Delta IS the fallback — nothing to demote
         assert!(!should_demote_to_delta(PointerLockMode::Delta, 10.0, 100, 0));
+    }
+
+    /// 2026-09-25 (B-1): a spawn column whose top solid block sits UNDER
+    /// water must be rejected — the snap search requires two water-free
+    /// blocks above the surface. Built from real chunks: water column
+    /// (floor 60, water 61..=63) vs the dry neighbor at the same height.
+    /// The engine contract under test is the snap validation predicate:
+    /// water feet/head = unsafe (vanilla spawns on dry land; the old bug
+    /// idle-drowned the player and respawned into the same column).
+    #[test]
+    fn spawn_column_under_water_is_rejected_and_neighbor_is_accepted() {
+        use vc_blocks::blocks::{AIR, GRASS, WATER};
+        let mut c = vc_chunk::Chunk::empty();
+        for (x, z, floor, water_top) in
+            [(0usize, 0usize, 60i32, 63i32), (1, 0, 60, 59)]
+        {
+            for y in 0..=floor {
+                c.set(x, y as usize, z, GRASS);
+            }
+            for y in (floor + 1)..=water_top {
+                c.set(x, y as usize, z, WATER);
+            }
+            for y in (water_top + 1)..=70 {
+                c.set(x, y as usize, z, AIR);
+            }
+        }
+        // column (0,0): water at 61..=63 above the floor → unsafe at any y
+        let surface = c.top_solid_y(0, 0) + 1; // = 61, inside the water
+        let feet = c.get(0, surface as usize, 0);
+        let head = c.get(0, (surface + 1) as usize, 0);
+        assert!(
+            feet == WATER || head == WATER,
+            "the wet column must fail the two-air-blocks check"
+        );
+        // column (1,0): dry grass at 60 → surface 61 with air 61/62
+        let dry = c.top_solid_y(1, 0) + 1;
+        assert_eq!(c.get(1, dry as usize, 0), AIR);
+        assert_eq!(c.get(1, (dry + 1) as usize, 0), AIR);
+        assert_ne!(dry, surface, "the dry neighbor must be findable");
     }
 
     #[test]

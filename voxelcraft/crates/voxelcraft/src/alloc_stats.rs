@@ -18,7 +18,10 @@
 //! mimalloc's sweet spot); wasm keeps the system allocator. The telemetry
 //! semantics are unchanged.
 
-use std::alloc::{GlobalAlloc, Layout, System};
+// System is the wasm backing allocator only (native wraps mimalloc)
+#[cfg(target_arch = "wasm32")]
+use std::alloc::System;
+use std::alloc::{GlobalAlloc, Layout};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// the wrapped backing allocator: mimalloc on native, System on wasm

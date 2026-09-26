@@ -227,3 +227,57 @@ persistence (report §12 items 1–2 were stale; closed).
 - Wasm HEAD bundle reinstalled and booted: title/panorama/splash render, `__vcStats`
   pipeline live (fps/draw-path/counters), console clean. Wasm secondary per directive.
 - CI: 3/3 green at `9780af4` (also `4ce1d51`, `f56fb9a`).
+
+## 14. Night-round 5 addendum — §12 item 5 closed + vanilla HUD parity sweep
+
+**§12 item 5 (container geometry vs the 176-vanilla-px spec) — CLOSED, verified not
+just claimed.** `ContainerGeom` is constructed *inside* `container_screen()` — every
+`geom.*.push((x, y))` rides the exact coordinates just drawn, so hit-test and draw
+cannot drift by construction. Pixel-spec audit: hit box 36 == quad sprite 36
+(`SLOT_SRC 18 × GUI_SCALE 2`) == pitch 40 − 4 gutter (vanilla 18 px × 2.2 ≈ 39.6),
+panel 392 ≈ vanilla 176 × 2.2 = 387; inventory rows pitch 44, hotbar +54. New
+regression test `container_hit_box_matches_drawn_slot_rect` pins: full-diagonal
+occupancy of slot 0, exclusive edges, a 4-px gutter owned by *neither* neighbor,
+row-wrap non-overlap, the shared-inventory pitch chain, and the canvas well pixels.
+One real defect found and FIXED: the canvas-fallback slot well was 32 px while the
+quad sprite and hit box were 36 (a 4-px panel-grey halo around every fallback slot);
+now 36 px on both paths.
+
+**Container E2E dump bug found by vision and FIXED:** the `E2E_CONTAINERS` chest/furnace
+PNG dumps ran while `screen` was still Intro — the "chest" dump was the red studio
+splash with the container composited on top (quad assertions unaffected). The leg now
+forces `Screen::Game` for its rebuilds and restores it after; fresh dumps vision-
+verified at 2560×1392: full #C6C6C6 panel, 36-px wells with gutters, seeded stone in
+chest slot 0, furnace input/flame/fuel/arrow row, shared inventory block.
+
+**Vanilla HUD parity sweep (clean-room, wiki-cited painters audited one by one):**
+crosshair (device-snapped invert quads), hotbar (364-wide, selection frame),
+hearts/hunger/armor/air (armor gated at 0, mirrored rows, jitter rules), XP bar
+364×10 + level, held-item-name fade, boss bars (dragon + wither), effect icons
+(split/sort/blink) — all present and quad+canvas dual-path. Three gaps found and
+implemented:
+- **Attack indicator (1.9+)**: was missing entirely though `swing_t`/cooldown math
+  already existed for damage scaling. New `attack_indicator(p)` painter (below-
+  crosshair gauge, hidden at full charge per vanilla 1.16.5 default) wired in the HUD
+  path; test `attack_indicator_fills_then_hides_at_full_charge`.
+- **Underwater screen tint**: audio/physics handled submersion but the camera had no
+  wash. New `underwater_tint()` (full-canvas over-canvas blue solid, vanilla fluid
+  overlay class) wired to `head_in_water`; test
+  `underwater_tint_pushes_fullscreen_blue_only_when_submerged`.
+- **F1 hide-HUD**: vanilla's HUD toggle was unbound. New `hide_hud` flag + F1 handler
+  gating the whole HUD block (world keeps rendering).
+Bonus: the last workspace warning (unused `System` import) cfg-gated to wasm32 —
+native check is now 0 warnings.
+
+**Native-first verification (Linux before wasm, per directive), this round:**
+- `cargo test --workspace`: all green — vc-render 197/0/1-ign, vc-sim 62, vc-pack 32,
+  vc-mesh 11, voxelcraft lib 92, plus 367 across anvil/audio/world/chunk/gameplay/
+  blocks/rng. Native check 0 warnings.
+- Native E2E under Xvfb(lavapipe) on the fresh release binary: smoke+v114/v114b/
+  v114c/v115/v116/v116b/audit16/audit16b exit 0 with all CI grep assertions;
+  settings-tree walk ok; containers leg ok (geom 27+36, panel quads, furnace slots).
+- Vision: chest36/furnace36 dumps (canvas fallback) inspected in-browser at 2 zoom
+  levels — geometry, chrome, wells, gutters, seeded items all correct.
+- Wasm secondary: no UI/layout divergence remains (the wasm32 splits are platform
+  seams only: file-IO vs fetch, MDI vs emulation, DPR twins); the one real divergence
+  (corner-hug centering) was fixed and pinned last round.

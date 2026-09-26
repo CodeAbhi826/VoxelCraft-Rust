@@ -1666,6 +1666,9 @@ pub struct GameApp {
     plate_sweep_t: u32,
     show_debug: bool,
     show_help: bool,
+    /// F1 (vanilla 1.16.5): toggles every HUD element off/on — the
+    /// gameplay screen keeps rendering the world with no overlay.
+    hide_hud: bool,
     /// F3 held (vanilla F3+X combinations: Q help, 1 frame graph,
     /// H advanced tooltips — fire while F3 stays held)
     f3_held: bool,
@@ -2909,6 +2912,7 @@ impl GameApp {
             plate_sweep_t: 0,
             show_debug: false,
             show_help: false,
+            hide_hud: false,
             f3_held: false,
             debug_help: false,
             debug_graph: false,
@@ -3850,6 +3854,14 @@ impl GameApp {
                     } else {
                         self.f3_held = false;
                     }
+                }
+            }
+            KeyCode::F1 => {
+                // vanilla F1: hide the HUD (toggle; the world keeps
+                // rendering — a screenshot-friendly mode)
+                if pressed && !repeat && in_game {
+                    self.hide_hud = !self.hide_hud;
+                    self.ui.dirty = true;
                 }
             }
             KeyCode::KeyQ => {
@@ -13549,6 +13561,15 @@ impl GameApp {
             .unwrap_or_else(|_| "/tmp/vc-e2e-furnace.png".into());
         let mut verdicts = Vec::new();
 
+        // 2026-09-25 night: force the GAME screen for the rebuilds below —
+        // this leg runs before the smoke script reaches gameplay, so the
+        // rebuilds used to take the Intro branch and the dumps captured the
+        // red studio splash with the container composited on top (the quad
+        // assertions were unaffected; the PNGs were not the production
+        // view). Restored after the leg.
+        let saved_screen = self.screen;
+        self.screen = Screen::Game;
+
         // ---- CHEST: place, seed slot 0, open, assert + dump ----
         self.test_place(CHEST, pos[0], pos[1], pos[2]);
         {
@@ -13629,6 +13650,8 @@ impl GameApp {
             ));
         }
         self.close_container();
+
+        self.screen = saved_screen;
 
         vc_render::render::report_boot_log(&format!(
             "e2e: containers {} (chest-dump={} furnace-dump={})",
@@ -21766,9 +21789,19 @@ impl GameApp {
         // an open GUI (the container panel carries its own hotbar row),
         // and the crosshair visibly bleeding through the inventory was
         // reported in the live in-game test round.
-        let hud_hidden = self.container.is_some() || self.picker_open;
+        let hud_hidden = self.container.is_some() || self.picker_open || self.hide_hud;
         if !hud_hidden {
         self.ui.crosshair();
+        // 1.9+ attack indicator (vanilla 1.16.5 default: below the
+        // crosshair, hidden while fully charged). Reuses the swing-timer
+        // fraction the melee code already computes for damage scaling.
+        {
+            use vc_gameplay::combat;
+            let (_, atk_speed) = combat::held_attack(self.player.held().block);
+            let period = combat::attack_cooldown_ticks(atk_speed) / 20.0;
+            let p = (self.swing_t / period).min(1.0);
+            self.ui.attack_indicator(p);
+        }
         let toast = self
             .item_toast
             .as_ref()
@@ -21826,6 +21859,11 @@ impl GameApp {
             if self.player.hurt_t > 0.0 {
                 let a = self.player.hurt_t / Player::HURT_FLASH_SECS;
                 self.ui.damage_vignette(a);
+            }
+            // 2026-09-25 night: the underwater screen wash (vanilla tints
+            // the whole view blue while the camera eye is submerged)
+            if self.player.head_in_water {
+                self.ui.underwater_tint(1.0);
             }
         }
         // Sub-round 1: the status-effect icons, top-right (wiki-

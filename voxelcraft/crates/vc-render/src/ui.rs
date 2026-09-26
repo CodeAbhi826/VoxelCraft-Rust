@@ -3695,6 +3695,25 @@ impl UiCanvas {
     /// at ≤0.3 alpha, decaying with the player's hurt timer (clean-room
     /// spec per round-9 audit §3; the wiki documents the flash's
     /// existence, not its curve). `alpha` 0..1 (the game layer scales it).
+    /// 2026-09-25 night: the underwater screen wash — vanilla tints the
+    /// whole view blue while the camera is submerged. Full-canvas solid
+    /// quad (fog handles the world; this covers the cleared screen and
+    /// GUI-adjacent areas the same way vanilla's fluid overlay does).
+    /// `a` 0..1 opacity multiplier (the game layer feeds it directly).
+    pub fn underwater_tint(&mut self, a: f32) {
+        let a = a.clamp(0.0, 1.0);
+        if a <= 0.0 {
+            return;
+        }
+        self.gui_frame.solid_over(
+            0.0,
+            0.0,
+            self.live_w as f32,
+            self.live_h as f32,
+            [0.15, 0.35, 0.85, 0.25 * a],
+        );
+    }
+
     pub fn damage_vignette(&mut self, alpha: f32) {
         let a = alpha.clamp(0.0, 1.0);
         if a <= 0.0 {
@@ -3841,6 +3860,42 @@ impl UiCanvas {
         self.text_outlined(x, y, name, fg, sh, 2);
     }
 
+    /// 1.9+ attack-indicator gauge (vanilla default position: directly
+    /// below the crosshair). `p` = swing_t / cooldown period: 0 right
+    /// after a swing, 1 = fully charged → the indicator HIDES (vanilla
+    /// 1.16.5 behavior; the "Hotbar" variant is not drawn — documented
+    /// adaptation). Dark track + left-to-right white fill, dual-path
+    /// (solid quads + canvas fallback) like the XP bar.
+    pub fn attack_indicator(&mut self, p: f32) {
+        let p = p.clamp(0.0, 1.0);
+        if p >= 1.0 {
+            return;
+        }
+        let w = 32i32;
+        let h = 4i32;
+        let x = (self.live_w as i32 - w) / 2;
+        let y = self.live_h as i32 / 2 + 16;
+        let ct = |c: Color| -> [f32; 4] {
+            [
+                c[0] as f32 / 255.0,
+                c[1] as f32 / 255.0,
+                c[2] as f32 / 255.0,
+                c[3] as f32 / 255.0,
+            ]
+        };
+        self.gui_frame.solid_rect(x, y, w, h, ct([10, 10, 10, 150]));
+        let fw = ((w - 4) as f32 * p) as i32;
+        if fw > 0 {
+            self.gui_frame.solid_rect(x + 2, y + 1, fw, h - 2, ct([238, 238, 238, 230]));
+        }
+        if self.chrome_enabled {
+            self.rect(x, y, w, h, [10, 10, 10, 150]);
+            if fw > 0 {
+                self.rect(x + 2, y + 1, fw, h - 2, [238, 238, 238, 230]);
+            }
+        }
+    }
+
     /// 1.16.5-style hotbar: 40px slots, big white selection frame, icons
     /// and vanilla stack counts (bottom-right, shadowed).
     pub fn hotbar(
@@ -3951,7 +4006,11 @@ impl UiCanvas {
         // the self-healing path and VC_GUI_CANVAS dumps show real slot
         // wells instead of a bare panel.
         if self.chrome_enabled {
-            const S: i32 = 32; // SLOT_SRC * GUI_SCALE — matches the quad
+            // §12 item 5 (2026-09-25 night): 36 = SLOT_SRC(18) ×
+            // GUI_SCALE(2) — the canvas well must cover the exact rect of
+            // the quad sprite and the hit-test box; the old 32 left a
+            // 4px panel-grey halo around every canvas-drawn slot.
+            const S: i32 = 36;
             self.rect(x, y, S, S, [139, 139, 139, 255]);
             self.rect(x, y, S, 2, [55, 55, 55, 255]);
             self.rect(x, y, 2, S, [55, 55, 55, 255]);
@@ -6791,6 +6850,184 @@ mod tests {
         assert_eq!(geom.slot_at(x5 + 18, y5 + 18), Some(SlotRef::Chest(4)));
     }
 
+    /// §12 item 5 (2026-09-25 night): the container hit-test box must be
+    /// EXACTLY the drawn slot rect — quad sprite 36 (SLOT_SRC 18 ×
+    /// GUI_SCALE 2), canvas well 36, hit() 36 — with the 4px pitch gap
+    /// owned by NEITHER neighbor, so clicks never mis-select near slot
+    /// edges, on every container family that shares the geometry.
+    #[test]
+    fn container_hit_box_matches_drawn_slot_rect() {
+        // one container_screen call draws AND returns the geometry — the
+        // origins are shared by construction; assert the invariants that
+        // keep them aligned.
+        let mut ui = UiCanvas::new();
+        let mut view = hopper_view();
+        view.chest = vec![ItemStack::EMPTY; 27]; // reuse the chest path
+        view.kind = ContainerKind::Chest;
+        let geom = ui.container_screen(&view, (0.0, 0.0), &[], false);
+        assert_eq!(geom.chest.len(), 27);
+        let (ox, oy) = geom.chest[0];
+
+        // 1. hit box spans exactly [origin, origin+36) on both axes:
+        //    every diagonal pixel inside the rect resolves to THIS slot…
+        for d in 0..36 {
+            assert_eq!(
+                geom.slot_at(ox + d, oy + d),
+                Some(SlotRef::Chest(0)),
+                "diagonal pixel +{d} must stay inside slot 0's hit box"
+            );
+        }
+        //    …and the first pixel outside on each axis does not.
+        assert_eq!(geom.slot_at(ox + 36, oy + 35), None, "x edge is exclusive");
+        assert_eq!(geom.slot_at(ox + 35, oy + 36), None, "y edge is exclusive");
+
+        // 2. the 40px pitch leaves a 4px gutter that belongs to NEITHER
+        //    neighbor (no double-hit, no dead click inside a slot).
+        let (nx, ny) = geom.chest[1]; // next slot: ox + 40, same row
+        assert_eq!((nx, ny), (ox + 40, oy), "40px slot pitch");
+        for d in 0..36 {
+            assert_eq!(
+                geom.slot_at(nx + d, ny + d),
+                Some(SlotRef::Chest(1)),
+                "neighbor's own diagonal stays in slot 1"
+            );
+        }
+        for g in 36..40 {
+            assert_eq!(
+                geom.slot_at(ox + g, oy + 18),
+                None,
+                "gutter pixel +{g} belongs to no slot"
+            );
+        }
+
+        // 3. the 9-col row wraps without overlap: last col + 36 must not
+        //    reach the next row's first slot (y pitch 40 = 36 + 4).
+        let (last_x, last_y) = geom.chest[8];
+        let next_y = geom.chest[9].1;
+        assert_eq!(next_y - last_y, 40, "row pitch 40 (36 + 4 gutter)");
+        assert_eq!(
+            geom.slot_at(last_x + 18, last_y + 36),
+            None,
+            "below the last column-8 slot is gutter, not row 1"
+        );
+
+        // 4. shared inventory geometry: 3 storage rows pitch 44 then the
+        //    hotbar — the game.rs click resolver rides the same origins.
+        let mut ui2 = UiCanvas::new();
+        let g2 = ui2.container_screen(&hopper_view(), (0.0, 0.0), &[], false);
+        assert_eq!(g2.inv.len(), 36);
+        assert_eq!(g2.inv[9].1 - g2.inv[0].1, 44, "storage row pitch 44");
+        assert_eq!(
+            g2.inv[27].1 - g2.inv[26].1,
+            44 + 10,
+            "hotbar sits 54 below the last storage row (44 pitch + 10 gap)"
+        );
+        for i in 1..36 {
+            if g2.inv[i].1 == g2.inv[i - 1].1 {
+                assert_eq!(g2.inv[i].0 - g2.inv[i - 1].0, 40);
+            }
+        }
+
+        // 5. canvas wells paint 36px (chrome on): body pixel at +18 and
+        //    the white bottom edge at +34 inside, panel grey at +37 out.
+        let mut ui3 = UiCanvas::new();
+        ui3.set_chrome_enabled(true);
+        let g3 = ui3.container_screen(&hopper_view(), (0.0, 0.0), &[], false);
+        let (wx, wy) = g3.chest[0];
+        let p = |x: i32, y: i32| -> [u8; 4] {
+            let i = (y as usize * ui3.live_w as usize + x as usize) * 4;
+            ui3.px[i..i + 4].try_into().unwrap()
+        };
+        assert_eq!(p(wx + 18, wy + 18), [139, 139, 139, 255], "well body");
+        assert_eq!(p(wx + 18, wy + 34), [255, 255, 255, 255], "bottom edge");
+        assert_eq!(p(wx + 18, wy + 37), [198, 198, 198, 255], "panel grey");
+    }
+
+    /// 1.9+ attack indicator: fills left→right while the attack charges,
+    /// and is fully hidden at charge 1.0 (vanilla 1.16.5 default under
+    /// the crosshair). Asserted init-independently by DIFFING two
+    /// canvases, plus a quad census (hidden = no quads pushed).
+    #[test]
+    fn attack_indicator_fills_then_hides_at_full_charge() {
+        let paint = |p: f32| -> UiCanvas {
+            let mut c = UiCanvas::new();
+            c.set_chrome_enabled(true);
+            c.attack_indicator(p);
+            c
+        };
+        let half = paint(0.5);
+        let full = paint(1.0);
+        let at = |c: &UiCanvas, x: i32, y: i32| -> [u8; 4] {
+            let i = (y as usize * c.live_w as usize + x as usize) * 4;
+            c.px[i..i + 4].try_into().unwrap()
+        };
+        // geometry: 32x4 track centered, 16px below the crosshair
+        let x = (half.live_w as i32 - 32) / 2;
+        let y = half.live_h as i32 / 2 + 16;
+        // half-charged: white fill at the left end, bare track at the
+        // right end (the fill hasn't reached it yet)
+        assert_ne!(
+            at(&half, x + 3, y + 2),
+            at(&full, x + 3, y + 2),
+            "half charge paints a white fill the hidden state lacks"
+        );
+        assert_eq!(
+            at(&half, x + 3, y + 2),
+            [238, 238, 238, 230],
+            "white fill at the left end"
+        );
+        assert_eq!(
+            at(&half, x + 30, y + 2),
+            [10, 10, 10, 150],
+            "bare track at the right end (fill hasn't reached it)"
+        );
+        // full charge: the whole gauge area matches the untouched canvas
+        let none = UiCanvas::new();
+        for dx in [0, 16, 31] {
+            for dy in [0, 2, 3] {
+                assert_eq!(
+                    at(&full, x + dx, y + dy),
+                    at(&none, x + dx, y + dy),
+                    "fully charged hides the indicator entirely"
+                );
+            }
+        }
+        // quad census: hidden pushes nothing, half pushes the track+fill
+        let mut c = UiCanvas::new();
+        c.attack_indicator(1.0);
+        let n_hidden = c.gui_frame.quads.len();
+        c.attack_indicator(0.5);
+        assert!(
+            c.gui_frame.quads.len() > n_hidden,
+            "charging pushes track+fill quads"
+        );
+    }
+
+    /// the underwater wash: zero at a=0, and a full-canvas blue solid
+    /// quad at a>0 — covering the exact live canvas on both axes.
+    #[test]
+    fn underwater_tint_pushes_fullscreen_blue_only_when_submerged() {
+        let mut c = UiCanvas::new();
+        c.underwater_tint(0.0);
+        assert!(
+            c.gui_frame.text_quads.is_empty(),
+            "a=0 pushes nothing (over-canvas layer)"
+        );
+        c.underwater_tint(1.0);
+        assert_eq!(
+            c.gui_frame.text_quads.len(),
+            1,
+            "a=1 pushes exactly one over-canvas quad"
+        );
+        let q = c.gui_frame.text_quads[0];
+        assert_eq!(q.dst.x, 0.0);
+        assert_eq!(q.dst.y, 0.0);
+        assert_eq!(q.dst.w, c.live_w as f32, "covers the live canvas width");
+        assert_eq!(q.dst.h, c.live_h as f32, "covers the live canvas height");
+        // the blue wash color: B > G > R (a blue-dominant tint)
+        assert!(q.tint[2] > q.tint[1] && q.tint[1] > q.tint[0], "blue-dominant");
+    }
+
     /// The oxygen bubble row appears only below a full air supply and
     /// renders ceil(air/30) bubbles (VERIFIED: 10 bubbles × 30 air).
     /// (Asserted structurally: status_bars with full air draws no bubble
@@ -7104,7 +7341,6 @@ mod screen_tests {
 
     /// Title layout: vanilla 1.16.5 stack — two full-width buttons then the
     /// half-width Options/Quit pair, all 30px tall, MULTIPLAYER disabled.
-    #[test]
     /// 2026-09-25 centering fix (user report: options hugging the left
     /// corner at 2560×1440): every settings-family screen must lay out
     /// centered at ANY live width — the widget block's center stays on

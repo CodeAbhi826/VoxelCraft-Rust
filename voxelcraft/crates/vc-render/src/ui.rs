@@ -183,6 +183,15 @@ pub type Color = [u8; 4];
 #[rustfmt::skip]
 const INFINITY: [u8; 8] = [0x00,0x00,0x00,0x00,0x0A,0x15,0x00,0x00];
 
+/// Round A (B-5): y of the FIRST targeted-group line — the group is
+/// pinned bottom-left of the F3 overlay, above the footer help-hint row
+/// (vanilla 1.16.5's Targeted Block slot). Shared by debug_full (the GPU
+/// strip path) and debug_canvas_full (the F3_DUMP canvas path) so the
+/// dumps show exactly what the game paints.
+pub fn targeted_base_y(live_h: i32, targeted_len: usize) -> i32 {
+    live_h - 2 - (targeted_len as i32 + 1) * 18
+}
+
 /// Truncate `s` — with an ASCII `...` tail — until its measured width
 /// fits `max_w` (the F3 right-column half-screen clamp: software-renderer
 /// adapter strings run ~830 UI px wide and would otherwise overdraw the
@@ -5128,6 +5137,13 @@ impl UiCanvas {
     /// RIGHT-ALIGNED to a 3px right margin, first strip at y=2, blank
     /// spacer lines advance the pitch without painting.
     pub fn debug(&mut self, left: &[String], right: &[String]) {
+        self.debug_full(left, right, &[]);
+    }
+
+    /// Round A (B-5): full debug painter — the two columns plus the
+    /// Targeted Block/Fluid group PINNED bottom-left above the F3 help
+    /// hint (vanilla's slot), left-aligned at the bottom of the overlay.
+    pub fn debug_full(&mut self, left: &[String], right: &[String], targeted: &[String]) {
         const BG: Color = [80, 80, 80, 144]; // 0x90505050
         const FG: Color = [224, 224, 224, 255]; // 0xE0E0E0
         const LINE_H: i32 = 18; // glyph 16 (8 rows x scale 2) + 1px pad top+bottom
@@ -5172,6 +5188,26 @@ impl UiCanvas {
             }
             self.text_flat_case(3, y + 1, l, FG, 2);
         }
+        // Round A (B-5): the targeted group rides the LEFT half's bottom,
+        // above the vanilla footer line ("F3 to toggle...")
+        if !targeted.is_empty() {
+            let base_y = targeted_base_y(self.live_h as i32, targeted.len());
+            for (i, l) in targeted.iter().enumerate() {
+                if l.is_empty() {
+                    continue;
+                }
+                let y = base_y + i as i32 * LINE_H;
+                if strip_quads {
+                    let w = measure(l);
+                    self.gui_frame
+                        .solid_over(2.0, y as f32, w + 2.0, LINE_H as f32, bg_tint);
+                } else {
+                    let w = Self::text_width_case(l, 2);
+                    self.rect(2, y, w + 2, LINE_H, BG);
+                }
+                self.text_flat_case(3, y + 1, l, FG, 2);
+            }
+        }
         for (i, l) in right.iter().enumerate() {
             if l.is_empty() {
                 continue;
@@ -5214,6 +5250,13 @@ impl UiCanvas {
     /// branch (strips via rect, text via text_flat_case_px, the
     /// right-column truncation at the half-screen mark).
     pub fn debug_canvas(&mut self, left: &[String], right: &[String]) {
+        self.debug_canvas_full(left, right, &[]);
+    }
+
+    /// Round A (B-5): the canvas-path twin of debug_full — same targeted
+    /// group pinned bottom-left (the F3_DUMP capture path reads THESE
+    /// pixels, so the dumps must show the same layout the GPU paints).
+    pub fn debug_canvas_full(&mut self, left: &[String], right: &[String], targeted: &[String]) {
         const BG: Color = [80, 80, 80, 144]; // 0x90505050
         const FG: Color = [224, 224, 224, 255]; // 0xE0E0E0
         const LINE_H: i32 = 18;
@@ -5225,6 +5268,18 @@ impl UiCanvas {
             let w = Self::text_width_case(l, 2);
             self.rect(2, y, w + 2, LINE_H, BG);
             self.text_flat_case_px(3, y + 1, l, FG, 2);
+        }
+        if !targeted.is_empty() {
+            let base_y = targeted_base_y(self.live_h as i32, targeted.len());
+            for (i, l) in targeted.iter().enumerate() {
+                if l.is_empty() {
+                    continue;
+                }
+                let y = base_y + i as i32 * LINE_H;
+                let w = Self::text_width_case(l, 2);
+                self.rect(2, y, w + 2, LINE_H, BG);
+                self.text_flat_case_px(3, y + 1, l, FG, 2);
+            }
         }
         for (i, l) in right.iter().enumerate() {
             if l.is_empty() {
@@ -5692,7 +5747,9 @@ impl UiCanvas {
             ("F", "Swap item to off-hand"),
             ("B", "Creative inventory (creative mode)"),
             ("ESC", "Pause menu / options"),
-            ("F3", "Debug info"),
+            ("F2", "Screenshot"),
+            ("F3", "Debug info (F3+G chunk borders, F3+Q help, F3+H ids)"),
+            ("F5", "Toggle perspective"),
             ("H", "This help"),
             ("[ ]", "Render distance"),
             ("- =", "Volume"),
@@ -7413,6 +7470,7 @@ mod screen_tests {
         set_live_ui_size(960, 540);
     }
 
+    #[test]
     fn title_layout_is_vanilla_stack() {
         let ws = layout_title(false);
         assert_eq!(ws.len(), 4);

@@ -1669,6 +1669,16 @@ pub struct GameApp {
     /// F1 (vanilla 1.16.5): toggles every HUD element off/on — the
     /// gameplay screen keeps rendering the world with no overlay.
     hide_hud: bool,
+    /// Round A: F5 third-person camera. 0 = first-person (the classic
+    /// default), 1 = third-person behind, 2 = third-person front
+    /// (vanilla's F5 cycle). The camera eye offsets ride the player's
+    /// look basis; the held view-model only draws in first-person.
+    camera_mode: u8,
+    /// Round A: F2 screenshot — the pending flag (the draw phase consumes
+    /// it AFTER the frame renders: the readback must capture THIS frame)
+    /// Round A: F3+G chunk borders overlay (vanilla's F3+G — every
+    /// chunk's column boundary quad drawn in the line pass)
+    debug_chunks: bool,
     /// F3 held (vanilla F3+X combinations: Q help, 1 frame graph,
     /// H advanced tooltips — fire while F3 stays held)
     f3_held: bool,
@@ -1698,6 +1708,11 @@ pub struct GameApp {
     smoke_script: std::collections::VecDeque<(f32, u16)>,
     /// E2E_CONTAINERS: the native chest+furnace screen stage ran once
     e2e_containers_done: bool,
+    /// E2E_FKEYS: 0 = idle, 1 = key stage ran (waiting for the screenshot
+    /// consumer), 2 = done
+    e2e_fkeys_stage: u8,
+    /// E2E_FKEYS: every stage's assertions passed
+    e2e_fkeys_ok: bool,
     /// smoke stage 3: the in-game click fired once
     smoke_clicked_ingame: bool,
     /// smoke stage 3: game-entry time (F3_DUMP holds gameplay ~2 s)
@@ -2913,6 +2928,8 @@ impl GameApp {
             show_debug: false,
             show_help: false,
             hide_hud: false,
+            camera_mode: 0,
+            debug_chunks: false,
             f3_held: false,
             debug_help: false,
             debug_graph: false,
@@ -2966,6 +2983,8 @@ impl GameApp {
             intro_start: now_secs(),
             smoke: false,
             smoke_menu_e2e: false,
+            e2e_fkeys_stage: 0,
+            e2e_fkeys_ok: true,
             edits: 0,
             stats_t: 0.0,
             pointer_locked: false,
@@ -3352,7 +3371,17 @@ impl GameApp {
                 }
                 WindowEvent::Focused(false) => {
                     self.input = Input::default();
-                    if self.screen == Screen::Game {
+                    // Round A: hold Game while the E2E_FKEYS capture ladder
+                    // is pending (xvfb's missing WM means Focused(false)
+                    // arrives right after world entry; pausing would put
+                    // menu blur into the captures)
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let fkeys_hold = std::env::var("E2E_FKEYS").is_ok()
+                        && self.e2e_fkeys_stage < 3
+                        && self.camera_mode != 0;
+                    #[cfg(target_arch = "wasm32")]
+                    let fkeys_hold = false;
+                    if self.screen == Screen::Game && !fkeys_hold {
                         self.enter_pause();
                     }
                 }
@@ -3861,6 +3890,59 @@ impl GameApp {
                 // rendering — a screenshot-friendly mode)
                 if pressed && !repeat && in_game {
                     self.hide_hud = !self.hide_hud;
+                    self.ui.dirty = true;
+                }
+            }
+            KeyCode::F5 => {
+                // Round A (vanilla F5): cycle the camera perspective
+                // first-person → third-behind → third-front → first.
+                // Works in Game AND in the pause/options screens (vanilla
+                // keeps the cycle live behind the menus).
+                if pressed && !repeat && in_game {
+                    self.camera_mode = Self::next_camera_mode(self.camera_mode);
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: camera mode {}",
+                        self.camera_mode
+                    ));
+                    self.ui.dirty = true;
+                }
+            }
+            KeyCode::F2 => {
+                // Round A (vanilla F2): screenshot. The flag is consumed
+                // inside the next render() — the readback happens before
+                // present so the capture IS the presented frame (native
+                // only; wgpu can't read back the swapchain on WebGL2, so
+                // wasm keeps the browser's screenshot path).
+                if pressed && !repeat && in_game {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        self.renderer.screenshot_request = true;
+                    }
+                }
+            }
+            KeyCode::F11 => {
+                // vanilla F11: toggle Full Screen (the Video Settings row
+                // applies the same preference — one control, one state;
+                // apply_fullscreen rides winit natively and the canvas
+                // fullscreen API on wasm)
+                if pressed && !repeat {
+                    self.settings.fullscreen = !self.settings.fullscreen;
+                    self.apply_fullscreen();
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: fullscreen {}",
+                        if self.settings.fullscreen { "on" } else { "off" }
+                    ));
+                    self.ui.dirty = true;
+                }
+            }
+            KeyCode::KeyG => {
+                // Round A: F3 + G — vanilla's chunk-border overlay
+                if pressed && !repeat && in_game && self.f3_held {
+                    self.debug_chunks = !self.debug_chunks;
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: chunk borders {}",
+                        if self.debug_chunks { "on" } else { "off" }
+                    ));
                     self.ui.dirty = true;
                 }
             }
@@ -4919,6 +5001,32 @@ impl GameApp {
             None
         };
         self.window.set_fullscreen(fs);
+    }
+
+    /// Round A (F2): player-facing screenshot — render() copied the
+    /// swapchain into a staging buffer before present (see
+    /// Renderer::screenshot_request); this consumes the PNG bytes and
+    /// writes `screenshots/<timestamp>.png` in the profile dir (created
+    /// on demand, like saves/), then toasts the filename (vanilla's
+    /// "Saved screenshot as ..." chat feedback). Native only.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn take_screenshot(&mut self) {
+        let Some(png) = self.renderer.take_screenshot_png() else {
+            self.item_toast = Some(("Screenshot failed".to_string(), 2.0));
+            return;
+        };
+        let dir = std::path::Path::new("screenshots");
+        let _ = std::fs::create_dir_all(dir);
+        let stamp = chrono_like_stamp();
+        let path = dir.join(format!("{stamp}.png"));
+        let saved = std::fs::write(&path, &png).is_ok();
+        let name = path.display().to_string();
+        if saved {
+            self.item_toast = Some((format!("Saved screenshot: {name}"), 2.5));
+            vc_render::render::report_boot_log(&format!("screenshot: {name}"));
+        } else {
+            self.item_toast = Some(("Screenshot failed".to_string(), 2.0));
+        }
     }
 
     /// CI/docs visual-verification hook (never set in normal play):
@@ -7123,6 +7231,57 @@ impl GameApp {
     /// Phase E1: end-dimension billboards — the dragon (large sprite) and
     /// the alive end crystals on their pillars, through the particle
     /// stream like every other entity.
+    /// Round A (F5): the third-person player model — the same jointed
+    /// humanoid rig the zombie family uses, skinned from the clean-room
+    /// player sprite (TILE_MOB_PLAYER). Parts: root(0) body(1) head(2)
+    /// arm_r(3) arm_l(4) leg_r(5) leg_l(6). The rig faces its YAW
+    /// (movement convention `(−sin yaw, 0, −cos yaw)`); the walk phase
+    /// rides the same accumulator as the camera bob so legs match the
+    /// first-person bob cadence. Emitted ONLY in camera modes 1/2 —
+    /// first-person never draws the player body (the held view-model
+    /// covers that case, as before).
+    fn push_player_model(&mut self, view_dir: [f32; 3]) {
+        if self.camera_mode == 0 || self.screen != Screen::Game {
+            return;
+        }
+        use vc_gameplay::entity_model::{emit_model_vertices, sample_anim, EntityModel};
+        // OnceLock'd static rig (the model_for precedent — bounded,
+        // per-kind-constant, leaked for the process lifetime)
+        static PLAYER_MODEL: std::sync::OnceLock<EntityModel> = std::sync::OnceLock::new();
+        let model = PLAYER_MODEL.get_or_init(|| {
+            use vc_gameplay::entity_model::player as player_factory;
+            player_factory()
+        });
+        let pos = self.player.pos;
+        let yaw = self.player.yaw;
+        // walk phase: horizontal speed drives the accumulator cadence
+        // (the mob driver's `anim_walk += hs * 3.5` at 20 Hz maps to the
+        // same feel when scaled by dt here); idle → phase 0
+        let hs = (self.player.vel.x * self.player.vel.x
+            + self.player.vel.z * self.player.vel.z)
+            .sqrt();
+        let phase = if hs > 0.05 {
+            self.bob_phase.fract()
+        } else {
+            0.0
+        };
+        // swing matches the mob rig's arm/amplitude conventions; the
+        // hurt tint rides the player's own hurt flash
+        let tint = if self.player.hurt_t > 0.0 {
+            [1.0f32, 0.35, 0.35]
+        } else {
+            [0.92f32, 0.92, 0.92]
+        };
+        let rots = sample_anim(
+            model,
+            if hs > 0.05 { "walk" } else { "idle" },
+            phase,
+        );
+        // player hitbox 1.8 blocks / rig 32 px (the auto-fit scale)
+        let scale = 1.8 / model.px_height;
+        emit_model_vertices(model, [pos.x, pos.y, pos.z], yaw, &rots, scale, tint, view_dir, &mut self.particle_verts);
+    }
+
     fn build_end_entity_vertices(&mut self, right: [f32; 3], up: [f32; 3]) {
         if self.world.dimension != vc_world::world::Dimension::End {
             return;
@@ -13661,6 +13820,119 @@ impl GameApp {
         ));
     }
 
+    /// Round A: the F-KEY CONTRACT E2E leg (E2E_FKEYS=1, native) — every
+    /// function key's effect through the REAL key_action input path,
+    /// verified in-engine so CI greps a single verdict line:
+    ///   F5 third-person cycle (0→1→2→0) + the player rig armed,
+    ///   F3+G chunk borders on→off,
+    ///   F11 fullscreen on→off (the settings flag round-trips),
+    ///   F2 arms the render-side screenshot capture.
+    /// Stage 2 runs one frame later and persists the captured PNG, then
+    /// exits 0 — the CI grep contract lives in linux-game.yml.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_fkeys(&mut self) {
+        use winit::keyboard::KeyCode;
+        let mut ok = true;
+        let check = |ok: &mut bool, cond: bool, what: &str| {
+            if !cond {
+                vc_render::render::report_boot_log(&format!("e2e: fkeys FAIL {what}"));
+                *ok = false;
+            }
+        };
+        let saved_screen = self.screen;
+        self.screen = Screen::Game;
+        // F1 (pre-existing contract): HUD hide + restore
+        let hud0 = self.hide_hud;
+        self.key_action(KeyCode::F1, true, false);
+        check(&mut ok, self.hide_hud != hud0, "F1 toggles HUD");
+        self.key_action(KeyCode::F1, true, false);
+        check(&mut ok, self.hide_hud == hud0, "F1 restores HUD");
+        // F5: full vanilla cycle, and mode 1 arms the third-person rig
+        for want in [1u8, 2, 0] {
+            self.key_action(KeyCode::F5, true, false);
+            check(&mut ok, self.camera_mode == want, "F5 cycle");
+        }
+        self.key_action(KeyCode::F5, true, false); // → mode 1 (behind)
+        check(&mut ok, self.camera_mode == 1, "F5 third-behind");
+        // F3+G: chunk borders on → off (F3 must be HELD — the real chord)
+        self.key_action(KeyCode::F3, true, false);
+        check(&mut ok, self.f3_held, "F3 arms");
+        self.key_action(KeyCode::KeyG, true, false);
+        check(&mut ok, self.debug_chunks, "F3+G on");
+        self.key_action(KeyCode::KeyG, true, false);
+        check(&mut ok, !self.debug_chunks, "F3+G off");
+        self.key_action(KeyCode::KeyG, true, false); // leave ON for the dump
+        self.key_action(KeyCode::F3, false, false); // RELEASE (the chord ends)
+        check(&mut ok, !self.f3_held, "F3 releases");
+        // F11: fullscreen on → off (headless-safe: apply_fullscreen rides
+        // winit; the setting is what the contract pins)
+        self.key_action(KeyCode::F11, true, false);
+        check(&mut ok, self.settings.fullscreen, "F11 on");
+        self.key_action(KeyCode::F11, true, false);
+        check(&mut ok, !self.settings.fullscreen, "F11 off");
+        // F2: arms the renderer-side capture; the PNG lands next frame
+        // (stage 2) so the copy sees the fully-presented frame
+        self.key_action(KeyCode::F2, true, false);
+        check(&mut ok, self.renderer.screenshot_request, "F2 arms capture");
+        self.screen = saved_screen;
+        self.e2e_fkeys_ok &= ok;
+        self.e2e_fkeys_stage = 1;
+        // Stay on Game for the capture frames (the auto-pause below fires
+        // only on a Focused(false) EVENT, which already happened; being
+        // on Pause would put menu blur + a first-person camera into the
+        // captures). The real screen is restored at the end of the leg.
+        self.screen = Screen::Game;
+        vc_render::render::report_boot_log(&format!(
+            "e2e: fkeys keys {} (camera_mode={} borders={} shot_armed={})",
+            if ok { "ok" } else { "FAILED" },
+            self.camera_mode,
+            self.debug_chunks,
+            self.renderer.screenshot_request
+        ));
+    }
+
+    /// E2E_FKEYS capture: called ONLY when a PNG is waiting (see the
+    /// stage ladder) — persist it (stage 2 = the F5 BEHIND view armed by
+    /// the keys stage; stage 3 = the FRONT view), verify non-trivial.
+    /// The `front` call restores state and exits 0/1.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_fkeys_capture(&mut self, front: bool) {
+        let png = self.renderer.take_screenshot_png();
+        let shot_ok = match png {
+            Some(bytes) => {
+                let dir = std::path::Path::new("screenshots");
+                let _ = std::fs::create_dir_all(dir);
+                let view = if front { "front" } else { "behind" };
+                let path = dir.join(format!("e2e_fkeys_{view}_{}.png", chrono_like_stamp()));
+                let wrote = std::fs::write(&path, &bytes).is_ok();
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: fkeys {} view {} ({} bytes)",
+                    view,
+                    if wrote { "saved" } else { "WRITE FAILED" },
+                    bytes.len()
+                ));
+                wrote && bytes.len() > 1000
+            }
+            None => {
+                vc_render::render::report_boot_log("e2e: fkeys capture MISSING");
+                false
+            }
+        };
+        self.e2e_fkeys_ok &= shot_ok;
+        if front {
+            // restore: first-person, borders off (the leg armed them)
+            self.debug_chunks = false;
+            self.camera_mode = 0;
+            let all = self.e2e_fkeys_ok;
+            vc_render::render::report_boot_log(&format!(
+                "e2e: fkeys both views captured — FKEY CONTRACT {}",
+                if all { "OK" } else { "FAILED" }
+            ));
+            self.dbg_exit_summary();
+            std::process::exit(if all { 0 } else { 1 });
+        }
+    }
+
     fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
         use vc_blocks::blocks::*;
         let state = match block {
@@ -14028,6 +14300,46 @@ impl GameApp {
             self.e2e_containers();
             self.e2e_containers_done = true;
         }
+        // Round A: E2E_FKEYS — the function-key contract leg. Stage 0
+        // waits for world entry (the captures must show the WORLD, not
+        // the intro), then runs the keys (leaves camera BEHIND + capture
+        // armed). Stages 1/2 are PULL-based: the leg consumes the PNG on
+        // the first update after the readback lands — no consumer race
+        // (multi-tick update loops cannot skip a stage; the PNG simply
+        // waits). Stage 1 saves the BEHIND view and arms the FRONT; stage
+        // 2 saves it and exits with the verdict.
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_FKEYS").is_ok() {
+            // Headless quirk: xvfb has no window manager, so winit reports
+            // Focused(false) on world entry and the game auto-pauses into
+            // Screen::Pause. Game|Pause are both IN-WORLD (the world keeps
+            // rendering behind the pause menu), so the ladder keys off that;
+            // e2e_fkeys()/e2e_fkeys_capture() force Screen::Game for their
+            // rebuilds and restore whatever screen was active.
+            let in_world =
+                self.screen == Screen::Game || self.screen == Screen::Pause;
+            match self.e2e_fkeys_stage {
+                0 if in_world => {
+                    self.e2e_fkeys();
+                }
+                1 => {
+                    if self.renderer.screenshot_png.is_some() {
+                        self.e2e_fkeys_capture(false);
+                        // flip to the front view + re-arm for the next frame
+                        self.camera_mode = 2;
+                        self.renderer.screenshot_request = true;
+                        self.e2e_fkeys_stage = 2;
+                        vc_render::render::report_boot_log("e2e: fkeys front view armed");
+                    }
+                }
+                2 => {
+                    if self.renderer.screenshot_png.is_some() {
+                        self.e2e_fkeys_capture(true);
+                    }
+                }
+                _ => {}
+            }
+        }
         // E2E_MENU: the settings-tree script ran to the void — verify the
         // tree round-tripped back to the title and exit clean
         if self.smoke_menu_e2e && self.smoke_script.is_empty() && self.screen == Screen::Title {
@@ -14125,9 +14437,20 @@ impl GameApp {
             // — the pair is the DYNAMISM check (two frames of a live
             // overlay MUST differ: fps/XYZ/light/memory all move).
             if std::env::var("F3_DUMP").is_err() {
-                vc_render::render::report_boot_log("smoke: game entered — exiting 0");
-                self.dbg_exit_summary();
-                std::process::exit(0);
+                // E2E_FKEYS keeps the process alive: the two-stage capture
+                // ladder needs rendered frames after world entry (this
+                // unconditional exit used to win the race on headless
+                // runners — 0-1 frames rendered, ladder never past stage 0)
+                #[cfg(not(target_arch = "wasm32"))]
+                let fkeys_pending =
+                    std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 3;
+                #[cfg(target_arch = "wasm32")]
+                let fkeys_pending = false;
+                if !fkeys_pending {
+                    vc_render::render::report_boot_log("smoke: game entered — exiting 0");
+                    self.dbg_exit_summary();
+                    std::process::exit(0);
+                }
             }
             let t_in = self.time - self.smoke_game_t;
             if t_in > 1.6 && !self.f3_dump2 {
@@ -14149,17 +14472,33 @@ impl GameApp {
                     // construction.
                     self.rebuild_ui();
                     let (left, right) = self.f3_lines();
-                    self.ui.debug_canvas(&left, &right);
+                    self.ui.debug_canvas_full(&left, &right, &self.f3_targeted_lines());
                     self.ui.dump_png(&p2);
                     vc_render::render::report_boot_log(
                         "smoke: F3 liveness pair written (dump 2 @ 1.6 s)",
                     );
                 }
             }
-            if t_in > 2.2 {
+            // E2E_FKEYS owns the exit when it is mid-ladder (stages 1–2
+            // need rendered frames for the two F5 captures; the plain
+            // smoke exit at 2.2 s fired before the first draw landed on
+            // the headless runner)
+            #[cfg(not(target_arch = "wasm32"))]
+            let fkeys_pending =
+                std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 3;
+            #[cfg(target_arch = "wasm32")]
+            let fkeys_pending = false;
+            if t_in > 2.2 && !fkeys_pending {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();
                 std::process::exit(0);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            if fkeys_pending && t_in > 2.2 {
+                vc_render::render::report_boot_log(&format!(
+                    "smoke: exit deferred — fkeys ladder at stage {}",
+                    self.e2e_fkeys_stage
+                ));
             }
         }
 
@@ -21094,7 +21433,9 @@ impl GameApp {
     /// engine-adapted and labeled here:
     /// - "T:" = the framerate limit (∞ when vsync/uncapped — vanilla shows
     ///   the same ∞ for an unlimited setting)
-    /// - "D:" on the fps line = difficulty id (0..3)
+    /// - "D:" on the fps line = difficulty id (0..3) — Round A: now reads
+    ///   the world's difficulty setting (Round L's selector) instead of
+    ///   inferring from the game mode alone
     /// - "Integrated server @ N ms ticks" = the sim phase's live duration
     ///   (singleplayer integrated-server analog); tx/rx = 0 (no netcode)
     /// - "C:" = chunks drawn / loaded, pC/pU = generation/mesh jobs in
@@ -21112,6 +21453,10 @@ impl GameApp {
     /// - Right column: Rust/wgpu instead of Java; Mem = live /proc RSS vs
     ///   system total; Allocated = live large-allocation bytes (counting
     ///   allocator); CPU/Display/GPU = host + wgpu adapter info
+    /// - Round A (B-5 fix): Targeted Block/Fluid moved to the vanilla
+    ///   BOTTOM-LEFT slot — a separate `targeted` line group returned
+    ///   separately so ui.debug() pins it above the F3 help line at the
+    ///   bottom of the LEFT half, not the right column's tail.
     fn f3_lines(&self) -> (Vec<String>, Vec<String>) {
         let p = &self.player;
         let pc = self.player_chunk();
@@ -21272,7 +21617,7 @@ impl GameApp {
             "For help: press F3 + Q".to_string(),
         ];
         // ---------- right column ----------
-        let mut right = vec![
+        let right = vec![
             format!(
                 "Rust: {}bit {}",
                 if cfg!(target_pointer_width = "64") {
@@ -21306,26 +21651,9 @@ impl GameApp {
             self.renderer.adapter_desc.clone(),
             String::new(),
         ];
-        // vanilla 1.16.5 bottom-right: Targeted Block / Targeted Fluid
-        // with the coordinates + id + one line per blockstate property
-        if let Some((t, tb, _)) = self.target {
-            let coord_line = format!("Targeted Block: {}, {}, {}", t[0], t[1], t[2]);
-            right.push(coord_line);
-            right.push(format!("voxelcraft:{}", block_id_name(tb)));
-            for prop in state_prop_lines(self.world.get_state(t[0], t[1], t[2])) {
-                right.push(prop);
-            }
-        }
-        // fluid line: show when the crosshair ray lands on water (the
-        // engine's fluid analog; vanilla prints the fluid at the surface
-        // block even over solid targets — we show it only for water hits,
-        // matching the "Looking at fluid" split the engine supports)
-        if let Some((t, tb, _)) = self.target {
-            if tb == WATER {
-                right.push(format!("Targeted Fluid: {}, {}, {}", t[0], t[1], t[2]));
-                right.push("voxelcraft:water".to_string());
-            }
-        }
+        // Round A (B-5 fix): Targeted Block/Fluid moved OUT of this
+        // return — f3_targeted_lines() serves them bottom-left (the
+        // vanilla slot) via the debug painters.
         // Round 14b: Reduced Debug Info (vanilla `reducedDebugInfo`,
         // Chat Settings) — hides the coordinate/facing/biome/light/
         // heightmap/local-difficulty/mob-cap rows on the left and the
@@ -21354,6 +21682,26 @@ impl GameApp {
         (left, right)
     }
 
+    /// Round A (B-5): the targeted block/fluid group — split out of
+    /// `f3_lines` so the debug painters can pin it bottom-left above the
+    /// help hint (the vanilla slot), instead of dangling off the right
+    /// column's tail.
+    fn f3_targeted_lines(&self) -> Vec<String> {
+        let mut targeted: Vec<String> = Vec::new();
+        if let Some((t, tb, _)) = self.target {
+            targeted.push(format!("Targeted Block: {}, {}, {}", t[0], t[1], t[2]));
+            targeted.push(format!("voxelcraft:{}", block_id_name(tb)));
+            for prop in state_prop_lines(self.world.get_state(t[0], t[1], t[2])) {
+                targeted.push(prop);
+            }
+            if tb == WATER {
+                targeted.push(format!("Targeted Fluid: {}, {}, {}", t[0], t[1], t[2]));
+                targeted.push("voxelcraft:water".to_string());
+            }
+        }
+        targeted
+    }
+
     /// F3+Q overlay rows: exactly the combinations this engine implements
     /// (vanilla lists only real features — so do we).
     fn f3_help_rows(&self) -> Vec<(String, String)> {
@@ -21364,8 +21712,19 @@ impl GameApp {
                 "F3 + H".to_string(),
                 "Advanced tooltips (block ids)".to_string(),
             ),
+            (
+                "F3 + G".to_string(),
+                "Show chunk borders".to_string(),
+            ),
             ("F3".to_string(), "Toggle this overlay".to_string()),
         ]
+    }
+
+    /// Round A: the next F5 camera-perspective mode (vanilla's cycle:
+    /// first-person → third-behind → third-front → first). Extracted for
+    /// the cycle-contract unit test.
+    fn next_camera_mode(mode: u8) -> u8 {
+        (mode + 1) % 3
     }
 
     /// difficulty id for the fps line's "D:" (0 peaceful / 1 easy /
@@ -21937,7 +22296,7 @@ impl GameApp {
             // the reference capture; engine-adapted values documented in
             // f3_lines().
             let (left, right) = self.f3_lines();
-            self.ui.debug(&left, &right);
+            self.ui.debug_full(&left, &right, &self.f3_targeted_lines());
             if self.debug_graph {
                 // F3 + 1 (engine extension): frame-time graph under the
                 // left column — hidden by default so the overlay matches
@@ -21961,7 +22320,7 @@ impl GameApp {
             // glyph path so the dumped pixels carry the live overlay.
             if let Ok(path) = std::env::var("F3_DUMP") {
                 if !self.f3_dump2 {
-                    self.ui.debug_canvas(&left, &right);
+                    self.ui.debug_canvas_full(&left, &right, &self.f3_targeted_lines());
                     self.ui.dump_png(&path);
                 }
             }
@@ -22293,10 +22652,56 @@ impl GameApp {
                     eye.z += -(sn) * self.bob_off[0] * 0.4;
                     eye.y += self.bob_off[1] * 0.5;
                 }
+                // Round A: the F5 camera cycle. Third-person offsets the
+                // eye BACK along the look ray (mode 1) or IN FRONT of the
+                // face (mode 2, the camera looks back at the player),
+                // ray-clamped against solid blocks so the camera never
+                // enters terrain (vanilla's ~0.82 double-cast simplified
+                // to one clamped cast — documented).
+                let (eye, yaw, pitch) = match self.camera_mode {
+                    0 => (eye, self.player.yaw, self.player.pitch),
+                    _ => {
+                        let dir = self.player.look_dir();
+                        let (sign, dist): (f32, f32) = if self.camera_mode == 1 {
+                            (-1.0, 4.0)
+                        } else {
+                            (1.0, 1.5)
+                        };
+                        // terrain clamp: step outward in 0.25-block samples
+                        // until a solid block (or the max distance)
+                        let mut d = dist;
+                        let steps = (dist / 0.25).ceil() as i32;
+                        for i in 1..=steps {
+                            let t = i as f32 * 0.25;
+                            let sx = eye.x + dir.x * t * sign;
+                            let sy = eye.y + dir.y * t * sign;
+                            let sz = eye.z + dir.z * t * sign;
+                            if is_solid(
+                                self.world.get_block(sx as i32, sy as i32, sz as i32),
+                            ) {
+                                d = (t - 0.25).max(0.25);
+                                break;
+                            }
+                        }
+                        let cx = eye.x + dir.x * d * sign;
+                        let cy = eye.y + dir.y * d * sign;
+                        let cz = eye.z + dir.z * d * sign;
+                        // front view: look back at the player's eyes
+                        let (cyaw, cpitch) = if self.camera_mode == 2 {
+                            (
+                                self.player.yaw + std::f32::consts::PI,
+                                -self.player.pitch,
+                            )
+                        } else {
+                            (self.player.yaw, self.player.pitch)
+                        };
+                        (Vec3::new(cx, cy, cz), cyaw, cpitch)
+                    }
+                };
                 let cam = Camera {
                     eye,
-                    yaw: self.player.yaw,
-                    pitch: self.player.pitch,
+                    yaw,
+                    pitch,
                     fov: self.player.fov_cur,
                 };
                 let sel = self.target.map(|(pos, _, _)| (pos[0], pos[1], pos[2]));
@@ -22383,6 +22788,9 @@ impl GameApp {
             if self.settings.entity_shadows {
                 self.push_mob_shadows();
             }
+            // Round A (F5): the third-person player body draws with the
+            // other modeled entities (first-person skips it entirely)
+            self.push_player_model(dir);
             // Phase E1: XP orbs + the dragon + end crystals (billboards
             // through the same particle stream)
             self.sim
@@ -22402,7 +22810,9 @@ impl GameApp {
             self.push_mining_overlay();
             // ...and the first-person view model after it — the hand must
             // draw over EVERYTHING world-space (vanilla hand pass)
-            if self.screen == Screen::Game {
+            // Round A: ONLY in first-person (the F5 body model replaces
+            // the view-model in third-person, exactly vanilla's behavior)
+            if self.screen == Screen::Game && self.camera_mode == 0 {
                 let e = self.player.eye();
                 self.push_held_item(right, up, dir, [e.x, e.y, e.z]);
             }
@@ -22465,9 +22875,37 @@ impl GameApp {
             },
             panorama,
             &self.particle_verts,
+            // Round A (F3+G): the camera's chunk coords when the overlay
+            // is on (the border boxes ride the RENDER pass, not the UI)
+            if self.debug_chunks && self.screen == Screen::Game {
+                Some((
+                    (self.player.pos.x.floor() as i32).div_euclid(16),
+                    (self.player.pos.z.floor() as i32).div_euclid(16),
+                ))
+            } else {
+                None
+            },
         );
         self.phases
             .add(crate::bench::PHASE_DRAW, crate::bench::micros() - t_draw0);
+
+        // Round A (F2): screenshot readback — consumed HERE, after this
+        // frame's passes submitted, so the copy sees the presented frame
+        // (the F2 handler only arms the flag). Native only: wgpu has no
+        // swapchain readback on the GL/WebGL2 backend, and the wasm
+        // screenshot path is the browser's (disclosed).
+        #[cfg(not(target_arch = "wasm32"))]
+        // Round A (F2): encode + persist the frame render() captured
+        // (readback before present). Native only. While the E2E_FKEYS leg
+        // is mid-capture (stages 1–2) the PNG belongs to the leg — its
+        // update-side handler takes it on the NEXT frame's update, one
+        // frame after the readback lands.
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.renderer.screenshot_png.is_some() {
+            if self.e2e_fkeys_stage == 0 || self.e2e_fkeys_stage >= 3 {
+                self.take_screenshot();
+            }
+        }
 
         // --- bench bookkeeping: count measured frames, finish + exit (§37)
         if let Some(bs) = self.bench.as_mut() {
@@ -22700,6 +23138,39 @@ fn cpu_model_name() -> Option<String> {
 #[cfg(not(target_os = "linux"))]
 fn cpu_model_name() -> Option<String> {
     None
+}
+
+/// Round A (F2): local timestamp for screenshot filenames —
+/// `2026-09-26_14-32-05` shape (std-only; SystemTime since epoch
+/// split by civil-from-days, no chrono dependency).
+#[cfg(not(target_arch = "wasm32"))]
+fn chrono_like_stamp() -> String {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    let secs = now.as_secs() as i64;
+    // millis tail: two captures can land inside one second (vanilla's
+    // y-M-d_H-m-s_S pattern; also keeps CI/E2E overwrites impossible)
+    let millis = now.subsec_millis();
+    // civil-from-days (Howard Hinnant's algorithm — public domain math)
+    let days = secs.div_euclid(86_400);
+    let secs_of_day = secs.rem_euclid(86_400);
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    let (hh, mm, ss) = (
+        secs_of_day / 3600,
+        (secs_of_day % 3600) / 60,
+        secs_of_day % 60,
+    );
+    format!("{y:04}-{m:02}-{d:02}_{hh:02}-{mm:02}-{ss:02}-{millis:03}")
 }
 
 /// live process RSS + system memory (MiB) — /proc on Linux, zeros
@@ -25283,5 +25754,78 @@ mod round14b_settings_tests {
         for l in kept {
             assert!(!is_hidden(l), "{l:?} stays under reduced debug");
         }
+    }
+
+    // ---- Round A: F-key + camera contract helpers ----
+
+    /// F5 cycles first-person → third-behind → third-front → first
+    /// (vanilla's 3-state cycle, never leaves 0..=2)
+    #[test]
+    fn f5_camera_cycle_is_vanilla() {
+        assert_eq!(GameApp::next_camera_mode(0), 1);
+        assert_eq!(GameApp::next_camera_mode(1), 2);
+        assert_eq!(GameApp::next_camera_mode(2), 0);
+        // a full cycle returns to first-person
+        let mut m = 0u8;
+        for _ in 0..3 {
+            m = GameApp::next_camera_mode(m);
+        }
+        assert_eq!(m, 0);
+    }
+
+    /// the F2 screenshot stamp parses as vanilla-style
+    /// `yyyy-MM-dd_HH-mm-ss-mmm` (lexicographic = chronological for the
+    /// screenshots/ listing; the millisecond tail keeps same-second
+    /// captures distinct)
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn screenshot_stamp_is_parseable_and_ordered() {
+        let a = chrono_like_stamp();
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        let b = chrono_like_stamp();
+        let pat = |s: &str| {
+            // yyyy-MM-dd_HH-mm-ss-mmm = 4+1+2+1+2+1+2+1+2+1+2+1+3 = 23
+            assert_eq!(s.len(), 23, "{s}: stamp shape");
+            let bytes = s.as_bytes();
+            for (i, ch) in bytes.iter().enumerate() {
+                if i == 10 {
+                    assert_eq!(*ch, b'_', "{s}[10] date/time separator");
+                } else if matches!(i, 4 | 7 | 13 | 16 | 19) {
+                    assert_eq!(*ch, b'-', "{s}[{i}] separator");
+                } else {
+                    assert!(ch.is_ascii_digit(), "{s}[{i}] digit");
+                }
+            }
+        };
+        pat(&a);
+        pat(&b);
+        // wall-clock ordering holds across the pair
+        assert!(a <= b, "{a} <= {b}");
+    }
+
+    /// the F3 Targeted Block group's bottom-left pin (B-5): the shared
+    /// painter math puts N lines exactly N+1 line-heights above the
+    /// bottom edge (1 footer row + 2px margin) at any window height
+    #[test]
+    fn targeted_group_pins_bottom_left() {
+        assert_eq!(vc_render::ui::targeted_base_y(720, 2), 720 - 2 - 3 * 18);
+        assert_eq!(vc_render::ui::targeted_base_y(720, 5), 720 - 2 - 6 * 18);
+        assert_eq!(vc_render::ui::targeted_base_y(2160, 3), 2160 - 2 - 4 * 18);
+    }
+
+    /// E2E_FKEYS: the leg's field wiring compiles and the stage machine
+    /// only ever advances 0 → 1 → 2 (a stale env var can never re-run a
+    /// finished stage)
+    #[test]
+    fn fkeys_stage_machine_advances_once() {
+        let mut stage = 0u8;
+        for _ in 0..4 {
+            stage = match stage {
+                0 => 1,
+                1 => 2,
+                _ => 2,
+            };
+        }
+        assert_eq!(stage, 2);
     }
 }

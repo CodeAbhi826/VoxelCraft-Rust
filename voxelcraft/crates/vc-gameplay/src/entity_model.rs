@@ -43,6 +43,7 @@
 //! counts.
 
 use vc_particles::particles::ParticleVertex;
+use vc_blocks::blocks::TILE_MOB_PLAYER;
 
 /// One joint in the hierarchy. Geometry is authored in MODEL PX
 /// (16 per block, origin at the entity's ground-plane center, +y up,
@@ -408,6 +409,15 @@ fn head_tex(tile: u16, front: [u8; 4], plain: [u8; 4]) -> FaceTex {
     let mut rect = [plain; 6];
     rect[4] = front;
     FaceTex { tile, rect }
+}
+
+/// Round A (F5 third-person): the player rig — the classic humanoid
+/// skinned from the clean-room player sprite (TILE_MOB_PLAYER) in the
+/// hanging-arms (living) pose. Same 32-px rig + walk/attack/hurt/idle
+/// ranges the zombie family already drives; px_height 32 auto-fits the
+/// 1.8-block player hitbox at scale 0.05625 (1.8/32).
+pub fn player() -> EntityModel {
+    humanoid(TILE_MOB_PLAYER, false)
 }
 
 /// the classic 32-px humanoid rig (zombie/skeleton families).

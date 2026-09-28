@@ -281,6 +281,33 @@ jobs:
             test -e "run2/$f" || { echo "FAIL: first-run $f did not materialize"; exit 1; }
           done
           echo "FIRST-RUN OK - running the game creates its profile folder (builtin-pack extracted, options.txt, logs/latest.log)"
+
+          # Round A: the F-KEY CONTRACT (E2E_FKEYS=1) — every function key
+          # through the real key_action path: F1 HUD toggle, F5 perspective
+          # cycle (0→1→2→0), F3+G chunk borders on→off, F11 fullscreen
+          # on→off, F2 arms the swapchain readback whose PNG lands the next
+          # frame (verified non-trivial, saved to screenshots/).
+          mkdir -p run3 && pushd run3 >/dev/null
+          set +e
+          timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan E2E_FKEYS=1 \
+            "../$BIN_NAME" --smoke --debug 2>&1 | tee ../smoke-fkeys.log
+          CODE=$?
+          set -e
+          popd >/dev/null
+          echo "fkeys smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: F-key contract E2E exited $CODE"
+            exit 1
+          fi
+          grep -q "e2e: fkeys keys ok" smoke-fkeys.log
+          grep -q "FKEY CONTRACT OK" smoke-fkeys.log
+          grep -q "e2e: fkeys behind view saved" smoke-fkeys.log
+          grep -q "e2e: fkeys front view saved" smoke-fkeys.log
+          test -s run3/screenshots/e2e_fkeys_behind_*.png || { echo "FAIL: behind-view screenshot missing"; exit 1; }
+          test -s run3/screenshots/e2e_fkeys_front_*.png || { echo "FAIL: front-view screenshot missing"; exit 1; }
+          echo "FKEYS OK - F1/F2/F5/F3+G/F11 verified through the real input path (both F5 views captured)"
+
           echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 
       - name: Upload artifact (the raw executable, no archive)

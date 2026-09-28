@@ -862,6 +862,40 @@ fn enchanted_book_art(a: &mut [u8], t: u16) {
 // choices are generic (undead green, bone white, spotted hide...) which
 // are unprotectable style conventions for the creature archetypes.
 
+/// Round A (third-person camera): the player skin sprite — clean-room
+/// art mapping the humanoid rig's sub-rects (head rows 1-5 with face
+/// strip on row 3-4, torso+arms rows 6-11, legs rows 12-14). Generic
+/// adventurer palette of our own design (cyan shirt, blue jeans, warm
+/// skin tones) — not a recreation of any existing skin.
+fn player_skin_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "....SSSSSS......",
+        "....SSSSSS......",
+        "....SESSSE......",
+        "....SSMMSS......",
+        "....SSSSSS......",
+        "...CCSSSSSSCC...",
+        "..CCCSSSSSSCCC..",
+        "..CCCSSSSSSCCC..",
+        "..CCCSSSSSSCCC..",
+        "...CCSSSSSSCC...",
+        "...CCSSSSSSCC...",
+        "...JJ......JJ...",
+        "...JJ......JJ...",
+        "...JJ......JJ...",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'S' => Some((224, 172, 138, 255)), // skin
+        'E' => Some((40, 48, 60, 255)),    // eyes
+        'M' => Some((150, 96, 80, 255)),   // mouth
+        'C' => Some((0, 150, 168, 255)),   // cyan tunic
+        'J' => Some((52, 70, 120, 255)),   // jeans
+        _ => None,
+    });
+}
+
 /// zombie: shambler silhouette, sickly green skin, ragged tunic
 fn zombie_art(a: &mut [u8], t: u16) {
     let rows = [
@@ -3837,6 +3871,7 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_VILLAGER => villager_art(&mut a, t),
             // mobs (Phase 2) — entity sprites, clean-room art (ours)
             TILE_ZOMBIE => zombie_art(&mut a, t),
+            TILE_MOB_PLAYER => player_skin_art(&mut a, t),
             TILE_SKELETON => skeleton_art(&mut a, t),
             TILE_CREEPER => creeper_art(&mut a, t),
             TILE_SPIDER => spider_art(&mut a, t),

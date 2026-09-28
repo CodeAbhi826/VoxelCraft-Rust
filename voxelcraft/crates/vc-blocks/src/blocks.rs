@@ -4576,7 +4576,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 792; // + the 16 armor item sprites (775..=790, sub-round 3) + Round 13 book/grindstone (791/792) // 763 farming bracket + 764..773 destroy stages + 774 arm
+pub const TILE_MAX: u16 = 793; // + the 16 armor item sprites (775..=790, sub-round 3) + Round 13 book/grindstone (791/792) + Round A player skin (793) // 763 farming bracket + 764..773 destroy stages + 774 arm
 
 // ---- the 2026-09-14 round: destroy-stage crack overlays (764..=773) and
 // the first-person arm tile (774). The ten destroy stages are the vanilla
@@ -5116,6 +5116,11 @@ pub const TILE_FIRE: u16 = 738;
 pub const TILE_BOOK: u16 = 791;
 /// Round 13: the grindstone block sprite (r13_art::grindstone_art)
 pub const TILE_GRINDSTONE: u16 = 792;
+/// Round A (third-person camera): the player skin sprite — the humanoid
+/// rig's texture source. Clean-room art (textures::player_skin_art):
+/// rows 1-5 head/face, rows 6-11 torso+arms, rows 12-14 legs (the same
+/// sub-rect map the zombie humanoid rig already samples).
+pub const TILE_MOB_PLAYER: u16 = 793;
 /// the fire block (id 506 — lightning ignition + flint-and-steel
 /// source; VERIFIED w/Weather §Lightning).
 pub const FIRE: u16 = 506;

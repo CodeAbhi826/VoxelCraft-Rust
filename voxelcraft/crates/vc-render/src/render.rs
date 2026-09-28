@@ -1532,6 +1532,7 @@ pub struct Renderer {
     // selection lines
     line_buf: wgpu::Buffer,
     line_vb: wgpu::Buffer,
+    chunk_border_vb: wgpu::Buffer,
     line_pipe: wgpu::RenderPipeline,
     line_bg: wgpu::BindGroup,
     /// Phase 6: shared scene bind group layouts — both the 1x and MSAA
@@ -1580,6 +1581,14 @@ pub struct Renderer {
     shadow_buf: wgpu::Buffer,
     shadow_bg: wgpu::BindGroup,
     shadow_pipe: wgpu::RenderPipeline,
+    /// Round A (F2): armed by the game before render(); the swapchain is
+    /// read back inside render() — before present, which invalidates the
+    /// texture — and the PNG bytes land in `screenshot_png` (native only;
+    /// wgpu has no swapchain readback on WebGL2, wasm uses the browser's
+    /// screenshot path instead).
+    pub screenshot_request: bool,
+    /// PNG bytes of the frame captured this render() (F2), consumed once
+    pub screenshot_png: Option<Vec<u8>>,
     /// current shadow map resolution (px per side) — §17 quality setting
     pub shadow_px: u32,
     // §18 biome tint LUT (row = kind, col = slot)
@@ -2190,7 +2199,7 @@ impl Renderer {
         };
         let size = window.inner_size();
         let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
             format,
             width: size.width.max(1),
             height: size.height.max(1),
@@ -2927,6 +2936,18 @@ impl Renderer {
             contents: bytemuck::cast_slice(&edges),
             usage: wgpu::BufferUsages::VERTEX,
         });
+        // Round A (F3+G): the same unit-cube edges PRE-SCALED to one
+        // chunk column (16 × world height 128, drawn from y=0) — the
+        // per-instance offset uniform positions each column
+        let mut border_edges: Vec<[f32; 3]> = Vec::with_capacity(24);
+        for e3 in &edges {
+            border_edges.push([e3[0] * 16.0, e3[1] * 128.0, e3[2] * 16.0]);
+        }
+        let chunk_border_vb = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("chunk-border-vb"),
+            contents: bytemuck::cast_slice(&border_edges),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
 
         // ---------------------------------------------------------- clouds
         let cloud_atlas = crate::textures::generate_cloud_atlas();
@@ -3380,6 +3401,7 @@ impl Renderer {
             gui_quads_enabled: true,
             line_buf,
             line_vb,
+            chunk_border_vb,
             line_pipe: scene.line,
             line_bg,
             line_bgl,
@@ -3449,6 +3471,8 @@ impl Renderer {
             present_modes,
             vsync,
             submitted_frames: 0,
+            screenshot_request: false,
+            screenshot_png: None,
             gpu_mesh,
         };
         report_boot_log("renderer ready (pipelines + atlas + clouds + post chain)");
@@ -4206,6 +4230,10 @@ impl Renderer {
         &self.queue
     }
 
+    /// Round A (F2): acquire the CURRENT swapchain texture without
+    /// presenting a new frame — the screenshot path copies from it after
+    /// the regular frame's passes have submitted. Returns None when the
+    /// surface would block (stale frame); the caller skips that shot.
     /// drop all GPU chunk meshes (full re-mesh, e.g. smooth-lighting toggle)
     pub fn clear_meshes(&mut self) {
         self.chunks.clear();
@@ -5218,6 +5246,101 @@ impl Renderer {
     }
 
     #[allow(clippy::too_many_arguments)]
+    /// Round A (F2): encode the captured frame (see render()'s readback)
+    /// as PNG — called by the game after render() returns Some(len).
+    pub fn take_screenshot_png(&mut self) -> Option<Vec<u8>> {
+        self.screenshot_png.take().map(|rgba| {
+            image::RgbaImage::from_raw(self.config.width, self.config.height, rgba)
+                .map(|img| {
+                    let mut out = std::io::Cursor::new(Vec::new());
+                    // vanilla writes screenshots without alpha
+                    let _ = img
+                        .write_to(&mut out, image::ImageFormat::Png)
+                        .map(|_: ()| ()) as Result<(), image::ImageError>;
+                    out.into_inner()
+                })
+                .unwrap_or_default()
+        })
+    }
+
+    /// Round A (F2): copy the CURRENT swapchain texture into a staging
+    /// buffer and read the pixels back on the CPU. Must run INSIDE
+    /// render() before `frame.present()` (present invalidates the
+    /// texture). Bytes come back BGRA (Bgra8UnormSrgb surface) and are
+    /// swapped to RGBA here; the PNG encode happens in
+    /// take_screenshot_png(). Native only.
+    fn capture_frame_if_requested(&mut self, frame: &wgpu::SurfaceTexture) {
+        if !self.screenshot_request {
+            return;
+        }
+        self.screenshot_request = false;
+        let (w, h) = (self.config.width, self.config.height);
+        if w == 0 || h == 0 {
+            return;
+        }
+        // bytes-per-row must be a multiple of 256 — pad and trim after
+        let bytes_per_row = ((w * 4 + 255) / 256) * 256;
+        let buf = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("screenshot-buf"),
+            size: (bytes_per_row * h) as u64,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let mut enc = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("screenshot-enc"),
+            });
+        enc.copy_texture_to_buffer(
+            frame.texture.as_image_copy(),
+            wgpu::ImageCopyBuffer {
+                buffer: &buf,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(bytes_per_row),
+                    rows_per_image: Some(h),
+                },
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
+        self.queue.submit(Some(enc.finish()));
+        let slice = buf.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice
+            .map_async(wgpu::MapMode::Read, move |r| {
+                let _ = tx.send(r);
+            });
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        let _ = rx.recv_timeout(std::time::Duration::from_secs(2));
+        let data = slice.get_mapped_range().to_vec();
+        let _ = buf.unmap();
+        // unpad rows + BGRA→RGBA (Bgra8UnormSrgb is the surface format;
+        // Rgba8UnormSrgb surfaces need no swap)
+        let swap = self.config.format == wgpu::TextureFormat::Bgra8UnormSrgb
+            || self.config.format == wgpu::TextureFormat::Bgra8Unorm;
+        let mut px = Vec::with_capacity((w * h * 4) as usize);
+        for y in 0..h {
+            let row = &data[(y * bytes_per_row) as usize..((y * bytes_per_row) + w * 4) as usize];
+            for c in row.chunks_exact(4) {
+                if swap {
+                    px.push(c[2]);
+                    px.push(c[1]);
+                    px.push(c[0]);
+                } else {
+                    px.push(c[0]);
+                    px.push(c[1]);
+                    px.push(c[2]);
+                }
+                px.push(255);
+            }
+        }
+        self.screenshot_png = Some(px);
+    }
+
     pub fn render(
         &mut self,
         cam: &Camera,
@@ -5228,6 +5351,7 @@ impl Renderer {
         clouds: u8,
         panorama: Option<PanoView>,
         particles: &[vc_particles::particles::ParticleVertex],
+        chunk_borders: Option<(i32, i32)>,
     ) -> RenderStats {
         let frame = match self.surface.get_current_texture() {
             Ok(f) => f,
@@ -5792,6 +5916,46 @@ impl Renderer {
                 pass.draw(0..24, 0..1);
             }
 
+            // 3.5 Round A (F3+G): chunk-border boxes — the vertical
+            // wireframe of every chunk column within ~2 chunks of the
+            // camera, one instance per column via the SAME line pipeline
+            // (per-box offset uniform rewritten between instances — the
+            // count is tiny (≤25), the per-instance uniform write is
+            // negligible, and it reuses the proven depth-blend state).
+            if let Some((bcx, bcz)) = chunk_borders {
+                pass.set_pipeline(line_p);
+                for dx in -2..=2 {
+                    for dz in -2..=2 {
+                        let cx = bcx + dx;
+                        let cz = bcz + dz;
+                        let border_u = LineUniform {
+                            vp: vp.to_cols_array_2d(),
+                            offset: [
+                                cx as f32 * 16.0,
+                                0.0,
+                                cz as f32 * 16.0,
+                                1.0,
+                            ],
+                            // yellow (the vanilla F3+G tint family)
+                            color: [0.9, 0.85, 0.2, 0.55],
+                        };
+                        // scale trick: the unit-cube edge geometry spans
+                        // 0..1 — multiply by writing a scaled offset is
+                        // impossible, so borders ride a SECOND vertex
+                        // buffer holding the pre-scaled 16-block box
+                        pass.set_bind_group(0, &self.line_bg, &[]);
+                        self.queue.write_buffer(
+                            &self.line_buf,
+                            0,
+                            bytemuck::bytes_of(&border_u),
+                        );
+                        pass.set_vertex_buffer(0, self.chunk_border_vb.slice(..));
+                        pass.draw(0..24, 0..1);
+                    }
+                }
+                stats.binds += 1;
+            }
+
             // 4. water (far → near, blended) — reversed region-major order,
             // same origin rows, same zero-rebind submission
             pass.set_pipeline(water_p);
@@ -6145,6 +6309,9 @@ impl Renderer {
         }
 
         self.queue.submit(Some(encoder.finish()));
+        // Round A (F2): readback while the swapchain texture is still
+        // valid (present() would invalidate it)
+        self.capture_frame_if_requested(&frame);
         frame.present();
         if self.submitted_frames < 3 {
             self.submitted_frames += 1;

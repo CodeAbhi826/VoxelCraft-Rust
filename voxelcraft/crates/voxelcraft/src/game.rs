@@ -14316,11 +14316,10 @@ impl GameApp {
                         vc_render::render::report_boot_log("e2e: fkeys front view armed");
                     }
                 }
-                2 => {
-                    if self.renderer.screenshot_png.is_some() {
-                        self.e2e_fkeys_capture(true);
-                    }
+                2 if self.renderer.screenshot_png.is_some() => {
+                    self.e2e_fkeys_capture(true);
                 }
+                2 => {}
                 _ => {}
             }
         }
@@ -22871,10 +22870,10 @@ impl GameApp {
         // update-side handler takes it on the NEXT frame's update, one
         // frame after the readback lands.
         #[cfg(not(target_arch = "wasm32"))]
-        if self.renderer.screenshot_png.is_some() {
-            if self.e2e_fkeys_stage == 0 || self.e2e_fkeys_stage >= 3 {
-                self.take_screenshot();
-            }
+        if self.renderer.screenshot_png.is_some()
+            && (self.e2e_fkeys_stage == 0 || self.e2e_fkeys_stage >= 3)
+        {
+            self.take_screenshot();
         }
 
         // --- bench bookkeeping: count measured frames, finish + exit (§37)

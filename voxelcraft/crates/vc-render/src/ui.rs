@@ -7,6 +7,7 @@
 use std::sync::OnceLock;
 
 use crate::textures::blit_tile;
+use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
 
@@ -6527,7 +6528,7 @@ mod phase3_icon_tests {
         ui.draw_stack(&s, 100, 100, &atlas);
         assert_eq!(ui.gui_frame.quads.len(), before, "no icon without cells");
         // publish a ready cell for block 3
-        let mut cells = rustc_hash::FxHashMap::default();
+        let mut cells = FxHashMap::default();
         cells.insert(3u16, [2u8, 1u8]);
         ui.set_icon_cells(Arc::new(cells));
         ui.clear();

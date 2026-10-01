@@ -16,3 +16,6 @@ vc-world = { workspace = true }
 [dev-dependencies]
 # test-only (cycle is dev-only: vc-render depends on vc-mesh for real)
 vc-render = { workspace = true }
+
+# T8 (2026-10-01): FxHash for the test-side model registry maps
+rustc-hash = { workspace = true }

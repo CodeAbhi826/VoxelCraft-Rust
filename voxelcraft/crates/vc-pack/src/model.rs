@@ -798,7 +798,7 @@ mod tests {
 
     /// in-memory pack for tests
     fn pack(files: &[(&str, &str)]) -> impl Fn(&str) -> Option<Vec<u8>> {
-        let map: Map<String, Vec<u8>> = files
+        let map: std::collections::HashMap<String, Vec<u8>> = files
             .iter()
             .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
             .collect();

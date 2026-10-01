@@ -1545,7 +1545,14 @@ pub struct Renderer {
     // selection lines
     line_buf: wgpu::Buffer,
     line_vb: wgpu::Buffer,
-    chunk_border_vb: wgpu::Buffer,
+    /// T5 fix (2026-10-01): the 5×5 chunk-border grid as ONE static vertex
+    /// buffer — 25 pre-scaled column boxes (24 verts each) with the
+    /// per-box offsets baked into the vertices; the per-frame uniform
+    /// offset positions the whole neighborhood. Replaces the old
+    /// single-box buffer + 25 mid-pass `write_buffer` calls, which wgpu
+    /// collapses to the LAST uniform (all 25 boxes drew at one offset —
+    /// the overlay rendered nothing).
+    border_grid_vb: wgpu::Buffer,
     line_pipe: wgpu::RenderPipeline,
     line_bg: wgpu::BindGroup,
     /// Phase 6: shared scene bind group layouts — both the 1x and MSAA
@@ -2948,16 +2955,31 @@ impl Renderer {
             contents: bytemuck::cast_slice(&edges),
             usage: wgpu::BufferUsages::VERTEX,
         });
-        // Round A (F3+G): the same unit-cube edges PRE-SCALED to one
-        // chunk column (16 × world height 128, drawn from y=0) — the
-        // per-instance offset uniform positions each column
-        let mut border_edges: Vec<[f32; 3]> = Vec::with_capacity(24);
-        for e3 in &edges {
-            border_edges.push([e3[0] * 16.0, e3[1] * 128.0, e3[2] * 16.0]);
+        // Round A (F3+G), T5 fix (2026-10-01): the 5×5 chunk-border grid
+        // as ONE static vertex buffer — 25 pre-scaled chunk-column boxes
+        // (16 × world height 128, drawn from y=0) with each box's
+        // neighborhood offset (dx·16, dz·16) baked into its vertices. The
+        // per-frame uniform offset (bcx·16, 0, bcz·16) positions the whole
+        // neighborhood, so the frame needs ONE uniform write and ONE draw
+        // — the old single-box buffer needed 25 mid-pass `write_buffer`
+        // calls, and wgpu applies write_buffer modifications before the
+        // whole command buffer executes, so all 25 boxes collapsed to the
+        // LAST offset and the overlay rendered nothing.
+        let mut border_grid: Vec<[f32; 3]> = Vec::with_capacity(25 * 24);
+        for dx in -2i32..=2 {
+            for dz in -2i32..=2 {
+                for e3 in &edges {
+                    border_grid.push([
+                        e3[0] * 16.0 + dx as f32 * 16.0,
+                        e3[1] * 128.0,
+                        e3[2] * 16.0 + dz as f32 * 16.0,
+                    ]);
+                }
+            }
         }
-        let chunk_border_vb = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("chunk-border-vb"),
-            contents: bytemuck::cast_slice(&border_edges),
+        let border_grid_vb = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("border-grid-vb"),
+            contents: bytemuck::cast_slice(&border_grid),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
@@ -3413,7 +3435,7 @@ impl Renderer {
             gui_quads_enabled: true,
             line_buf,
             line_vb,
-            chunk_border_vb,
+            border_grid_vb,
             line_pipe: scene.line,
             line_bg,
             line_bgl,
@@ -5933,38 +5955,28 @@ impl Renderer {
                     pass.draw(0..24, 0..1);
                 }
 
-                // 3.5 Round A (F3+G): chunk-border boxes — the vertical
-                // wireframe of every chunk column within ~2 chunks of the
-                // camera, one instance per column via the SAME line pipeline
-                // (per-box offset uniform rewritten between instances — the
-                // count is tiny (≤25), the per-instance uniform write is
-                // negligible, and it reuses the proven depth-blend state).
+                // 3.5 Round A (F3+G), T5 fix (2026-10-01): chunk-border
+                // boxes — the vertical wireframe of every chunk column
+                // within ~2 chunks of the camera, drawn as ONE static
+                // 25-box grid (600 verts) with the neighborhood offset in
+                // the uniform: ONE uniform write + ONE draw, both correctly
+                // ordered before the command buffer executes. The old loop
+                // rewrote one uniform between 25 draws of the same pass —
+                // wgpu collapses those to the last write, so all boxes
+                // drew at one offset and the overlay rendered nothing.
                 if let Some((bcx, bcz)) = chunk_borders {
                     pass.set_pipeline(line_p);
-                    for dx in -2..=2 {
-                        for dz in -2..=2 {
-                            let cx = bcx + dx;
-                            let cz = bcz + dz;
-                            let border_u = LineUniform {
-                                vp: vp.to_cols_array_2d(),
-                                offset: [cx as f32 * 16.0, 0.0, cz as f32 * 16.0, 1.0],
-                                // yellow (the vanilla F3+G tint family)
-                                color: [0.9, 0.85, 0.2, 0.55],
-                            };
-                            // scale trick: the unit-cube edge geometry spans
-                            // 0..1 — multiply by writing a scaled offset is
-                            // impossible, so borders ride a SECOND vertex
-                            // buffer holding the pre-scaled 16-block box
-                            pass.set_bind_group(0, &self.line_bg, &[]);
-                            self.queue.write_buffer(
-                                &self.line_buf,
-                                0,
-                                bytemuck::bytes_of(&border_u),
-                            );
-                            pass.set_vertex_buffer(0, self.chunk_border_vb.slice(..));
-                            pass.draw(0..24, 0..1);
-                        }
-                    }
+                    let border_u = LineUniform {
+                        vp: vp.to_cols_array_2d(),
+                        offset: [bcx as f32 * 16.0, 0.0, bcz as f32 * 16.0, 1.0],
+                        // yellow (the vanilla F3+G tint family)
+                        color: [0.9, 0.85, 0.2, 0.55],
+                    };
+                    pass.set_bind_group(0, &self.line_bg, &[]);
+                    self.queue
+                        .write_buffer(&self.line_buf, 0, bytemuck::bytes_of(&border_u));
+                    pass.set_vertex_buffer(0, self.border_grid_vb.slice(..));
+                    pass.draw(0..600, 0..1);
                     stats.binds += 1;
                 }
 

@@ -630,7 +630,7 @@ pub fn compile_block_dispatch(
         Ok(m)
     };
 
-    let mut by_state: HashMap<u16, Vec<ModelChoice>> = HashMap::new();
+    let mut by_state: FxHashMap<u16, Vec<ModelChoice>> = FxHashMap::default();
 
     // enumerate every property combination (mixed radix, last prop fastest)
     let total = spec.state_count as usize;

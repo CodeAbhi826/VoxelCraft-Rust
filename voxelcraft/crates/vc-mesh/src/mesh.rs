@@ -951,14 +951,18 @@ fn offset_toward(bx: f32, by: f32, bz: f32, axis: usize) -> i32 {
     }
 }
 
-/// elements with model `shade` disabled skip AO (flat look) — vanilla's
-/// model JSON `shade: false` renders the element without directional
-/// shading. T10 fix (2026-10-01): the old stub always returned true,
-/// contradicting this doc (no builtin model uses shade:false today, so
-/// the fix is behavior-neutral until a pack ships one)
+/// elements with model `shade` disabled skip AO (flat look) — T10 note
+/// (2026-10-01, corrected): vanilla's element-level `shade: false` is NOT
+/// implemented in this engine — the shade flag IS compiled (onto each
+/// CompiledFace from the element JSON) but never consumed: the face
+/// shading + AO tables live in the WGSL shaders, indexed by the face
+/// normal only. Implementing vanilla's shade semantics needs the shade
+/// bit carried in the VC-16 vertex (ledgered as T13) — a vertex-layout
+/// change, not a small fix. No builtin model uses shade:false today, so
+/// the always-true gate is behavior-neutral until then.
 #[inline]
-fn el_affects_ao(el: &vc_pack::model::CompiledElement) -> bool {
-    el.shade
+fn el_affects_ao(_el: &vc_pack::model::CompiledElement) -> bool {
+    true
 }
 
 #[allow(clippy::too_many_arguments)]

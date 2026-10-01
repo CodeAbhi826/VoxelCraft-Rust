@@ -1,11 +1,13 @@
 //! `gui/loader.rs` — GUI texture override loading (UI-overhaul Phase 1, D3).
 //!
-//! Phase 1 ships a filesystem placeholder with the right *shape*: it
+//! Phase 1 shipped the directory-read path with the right *shape*: it
 //! reads `hearts.png` / `hunger.png` / … from a directory, validates
 //! dimensions against [`SHEET_DIMS`], and merges whatever it finds over
 //! the builtin set (a pack that provides only `hearts.png` overrides
-//! hearts and nothing else). Phase 4 replaces the directory read with
-//! the `vc-pack` resolver — same merge semantics, pack-priority order.
+//! hearts and nothing else). Phase 4's `load_from_pack` (below) replaces
+//! the directory read with the `vc-pack` resolver — same merge semantics,
+//! pack-priority order (T7 doc fix: the old "filesystem placeholder"
+//! wording contradicted the shipped Phase-4 path).
 //!
 //! PNG decode uses the crate's existing `image` dependency (the repo
 //! has no `png` crate and none is being added). No `unwrap()`/`expect()`

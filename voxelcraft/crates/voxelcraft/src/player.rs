@@ -1117,11 +1117,12 @@ impl Player {
         // with pitch-driven lift; ours implements the OBSERVABLE shape
         // from the wiki's Elytra §Flight numbers — horizontal speed
         // steered toward the look direction up to ~25 b/s with descent
-        // clamped at −3.2 b/s, which preserves the wiki's "approximately
-        // 10 blocks of horizontal distance for each block of altitude
-        // lost" glide ratio. Vanilla equips it in the chest slot; ours
-        // activates when the SELECTED item is the elytra (no armor slots
-        // yet — documented). Activate: airborne + falling + jump held.
+        // clamped at −2.5 b/s (ELYTRA_DESCENT), which preserves the wiki's
+        // "approximately 10 blocks of horizontal distance for each block
+        // of altitude lost" glide ratio (25/2.5 = 10:1). Vanilla equips it
+        // in the chest slot; ours activates when the SELECTED item is the
+        // elytra (no armor slots yet — documented). Activate: airborne +
+        // falling + jump held.
         let gliding = !self.flying
             && !self.in_water
             && !self.on_ground

@@ -13,9 +13,10 @@
 //! * a wire loop through a torch oscillates (the classic torch clock)
 //!
 //! Documented deltas vs 1.16.5: no strong/weak block-power distinction
-//! (wire powers only wires and torch supports), repeaters/comparators/
-//! pistons and the remaining §25 component list are not in the registry
-//! yet — this is the connectivity + ordering core they bolt onto.
+//! (wire powers only wires and torch supports); the §25 component list
+//! (repeater/comparator/observer/piston/QC/dispenser/hopper) IS registered
+//! and implemented below — this file is the connectivity + ordering core
+//! they bolt onto.
 
 use crate::ticks::TickScheduler;
 use vc_blocks::blocks::*;

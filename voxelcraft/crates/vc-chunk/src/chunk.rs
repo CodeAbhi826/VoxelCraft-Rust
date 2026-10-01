@@ -192,7 +192,8 @@ impl Section {
     }
 
     /// unpack one whole section into a flat 4096-byte buffer (YZX order) —
-    /// used by the mesher's padded-snapshot copy
+    /// the LIGHT engine's input (light.rs reference passes; T7 doc fix —
+    /// the mesher reads states_flat, not this)
     pub fn decode_flat(&self) -> [u8; SECTION_LEN] {
         let mut out = [0u8; SECTION_LEN];
         if self.bits == 16 {
@@ -361,15 +362,15 @@ impl Chunk {
     }
 
     #[inline]
-    /// Raw BLOCK-STATE id at a position. Phase E2: widened u8 → u16 —
+    /// Owning BLOCK id at a position (T7 doc fix: the body folds every
+    /// state through `state_block`, so the return is the BLOCK id, not the
+    /// raw state — the stale "Raw BLOCK-STATE id" wording was contradicted
+    /// by the fold). Phase E2: widened u8 → u16 —
     /// the E1 bracket exhausted the ≤255 state window (0..=255 fully
     /// allocated), and E2 world blocks (anvil damage states, ender chest,
-    /// beacon, wall, frame, tripwire) need states ≥ 256. The u16 is the
-    /// raw state; callers wanting a BLOCK id fold via
-    /// `vc_blocks::blocks::state_block`. All previous call sites either
-    /// already folded (`state_block(c.get(...) as u16)` — cast now a
-    /// no-op) or compared against identity-mapped ids ≤ 56, which equals
-    /// the raw state; both keep working unchanged.
+    /// beacon, wall, frame, tripwire) need states ≥ 256. Callers wanting
+    /// the RAW state read `get_state`; callers comparing against
+    /// identity-mapped ids ≤ 56 keep working unchanged (fold == raw there).
     pub fn get(&self, x: usize, y: usize, z: usize) -> u16 {
         match &self.sections[y >> 4] {
             // 1.7 bracket: the state registry now extends past 255 (V2

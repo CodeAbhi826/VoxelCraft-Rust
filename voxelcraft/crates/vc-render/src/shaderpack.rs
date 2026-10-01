@@ -815,10 +815,9 @@ pub fn build_pack(
         }
     }
     for p in &programs {
-        for (path, key) in [("shaders/", format!("shaders/{p}.fsh"))] {
-            if let Some(c) = files.get(&key) {
-                opt_sources.push((format!("{path}{p}.fsh"), c.clone()));
-            }
+        let (path, key) = ("shaders/", format!("shaders/{p}.fsh"));
+        if let Some(c) = files.get(&key) {
+            opt_sources.push((format!("{path}{p}.fsh"), c.clone()));
         }
     }
     let mut options = scan_options(

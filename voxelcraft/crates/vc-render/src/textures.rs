@@ -3,7 +3,6 @@
 //! [merge atlas] grown from 256x256/16x16 tiles: the E1–E3 + 1.7–1.10 union
 //! pushed TILE_MAX past 256 slots.
 
-use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
 
@@ -5670,6 +5669,7 @@ pub fn generate_cloud_atlas() -> Vec<u8> {
 #[cfg(test)]
 mod pack_merge_tests {
     use super::*;
+    use rustc_hash::FxHashMap;
 
     /// helper: raw atlas bytes of one tile (RGBA, 16×16)
     fn tile_bytes(atlas: &[u8], tile: u16) -> Vec<u8> {

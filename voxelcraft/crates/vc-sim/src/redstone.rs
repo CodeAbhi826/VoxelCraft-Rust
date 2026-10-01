@@ -291,11 +291,9 @@ pub fn torch_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
 }
 
 /// one lever update: levers only change by interaction (right-click);
-/// this tick exists so a re-scheduled entry no-ops cleanly
-pub fn lever_tick(world: &World, x: i32, y: i32, z: i32) {
-    if state_block(world.get_state(x, y, z)) != LEVER { // stale
-    }
-}
+/// this tick exists so a re-scheduled entry no-ops cleanly — a no-op body
+/// (T10 fix, 2026-10-01: the old empty `if` with a stale comment is gone)
+pub fn lever_tick(_world: &World, _x: i32, _y: i32, _z: i32) {}
 
 /// Phase E1: one redstone-lamp update (VERIFIED w/Redstone_Lamp):
 /// - an adjacent active power source lights it (on torch / on lever /

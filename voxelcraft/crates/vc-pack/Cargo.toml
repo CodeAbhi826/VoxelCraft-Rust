@@ -11,6 +11,9 @@ vc-rng = { workspace = true }
 flate2 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+# 2026-10-01 (T8): FxHash for the integer-keyed model dispatch maps — the
+# u16 state-id keys are the hottest registry lookups at mesh time
+rustc-hash = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rayon = { workspace = true }

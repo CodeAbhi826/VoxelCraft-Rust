@@ -951,10 +951,14 @@ fn offset_toward(bx: f32, by: f32, bz: f32, axis: usize) -> i32 {
     }
 }
 
-/// elements with model `shade` disabled skip AO (flat look)
+/// elements with model `shade` disabled skip AO (flat look) — vanilla's
+/// model JSON `shade: false` renders the element without directional
+/// shading. T10 fix (2026-10-01): the old stub always returned true,
+/// contradicting this doc (no builtin model uses shade:false today, so
+/// the fix is behavior-neutral until a pack ships one)
 #[inline]
-fn el_affects_ao(_el: &vc_pack::model::CompiledElement) -> bool {
-    true
+fn el_affects_ao(el: &vc_pack::model::CompiledElement) -> bool {
+    el.shade
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1349,7 +1353,7 @@ mod tests {
             source.exists(),
             "builtin pack missing — run from voxelcraft/"
         );
-        let mut by_state: std::collections::HashMap<u16, Vec<vc_pack::model::ModelChoice>> =
+        let mut by_state: rustc_hash::FxHashMap<u16, Vec<vc_pack::model::ModelChoice>> =
             Default::default();
         for pb in vc_blocks::blocks::PROP_BLOCKS.iter() {
             let spec = vc_pack::model::BlockDispatchSpec {

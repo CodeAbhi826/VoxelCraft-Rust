@@ -30,6 +30,12 @@ impl Rng {
         if n == 0 {
             0
         } else {
+            // modulo sampling: DISCLOSED bias, negligible at n ≤ 32 (u64
+            // modulo: ~1e-17 skew). Rejection sampling would be uniform but
+            // changes the value STREAM — worldgen's Fisher-Yates shuffle
+            // (gen.rs) is seeded from this, so the swap would shift every
+            // golden-seed world. The bias stays; do not "fix" it without
+            // re-pinning the determinism tests.
             (self.next_u64() % n as u64) as u32
         }
     }

@@ -5797,7 +5797,7 @@ mod pack_merge_tests {
             "builtin pack missing — run from voxelcraft/"
         );
         // compile the real dispatch so the pack textures genuinely merge
-        let mut by_state: std::collections::HashMap<u16, Vec<vc_pack::model::ModelChoice>> =
+        let mut by_state: rustc_hash::FxHashMap<u16, Vec<vc_pack::model::ModelChoice>> =
             Default::default();
         for pb in vc_blocks::blocks::PROP_BLOCKS.iter() {
             let spec = vc_pack::model::BlockDispatchSpec {

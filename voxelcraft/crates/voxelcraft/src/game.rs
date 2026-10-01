@@ -1708,11 +1708,17 @@ pub struct GameApp {
     smoke_script: std::collections::VecDeque<(f32, u16)>,
     /// E2E_CONTAINERS: the native chest+furnace screen stage ran once
     e2e_containers_done: bool,
-    /// E2E_FKEYS: 0 = idle, 1 = key stage ran (waiting for the screenshot
-    /// consumer), 2 = done
+    /// E2E_FKEYS: 0 = idle, 1 = key stage ran (behind-ON capture pending),
+    /// 2 = behind-ON saved (behind-OFF capture pending), 3 = diff ran
+    /// (front capture pending), done = the leg exits in stage 3
     e2e_fkeys_stage: u8,
     /// E2E_FKEYS: every stage's assertions passed
     e2e_fkeys_ok: bool,
+    /// T5 contract (2026-10-01): the borders-ON behind capture's PNG
+    /// bytes, kept for the pixel diff against the borders-OFF capture —
+    /// the border lines must be VISIBLE in the frame, not just flags armed
+    /// (the old flag-only contract is how the collapsed-overlay bug shipped)
+    e2e_fkeys_behind_on_px: Option<Vec<u8>>,
     /// smoke stage 3: the in-game click fired once
     smoke_clicked_ingame: bool,
     /// smoke stage 3: game-entry time (F3_DUMP holds gameplay ~2 s)
@@ -2983,6 +2989,7 @@ impl GameApp {
             smoke_menu_e2e: false,
             e2e_fkeys_stage: 0,
             e2e_fkeys_ok: true,
+            e2e_fkeys_behind_on_px: None,
             edits: 0,
             stats_t: 0.0,
             pointer_locked: false,
@@ -3374,7 +3381,7 @@ impl GameApp {
                     // menu blur into the captures)
                     #[cfg(not(target_arch = "wasm32"))]
                     let fkeys_hold = std::env::var("E2E_FKEYS").is_ok()
-                        && self.e2e_fkeys_stage < 3
+                        && self.e2e_fkeys_stage < 4
                         && self.camera_mode != 0;
                     #[cfg(target_arch = "wasm32")]
                     let fkeys_hold = false;
@@ -13885,6 +13892,11 @@ impl GameApp {
         let png = self.renderer.take_screenshot_png();
         let shot_ok = match png {
             Some(bytes) => {
+                if !front {
+                    // T5 contract: keep the borders-ON behind pixels for
+                    // the pixel diff against the borders-OFF capture
+                    self.e2e_fkeys_behind_on_px = Some(bytes.clone());
+                }
                 let dir = std::path::Path::new("screenshots");
                 let _ = std::fs::create_dir_all(dir);
                 let view = if front { "front" } else { "behind" };
@@ -13916,6 +13928,45 @@ impl GameApp {
             self.dbg_exit_summary();
             std::process::exit(if all { 0 } else { 1 });
         }
+    }
+
+    /// T5 contract (2026-10-01): pixel-diff the borders-ON behind capture
+    /// against the borders-OFF one — the border lines must be VISIBLE in
+    /// the frame, not just flags armed. The old contract checked flags
+    /// only, which is exactly how the collapsed-overlay bug shipped:
+    /// `borders=true` logged, zero border lines in the capture. The
+    /// threshold sits far above the frame-to-frame noise (sub-pixel cloud
+    /// drift) and far below a real 25-box grid's contribution (a
+    /// 600-vertex line grid crosses the whole frame).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_fkeys_diff_behind(&mut self) {
+        let off_px = self.renderer.take_screenshot_png();
+        let (Some(on), Some(off)) = (self.e2e_fkeys_behind_on_px.take(), off_px) else {
+            vc_render::render::report_boot_log(
+                "e2e: fkeys border-visibility diff MISSING (a capture is absent)",
+            );
+            self.e2e_fkeys_ok = false;
+            return;
+        };
+        if on.len() != off.len() {
+            vc_render::render::report_boot_log("e2e: fkeys border-visibility diff SIZE MISMATCH");
+            self.e2e_fkeys_ok = false;
+            return;
+        }
+        let diff = on.iter().zip(off.iter()).filter(|(a, b)| a != b).count();
+        // 1280x696x4 = 3,566,080 bytes; 2000 changed bytes = 500 pixels —
+        // the 5×5 border grid adds thousands of line pixels across the
+        // frame, the inter-frame noise is a handful
+        let ok = diff > 2000;
+        vc_render::render::report_boot_log(&format!(
+            "e2e: fkeys border-visibility diff {diff} bytes changed — {}",
+            if ok {
+                "VISIBLE (contract ok)"
+            } else {
+                "NOT VISIBLE (FAIL)"
+            }
+        ));
+        self.e2e_fkeys_ok &= ok;
     }
 
     fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
@@ -14306,20 +14357,34 @@ impl GameApp {
                 0 if in_world => {
                     self.e2e_fkeys();
                 }
-                1 => {
-                    if self.renderer.screenshot_png.is_some() {
-                        self.e2e_fkeys_capture(false);
-                        // flip to the front view + re-arm for the next frame
-                        self.camera_mode = 2;
-                        self.renderer.screenshot_request = true;
-                        self.e2e_fkeys_stage = 2;
-                        vc_render::render::report_boot_log("e2e: fkeys front view armed");
-                    }
+                1 if self.renderer.screenshot_png.is_some() => {
+                    // stage 1: the BEHIND view with borders ON — saved AND
+                    // kept for the pixel diff; borders off, same camera,
+                    // re-arm for the borders-OFF capture
+                    self.e2e_fkeys_capture(false);
+                    self.debug_chunks = false;
+                    self.renderer.screenshot_request = true;
+                    self.e2e_fkeys_stage = 2;
+                    vc_render::render::report_boot_log(
+                        "e2e: fkeys behind view saved; borders off for the diff arm",
+                    );
                 }
                 2 if self.renderer.screenshot_png.is_some() => {
+                    // stage 2: the BEHIND view with borders OFF — the T5
+                    // pixel-diff contract runs here
+                    self.e2e_fkeys_diff_behind();
+                    // flip to the front view + re-arm for the next frame
+                    self.camera_mode = 2;
+                    self.debug_chunks = true;
+                    self.renderer.screenshot_request = true;
+                    self.e2e_fkeys_stage = 3;
+                    vc_render::render::report_boot_log("e2e: fkeys front view armed");
+                }
+                3 if self.renderer.screenshot_png.is_some() => {
+                    // stage 3: the FRONT view — save, restore, exit with
+                    // the verdict
                     self.e2e_fkeys_capture(true);
                 }
-                2 => {}
                 _ => {}
             }
         }
@@ -22638,10 +22703,17 @@ impl GameApp {
                     0 => (eye, self.player.yaw, self.player.pitch),
                     _ => {
                         let dir = self.player.look_dir();
+                        // T6 fix (2026-10-01): BOTH third-person views sit 4
+                        // blocks from the player — VERIFIED
+                        // Third-person_view: "the third-person camera is
+                        // positioned 4 blocks from the player's front/back".
+                        // The old mode-2 distance was 1.5, which put the
+                        // camera inside the face (the head filled the screen
+                        // in the 2026-10-01 captures).
                         let (sign, dist): (f32, f32) = if self.camera_mode == 1 {
                             (-1.0, 4.0)
                         } else {
-                            (1.0, 1.5)
+                            (1.0, 4.0)
                         };
                         // terrain clamp: step outward in 0.25-block samples
                         // until a solid block (or the max distance)
@@ -22871,7 +22943,7 @@ impl GameApp {
         // frame after the readback lands.
         #[cfg(not(target_arch = "wasm32"))]
         if self.renderer.screenshot_png.is_some()
-            && (self.e2e_fkeys_stage == 0 || self.e2e_fkeys_stage >= 3)
+            && (self.e2e_fkeys_stage == 0 || self.e2e_fkeys_stage > 3)
         {
             self.take_screenshot();
         }

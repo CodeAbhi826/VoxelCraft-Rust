@@ -1357,8 +1357,7 @@ mod tests {
             source.exists(),
             "builtin pack missing — run from voxelcraft/"
         );
-        let mut by_state: rustc_hash::FxHashMap<u16, Vec<vc_pack::model::ModelChoice>> =
-            Default::default();
+        let mut by_state: FxHashMap<u16, Vec<vc_pack::model::ModelChoice>> = Default::default();
         for pb in vc_blocks::blocks::PROP_BLOCKS.iter() {
             let spec = vc_pack::model::BlockDispatchSpec {
                 name: pb.name,

@@ -7,7 +7,6 @@
 use std::sync::OnceLock;
 
 use crate::textures::blit_tile;
-use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
 
@@ -6654,6 +6653,7 @@ mod phase5_font_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rustc_hash::FxHashMap;
 
     // ---- 2026-09-14 deploy-fix round: widget-id space disjointness ----
 

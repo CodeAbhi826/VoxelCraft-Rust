@@ -2131,7 +2131,7 @@ pub struct UiCanvas {
     /// UI-overhaul Phase 3: ready 3D icons (block id -> icon-atlas cell),
     /// snapshotted from the game's ItemIconCache whenever a new icon
     /// finishes baking. None/absent = flat blit_tile fallback.
-    pub icon_cells: Option<std::sync::Arc<std::collections::HashMap<u16, [u8; 2]>>>,
+    pub icon_cells: Option<std::sync::Arc<rustc_hash::FxHashMap<u16, [u8; 2]>>>,
     /// The runtime-rasterized font round: the canvas letterbox scale
     /// (device px per UI px). The GPU text path rasterizes glyphs at
     /// `cell × device_scale` so the AA edges land on real screen
@@ -2320,10 +2320,7 @@ impl UiCanvas {
 
     /// Phase 3: install the ready-icon snapshot (called by the game
     /// whenever the icon cache's version moves)
-    pub fn set_icon_cells(
-        &mut self,
-        cells: std::sync::Arc<std::collections::HashMap<u16, [u8; 2]>>,
-    ) {
+    pub fn set_icon_cells(&mut self, cells: std::sync::Arc<rustc_hash::FxHashMap<u16, [u8; 2]>>) {
         self.icon_cells = Some(cells);
         self.dirty = true;
     }

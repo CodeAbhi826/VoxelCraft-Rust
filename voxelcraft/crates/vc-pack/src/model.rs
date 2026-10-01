@@ -21,6 +21,7 @@
 //! builtin pack therefore specifies UVs explicitly wherever orientation
 //! matters.
 
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
@@ -253,7 +254,9 @@ pub struct ModelChoice {
 /// Built once at boot (before any mesh job), then immutable — safe to read
 /// from rayon workers and the browser's inline job loop.
 pub struct ModelSet {
-    pub by_state: HashMap<u16, Vec<ModelChoice>>,
+    /// T8 (2026-10-01): FxHash — the u16 state-id keys are the hottest
+    /// registry lookups at mesh time
+    pub by_state: FxHashMap<u16, Vec<ModelChoice>>,
     /// resolved texture location → atlas tile index (filled by atlas merge)
     pub tiles: HashMap<String, u16>,
 }
@@ -609,7 +612,7 @@ fn prop_matches(props: &[(String, String)], key: &str, value: &serde_json::Value
 pub fn compile_block_dispatch(
     spec: &BlockDispatchSpec,
     read: &dyn Fn(&str) -> Option<Vec<u8>>,
-) -> Result<HashMap<u16, Vec<ModelChoice>>, String> {
+) -> Result<FxHashMap<u16, Vec<ModelChoice>>, String> {
     let bs_path = format!("blockstates/{}.json", spec.name);
     let bytes = read(&bs_path).ok_or_else(|| format!("blockstate not found: {bs_path}"))?;
     let bs: BlockstateJson =
@@ -792,7 +795,6 @@ pub fn texture_path(loc: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap as Map;
 
     /// in-memory pack for tests
     fn pack(files: &[(&str, &str)]) -> impl Fn(&str) -> Option<Vec<u8>> {

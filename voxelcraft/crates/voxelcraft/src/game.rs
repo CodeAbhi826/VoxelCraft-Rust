@@ -5,7 +5,7 @@
 
 use crate::player::{raycast, Input, Player};
 use glam::Vec3;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use vc_audio::sounds::native_audio;
@@ -21,6 +21,7 @@ use vc_blocks::blocks::*;
 /// per-player rule).
 const ENDER_CHEST_KEY: [i32; 3] = [1 << 20, 0, 1 << 20];
 use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
 use vc_mesh::mesh::{mesh_sections, MeshData};
 use vc_render::render::{Camera, RenderStats, Renderer, SkyState};
 use vc_render::ui::{self, UiCanvas, Widget, WidgetKind, UI_H, UI_W};
@@ -1512,7 +1513,7 @@ pub struct GameApp {
     pub audio: Box<dyn AudioBackend>,
     pub settings: Settings,
     work: WorkBackend,
-    gen_inflight: HashSet<ChunkPos>,
+    gen_inflight: FxHashSet<ChunkPos>,
     /// in-flight mesh jobs: pos → submitted section mask (bits added while
     /// a job runs survive via §12 clear_dirty_mask semantics)
     mesh_inflight: FxHashMap<ChunkPos, u16>,
@@ -1553,7 +1554,7 @@ pub struct GameApp {
     beacon_pay: vc_inventory::inventory::ItemStack,
     /// 1.11: positions whose container entity is a SHULKER_BOX (the
     /// no-nesting insert gate)
-    shulker_positions: std::collections::HashSet<[i32; 3]>,
+    shulker_positions: FxHashSet<[i32; 3]>,
     /// open crafting grid (2×2 uses [0..4] row-major on a 2-wide layout,
     /// 3×3 uses all 9)
     craft_grid: [vc_inventory::inventory::ItemStack; 9],
@@ -1970,7 +1971,7 @@ pub struct GameApp {
 /// Sub-round 1 round-8 cleanup: the pending web-journal map —
 /// `(dimension, cx, cz)` → the edit list awaiting that chunk's regen
 /// (the clippy type_complexity alias for the raw HashMap shape).
-type PendingEdits = HashMap<(u8, i32, i32), Vec<([i32; 3], u16)>>;
+type PendingEdits = FxHashMap<(u8, i32, i32), Vec<([i32; 3], u16)>>;
 
 /// 2026-09-14: the last known window height (px) — set by the renderer's
 /// resize path. Round 10: the width hint joins it so the vanilla
@@ -2381,7 +2382,7 @@ fn compile_pack_atlas(
     };
 
     // 2. compile per-block dispatches (parse once, canonicalize, cache)
-    let mut by_state = std::collections::HashMap::new();
+    let mut by_state = rustc_hash::FxHashMap::default();
     for pb in vc_blocks::blocks::PROP_BLOCKS.iter() {
         let spec = vc_pack::model::BlockDispatchSpec {
             name: pb.name,
@@ -2865,7 +2866,7 @@ impl GameApp {
             bob_phase: 0.0,
             bob_amp: 0.0,
             work,
-            gen_inflight: HashSet::new(),
+            gen_inflight: FxHashSet::default(),
             mesh_inflight: FxHashMap::default(),
             section_meshes: FxHashMap::default(),
             light: vc_world::light::LightEngine::new(),
@@ -2879,7 +2880,7 @@ impl GameApp {
             name_pool: Vec::new(),
             beacon_pending: (None, vc_gameplay::beacon::BeaconSecondary::None),
             beacon_pay: vc_inventory::inventory::ItemStack::EMPTY,
-            shulker_positions: std::collections::HashSet::new(),
+            shulker_positions: FxHashSet::default(),
             craft_grid: [vc_inventory::inventory::ItemStack::EMPTY; 9],
             particles: vc_particles::particles::ParticleSystem::new(0x5EED_0042),
             weather: vc_gameplay::weather::WeatherSystem::new(0x4EA7_0000),
@@ -2923,7 +2924,7 @@ impl GameApp {
             web_next_id: 1,
             #[cfg(target_arch = "wasm32")]
             web_active_id: None,
-            pending_edits: HashMap::new(),
+            pending_edits: FxHashMap::default(),
             #[cfg(target_arch = "wasm32")]
             web_dim_journals: [Vec::new(), Vec::new(), Vec::new()],
             death_score: 0,
@@ -4957,6 +4958,11 @@ impl GameApp {
         if self.screen != Screen::Game {
             return;
         }
+        // vanilla resets key state on menu open (T10 fix, 2026-10-01: F3
+        // held → Esc left f3_held stuck — the arm/release only process in
+        // Game, so the release in the pause menu was ignored and the next
+        // in-game F3 press was swallowed)
+        self.f3_held = false;
         self.set_screen(Screen::Pause);
     }
 
@@ -18758,32 +18764,35 @@ impl GameApp {
                         // its feet immediately adjacent to the surface").
                         // The egg is consumed in Survival.
                         let b = self.player.held().block;
-                        let kind = vc_gameplay::mobs::MobKind::from_egg(egg_mob(b).unwrap_or(15));
-                        // spawn on the face-adjacent cell (the `prev`
-                        // position the raycast computed)
+                        // T10 fix (2026-10-01): from_egg returns Option — an
+                        // unknown egg (unmapped id or the wither-egg stub)
+                        // spawns NOTHING and is not consumed
+                        let kind = egg_mob(b).and_then(vc_gameplay::mobs::MobKind::from_egg);
                         let (sx, sy, sz) = if let Some((_, _, prev)) = self.target {
                             (prev[0], prev[1], prev[2])
                         } else {
                             (tpos[0], tpos[1] + 1, tpos[2])
                         };
-                        let spawned = self.sim.mobs.spawn_at(kind, sx, sy, sz);
-                        if self.mode.depletes_items() {
-                            let held = self.player.held_mut();
-                            held.count -= 1;
-                            if held.count == 0 {
-                                *held = vc_inventory::inventory::ItemStack::EMPTY;
+                        if let Some(kind) = kind {
+                            let spawned = self.sim.mobs.spawn_at(kind, sx, sy, sz);
+                            if self.mode.depletes_items() {
+                                let held = self.player.held_mut();
+                                held.count -= 1;
+                                if held.count == 0 {
+                                    *held = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
                             }
-                        }
-                        if spawned.is_some() {
-                            self.play_event(
-                                "entity.generic.spawn",
-                                Some([sx as f32 + 0.5, sy as f32 + 1.0, sz as f32 + 0.5]),
-                                1.0,
-                            );
-                            vc_render::render::report_boot_log(&format!(
-                                "e2e: spawn egg → {} at {sx},{sy},{sz}",
-                                kind.name()
-                            ));
+                            if spawned.is_some() {
+                                self.play_event(
+                                    "entity.generic.spawn",
+                                    Some([sx as f32 + 0.5, sy as f32 + 1.0, sz as f32 + 0.5]),
+                                    1.0,
+                                );
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: spawn egg → {} at {sx},{sy},{sz}",
+                                    kind.name()
+                                ));
+                            }
                         }
                         self.place_timer = 0.3;
                         self.ui.dirty = true;

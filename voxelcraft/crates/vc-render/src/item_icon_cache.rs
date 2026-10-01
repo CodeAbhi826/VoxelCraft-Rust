@@ -22,7 +22,7 @@
 //! (512) with least-recently-used eviction; every stat is reported to
 //! the `perf` debug category by the game layer.
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use vc_blocks::blocks::{def, is_cross, AIR};
 
@@ -270,9 +270,9 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8]) -> bool {
 #[derive(Debug)]
 struct IconLruCore {
     /// key -> (cell, last_access)
-    entries: HashMap<IconKey, (u32, u64)>,
+    entries: FxHashMap<IconKey, (u32, u64)>,
     /// cell -> key (reverse map for eviction)
-    cell_owner: HashMap<u32, IconKey>,
+    cell_owner: FxHashMap<u32, IconKey>,
     /// pending bake queue (FIFO, deduped)
     queued: Vec<IconKey>,
     clock: u64,
@@ -288,8 +288,8 @@ struct IconLruCore {
 impl IconLruCore {
     fn new(max_entries: usize) -> Self {
         IconLruCore {
-            entries: HashMap::new(),
-            cell_owner: HashMap::new(),
+            entries: FxHashMap::default(),
+            cell_owner: FxHashMap::default(),
             queued: Vec::new(),
             clock: 0,
             max_entries,
@@ -373,7 +373,7 @@ pub struct ItemIconCache {
     texture: wgpu::Texture,
     /// cell coordinates ready for the canvas snapshot (block id ->
     /// (col, row)) — rebuilt when core.version moves
-    ready_cells: HashMap<u16, [u8; 2]>,
+    ready_cells: FxHashMap<u16, [u8; 2]>,
     snap_version: u64,
     /// bake budget per frame (D6: start at 4)
     pub bake_budget_per_frame: usize,
@@ -427,7 +427,7 @@ impl ItemIconCache {
         ItemIconCache {
             core: IconLruCore::new(max_entries.min((ICON_GRID * ICON_GRID) as usize)),
             texture,
-            ready_cells: HashMap::new(),
+            ready_cells: FxHashMap::default(),
             snap_version: u64::MAX,
             bake_budget_per_frame: 4,
         }
@@ -486,7 +486,7 @@ impl ItemIconCache {
 
     /// snapshot of ready icons (block id -> atlas cell coords) — rebuilt
     /// only when a new cell became ready since the last snapshot
-    pub fn ready_cells(&mut self) -> &HashMap<u16, [u8; 2]> {
+    pub fn ready_cells(&mut self) -> &FxHashMap<u16, [u8; 2]> {
         if self.snap_version != self.core.version {
             self.ready_cells.clear();
             for ((block, _, _), (cell, _)) in self.core.entries.iter() {

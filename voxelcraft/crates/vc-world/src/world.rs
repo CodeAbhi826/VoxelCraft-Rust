@@ -3,6 +3,7 @@
 
 use crate::gen::TerrainGen;
 use crate::light::LightData;
+use rustc_hash::FxHashSet;
 use std::collections::HashSet;
 use std::sync::Arc;
 // 2026-09-21b perf round: every integer-keyed map in this crate swaps
@@ -119,7 +120,7 @@ pub struct World {
     /// jobs exactly like the block data (Arc COW)
     pub light: FxHashMap<ChunkPos, Arc<LightData>>,
     /// chunks fully generated + decorated (meshable)
-    pub decorated: HashSet<ChunkPos>,
+    pub decorated: FxHashSet<ChunkPos>,
     /// edits queued for not-yet-generated chunks: (block_idx, id)
     pub pending: FxHashMap<ChunkPos, Vec<(u16, u16)>>,
     /// sections (bit s = 16-block section s) whose mesh is stale (§12:
@@ -129,7 +130,7 @@ pub struct World {
     pub dirty_causes: FxHashMap<ChunkPos, u8>,
     /// chunks with unsaved content (player edits + newly generated;
     /// drained by the native autosave — §28)
-    pub save_dirty: HashSet<ChunkPos>,
+    pub save_dirty: FxHashSet<ChunkPos>,
     /// 2026-09-14 web round: position → final STATE id journal of every
     /// landed block mutation — the web build's substitute for region
     /// files (localStorage persistence replays it after chunk gen).
@@ -156,11 +157,11 @@ impl World {
             gen: TerrainGen::for_dimension(seed, dim),
             chunks: FxHashMap::default(),
             light: FxHashMap::default(),
-            decorated: HashSet::new(),
+            decorated: FxHashSet::default(),
             pending: FxHashMap::default(),
             dirty: FxHashMap::default(),
             dirty_causes: FxHashMap::default(),
-            save_dirty: HashSet::new(),
+            save_dirty: FxHashSet::default(),
             journal: FxHashMap::default(),
             journaling: false,
         }

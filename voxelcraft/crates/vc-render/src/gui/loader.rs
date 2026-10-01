@@ -141,11 +141,10 @@ pub fn load_from_pack(
     }
     let mut set = GuiTextureSet::build_builtin();
     let mut overridden = 0usize;
-    let mut applied: Vec<String> = Vec::new();
 
     for (name, ew, eh) in SHEET_DIMS {
         let path = vc_pack::pack::gui_texture_path(name);
-        let Some((bytes, source)) = stack.read_first(&path) else {
+        let Some((bytes, _source)) = stack.read_first(&path) else {
             continue; // no pack provides this texture -> builtin stays
         };
         let file_label: &'static str = match *name {
@@ -183,14 +182,14 @@ pub fn load_from_pack(
             }
         }
         overridden += 1;
-        applied.push(format!("{name} <- {source}"));
     }
 
     if overridden == 0 {
         return Ok(None);
     }
-    // the caller logs which sheets came from which pack
-    let _ = &applied;
+    // T10 fix (2026-10-01): the old `applied` list was built per sheet and
+    // then discarded — dead bookkeeping contradicting its own comment; the
+    // per-pack sheet log belongs to the pack-texture merge path
     Ok(Some(set))
 }
 

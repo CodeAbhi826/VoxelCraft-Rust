@@ -117,7 +117,7 @@ pub struct Sim {
     /// 1.13 (Aquatic-era update): placed conduits (position-keyed; the
     /// frame scan + Conduit Power application live in the game layer
     /// — VERIFIED w/Conduit)
-    pub conduits: std::collections::HashSet<[i32; 3]>,
+    pub conduits: rustc_hash::FxHashSet<[i32; 3]>,
     /// conduit attack cadence (full-frame attacks fire every 40
     /// ticks / 2 s — VERIFIED w/Conduit §Usage: "dealing 4 damage
     /// every 2 seconds")
@@ -146,7 +146,11 @@ impl Sim {
             sched: TickScheduler::new(),
             random: RandomTicker::new(seed),
             items: ItemSystem::new(seed ^ 0xD00_0042),
-            xp_orbs: XpOrbSystem::new(seed ^ 0x0DB_5EED),
+            // T10 fix (2026-10-01): the salt lives in XpOrbSystem::new —
+            // the old call-site XOR of the SAME constant was dead code
+            // (double-XOR collapsed the orb seed to exactly `seed`, which
+            // is what the system still gets)
+            xp_orbs: XpOrbSystem::new(seed),
             furnaces: vc_gameplay::furnace::Furnaces::default(),
             campfires: vc_gameplay::campfire::Campfires::default(),
             brewing: vc_gameplay::brewing::Brewings::default(),
@@ -162,7 +166,7 @@ impl Sim {
             beacons: rustc_hash::FxHashMap::default(),
             anvils: rustc_hash::FxHashMap::default(),
             grindstones: rustc_hash::FxHashMap::default(),
-            conduits: std::collections::HashSet::new(),
+            conduits: rustc_hash::FxHashSet::default(),
             conduit_attack_t: 0,
             containers: crate::containers::Containers::default(),
             dispenser_prev: rustc_hash::FxHashMap::default(),

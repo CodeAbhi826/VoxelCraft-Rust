@@ -22814,45 +22814,47 @@ impl GameApp {
             }
         }
         self.stats = self.renderer.render(
-            &cam,
-            &sky,
-            &mut self.ui,
-            selection,
-            &vc_render::render::PostParams {
-                // 2026-09-14: the engine shader modes (Vanilla+ / Cinematic)
-                // are removed with the SHADER PACKS screen — the post pass
-                // is vanilla-only (menu blur + the graphics=Fabulous chain);
-                // `mode` stays 0 permanently
-                mode: 0,
-                menu_blur,
-                // §28: the Nether has no sun — no shadow pass
-                shadows: if nether {
-                    0.0
-                } else {
-                    self.settings.shadow_strength()
+            vc_render::render::RenderFrame {
+                cam: &cam,
+                sky: &sky,
+                selection,
+                post: vc_render::render::PostParams {
+                    // 2026-09-14: the engine shader modes (Vanilla+ / Cinematic)
+                    // are removed with the SHADER PACKS screen — the post pass
+                    // is vanilla-only (menu blur + the graphics=Fabulous chain);
+                    // `mode` stays 0 permanently
+                    mode: 0,
+                    menu_blur,
+                    // §28: the Nether has no sun — no shadow pass
+                    shadows: if nether {
+                        0.0
+                    } else {
+                        self.settings.shadow_strength()
+                    },
+                    // FSR 1.0: RCAS lobe factor when the internal scale is below
+                    // native (0.6 ≈ FsrRcasCon(~0.7 stops) — sharp without halos;
+                    // EASU already reconstructs most of the edge contrast)
+                    sharpen: if self.settings.upscale > 0 { 0.6 } else { 0.0 },
                 },
-                // FSR 1.0: RCAS lobe factor when the internal scale is below
-                // native (0.6 ≈ FsrRcasCon(~0.7 stops) — sharp without halos;
-                // EASU already reconstructs most of the edge contrast)
-                sharpen: if self.settings.upscale > 0 { 0.6 } else { 0.0 },
+                clouds: if self.settings.graphics >= 1 && !nether {
+                    self.settings.clouds_level
+                } else {
+                    0
+                },
+                panorama,
+                particles: &self.particle_verts,
+                // Round A (F3+G): the camera's chunk coords when the overlay
+                // is on (the border boxes ride the RENDER pass, not the UI)
+                chunk_borders: if self.debug_chunks && self.screen == Screen::Game {
+                    Some((
+                        (self.player.pos.x.floor() as i32).div_euclid(16),
+                        (self.player.pos.z.floor() as i32).div_euclid(16),
+                    ))
+                } else {
+                    None
+                },
             },
-            if self.settings.graphics >= 1 && !nether {
-                self.settings.clouds_level
-            } else {
-                0
-            },
-            panorama,
-            &self.particle_verts,
-            // Round A (F3+G): the camera's chunk coords when the overlay
-            // is on (the border boxes ride the RENDER pass, not the UI)
-            if self.debug_chunks && self.screen == Screen::Game {
-                Some((
-                    (self.player.pos.x.floor() as i32).div_euclid(16),
-                    (self.player.pos.z.floor() as i32).div_euclid(16),
-                ))
-            } else {
-                None
-            },
+            &mut self.ui,
         );
         self.phases
             .add(crate::bench::PHASE_DRAW, crate::bench::micros() - t_draw0);

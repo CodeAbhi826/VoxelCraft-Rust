@@ -36,10 +36,15 @@ pub const REAPPLY_TICKS: i32 = 80;
 /// beacon light level (VERIFIED: 15, even without a beam)
 pub const BEACON_LIGHT: u8 = 15;
 
-/// Valid pyramid base blocks (the material is cosmetic — VERIFIED).
+/// Valid pyramid base blocks — the material is cosmetic (VERIFIED
+/// Beacon§Activation: "a pyramid constructed from iron blocks, gold blocks,
+/// emerald blocks, diamond blocks, and/or netherite blocks"; netherite
+/// joined in 1.16/20w07a). T11 fix (2026-10-01): netherite accepted;
+/// EMERALD_BLOCK is absent from the block registry entirely (ledgered as
+/// T12) — emerald pyramids unlock with that registration.
 #[inline]
 pub fn is_base_block(b: u16) -> bool {
-    matches!(b, IRON_BLOCK | GOLD_BLOCK | DIAMOND_BLOCK)
+    matches!(b, IRON_BLOCK | GOLD_BLOCK | DIAMOND_BLOCK | NETHERITE_BLOCK)
 }
 
 /// The beacon's primary power selection.
@@ -292,6 +297,34 @@ mod tests {
             c.set(8, 80, 8, BEACON);
         });
         assert_eq!(pyramid_level(&w3, 8, 80, 8), 0);
+    }
+
+    /// T11 fix gate (2026-10-01): every ACCEPTED pyramid material counts.
+    /// The old is_base_block missed netherite (added in 1.16/20w07a —
+    /// VERIFIED w/Beacon), so netherite pyramids could not be built.
+    /// Emerald stays out until EMERALD_BLOCK is registered (T12).
+    #[test]
+    fn every_accepted_pyramid_material_counts() {
+        for material in [IRON_BLOCK, GOLD_BLOCK, DIAMOND_BLOCK, NETHERITE_BLOCK] {
+            let w = world_with(|c| {
+                for dx in -1..=1 {
+                    for dz in -1..=1 {
+                        c.set((8 + dx) as usize, 79, (8 + dz) as usize, material);
+                    }
+                }
+                c.set(8, 80, 8, BEACON);
+            });
+            assert_eq!(
+                pyramid_level(&w, 8, 80, 8),
+                1,
+                "material {material} must build a level-1 pyramid"
+            );
+            assert_eq!(pyramid_block_count(&w, 8, 80, 8), 9);
+        }
+        assert!(
+            !is_base_block(EMERALD),
+            "the EMERALD ITEM is not a pyramid block"
+        );
     }
 
     #[test]

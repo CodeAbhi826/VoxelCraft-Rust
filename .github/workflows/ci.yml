@@ -20,6 +20,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  audit:
+    name: legal audit (trademark / forbidden files)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: legal_audit.py (LEGAL-COMPLIANCE.md §6 — must print [PASS])
+        run: python3 scripts/legal_audit.py
+
   fmt:
     name: cargo fmt --check
     runs-on: ubuntu-latest

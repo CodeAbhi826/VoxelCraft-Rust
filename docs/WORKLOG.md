@@ -5949,11 +5949,12 @@ documented spare (make_voxelfont.py + notice updated).
 escaped the sweep (16 files: wiki-domain citations + publisher
 mentions) now use the project's "reference wiki / reference game"
 citation style (`scripts/debrand_research_docs.py`); the orphaned,
-unreferenced, byte-identical `programmer-art` pack trees (carrying
-the original's "Programmer Art" label in the folder name) are
+unreferenced, byte-identical legacy pack trees (carrying the original
+publisher's built-in art-pack label in the folder name) are
 deleted; legal_audit.py's term list is realigned to the binding
 policy (brand marks forbidden: the publisher's names, personas,
-"programmer art"; generic functional vocabulary NOT scanned; the OFL
+the publisher's built-in art-pack label; generic functional
+vocabulary NOT scanned; the OFL
 font explicitly allowed) — **[PASS]**.
 
 **Verification (first round with a LOCAL toolchain — rustup 1.98.1

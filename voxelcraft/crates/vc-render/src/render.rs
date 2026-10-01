@@ -5342,7 +5342,7 @@ impl Renderer {
         let mut px = Vec::with_capacity((w * h * 4) as usize);
         for y in 0..h {
             let row = &data[(y * bytes_per_row) as usize..((y * bytes_per_row) + w * 4) as usize];
-            for c in row.as_chunks::<4>() {
+            for c in row.as_chunks::<4>().0 {
                 if swap {
                     px.push(c[2]);
                     px.push(c[1]);

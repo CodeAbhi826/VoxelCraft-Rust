@@ -2,7 +2,6 @@
 //! with the JSON-model path (blockstate dispatch, Phase 1).
 //! Pure function over a 3x3 chunk snapshot → safe on worker threads.
 
-use rustc_hash::FxHashMap;
 use std::sync::Arc;
 use vc_blocks::blocks::*;
 use vc_chunk::chunk::Chunk;
@@ -1153,6 +1152,7 @@ fn greedy_merge(
 mod tests {
     use super::*;
 
+    use rustc_hash::FxHashMap;
     /// reference light for a snapshot (differential bridge, Phase 4)
     fn lref(snap: &[Option<Arc<Chunk>>; 9]) -> [Option<Arc<vc_world::light::LightData>>; 9] {
         vc_world::light::reference_lightdata(snap)

@@ -570,15 +570,16 @@ mod tests {
         assert_eq!(shared.get(5, 70, 5), 0); // original untouched
         assert_eq!(shared.get(4, 70, 4), 9); // shared data still visible
                                              // and the untouched sections are still Arc-shared (cheap clone)
+                                             // T10 fix (2026-10-01): the old assertion was a tautology
+                                             // (`ptr_eq || !ptr_eq` — always true, proving nothing). The real
+                                             // CoW invariant: the MUTATED section detached from the shared Arc.
         assert!(
-            std::sync::Arc::ptr_eq(
+            !std::sync::Arc::ptr_eq(
                 c.sections[4].as_ref().unwrap(),
                 shared.sections[4].as_ref().unwrap(),
-            ) || !std::sync::Arc::ptr_eq(
-                c.sections[4].as_ref().unwrap(),
-                shared.sections[4].as_ref().unwrap(),
-            )
-        ); // (sanity: field exists and compares)
+            ),
+            "the mutated section must detach from the shared Arc (CoW)"
+        );
 
         // clearing the last block drops the section entirely
         c.set(4, 70, 4, 0);

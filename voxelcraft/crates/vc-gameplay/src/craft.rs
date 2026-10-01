@@ -1204,7 +1204,6 @@ fn match_kitchen(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
             EGG if !s.is_empty() => egg += 1,
             HONEY_BOTTLE if !s.is_empty() => honey += 1,
             MELON_SLICE if !s.is_empty() => melon_slice += 1,
-            MELON_SLICE if !s.is_empty() => melon_slice += 1,
             _ if !s.is_empty() => other += 1,
             _ => {}
         }

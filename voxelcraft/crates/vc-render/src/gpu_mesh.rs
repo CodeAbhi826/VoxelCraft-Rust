@@ -123,6 +123,7 @@ const F_LEAVES: u32 = 4u;
 const F_GLASS: u32 = 8u;
 const F_ICE: u32 = 16u;
 const F_CROSS: u32 = 32u;
+const F_LAVA: u32 = 64u;
 
 // corner (cu, cv) order — CPU: [(0,0),(1,0),(1,1),(0,1)]; computed
 // arithmetically (WGSL const arrays are constant-indexed only)
@@ -189,10 +190,11 @@ fn biome_at(j: u32, x: i32, z: i32) -> u32 {
 fn tile_of(state: u32, i: u32) -> u32 { return lut[L_ST + state * 4u + i]; }
 
 // face_visible port (flags-encoded special classes — identical semantics
-// to vc_blocks::face_visible: water/leaves/glass/ice arms then the
-// general !opaque rule)
+// to vc_blocks::face_visible: water/lava/leaves/glass/ice arms then the
+// general !opaque rule; F_LAVA mirrors the T4 lava same-cull fix)
 fn face_visible(bf: u32, fnb: u32) -> bool {
     if (bf & F_WATER) != 0u { return (fnb & F_OPAQUE) == 0u && (fnb & F_WATER) == 0u; }
+    if (bf & F_LAVA) != 0u { return (fnb & F_OPAQUE) == 0u && (fnb & F_LAVA) == 0u; }
     if (bf & F_LEAVES) != 0u { return (fnb & F_OPAQUE) == 0u; }
     if (bf & F_GLASS) != 0u { return (fnb & F_OPAQUE) == 0u && (fnb & F_GLASS) == 0u; }
     if (bf & F_ICE) != 0u { return (fnb & F_OPAQUE) == 0u && (fnb & F_ICE) == 0u; }
@@ -236,8 +238,12 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
     let nb = sb(job_getb(j, ncell[0], ncell[1], ncell[2]));
     let fnb = fl(nb);
 
-    if (fb & F_WATER) != 0u {
-        // water key: 1 | l<<1 | aw<<6 | bl<<7 | wt<<11 | level<<19
+    if (fb & F_WATER) != 0u || (fb & F_LAVA) != 0u {
+        // fluid key: 1 | l<<1 | aw<<6 | bl<<7 | wt<<11 | level<<19
+        // T4 fix (2026-10-01): LAVA routes through the water-quad path too
+        // (bit-parity with the CPU mesher's `b == WATER || b == LAVA`) —
+        // lava-lava boundaries cull via F_LAVA (uniform level: no step
+        // faces), lava-vs-non-opaque renders through the translucent pass.
         // 2026-09-21b: the WATER LEVEL rides bits 19..21 (runs never
         // merge across levels; the emit stage renders per-level
         // fluid heights) and side faces between different-height water
@@ -250,15 +256,22 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
             let nwl = water_level_s(nbs);
             let above = job_getb(j, cell[0], cell[1] + 1, cell[2]);
             let nabove = job_getb(j, ncell[0], ncell[1] + 1, ncell[2]);
-            let my_h = fluid_height_w(water_level_s(bs), above == b);
-            let nb_h = fluid_height_w(nwl, nabove == b);
+            // T3 fix (2026-10-01): `above`/`nabove` are raw STATE ids —
+            // fold to the owning BLOCK id before comparing to `b` (bit-parity
+            // with the CPU mesher's sb() fold)
+            let my_h = fluid_height_w(water_level_s(bs), sb(above) == b);
+            let nb_h = fluid_height_w(nwl, sb(nabove) == b);
             vis = my_h > nb_h + 0.0001;
         }
         if vis {
             let l = job_get_sky(j, ncell[0], ncell[1], ncell[2]);
             let bl = job_get_blk(j, ncell[0], ncell[1], ncell[2]);
             let above = job_getb(j, cell[0], cell[1] + 1, cell[2]);
-            let aw = select(0u, 1u, above == B_WATER);
+            // T3 fix: fold the raw STATE id before the compare; the aw bit
+            // compares to the CELL's own block (b), not B_WATER — bit-parity
+            // with the CPU's `sb(above) == b` (a lava cell with lava above
+            // sets aw=1 exactly like the CPU)
+            let aw = select(0u, 1u, sb(above) == b);
             let wt = tint_packed(b, false, biome_at(j, cell[0], cell[2]));
             wmask[t] = 1u | (l << 1u) | (aw << 6u) | (bl << 7u) | (wt << 11u) | (wl << 19u);
         }
@@ -661,6 +674,11 @@ fn build_lut() -> Vec<u32> {
         }
         if id == ICE {
             flags |= 16; // F_ICE
+        }
+        if id == LAVA {
+            // T4 fix (2026-10-01): the F_LAVA same-cull class mirrors the
+            // Rust face_visible lava arm — lava culled against lava
+            flags |= 64; // F_LAVA
         }
         if is_cross(id) {
             flags |= 32; // F_CROSS
@@ -1645,6 +1663,9 @@ mod tests {
                 let fnb = lut[L_FL + n as usize];
                 let got = if (f & 2) != 0 {
                     (fnb & 1) == 0 && (fnb & 2) == 0
+                } else if (f & 64) != 0 {
+                    // F_LAVA (T4): lava culled against lava
+                    (fnb & 1) == 0 && (fnb & 64) == 0
                 } else if (f & 4) != 0 {
                     (fnb & 1) == 0
                 } else if (f & 8) != 0 {

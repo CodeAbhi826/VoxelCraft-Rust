@@ -1243,8 +1243,8 @@ mod tests {
     #[test]
     fn greedy_state_above_255_round_trips() {
         let cases = [
-            ANVIL_STATE,           // 283 → 27 with the old decode
-            V13_STATE_BASE + 22,   // the basalt state, 738 → 222 with the old decode
+            ANVIL_STATE,         // 283 → 27 with the old decode
+            V13_STATE_BASE + 22, // the basalt state, 738 → 222 with the old decode
         ];
         for s in cases {
             let snap = snap_with(s);

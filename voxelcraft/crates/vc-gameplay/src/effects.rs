@@ -374,7 +374,10 @@ mod tests {
             let (d, _) = e.tick(20.0);
             dmg += d;
         }
-        assert!((dmg - 10.0).abs() < 0.01, "wither II total = 10 HP, got {dmg}");
+        assert!(
+            (dmg - 10.0).abs() < 0.01,
+            "wither II total = 10 HP, got {dmg}"
+        );
     }
 
     #[test]
@@ -398,7 +401,10 @@ mod tests {
             let (_, h) = e.tick(20.0);
             heal += h;
         }
-        assert!((heal - 2.0).abs() < 0.01, "regen I: 2 HP over 5 s, got {heal}");
+        assert!(
+            (heal - 2.0).abs() < 0.01,
+            "regen I: 2 HP over 5 s, got {heal}"
+        );
     }
 
     #[test]
@@ -424,7 +430,7 @@ mod tests {
         assert!((speed_multiplier(&e) - 1.2).abs() < 1e-6); // +20% level I
         assert!((strength_bonus(&e) - 3.0).abs() < 1e-6); // +3 HP level I
         assert!((resistance_multiplier(&e) - 0.8).abs() < 1e-6); // -20%
-        // level II variants (beacon secondary)
+                                                                 // level II variants (beacon secondary)
         e.apply(EffectKind::Speed, 1, 10);
         assert!((speed_multiplier(&e) - 1.4).abs() < 1e-6);
         // resistance level 4 floors at 20%

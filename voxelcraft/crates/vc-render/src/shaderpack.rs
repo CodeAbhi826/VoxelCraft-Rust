@@ -96,10 +96,7 @@ impl PropertiesDoc {
             };
             let key = key.trim();
             let value = value.trim();
-            let words: Vec<String> = value
-                .split_whitespace()
-                .map(|w| w.to_string())
-                .collect();
+            let words: Vec<String> = value.split_whitespace().map(|w| w.to_string()).collect();
             if key == "sliders" {
                 doc.sliders = words;
             } else if key == "screen" {
@@ -160,8 +157,14 @@ impl PackOption {
     pub fn interpolate(&self, t: f32) -> String {
         let t = t.clamp(0.0, 1.0);
         if let (Ok(a), Ok(b)) = (
-            self.allowed.first().and_then(|s| s.parse::<f32>().ok()).ok_or(()),
-            self.allowed.last().and_then(|s| s.parse::<f32>().ok()).ok_or(()),
+            self.allowed
+                .first()
+                .and_then(|s| s.parse::<f32>().ok())
+                .ok_or(()),
+            self.allowed
+                .last()
+                .and_then(|s| s.parse::<f32>().ok())
+                .ok_or(()),
         ) {
             if b > a {
                 let v = a + t * (b - a);
@@ -171,7 +174,11 @@ impl PackOption {
                     .iter()
                     .filter_map(|v| v.parse::<f32>().ok())
                     .any(|x| x.fract().abs() > f32::EPSILON);
-                return if dec { format!("{v:.3}") } else { format!("{}", v.round() as i64) };
+                return if dec {
+                    format!("{v:.3}")
+                } else {
+                    format!("{}", v.round() as i64)
+                };
             }
         }
         let idx = (t * (self.allowed.len().saturating_sub(1)) as f32).round() as usize;
@@ -186,8 +193,14 @@ impl PackOption {
     pub fn slider_pos(&self) -> f32 {
         if let (Ok(v), Ok(a), Ok(b)) = (
             self.value.parse::<f32>(),
-            self.allowed.first().and_then(|s| s.parse::<f32>().ok()).ok_or(()),
-            self.allowed.last().and_then(|s| s.parse::<f32>().ok()).ok_or(()),
+            self.allowed
+                .first()
+                .and_then(|s| s.parse::<f32>().ok())
+                .ok_or(()),
+            self.allowed
+                .last()
+                .and_then(|s| s.parse::<f32>().ok())
+                .ok_or(()),
         ) {
             if b > a {
                 return ((v - a) / (b - a)).clamp(0.0, 1.0);
@@ -287,8 +300,8 @@ fn resolve_colortex(name: &str) -> Option<u8> {
         "colortex5" | "gaux2" => Some(5),
         "colortex6" | "gaux3" => Some(6),
         "colortex7" | "gaux4" => Some(7),
-        "colortex8" | "colortex9" | "colortex10" | "colortex11" | "colortex12"
-        | "colortex13" | "colortex14" | "colortex15" => name
+        "colortex8" | "colortex9" | "colortex10" | "colortex11" | "colortex12" | "colortex13"
+        | "colortex14" | "colortex15" => name
             .strip_prefix("colortex")
             .and_then(|n| n.parse::<u8>().ok()),
         _ => None,
@@ -418,10 +431,7 @@ fn inline_includes(
 
 /// The per-pass source-level translator (steps 2-6 of the pipeline
 /// doc). `option_values`: user-chosen values per option id.
-fn glsl_prepare(
-    src: &str,
-    option_values: &BTreeMap<String, String>,
-) -> Result<Prepared, String> {
+fn glsl_prepare(src: &str, option_values: &BTreeMap<String, String>) -> Result<Prepared, String> {
     // ---- 2. apply option values: rewrite `#define NAME <v> // [..]` ----
     let mut applied = String::with_capacity(src.len());
     for line in src.lines() {
@@ -616,9 +626,8 @@ fn glsl_prepare(
     }
 
     // ---- emit ----
-    let mut out = String::with_capacity(
-        1024 + final_lines.iter().map(|l| l.len() + 1usize).sum::<usize>(),
-    );
+    let mut out =
+        String::with_capacity(1024 + final_lines.iter().map(|l| l.len() + 1usize).sum::<usize>());
     out.push_str("#version 450 core\n");
     if !uniforms.is_empty() {
         out.push_str("layout(set = 0, binding = 0) uniform VCUniforms {\n");
@@ -688,8 +697,9 @@ pub fn translate_pass(
     let info = validator
         .validate(&module)
         .map_err(|e| format!("validation: {e:?}"))?;
-    let wgsl = naga::back::wgsl::write_string(&module, &info, naga::back::wgsl::WriterFlags::empty())
-        .map_err(|e| format!("WGSL emit: {e}"))?;
+    let wgsl =
+        naga::back::wgsl::write_string(&module, &info, naga::back::wgsl::WriterFlags::empty())
+            .map_err(|e| format!("WGSL emit: {e}"))?;
     Ok(TranslatedPass {
         program: program.to_string(),
         wgsl,
@@ -1011,14 +1021,18 @@ void main() {
         opts.insert("BLOOM_STRENGTH".to_string(), "1.5".to_string());
         let t = translate_pass("composite", BSL_STYLE, &opts, &|_| None)
             .expect("the BSL-style composite must translate");
-        assert!(t.wgsl.contains("var vc_uniforms_struct_VCUniforms") || t.wgsl.contains("VCUniforms"), "uniform block present");
-        assert!(t.wgsl.contains("textureSample") || t.wgsl.contains("texture_2d"), "the texture sample survived");
+        assert!(
+            t.wgsl.contains("var vc_uniforms_struct_VCUniforms") || t.wgsl.contains("VCUniforms"),
+            "uniform block present"
+        );
+        assert!(
+            t.wgsl.contains("textureSample") || t.wgsl.contains("texture_2d"),
+            "the texture sample survived"
+        );
         // naga validation already ran inside translate_pass — the WGSL
         // re-parses clean below (the round-trip gate)
         let mut fe = naga::front::wgsl::Frontend::new();
-        let module = fe
-            .parse(&t.wgsl)
-            .expect("emitted WGSL re-parses clean");
+        let module = fe.parse(&t.wgsl).expect("emitted WGSL re-parses clean");
         let mut v = naga::valid::Validator::new(
             naga::valid::ValidationFlags::all(),
             naga::valid::Capabilities::all(),
@@ -1027,9 +1041,15 @@ void main() {
         // the option value landed: pp-rs substitutes (and naga
         // constant-folds) the macro — the macro NAME must be fully
         // gone (any survivor would mean the value didn't apply)
-        assert!(!t.wgsl.contains("BLOOM_STRENGTH"), "the option macro must be substituted away");
+        assert!(
+            !t.wgsl.contains("BLOOM_STRENGTH"),
+            "the option macro must be substituted away"
+        );
         // uniforms recorded with std140 offsets
-        assert!(t.uniforms.iter().any(|u| u.name == "viewWidth" && u.offset == 0));
+        assert!(t
+            .uniforms
+            .iter()
+            .any(|u| u.name == "viewWidth" && u.offset == 0));
         assert!(t.uniforms.iter().any(|u| u.name == "frameTimeCounter"));
     }
 
@@ -1064,7 +1084,10 @@ vec3 grade(vec3 c) { return c / 2.0 + TONEMAP * 0.0; }
         assert_eq!(pack.passes.len(), 1);
         // the include was inlined (grade() must resolve) and the option
         // was discovered + slider-flagged
-        assert!(pack.options.iter().any(|o| o.id == "TONEMAP" && o.is_slider));
+        assert!(pack
+            .options
+            .iter()
+            .any(|o| o.id == "TONEMAP" && o.is_slider));
         assert!(pack.report[0].translated, "report: {:?}", pack.report);
     }
 
@@ -1241,12 +1264,19 @@ void main() {
         assert_eq!(pack.passes.len(), 2, "composite + final: {:?}", pack.report);
         // the option surface (sliders flagged from shaders.properties)
         assert!(pack.options.iter().any(|o| o.id == "WARMTH" && o.is_slider));
-        assert!(pack.options.iter().any(|o| o.id == "EXPOSURE" && o.is_slider));
+        assert!(pack
+            .options
+            .iter()
+            .any(|o| o.id == "EXPOSURE" && o.is_slider));
         // an override value flows through the translation
         let mut vals = BTreeMap::new();
         vals.insert("WARMTH".to_string(), "2.0".to_string());
         let pack2 = build_pack(id, files, &vals);
-        assert!(pack2.option_values.get("WARMTH").map(|v| v == "2.0").unwrap_or(false));
+        assert!(pack2
+            .option_values
+            .get("WARMTH")
+            .map(|v| v == "2.0")
+            .unwrap_or(false));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

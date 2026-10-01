@@ -52,9 +52,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::None, Ing::Block(SHULKER_SHELL), Ing::None,
-            Ing::None, Ing::Block(CHEST), Ing::None,
-            Ing::None, Ing::Block(SHULKER_SHELL), Ing::None,
+            Ing::None,
+            Ing::Block(SHULKER_SHELL),
+            Ing::None,
+            Ing::None,
+            Ing::Block(CHEST),
+            Ing::None,
+            Ing::None,
+            Ing::Block(SHULKER_SHELL),
+            Ing::None,
         ],
         out: ItemStack::new(SHULKER_BOX, 1),
     },
@@ -581,9 +587,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(SCUTE), Ing::Block(SCUTE), Ing::Block(SCUTE),
-            Ing::Block(SCUTE), Ing::None,   Ing::Block(SCUTE),
-            Ing::None,       Ing::None,     Ing::None,
+            Ing::Block(SCUTE),
+            Ing::Block(SCUTE),
+            Ing::Block(SCUTE),
+            Ing::Block(SCUTE),
+            Ing::None,
+            Ing::Block(SCUTE),
+            Ing::None,
+            Ing::None,
+            Ing::None,
         ],
         out: ItemStack::new(TURTLE_SHELL, 1),
     },
@@ -591,9 +603,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP),
-            Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP),
-            Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP),
         ],
         out: ItemStack::new(DRIED_KELP_BLOCK, 1),
     },
@@ -610,9 +628,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(NAUTILUS_SHELL), Ing::Block(NAUTILUS_SHELL), Ing::Block(NAUTILUS_SHELL),
-            Ing::Block(NAUTILUS_SHELL), Ing::Block(HEART_OF_THE_SEA), Ing::Block(NAUTILUS_SHELL),
-            Ing::Block(NAUTILUS_SHELL), Ing::Block(NAUTILUS_SHELL), Ing::Block(NAUTILUS_SHELL),
+            Ing::Block(NAUTILUS_SHELL),
+            Ing::Block(NAUTILUS_SHELL),
+            Ing::Block(NAUTILUS_SHELL),
+            Ing::Block(NAUTILUS_SHELL),
+            Ing::Block(HEART_OF_THE_SEA),
+            Ing::Block(NAUTILUS_SHELL),
+            Ing::Block(NAUTILUS_SHELL),
+            Ing::Block(NAUTILUS_SHELL),
+            Ing::Block(NAUTILUS_SHELL),
         ],
         out: ItemStack::new(CONDUIT, 1),
     },
@@ -620,9 +644,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE),
-            Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE),
-            Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE),
         ],
         out: ItemStack::new(BLUE_ICE, 1),
     },
@@ -635,18 +665,12 @@ pub const RECIPES: &[Recipe] = &[
     // class of constraint).
     Recipe {
         size: 2,
-        grid: &[
-            Ing::AnyPlanks, Ing::None,
-            Ing::AnyPlanks, Ing::None,
-        ],
+        grid: &[Ing::AnyPlanks, Ing::None, Ing::AnyPlanks, Ing::None],
         out: ItemStack::new(STICK, 4),
     },
     Recipe {
         size: 2,
-        grid: &[
-            Ing::AnyPlanks, Ing::AnyPlanks,
-            Ing::None,       Ing::None,
-        ],
+        grid: &[Ing::AnyPlanks, Ing::AnyPlanks, Ing::None, Ing::None],
         out: ItemStack::new(STICK, 4),
     },
     // campfire: "Stick + Coal or Charcoal + Any Log" (VERIFIED
@@ -657,9 +681,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(STICK), Ing::Block(STICK),    Ing::Block(STICK),
-            Ing::None,         Ing::Block(COAL),     Ing::None,
-            Ing::AnyWood,      Ing::AnyWood,         Ing::AnyWood,
+            Ing::Block(STICK),
+            Ing::Block(STICK),
+            Ing::Block(STICK),
+            Ing::None,
+            Ing::Block(COAL),
+            Ing::None,
+            Ing::AnyWood,
+            Ing::AnyWood,
+            Ing::AnyWood,
         ],
         out: ItemStack::new(CAMPFIRE, 1),
     },
@@ -667,9 +697,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(STICK),   Ing::Block(STICK),   Ing::Block(STICK),
-            Ing::None,           Ing::Block(CHARCOAL), Ing::None,
-            Ing::AnyWood,        Ing::AnyWood,        Ing::AnyWood,
+            Ing::Block(STICK),
+            Ing::Block(STICK),
+            Ing::Block(STICK),
+            Ing::None,
+            Ing::Block(CHARCOAL),
+            Ing::None,
+            Ing::AnyWood,
+            Ing::AnyWood,
+            Ing::AnyWood,
         ],
         out: ItemStack::new(CAMPFIRE, 1),
     },
@@ -681,9 +717,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::AnyPlanks, Ing::Block(OAK_SLAB), Ing::AnyPlanks,
-            Ing::AnyPlanks, Ing::None,           Ing::AnyPlanks,
-            Ing::AnyPlanks, Ing::Block(OAK_SLAB), Ing::AnyPlanks,
+            Ing::AnyPlanks,
+            Ing::Block(OAK_SLAB),
+            Ing::AnyPlanks,
+            Ing::AnyPlanks,
+            Ing::None,
+            Ing::AnyPlanks,
+            Ing::AnyPlanks,
+            Ing::Block(OAK_SLAB),
+            Ing::AnyPlanks,
         ],
         out: ItemStack::new(BARREL, 1),
     },
@@ -698,9 +740,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(IRON_ORE),  Ing::Block(IRON_ORE),  Ing::Block(IRON_ORE),
-            Ing::Block(IRON_ORE),  Ing::Block(FURNACE),   Ing::Block(IRON_ORE),
-            Ing::Block(SMOOTH_STONE), Ing::Block(SMOOTH_STONE), Ing::Block(SMOOTH_STONE),
+            Ing::Block(IRON_ORE),
+            Ing::Block(IRON_ORE),
+            Ing::Block(IRON_ORE),
+            Ing::Block(IRON_ORE),
+            Ing::Block(FURNACE),
+            Ing::Block(IRON_ORE),
+            Ing::Block(SMOOTH_STONE),
+            Ing::Block(SMOOTH_STONE),
+            Ing::Block(SMOOTH_STONE),
         ],
         out: ItemStack::new(BLAST_FURNACE, 1),
     },
@@ -711,9 +759,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::None,    Ing::AnyWood, Ing::None,
-            Ing::AnyWood, Ing::Block(FURNACE), Ing::AnyWood,
-            Ing::None,    Ing::AnyWood, Ing::None,
+            Ing::None,
+            Ing::AnyWood,
+            Ing::None,
+            Ing::AnyWood,
+            Ing::Block(FURNACE),
+            Ing::AnyWood,
+            Ing::None,
+            Ing::AnyWood,
+            Ing::None,
         ],
         out: ItemStack::new(SMOKER, 1),
     },
@@ -723,9 +777,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
-            Ing::Block(IRON_NUGGET), Ing::Block(REDSTONE_TORCH), Ing::Block(IRON_NUGGET),
-            Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(REDSTONE_TORCH),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
         ],
         out: ItemStack::new(LANTERN, 1),
     },
@@ -740,9 +800,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
-            Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
-            Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET),
         ],
         out: ItemStack::new(IRON_ORE, 1),
     },
@@ -770,9 +836,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::AnyPlanks, Ing::AnyPlanks, Ing::AnyPlanks,
-            Ing::Block(HONEYCOMB), Ing::Block(HONEYCOMB), Ing::Block(HONEYCOMB),
-            Ing::AnyPlanks, Ing::AnyPlanks, Ing::AnyPlanks,
+            Ing::AnyPlanks,
+            Ing::AnyPlanks,
+            Ing::AnyPlanks,
+            Ing::Block(HONEYCOMB),
+            Ing::Block(HONEYCOMB),
+            Ing::Block(HONEYCOMB),
+            Ing::AnyPlanks,
+            Ing::AnyPlanks,
+            Ing::AnyPlanks,
         ],
         out: ItemStack::new(BEEHIVE, 1),
     },
@@ -780,8 +852,10 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(HONEYCOMB), Ing::Block(HONEYCOMB),
-            Ing::Block(HONEYCOMB), Ing::Block(HONEYCOMB),
+            Ing::Block(HONEYCOMB),
+            Ing::Block(HONEYCOMB),
+            Ing::Block(HONEYCOMB),
+            Ing::Block(HONEYCOMB),
         ],
         out: ItemStack::new(HONEYCOMB_BLOCK, 1),
     },
@@ -793,8 +867,10 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(HONEY_BOTTLE), Ing::Block(HONEY_BOTTLE),
-            Ing::Block(HONEY_BOTTLE), Ing::Block(HONEY_BOTTLE),
+            Ing::Block(HONEY_BOTTLE),
+            Ing::Block(HONEY_BOTTLE),
+            Ing::Block(HONEY_BOTTLE),
+            Ing::Block(HONEY_BOTTLE),
         ],
         out: ItemStack::new(HONEY_BLOCK, 1),
     },
@@ -810,8 +886,10 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(IRON_ORE), Ing::None,
-            Ing::None,           Ing::Block(IRON_ORE),
+            Ing::Block(IRON_ORE),
+            Ing::None,
+            Ing::None,
+            Ing::Block(IRON_ORE),
         ],
         out: ItemStack::new(SHEARS, 1),
     },
@@ -823,9 +901,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(CRYING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(CRYING_OBSIDIAN),
-            Ing::Block(CRYING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(CRYING_OBSIDIAN),
-            Ing::Block(CRYING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(CRYING_OBSIDIAN),
+            Ing::Block(CRYING_OBSIDIAN),
+            Ing::Block(GLOWSTONE),
+            Ing::Block(CRYING_OBSIDIAN),
+            Ing::Block(CRYING_OBSIDIAN),
+            Ing::Block(GLOWSTONE),
+            Ing::Block(CRYING_OBSIDIAN),
+            Ing::Block(CRYING_OBSIDIAN),
+            Ing::Block(GLOWSTONE),
+            Ing::Block(CRYING_OBSIDIAN),
         ],
         out: ItemStack::new(RESPAWN_ANCHOR, 1),
     },
@@ -836,9 +920,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::None,              Ing::Block(REDSTONE_BLOCK), Ing::None,
-            Ing::Block(REDSTONE_BLOCK), Ing::Block(HAY_BALE),   Ing::Block(REDSTONE_BLOCK),
-            Ing::None,              Ing::Block(REDSTONE_BLOCK), Ing::None,
+            Ing::None,
+            Ing::Block(REDSTONE_BLOCK),
+            Ing::None,
+            Ing::Block(REDSTONE_BLOCK),
+            Ing::Block(HAY_BALE),
+            Ing::Block(REDSTONE_BLOCK),
+            Ing::None,
+            Ing::Block(REDSTONE_BLOCK),
+            Ing::None,
         ],
         out: ItemStack::new(TARGET, 1),
     },
@@ -848,9 +938,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(NETHERITE_SCRAP), Ing::Block(IRON_ORE),     Ing::Block(NETHERITE_SCRAP),
-            Ing::Block(IRON_ORE),        Ing::None,                 Ing::Block(IRON_ORE),
-            Ing::Block(NETHERITE_SCRAP), Ing::Block(IRON_ORE),     Ing::Block(NETHERITE_SCRAP),
+            Ing::Block(NETHERITE_SCRAP),
+            Ing::Block(IRON_ORE),
+            Ing::Block(NETHERITE_SCRAP),
+            Ing::Block(IRON_ORE),
+            Ing::None,
+            Ing::Block(IRON_ORE),
+            Ing::Block(NETHERITE_SCRAP),
+            Ing::Block(IRON_ORE),
+            Ing::Block(NETHERITE_SCRAP),
         ],
         out: ItemStack::new(NETHERITE_INGOT, 1),
     },
@@ -859,9 +955,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT),
-            Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT),
-            Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT),
         ],
         out: ItemStack::new(NETHERITE_BLOCK, 1),
     },
@@ -878,9 +980,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::None, Ing::Block(IRON_NUGGET), Ing::None,
-            Ing::None, Ing::Block(IRON_ORE),    Ing::None,
-            Ing::None, Ing::Block(IRON_NUGGET), Ing::None,
+            Ing::None,
+            Ing::Block(IRON_NUGGET),
+            Ing::None,
+            Ing::None,
+            Ing::Block(IRON_ORE),
+            Ing::None,
+            Ing::None,
+            Ing::Block(IRON_NUGGET),
+            Ing::None,
         ],
         out: ItemStack::new(CHAIN, 1),
     },
@@ -919,8 +1027,10 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(BASALT), Ing::Block(BASALT),
-            Ing::Block(BASALT), Ing::Block(BASALT),
+            Ing::Block(BASALT),
+            Ing::Block(BASALT),
+            Ing::Block(BASALT),
+            Ing::Block(BASALT),
         ],
         out: ItemStack::new(POLISHED_BASALT, 4),
     },
@@ -929,8 +1039,10 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(BLACKSTONE), Ing::Block(BLACKSTONE),
-            Ing::Block(BLACKSTONE), Ing::Block(BLACKSTONE),
+            Ing::Block(BLACKSTONE),
+            Ing::Block(BLACKSTONE),
+            Ing::Block(BLACKSTONE),
+            Ing::Block(BLACKSTONE),
         ],
         out: ItemStack::new(POLISHED_BLACKSTONE, 4),
     },
@@ -939,8 +1051,10 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(POLISHED_BLACKSTONE), Ing::Block(POLISHED_BLACKSTONE),
-            Ing::Block(POLISHED_BLACKSTONE), Ing::Block(POLISHED_BLACKSTONE),
+            Ing::Block(POLISHED_BLACKSTONE),
+            Ing::Block(POLISHED_BLACKSTONE),
+            Ing::Block(POLISHED_BLACKSTONE),
+            Ing::Block(POLISHED_BLACKSTONE),
         ],
         out: ItemStack::new(POLISHED_BLACKSTONE_BRICKS, 4),
     },
@@ -961,8 +1075,10 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 2,
         grid: &[
-            Ing::Block(POPPED_CHORUS_FRUIT), Ing::Block(POPPED_CHORUS_FRUIT),
-            Ing::Block(POPPED_CHORUS_FRUIT), Ing::Block(POPPED_CHORUS_FRUIT),
+            Ing::Block(POPPED_CHORUS_FRUIT),
+            Ing::Block(POPPED_CHORUS_FRUIT),
+            Ing::Block(POPPED_CHORUS_FRUIT),
+            Ing::Block(POPPED_CHORUS_FRUIT),
         ],
         out: ItemStack::new(PURPUR_BLOCK, 4),
     },
@@ -986,9 +1102,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(WHEAT), Ing::Block(WHEAT), Ing::Block(WHEAT),
-            Ing::None, Ing::None, Ing::None,
-            Ing::None, Ing::None, Ing::None,
+            Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
+            Ing::None,
+            Ing::None,
+            Ing::None,
+            Ing::None,
+            Ing::None,
+            Ing::None,
         ],
         out: ItemStack::new(BREAD, 1),
     },
@@ -998,9 +1120,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::Block(WHEAT), Ing::Block(WHEAT), Ing::Block(WHEAT),
-            Ing::Block(WHEAT), Ing::Block(WHEAT), Ing::Block(WHEAT),
-            Ing::Block(WHEAT), Ing::Block(WHEAT), Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
+            Ing::Block(WHEAT),
         ],
         out: ItemStack::new(HAY_BALE, 1),
     },
@@ -1010,9 +1138,15 @@ pub const RECIPES: &[Recipe] = &[
     Recipe {
         size: 3,
         grid: &[
-            Ing::AnyPlanks, Ing::AnyPlanks, Ing::None,
-            Ing::None, Ing::Block(STICK), Ing::None,
-            Ing::None, Ing::Block(STICK), Ing::None,
+            Ing::AnyPlanks,
+            Ing::AnyPlanks,
+            Ing::None,
+            Ing::None,
+            Ing::Block(STICK),
+            Ing::None,
+            Ing::None,
+            Ing::Block(STICK),
+            Ing::None,
         ],
         out: ItemStack::new(HOE, 1),
     },
@@ -1078,13 +1212,33 @@ fn match_kitchen(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
     if other > 0 {
         return None;
     }
-    let total = planks + bowl + red + brown + carrot + baked + rabbit
-        + beetroot + pumpkin + sugar + egg + honey + melon_slice;
+    let total = planks
+        + bowl
+        + red
+        + brown
+        + carrot
+        + baked
+        + rabbit
+        + beetroot
+        + pumpkin
+        + sugar
+        + egg
+        + honey
+        + melon_slice;
     // bowl: exactly 3 planks (the V-shape's 3 items, shapeless)
     if planks == 3
-        && bowl == 0 && red == 0 && brown == 0 && carrot == 0 && baked == 0
-        && rabbit == 0 && beetroot == 0 && pumpkin == 0 && sugar == 0
-        && egg == 0 && honey == 0 && melon_slice == 0
+        && bowl == 0
+        && red == 0
+        && brown == 0
+        && carrot == 0
+        && baked == 0
+        && rabbit == 0
+        && beetroot == 0
+        && pumpkin == 0
+        && sugar == 0
+        && egg == 0
+        && honey == 0
+        && melon_slice == 0
     {
         return Some(ItemStack::new(BOWL, 4));
     }
@@ -1098,13 +1252,7 @@ fn match_kitchen(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
     }
     // rabbit stew: 1 cooked rabbit + 1 carrot + 1 baked potato +
     // exactly one mushroom (red or brown) + 1 bowl
-    if rabbit == 1
-        && carrot == 1
-        && baked == 1
-        && bowl == 1
-        && red + brown == 1
-        && total == 5
-    {
+    if rabbit == 1 && carrot == 1 && baked == 1 && bowl == 1 && red + brown == 1 && total == 5 {
         return Some(ItemStack::new(RABBIT_STEW, 1));
     }
     // beetroot soup: 6 beetroot + 1 bowl
@@ -1236,8 +1384,12 @@ pub fn match_grid(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
                             !s.is_empty()
                                 && matches!(
                                     s.block,
-                                    OAK_LOG | BIRCH_LOG | SPRUCE_LOG | ACACIA_LOG
-                                        | DARK_OAK_LOG | JUNGLE_LOG
+                                    OAK_LOG
+                                        | BIRCH_LOG
+                                        | SPRUCE_LOG
+                                        | ACACIA_LOG
+                                        | DARK_OAK_LOG
+                                        | JUNGLE_LOG
                                 )
                         }
                         Ing::AnyPlanks => {
@@ -1325,17 +1477,29 @@ mod tests {
         g[3] = ItemStack::new(DIRT, 1); // must be EXACTLY 3 planks
         assert!(match_grid(&g, 3).is_none(), "stray dirt blocks the bowl");
         let g = vec![
-            ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1), ItemStack::EMPTY,
-            ItemStack::new(PLANKS, 1), ItemStack::EMPTY, ItemStack::EMPTY,
-            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+            ItemStack::new(PLANKS, 1),
+            ItemStack::new(PLANKS, 1),
+            ItemStack::EMPTY,
+            ItemStack::new(PLANKS, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (BOWL, 4));
         // crimson planks make bowls too (the "Any Planks" row)
         let g = vec![
-            ItemStack::new(CRIMSON_PLANKS, 1), ItemStack::new(CRIMSON_PLANKS, 1), ItemStack::new(CRIMSON_PLANKS, 1),
-            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
-            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+            ItemStack::new(CRIMSON_PLANKS, 1),
+            ItemStack::new(CRIMSON_PLANKS, 1),
+            ItemStack::new(CRIMSON_PLANKS, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (BOWL, 4));
@@ -1518,7 +1682,12 @@ mod tests {
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (COAL_BLOCK, 1));
         // 1 block -> 9 coal (the vanilla reverse craft)
-        let g2 = [ItemStack::new(COAL_BLOCK, 1), ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY];
+        let g2 = [
+            ItemStack::new(COAL_BLOCK, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+        ];
         let out2 = match_grid(&g2, 2).unwrap();
         assert_eq!((out2.block, out2.count), (COAL, 9));
     }
@@ -1526,7 +1695,11 @@ mod tests {
     #[test]
     fn phase_e3_quartz_and_pillar_recipes() {
         // 4 nether quartz -> 1 block of quartz (VERIFIED w/Block_of_Quartz)
-        let out = match_grid(&grid2([NETHER_QUARTZ, NETHER_QUARTZ, NETHER_QUARTZ, NETHER_QUARTZ]), 2).unwrap();
+        let out = match_grid(
+            &grid2([NETHER_QUARTZ, NETHER_QUARTZ, NETHER_QUARTZ, NETHER_QUARTZ]),
+            2,
+        )
+        .unwrap();
         assert_eq!((out.block, out.count), (QUARTZ_BLOCK, 1));
         // 2 blocks of quartz (vertical) -> 2 pillars (VERIFIED
         // w/Quartz_Pillar; output count 2 confirmed by a 2nd source)
@@ -1613,10 +1786,14 @@ mod v112_tests {
     fn v112_concrete_powder_shapeless_recipe() {
         // the canonical arrangement
         let g = [
-            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
-            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
-            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
-            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1),
             ItemStack::new(DYE_BASE + 11, 1), // Lapis Lazuli → blue
         ];
         let out = match_grid(&g, 3).unwrap();
@@ -1625,10 +1802,14 @@ mod v112_tests {
 
         // a scrambled arrangement (the shapeless property)
         let g2 = [
-            ItemStack::new(GRAVEL, 1), ItemStack::new(DYE_BASE, 1),
-            ItemStack::new(SAND, 1), ItemStack::new(GRAVEL, 1),
-            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
-            ItemStack::new(GRAVEL, 1), ItemStack::new(SAND, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(DYE_BASE, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(SAND, 1),
             ItemStack::new(GRAVEL, 1),
         ];
         let out2 = match_grid(&g2, 3).unwrap();
@@ -1652,19 +1833,27 @@ mod v112_tests {
     fn v112_powder_recipe_rejects_wrong_counts() {
         // 3 sand + 5 gravel: not the recipe
         let g = [
-            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
-            ItemStack::new(SAND, 1), ItemStack::new(GRAVEL, 1),
-            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
-            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1),
             ItemStack::new(DYE_BASE, 1),
         ];
         assert!(match_grid(&g, 3).is_none(), "wrong sand count");
         // two dyes: not the recipe
         let g2 = [
-            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
-            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
-            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
-            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1),
             ItemStack::new(DYE_BASE, 1),
         ];
         let mut g3 = g2;
@@ -1702,7 +1891,10 @@ mod v112_tests {
         // 4 scutes (missing a side) is not the helmet
         let mut g2 = g.clone();
         g2[5] = ItemStack::EMPTY;
-        assert!(match_grid(&g2, 3).is_none(), "4 scutes do not craft the shell");
+        assert!(
+            match_grid(&g2, 3).is_none(),
+            "4 scutes do not craft the shell"
+        );
         // dried kelp block: 9 dried kelp
         let g3 = vec![ItemStack::new(DRIED_KELP, 1); 9];
         let out3 = match_grid(&g3, 3).unwrap();
@@ -1723,7 +1915,10 @@ mod v112_tests {
         // 8 shells + cobble center: not the conduit
         let mut g6 = g5.clone();
         g6[4] = ItemStack::new(COBBLE, 1);
-        assert!(match_grid(&g6, 3).is_none(), "the heart of the sea is required");
+        assert!(
+            match_grid(&g6, 3).is_none(),
+            "the heart of the sea is required"
+        );
         // blue ice: 9 packed ice
         let g7 = vec![ItemStack::new(PACKED_ICE, 1); 9];
         let out7 = match_grid(&g7, 3).unwrap();
@@ -1819,7 +2014,10 @@ mod v112_tests {
         // cobble instead of smooth stone in the bottom row: rejected
         let mut bad2 = g.clone();
         bad2[7] = ItemStack::new(COBBLE, 1);
-        assert!(match_grid(&bad2, 3).is_none(), "cobble bottom is not the recipe");
+        assert!(
+            match_grid(&bad2, 3).is_none(),
+            "cobble bottom is not the recipe"
+        );
 
         // smoker: the 4-log cross around the furnace (any of the 6 woods)
         let mut s = vec![ItemStack::EMPTY; 9];
@@ -1833,7 +2031,10 @@ mod v112_tests {
         // a corner log breaks the cross
         let mut bad3 = s.clone();
         bad3[0] = ItemStack::new(OAK_LOG, 1);
-        assert!(match_grid(&bad3, 3).is_none(), "corner log is not the recipe");
+        assert!(
+            match_grid(&bad3, 3).is_none(),
+            "corner log is not the recipe"
+        );
 
         // lantern: the 8-nugget ring around the torch
         let mut l = vec![ItemStack::EMPTY; 9];
@@ -1846,7 +2047,10 @@ mod v112_tests {
         // a nugget missing breaks the ring
         let mut bad4 = l.clone();
         bad4[0] = ItemStack::EMPTY;
-        assert!(match_grid(&bad4, 3).is_none(), "7 nuggets is not the recipe");
+        assert!(
+            match_grid(&bad4, 3).is_none(),
+            "7 nuggets is not the recipe"
+        );
 
         // the nugget round-trips with the iron-ingot stand-in
         let one = vec![ItemStack::new(IRON_ORE, 1)];
@@ -1865,12 +2069,20 @@ mod v112_tests {
         // cornflower → blue dye (index 11, the lapis row)
         let g = vec![ItemStack::new(CORNFLOWER, 1)];
         let out = match_grid(&g, 1).unwrap();
-        assert_eq!((out.block, out.count), (DYE_BASE + 11, 1), "cornflower → blue dye");
+        assert_eq!(
+            (out.block, out.count),
+            (DYE_BASE + 11, 1),
+            "cornflower → blue dye"
+        );
 
         // lily of the valley → white dye (index 0)
         let g = vec![ItemStack::new(LILY_OF_THE_VALLEY, 1)];
         let out = match_grid(&g, 1).unwrap();
-        assert_eq!((out.block, out.count), (DYE_BASE, 1), "lily of the valley → white dye");
+        assert_eq!(
+            (out.block, out.count),
+            (DYE_BASE, 1),
+            "lily of the valley → white dye"
+        );
 
         // the 1.7 flowers do NOT dye (no such recipes — the 1.14 pair
         // is the engine's first flower crafts, disclosed)
@@ -1887,18 +2099,30 @@ mod v112_tests {
         // respawn anchor: 6 crying obsidian + 3 glowstone (the ring
         // around the column)
         let g = vec![
-            ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
-            ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
-            ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1),
+            ItemStack::new(GLOWSTONE, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1),
+            ItemStack::new(GLOWSTONE, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1),
+            ItemStack::new(GLOWSTONE, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1),
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (RESPAWN_ANCHOR, 1));
 
         // target: 4 redstone dust (block stand-in) around 1 hay bale
         let g = vec![
-            ItemStack::EMPTY,               ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::EMPTY,
-            ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::new(HAY_BALE, 1),   ItemStack::new(REDSTONE_BLOCK, 1),
-            ItemStack::EMPTY,               ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::new(REDSTONE_BLOCK, 1),
+            ItemStack::EMPTY,
+            ItemStack::new(REDSTONE_BLOCK, 1),
+            ItemStack::new(HAY_BALE, 1),
+            ItemStack::new(REDSTONE_BLOCK, 1),
+            ItemStack::EMPTY,
+            ItemStack::new(REDSTONE_BLOCK, 1),
+            ItemStack::EMPTY,
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (TARGET, 1));
@@ -1906,9 +2130,15 @@ mod v112_tests {
         // netherite ingot: 4 scrap + 4 gold (iron stand-in) in the
         // checker board
         let g = vec![
-            ItemStack::new(NETHERITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1), ItemStack::new(NETHERITE_SCRAP, 1),
-            ItemStack::new(IRON_ORE, 1),        ItemStack::EMPTY,           ItemStack::new(IRON_ORE, 1),
-            ItemStack::new(NETHERITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1), ItemStack::new(NETHERITE_SCRAP, 1),
+            ItemStack::new(NETHERITE_SCRAP, 1),
+            ItemStack::new(IRON_ORE, 1),
+            ItemStack::new(NETHERITE_SCRAP, 1),
+            ItemStack::new(IRON_ORE, 1),
+            ItemStack::EMPTY,
+            ItemStack::new(IRON_ORE, 1),
+            ItemStack::new(NETHERITE_SCRAP, 1),
+            ItemStack::new(IRON_ORE, 1),
+            ItemStack::new(NETHERITE_SCRAP, 1),
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (NETHERITE_INGOT, 1));
@@ -1925,9 +2155,15 @@ mod v112_tests {
         // middle column of the 3x3 grid (the 1.16 iron-only form; the
         // copper variants are 1.21+)
         let g = vec![
-            ItemStack::EMPTY,           ItemStack::new(IRON_NUGGET, 1), ItemStack::EMPTY,
-            ItemStack::EMPTY,           ItemStack::new(IRON_ORE, 1),     ItemStack::EMPTY,
-            ItemStack::EMPTY,           ItemStack::new(IRON_NUGGET, 1), ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::new(IRON_ORE, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::EMPTY,
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (CHAIN, 1));
@@ -1956,22 +2192,28 @@ mod v112_tests {
 
         // the polished stone 2x2 family: basalt / blackstone / bricks
         let g = vec![
-            ItemStack::new(BASALT, 1), ItemStack::new(BASALT, 1),
-            ItemStack::new(BASALT, 1), ItemStack::new(BASALT, 1),
+            ItemStack::new(BASALT, 1),
+            ItemStack::new(BASALT, 1),
+            ItemStack::new(BASALT, 1),
+            ItemStack::new(BASALT, 1),
         ];
         let out = match_grid(&g, 2).unwrap();
         assert_eq!((out.block, out.count), (POLISHED_BASALT, 4));
 
         let g = vec![
-            ItemStack::new(BLACKSTONE, 1), ItemStack::new(BLACKSTONE, 1),
-            ItemStack::new(BLACKSTONE, 1), ItemStack::new(BLACKSTONE, 1),
+            ItemStack::new(BLACKSTONE, 1),
+            ItemStack::new(BLACKSTONE, 1),
+            ItemStack::new(BLACKSTONE, 1),
+            ItemStack::new(BLACKSTONE, 1),
         ];
         let out = match_grid(&g, 2).unwrap();
         assert_eq!((out.block, out.count), (POLISHED_BLACKSTONE, 4));
 
         let g = vec![
-            ItemStack::new(POLISHED_BLACKSTONE, 1), ItemStack::new(POLISHED_BLACKSTONE, 1),
-            ItemStack::new(POLISHED_BLACKSTONE, 1), ItemStack::new(POLISHED_BLACKSTONE, 1),
+            ItemStack::new(POLISHED_BLACKSTONE, 1),
+            ItemStack::new(POLISHED_BLACKSTONE, 1),
+            ItemStack::new(POLISHED_BLACKSTONE, 1),
+            ItemStack::new(POLISHED_BLACKSTONE, 1),
         ];
         let out = match_grid(&g, 2).unwrap();
         assert_eq!((out.block, out.count), (POLISHED_BLACKSTONE_BRICKS, 4));
@@ -1981,9 +2223,15 @@ mod v112_tests {
         for fuel in [CHARCOAL, COAL] {
             for soul in [SOUL_SOIL, SOUL_SAND] {
                 let g = vec![
-                    ItemStack::new(fuel, 1),  ItemStack::EMPTY,           ItemStack::new(STICK, 1),
-                    ItemStack::EMPTY,           ItemStack::new(soul, 1),  ItemStack::EMPTY,
-                    ItemStack::EMPTY,           ItemStack::EMPTY,           ItemStack::EMPTY,
+                    ItemStack::new(fuel, 1),
+                    ItemStack::EMPTY,
+                    ItemStack::new(STICK, 1),
+                    ItemStack::EMPTY,
+                    ItemStack::new(soul, 1),
+                    ItemStack::EMPTY,
+                    ItemStack::EMPTY,
+                    ItemStack::EMPTY,
+                    ItemStack::EMPTY,
                 ];
                 let out = match_grid(&g, 3).unwrap();
                 assert_eq!((out.block, out.count), (SOUL_TORCH, 4));
@@ -1992,18 +2240,30 @@ mod v112_tests {
 
         // the soul lantern: 8 iron nuggets + 1 soul torch (the ring)
         let g = vec![
-            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
-            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(SOUL_TORCH, 1),  ItemStack::new(IRON_NUGGET, 1),
-            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(SOUL_TORCH, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (SOUL_LANTERN, 1));
 
         // negative: 7 nuggets + a soul torch is NOT the recipe
         let g = vec![
-            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
-            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(SOUL_TORCH, 1),  ItemStack::EMPTY,
-            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(SOUL_TORCH, 1),
+            ItemStack::EMPTY,
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1),
         ];
         assert!(match_grid(&g, 3).is_none(), "the 8-nugget ring is exact");
     }
@@ -2018,17 +2278,29 @@ mod farm_recipe_tests {
     #[test]
     fn bread_crafts_from_three_wheat() {
         let g = vec![
-            ItemStack::new(WHEAT, 1), ItemStack::new(WHEAT, 1), ItemStack::new(WHEAT, 1),
-            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
-            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+            ItemStack::new(WHEAT, 1),
+            ItemStack::new(WHEAT, 1),
+            ItemStack::new(WHEAT, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (BREAD, 1));
         // negative: 2 wheat is not bread
         let g = vec![
-            ItemStack::new(WHEAT, 1), ItemStack::new(WHEAT, 1), ItemStack::EMPTY,
-            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
-            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+            ItemStack::new(WHEAT, 1),
+            ItemStack::new(WHEAT, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
         ];
         assert!(match_grid(&g, 3).is_none(), "2 wheat ≠ bread");
     }
@@ -2046,9 +2318,15 @@ mod farm_recipe_tests {
     #[test]
     fn hoe_crafts_from_planks_and_sticks() {
         let g = vec![
-            ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1), ItemStack::EMPTY,
-            ItemStack::EMPTY, ItemStack::new(STICK, 1), ItemStack::EMPTY,
-            ItemStack::EMPTY, ItemStack::new(STICK, 1), ItemStack::EMPTY,
+            ItemStack::new(PLANKS, 1),
+            ItemStack::new(PLANKS, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::new(STICK, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+            ItemStack::new(STICK, 1),
+            ItemStack::EMPTY,
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (HOE, 1));

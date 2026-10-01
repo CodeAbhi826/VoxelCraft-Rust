@@ -24,10 +24,10 @@
 //!   modified enchantment levels combined" — the per-enchant M values
 //!   below are the maxima of the wiki's published XP-ranges table
 
-use vc_blocks::blocks::{BOOK, ENCHANTED_BOOK};
-use vc_inventory::inventory::ItemStack;
 use crate::anvil::armor_max_durability;
 use crate::enchanting::enchant_def;
+use vc_blocks::blocks::{BOOK, ENCHANTED_BOOK};
+use vc_inventory::inventory::ItemStack;
 
 /// the two-input combine bonus (VERIFIED w/Grindstone: 5% of max,
 /// rounded down — not the anvil's 12%)
@@ -152,7 +152,11 @@ pub fn grindstone_plan(top: &ItemStack, bottom: &ItemStack) -> Option<GrindPlan>
         }
         result.prior = 0; // the grindstone resets the penalty
         let (mn, mx) = xp_bounds(&useful);
-        return Some(GrindPlan { result, xp_min: mn, xp_max: mx });
+        return Some(GrindPlan {
+            result,
+            xp_min: mn,
+            xp_max: mx,
+        });
     }
     // ---- the two-input combine path ----
     if top.block != bottom.block {
@@ -180,7 +184,7 @@ pub fn grindstone_plan(top: &ItemStack, bottom: &ItemStack) -> Option<GrindPlan>
         result.set_enchant(id, lvl); // curses survive the grindstone
     }
     result.prior = 0; // reset (VERIFIED)
-    // durability: sum of remainders + 5% of max, capped
+                      // durability: sum of remainders + 5% of max, capped
     if let Some(max) = armor_max_durability(top.block) {
         let rem_a = max.saturating_sub(top.dmg) as u32;
         let rem_b = max.saturating_sub(bottom.dmg) as u32;
@@ -193,15 +197,16 @@ pub fn grindstone_plan(top: &ItemStack, bottom: &ItemStack) -> Option<GrindPlan>
     // "If either input item was enchanted, the grindstone drops some
     // experience" (VERIFIED) — an unenchanted pair combines with no XP
     let (mn, mx) = xp_bounds(&all);
-    Some(GrindPlan { result, xp_min: mn, xp_max: mx })
+    Some(GrindPlan {
+        result,
+        xp_min: mn,
+        xp_max: mx,
+    })
 }
 
 /// the XP bounds for a set of enchants: combined M, floor = ceil(50%)
 fn xp_bounds(enchants: &[(u8, u8)]) -> (u32, u32) {
-    let m: u32 = enchants
-        .iter()
-        .map(|&(id, lvl)| xp_min_cost(id, lvl))
-        .sum();
+    let m: u32 = enchants.iter().map(|&(id, lvl)| xp_min_cost(id, lvl)).sum();
     (m.div_ceil(2), m) // ceil(m/2) ..= m — the 50%..100% window
 }
 

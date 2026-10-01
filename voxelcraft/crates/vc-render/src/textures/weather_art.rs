@@ -12,7 +12,13 @@ pub(super) fn rain_streak(a: &mut [u8], t: u16, _rng: &mut Rng) {
     for y in 0..16 {
         // taper: solid core rows 3..13, faint tips
         let core = (3..=13).contains(&y);
-        let alpha = if core { 190 } else if y == 2 || y == 14 { 120 } else { 0 };
+        let alpha = if core {
+            190
+        } else if y == 2 || y == 14 {
+            120
+        } else {
+            0
+        };
         if alpha == 0 {
             continue;
         }

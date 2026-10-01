@@ -718,7 +718,6 @@ pub(super) fn silverfish_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
         'C' => Some((92, 92, 104, 255)),
         _ => None,
     });
-
 }
 
 /// melon slice — the sweep-2 food row (w/Melon_Slice: "Restores 2

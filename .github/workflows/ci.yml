@@ -5,6 +5,8 @@ name: CI
 # this workflow is the quality GATE — the whole library workspace
 # (14 vc-* crates + the app) is tested: native tests, wasm check,
 # native check with audio, and the headless benchmark, on the code that ships.
+# fmt/clippy close the style-gap drift: rustfmt 1.9.0 reflowed the tree
+# (2026-10-01) and neither gate ran anywhere before this.
 
 on:
   push:
@@ -18,6 +20,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  fmt:
+    name: cargo fmt --check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: cargo fmt --check (whole workspace)
+        working-directory: voxelcraft
+        run: cargo fmt --check
+
   tests:
     name: cargo test (ubuntu, headless-safe)
     runs-on: ubuntu-latest
@@ -76,6 +95,32 @@ jobs:
       - name: cargo test (wasm32-compile unit tests — headless-safe subset)
         working-directory: voxelcraft
         run: cargo test --no-default-features --workspace --lib --target wasm32-unknown-unknown --no-run
+
+  clippy:
+    name: cargo clippy (-D warnings)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: voxelcraft
+          key: ci-clippy
+
+      - name: Install ALSA headers (audio feature)
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+
+      - name: cargo clippy (-D warnings — whole workspace, audio on)
+        working-directory: voxelcraft
+        run: cargo clippy -- -D warnings
 
   bench:
     name: headless benchmark (§37/§48 baselines)

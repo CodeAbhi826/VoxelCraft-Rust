@@ -100,7 +100,6 @@ pub struct Campfires {
     pub done: Vec<([i32; 3], u16)>,
 }
 
-
 impl Campfires {
     /// entry for a position, creating it on first use
     pub fn entry(&mut self, pos: [i32; 3]) -> &mut CampfireState {
@@ -237,7 +236,10 @@ mod tests {
         for b in [BEEF, PORKCHOP, CHICKEN_RAW, MUTTON, RAW_FISH, RAW_SALMON] {
             assert!(CampfireState::accepts(b), "campfire accepts {b}");
         }
-        assert!(!CampfireState::accepts(STEAK), "cooked food does not recook");
+        assert!(
+            !CampfireState::accepts(STEAK),
+            "cooked food does not recook"
+        );
         assert!(!CampfireState::accepts(COBBLE));
     }
 }

@@ -12,8 +12,8 @@
 //! billboards; a blend-split needs a second pipeline + draw batch —
 //! deferred with that reason, disclosed in the audit doc §2).
 
-use vc_blocks::blocks::TILE_SNOW;
 use crate::particles::{Particle, ParticleSystem};
+use vc_blocks::blocks::TILE_SNOW;
 
 /// one registered particle type's definition
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -40,46 +40,206 @@ pub struct KindDef {
 pub const KINDS: [KindDef; 20] = [
     // splash — water entry, ~0.5 s (VERIFIED w/Particle: the splash
     // burst when an entity enters water)
-    KindDef { name: "splash", color: [0.55, 0.70, 0.95], half: 0.08, life: 10, grav: 0.04, additive: false, rises: false },
+    KindDef {
+        name: "splash",
+        color: [0.55, 0.70, 0.95],
+        half: 0.08,
+        life: 10,
+        grav: 0.04,
+        additive: false,
+        rises: false,
+    },
     // bubble — underwater entity breath, rises to the surface
-    KindDef { name: "bubble", color: [0.75, 0.85, 1.00], half: 0.05, life: 40, grav: 0.0, additive: false, rises: true },
+    KindDef {
+        name: "bubble",
+        color: [0.75, 0.85, 1.00],
+        half: 0.05,
+        life: 40,
+        grav: 0.0,
+        additive: false,
+        rises: true,
+    },
     // bubble_pop — a bubble reaching the surface
-    KindDef { name: "bubble_pop", color: [0.80, 0.90, 1.00], half: 0.06, life: 4, grav: 0.0, additive: false, rises: false },
+    KindDef {
+        name: "bubble_pop",
+        color: [0.80, 0.90, 1.00],
+        half: 0.06,
+        life: 4,
+        grav: 0.0,
+        additive: false,
+        rises: false,
+    },
     // dripping_water — leaf/bottom-face drip, gravity 0.04 (the spec's
     // own value; VERIFIED w/Particle: the drip hangs then falls)
-    KindDef { name: "dripping_water", color: [0.45, 0.60, 0.90], half: 0.04, life: 60, grav: 0.04, additive: false, rises: false },
+    KindDef {
+        name: "dripping_water",
+        color: [0.45, 0.60, 0.90],
+        half: 0.04,
+        life: 60,
+        grav: 0.04,
+        additive: false,
+        rises: false,
+    },
     // dripping_lava — same but lava, emissive
-    KindDef { name: "dripping_lava", color: [1.00, 0.45, 0.10], half: 0.04, life: 60, grav: 0.04, additive: false, rises: false },
+    KindDef {
+        name: "dripping_lava",
+        color: [1.00, 0.45, 0.10],
+        half: 0.04,
+        life: 60,
+        grav: 0.04,
+        additive: false,
+        rises: false,
+    },
     // falling_water — the actually-landing drip, grey-blue
-    KindDef { name: "falling_water", color: [0.50, 0.65, 0.85], half: 0.05, life: 16, grav: 0.04, additive: false, rises: false },
+    KindDef {
+        name: "falling_water",
+        color: [0.50, 0.65, 0.85],
+        half: 0.05,
+        life: 16,
+        grav: 0.04,
+        additive: false,
+        rises: false,
+    },
     // falling_lava — the actually-landing lava, orange glow
-    KindDef { name: "falling_lava", color: [1.00, 0.55, 0.15], half: 0.05, life: 16, grav: 0.04, additive: false, rises: false },
+    KindDef {
+        name: "falling_lava",
+        color: [1.00, 0.55, 0.15],
+        half: 0.05,
+        life: 16,
+        grav: 0.04,
+        additive: false,
+        rises: false,
+    },
     // portal — nether portal ambience, teal-purple, additive
-    KindDef { name: "portal", color: [0.45, 0.20, 0.70], half: 0.06, life: 40, grav: 0.0, additive: true, rises: false },
+    KindDef {
+        name: "portal",
+        color: [0.45, 0.20, 0.70],
+        half: 0.06,
+        life: 40,
+        grav: 0.0,
+        additive: true,
+        rises: false,
+    },
     // reverse_portal — end portal, pale purple, additive
-    KindDef { name: "reverse_portal", color: [0.75, 0.60, 0.95], half: 0.06, life: 40, grav: 0.0, additive: true, rises: false },
+    KindDef {
+        name: "reverse_portal",
+        color: [0.75, 0.60, 0.95],
+        half: 0.06,
+        life: 40,
+        grav: 0.0,
+        additive: true,
+        rises: false,
+    },
     // end_rod — the end rod sparkle, small white star, additive
-    KindDef { name: "end_rod", color: [1.00, 0.98, 0.90], half: 0.04, life: 30, grav: 0.0, additive: true, rises: true },
+    KindDef {
+        name: "end_rod",
+        color: [1.00, 0.98, 0.90],
+        half: 0.04,
+        life: 30,
+        grav: 0.0,
+        additive: true,
+        rises: true,
+    },
     // firework — the trail spark, colour-tinted, additive
-    KindDef { name: "firework", color: [1.00, 0.80, 0.40], half: 0.05, life: 24, grav: 0.01, additive: true, rises: false },
+    KindDef {
+        name: "firework",
+        color: [1.00, 0.80, 0.40],
+        half: 0.05,
+        life: 24,
+        grav: 0.01,
+        additive: true,
+        rises: false,
+    },
     // explosion_emitter — the large smoke puff + spark ring
-    KindDef { name: "explosion_emitter", color: [0.90, 0.85, 0.75], half: 0.45, life: 12, grav: 0.0, additive: false, rises: false },
+    KindDef {
+        name: "explosion_emitter",
+        color: [0.90, 0.85, 0.75],
+        half: 0.45,
+        life: 12,
+        grav: 0.0,
+        additive: false,
+        rises: false,
+    },
     // squid_ink — the black ink cloud
-    KindDef { name: "squid_ink", color: [0.10, 0.10, 0.13], half: 0.16, life: 30, grav: 0.0, additive: false, rises: false },
+    KindDef {
+        name: "squid_ink",
+        color: [0.10, 0.10, 0.13],
+        half: 0.16,
+        life: 30,
+        grav: 0.0,
+        additive: false,
+        rises: false,
+    },
     // dust — the redstone torch dust, red
-    KindDef { name: "dust", color: [0.85, 0.10, 0.10], half: 0.03, life: 20, grav: 0.04, additive: false, rises: false },
+    KindDef {
+        name: "dust",
+        color: [0.85, 0.10, 0.10],
+        half: 0.03,
+        life: 20,
+        grav: 0.04,
+        additive: false,
+        rises: false,
+    },
     // note — the note block's note, tinted by instrument
-    KindDef { name: "note", color: [0.30, 0.60, 1.00], half: 0.08, life: 12, grav: 0.0, additive: true, rises: true },
+    KindDef {
+        name: "note",
+        color: [0.30, 0.60, 1.00],
+        half: 0.08,
+        life: 12,
+        grav: 0.0,
+        additive: true,
+        rises: true,
+    },
     // happy_villager — the green cross sparkle
-    KindDef { name: "happy_villager", color: [0.35, 0.90, 0.35], half: 0.06, life: 20, grav: 0.0, additive: false, rises: true },
+    KindDef {
+        name: "happy_villager",
+        color: [0.35, 0.90, 0.35],
+        half: 0.06,
+        life: 20,
+        grav: 0.0,
+        additive: false,
+        rises: true,
+    },
     // angry_villager — the dark grey cloud
-    KindDef { name: "angry_villager", color: [0.35, 0.32, 0.30], half: 0.06, life: 20, grav: 0.0, additive: false, rises: true },
+    KindDef {
+        name: "angry_villager",
+        color: [0.35, 0.32, 0.30],
+        half: 0.06,
+        life: 20,
+        grav: 0.0,
+        additive: false,
+        rises: true,
+    },
     // snowflake — the snow-biome ambient flake
-    KindDef { name: "snowflake", color: [1.00, 1.00, 1.00], half: 0.05, life: 60, grav: 0.01, additive: false, rises: false },
+    KindDef {
+        name: "snowflake",
+        color: [1.00, 1.00, 1.00],
+        half: 0.05,
+        life: 60,
+        grav: 0.01,
+        additive: false,
+        rises: false,
+    },
     // totem_of_undying — the green + yellow revival ring
-    KindDef { name: "totem_of_undying", color: [0.70, 1.00, 0.40], half: 0.09, life: 30, grav: 0.0, additive: true, rises: true },
+    KindDef {
+        name: "totem_of_undying",
+        color: [0.70, 1.00, 0.40],
+        half: 0.09,
+        life: 30,
+        grav: 0.0,
+        additive: true,
+        rises: true,
+    },
     // spit — the llama spit projectile trail
-    KindDef { name: "spit", color: [0.85, 0.90, 0.75], half: 0.05, life: 8, grav: 0.04, additive: false, rises: false },
+    KindDef {
+        name: "spit",
+        color: [0.85, 0.90, 0.75],
+        half: 0.05,
+        life: 8,
+        grav: 0.04,
+        additive: false,
+        rises: false,
+    },
 ];
 
 /// look up a def by registry name
@@ -190,7 +350,11 @@ mod tests {
             assert!(seen.insert(k.name), "duplicate name {}", k.name);
             assert!(k.life > 0, "{} has a positive lifetime", k.name);
             assert!(k.half > 0.0 && k.half < 1.0, "{} size sane", k.name);
-            assert!((0.0..=0.04).contains(&k.grav), "{} gravity in range", k.name);
+            assert!(
+                (0.0..=0.04).contains(&k.grav),
+                "{} gravity in range",
+                k.name
+            );
             assert!(
                 k.color.iter().all(|c| (0.0..=1.0).contains(c)),
                 "{} color in range",
@@ -223,14 +387,24 @@ mod tests {
             assert!(def(needed).is_some(), "{needed} registered");
         }
         // the additive family is flagged (portal-class glow types)
-        for a in ["portal", "reverse_portal", "end_rod", "firework", "note", "totem_of_undying"] {
+        for a in [
+            "portal",
+            "reverse_portal",
+            "end_rod",
+            "firework",
+            "note",
+            "totem_of_undying",
+        ] {
             assert!(def(a).unwrap().additive, "{a} is additive (registry data)");
         }
         // at least the live-source subset claims an engine source
         assert!(has_engine_source("splash"));
         assert!(has_engine_source("totem_of_undying"));
         assert!(!has_engine_source("firework"), "no firework events — inert");
-        assert!(!has_engine_source("portal"), "no nether-portal block — inert");
+        assert!(
+            !has_engine_source("portal"),
+            "no nether-portal block — inert"
+        );
     }
 
     /// Round 15b: the typed emitter pushes particles with the def's

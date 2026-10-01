@@ -2,10 +2,10 @@
 //! with the JSON-model path (blockstate dispatch, Phase 1).
 //! Pure function over a 3x3 chunk snapshot → safe on worker threads.
 
+use std::sync::Arc;
 use vc_blocks::blocks::*;
 use vc_chunk::chunk::Chunk;
 use vc_world::world::ChunkPos;
-use std::sync::Arc;
 
 /// engine-drawn missing-texture tile (magenta/black checker) — §46 fallback
 pub const TILE_MISSING: u16 = 63;
@@ -195,7 +195,9 @@ pub fn build_mesh_inputs(
     let mut has_models = false;
     for dzi in 0..3usize {
         for dxi in 0..3usize {
-            let Some(chunk) = &snap[dzi * 3 + dxi] else { continue };
+            let Some(chunk) = &snap[dzi * 3 + dxi] else {
+                continue;
+            };
             let px0 = dxi * 16;
             let pz0 = dzi * 16;
             let center = dxi == 1 && dzi == 1;
@@ -236,7 +238,9 @@ pub fn build_mesh_inputs(
     {
         for dzi in 0..3usize {
             for dxi in 0..3usize {
-                let Some(chunk) = &snap[dzi * 3 + dxi] else { continue };
+                let Some(chunk) = &snap[dzi * 3 + dxi] else {
+                    continue;
+                };
                 let ld = lsnap[dzi * 3 + dxi].as_ref();
                 let px0 = dxi * 16;
                 let pz0 = dzi * 16;
@@ -285,7 +289,14 @@ pub fn build_mesh_inputs(
         .map(|c| c.biome.as_ref().to_vec().into_boxed_slice())
         .unwrap_or_else(|| vec![2u8; 256].into_boxed_slice());
 
-    MeshInputs { blocks, light, blight, biomes, has_cross, has_models }
+    MeshInputs {
+        blocks,
+        light,
+        blight,
+        biomes,
+        has_cross,
+        has_models,
+    }
 }
 
 // NOTE: face shading + AO tables now live in the WGSL shaders (indexed by
@@ -330,7 +341,14 @@ pub fn mesh_sections(
     if let Some(b) = biomes {
         inputs.biomes = b;
     }
-    let MeshInputs { blocks, light, blight, biomes, has_cross, has_models } = inputs;
+    let MeshInputs {
+        blocks,
+        light,
+        blight,
+        biomes,
+        has_cross,
+        has_models,
+    } = inputs;
     let biome_at = |lx: usize, lz: usize| biomes[lz * 16 + lx];
 
     // ------------------------------------------------ greedy meshing
@@ -370,8 +388,11 @@ pub fn mesh_sections(
                 let off_u = if u == 1 { ylo } else { 0 };
                 let off_v = if v == 1 { ylo } else { 0 };
                 // slice along d: absolute Y for Y-sweeps, local X/Z otherwise
-                let sls: Box<dyn Iterator<Item = usize>> =
-                    if d == 1 { Box::new(ylo..ylo + 16) } else { Box::new(0..16) };
+                let sls: Box<dyn Iterator<Item = usize>> = if d == 1 {
+                    Box::new(ylo..ylo + 16)
+                } else {
+                    Box::new(0..16)
+                };
                 for sl in sls {
                     let mut smask: Vec<u64> = vec![0; du * dv];
                     let mut wmask: Vec<u64> = vec![0; du * dv];
@@ -386,148 +407,149 @@ pub fn mesh_sections(
                             cell[d] = sl as i32;
                             cell[u] = au as i32;
                             cell[v] = av as i32;
-                        let bs = getb(&blocks, cell[0], cell[1], cell[2]); // state
-                        let b = sb(bs);
-                        if b == AIR || is_cross(b) || is_model_state(bs) {
-                            continue;
-                        }
-                        let mut ncell = cell;
-                        ncell[d] += dir;
-                        let nb = sb(getb(&blocks, ncell[0], ncell[1], ncell[2]));
-
-                        if b == WATER || b == LAVA {
-                            // fluids mesh through the water-quad path (§18
-                            // tint: biome water color / the fixed lava slot —
-                            // both in the greedy key so runs never merge).
-                            // 2026-09-21b: the WATER LEVEL also rides the
-                            // key (bits 19..21) so (a) runs never merge
-                            // across levels and (b) the emit stage can
-                            // render each level at its own fluid_height —
-                            // flowing water descends (8−l)/9 like vanilla
-                            // instead of every cell showing the 14/16
-                            // source slab. LAVA stays level-0 (uniform).
-                            let wl: u64 = if b == WATER {
-                                water_level(bs).min(7) as u64
-                            } else {
-                                0
-                            };
-                            let mut vis = face_visible(b, nb);
-                            if b == WATER && nb == WATER && d != 1 {
-                                // step faces between different-height
-                                // water cells: the TALLER side renders
-                                // the shared vertical face (vanilla
-                                // renders internal faces at level steps;
-                                // previously all water-water side faces
-                                // were culled, leaving see-through gaps
-                                // at every step once heights diverged)
-                                let nbs = getb(&blocks, ncell[0], ncell[1], ncell[2]);
-                                let nwl = water_level(nbs);
-                                let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
-                                let nabove =
-                                    getb(&blocks, ncell[0], ncell[1] + 1, ncell[2]);
-                                let my_h = fluid_height(water_level(bs), above == b);
-                                let nb_h = fluid_height(nwl, nabove == b);
-                                vis = my_h > nb_h + 1e-4;
+                            let bs = getb(&blocks, cell[0], cell[1], cell[2]); // state
+                            let b = sb(bs);
+                            if b == AIR || is_cross(b) || is_model_state(bs) {
+                                continue;
                             }
-                            if vis {
-                                let l = getl(&light, ncell[0], ncell[1], ncell[2]) as u64;
-                                let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
-                                let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
-                                let aw = if above == b { 1u64 } else { 0u64 };
-                                let wt = vc_blocks::tint::block_face_tint_packed(
-                                    b, false, biome_at(cell[0] as usize, cell[2] as usize),
-                                ) as u64;
-                                wmask[vi * du + ui] = 1
-                                    | (l << 1)
-                                    | (aw << 6)
-                                    | (bl << 7)
-                                    | (wt << 11)
-                                    | (wl << 19);
+                            let mut ncell = cell;
+                            ncell[d] += dir;
+                            let nb = sb(getb(&blocks, ncell[0], ncell[1], ncell[2]));
+
+                            if b == WATER || b == LAVA {
+                                // fluids mesh through the water-quad path (§18
+                                // tint: biome water color / the fixed lava slot —
+                                // both in the greedy key so runs never merge).
+                                // 2026-09-21b: the WATER LEVEL also rides the
+                                // key (bits 19..21) so (a) runs never merge
+                                // across levels and (b) the emit stage can
+                                // render each level at its own fluid_height —
+                                // flowing water descends (8−l)/9 like vanilla
+                                // instead of every cell showing the 14/16
+                                // source slab. LAVA stays level-0 (uniform).
+                                let wl: u64 = if b == WATER {
+                                    water_level(bs).min(7) as u64
+                                } else {
+                                    0
+                                };
+                                let mut vis = face_visible(b, nb);
+                                if b == WATER && nb == WATER && d != 1 {
+                                    // step faces between different-height
+                                    // water cells: the TALLER side renders
+                                    // the shared vertical face (vanilla
+                                    // renders internal faces at level steps;
+                                    // previously all water-water side faces
+                                    // were culled, leaving see-through gaps
+                                    // at every step once heights diverged)
+                                    let nbs = getb(&blocks, ncell[0], ncell[1], ncell[2]);
+                                    let nwl = water_level(nbs);
+                                    let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
+                                    let nabove = getb(&blocks, ncell[0], ncell[1] + 1, ncell[2]);
+                                    let my_h = fluid_height(water_level(bs), above == b);
+                                    let nb_h = fluid_height(nwl, nabove == b);
+                                    vis = my_h > nb_h + 1e-4;
+                                }
+                                if vis {
+                                    let l = getl(&light, ncell[0], ncell[1], ncell[2]) as u64;
+                                    let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
+                                    let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
+                                    let aw = if above == b { 1u64 } else { 0u64 };
+                                    let wt = vc_blocks::tint::block_face_tint_packed(
+                                        b,
+                                        false,
+                                        biome_at(cell[0] as usize, cell[2] as usize),
+                                    ) as u64;
+                                    wmask[vi * du + ui] = 1
+                                        | (l << 1)
+                                        | (aw << 6)
+                                        | (bl << 7)
+                                        | (wt << 11)
+                                        | (wl << 19);
+                                }
+                                continue;
                             }
-                            continue;
+
+                            if !face_visible(b, nb) {
+                                continue;
+                            }
+
+                            // (skylight at the neighbor cell is folded into the
+                            // per-corner sky_pack below; block light joins it)
+
+                            // AO + corner sky, absolute (u, v) coords in the neighbor layer
+                            let mut ao = [0u64; 4];
+                            let mut sky = [0u64; 4];
+                            for (ci, (cu, cv)) in
+                                [(0i32, 0i32), (1, 0), (1, 1), (0, 1)].iter().enumerate()
+                            {
+                                let big_u = au as i32 + cu; // corner coord along u (absolute)
+                                let big_v = av as i32 + cv;
+                                let u_out = if *cu == 0 { big_u - 1 } else { big_u };
+                                let v_out = if *cv == 0 { big_v - 1 } else { big_v };
+                                let h_side = (u_out, if *cv == 0 { big_v } else { big_v - 1 });
+                                let v_side = (if *cu == 0 { big_u } else { big_u - 1 }, v_out);
+                                let diag = (u_out, v_out);
+
+                                let solid_at = |au: i32, av: i32| -> bool {
+                                    let mut c = ncell;
+                                    c[u] = au;
+                                    c[v] = av;
+                                    is_opaque(sb(getb(&blocks, c[0], c[1], c[2])))
+                                };
+                                let light_at = |au: i32, av: i32| -> u64 {
+                                    let mut c = ncell;
+                                    c[u] = au;
+                                    c[v] = av;
+                                    getl(&light, c[0], c[1], c[2]) as u64
+                                };
+
+                                let s1 = solid_at(h_side.0, h_side.1);
+                                let s2 = solid_at(v_side.0, v_side.1);
+                                let cr = solid_at(diag.0, diag.1);
+                                // vanilla Smooth Lighting level: 0 off (flat),
+                                // 1 minimum (half-strength corners), 2 maximum
+                                // (full AO) — the GPU mesher mirrors this remap
+                                let a = if s1 && s2 {
+                                    0u64
+                                } else {
+                                    3 - (s1 as u64 + s2 as u64 + cr as u64)
+                                };
+                                ao[ci] = match smooth {
+                                    0 => 3,
+                                    1 => (a + 3) / 2,
+                                    _ => a,
+                                };
+                                let s = light_at(big_u - 1, big_v - 1)
+                                    + light_at(big_u, big_v - 1)
+                                    + light_at(big_u - 1, big_v)
+                                    + light_at(big_u, big_v);
+                                sky[ci] = (s.min(60) + 2) / 4; // 0..15
+                            }
+                            let ao_pack = (ao[0] << 6) | (ao[1] << 4) | (ao[2] << 2) | ao[3];
+                            let sky_pack = (sky[0] << 12) | (sky[1] << 8) | (sky[2] << 4) | sky[3];
+                            // block light at the face's neighbor cell (bits 0..3,
+                            // flat per face — no per-corner smoothing needed)
+                            let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
+
+                            let key = ((bs as u64) << 28)
+                                | (ao_pack << 20)
+                                | (sky_pack << 4)
+                                | bl
+                                | ((vc_blocks::tint::block_face_tint_packed(
+                                    b,
+                                    d == 1 && dir > 0,
+                                    biome_at(cell[0] as usize, cell[2] as usize),
+                                ) as u64)
+                                    << 36);
+                            smask[vi * du + ui] = key;
                         }
-
-                        if !face_visible(b, nb) {
-                            continue;
-                        }
-
-                        // (skylight at the neighbor cell is folded into the
-                        // per-corner sky_pack below; block light joins it)
-
-                        // AO + corner sky, absolute (u, v) coords in the neighbor layer
-                        let mut ao = [0u64; 4];
-                        let mut sky = [0u64; 4];
-                        for (ci, (cu, cv)) in [(0i32, 0i32), (1, 0), (1, 1), (0, 1)].iter().enumerate() {
-                            let big_u = au as i32 + cu; // corner coord along u (absolute)
-                            let big_v = av as i32 + cv;
-                            let u_out = if *cu == 0 { big_u - 1 } else { big_u };
-                            let v_out = if *cv == 0 { big_v - 1 } else { big_v };
-                            let h_side = (u_out, if *cv == 0 { big_v } else { big_v - 1 });
-                            let v_side = (if *cu == 0 { big_u } else { big_u - 1 }, v_out);
-                            let diag = (u_out, v_out);
-
-                            let solid_at = |au: i32, av: i32| -> bool {
-                                let mut c = ncell;
-                                c[u] = au;
-                                c[v] = av;
-                                is_opaque(sb(getb(&blocks, c[0], c[1], c[2])))
-                            };
-                            let light_at = |au: i32, av: i32| -> u64 {
-                                let mut c = ncell;
-                                c[u] = au;
-                                c[v] = av;
-                                getl(&light, c[0], c[1], c[2]) as u64
-                            };
-
-                            let s1 = solid_at(h_side.0, h_side.1);
-                            let s2 = solid_at(v_side.0, v_side.1);
-                            let cr = solid_at(diag.0, diag.1);
-                            // vanilla Smooth Lighting level: 0 off (flat),
-                            // 1 minimum (half-strength corners), 2 maximum
-                            // (full AO) — the GPU mesher mirrors this remap
-                            let a = if s1 && s2 {
-                                0u64
-                            } else {
-                                3 - (s1 as u64 + s2 as u64 + cr as u64)
-                            };
-                            ao[ci] = match smooth {
-                                0 => 3,
-                                1 => (a + 3) / 2,
-                                _ => a,
-                            };
-                            let s = light_at(big_u - 1, big_v - 1)
-                                + light_at(big_u, big_v - 1)
-                                + light_at(big_u - 1, big_v)
-                                + light_at(big_u, big_v);
-                            sky[ci] = (s.min(60) + 2) / 4; // 0..15
-                        }
-                        let ao_pack = (ao[0] << 6) | (ao[1] << 4) | (ao[2] << 2) | ao[3];
-                        let sky_pack = (sky[0] << 12) | (sky[1] << 8) | (sky[2] << 4) | sky[3];
-                        // block light at the face's neighbor cell (bits 0..3,
-                        // flat per face — no per-corner smoothing needed)
-                        let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
-
-                        let key = ((bs as u64) << 28)
-                            | (ao_pack << 20)
-                            | (sky_pack << 4)
-                            | bl
-                            | ((vc_blocks::tint::block_face_tint_packed(
-                                b,
-                                d == 1 && dir > 0,
-                                biome_at(cell[0] as usize, cell[2] as usize),
-                            ) as u64)
-                                << 36);
-                        smask[vi * du + ui] = key;
                     }
-                }
 
                     greedy_merge(
-                        d, dir, sl, &mut smask, du, dv, true,
-                        &mut o.sv, &mut o.si, off_u, off_v,
+                        d, dir, sl, &mut smask, du, dv, true, &mut o.sv, &mut o.si, off_u, off_v,
                     );
                     greedy_merge(
-                        d, dir, sl, &mut wmask, du, dv, false,
-                        &mut o.wv, &mut o.wi, off_u, off_v,
+                        d, dir, sl, &mut wmask, du, dv, false, &mut o.wv, &mut o.wi, off_u, off_v,
                     );
                 }
             }
@@ -544,60 +566,71 @@ pub fn mesh_sections(
             // the dirty section's output is rebuilt)
             let (solid_v, solid_i) = (&mut o.sv, &mut o.si);
             for ly in (sec * 16)..(sec * 16 + 16) {
-            for lz in 0..16usize {
-                for lx in 0..16usize {
-                    let bs = getb(&blocks, lx as i32, ly as i32, lz as i32);
-                    if !is_cross(sb(bs)) {
-                        continue;
-                    }
-                    let sky = getl(&light, lx as i32, ly as i32, lz as i32) as u32;
-                    let bl = getl(&blight, lx as i32, ly as i32, lz as i32) as u32;
-                    let tile_i = state_tiles(bs)[3];
-                    // §18: grass-family cross plants take the biome grass tint
-                    let tint = vc_blocks::tint::block_face_tint_packed(
-                        sb(bs), true, biome_at(lx, lz),
-                    );
-                // chunk-local positions (origin supplied per-draw at render time)
-                let x0 = lx as f32 + 0.15;
-                let x1 = lx as f32 + 0.85;
-                let z0 = lz as f32 + 0.15;
-                let z1 = lz as f32 + 0.85;
-                let y0 = ly as f32;
-                let y1 = ly as f32 + 1.0;
+                for lz in 0..16usize {
+                    for lx in 0..16usize {
+                        let bs = getb(&blocks, lx as i32, ly as i32, lz as i32);
+                        if !is_cross(sb(bs)) {
+                            continue;
+                        }
+                        let sky = getl(&light, lx as i32, ly as i32, lz as i32) as u32;
+                        let bl = getl(&blight, lx as i32, ly as i32, lz as i32) as u32;
+                        let tile_i = state_tiles(bs)[3];
+                        // §18: grass-family cross plants take the biome grass tint
+                        let tint =
+                            vc_blocks::tint::block_face_tint_packed(sb(bs), true, biome_at(lx, lz));
+                        // chunk-local positions (origin supplied per-draw at render time)
+                        let x0 = lx as f32 + 0.15;
+                        let x1 = lx as f32 + 0.85;
+                        let z0 = lz as f32 + 0.15;
+                        let z1 = lz as f32 + 0.85;
+                        let y0 = ly as f32;
+                        let y1 = ly as f32 + 1.0;
 
-                let planes = [
-                    [(x0, z0), (x1, z1)],
-                    [(x1, z0), (x0, z1)],
-                ];
-                for plane in planes.iter() {
-                    let pa = plane[0];
-                    let pb = plane[1];
-                    // both windings (pipeline culls back faces)
-                    let quads = [
-                        [(pa.0, y0, pa.1), (pb.0, y0, pb.1), (pb.0, y1, pb.1), (pa.0, y1, pa.1)],
-                        [(pb.0, y0, pb.1), (pa.0, y0, pa.1), (pa.0, y1, pa.1), (pb.0, y1, pb.1)],
-                    ];
-                    let uvs = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
-                    for quad in quads.iter() {
-                        let base = solid_v.len() as u32;
-                        for (ci, p) in quad.iter().enumerate() {
-                            solid_v.push(pack_vertex(
-                                p.0, p.1, p.2,
-                                uvs[ci][0], uvs[ci][1],
-                                tile_i, 6, /* normal = cross (shade 0.85) */
-                                3,          /* ao = full */
-                                sky.min(15), bl.min(15),
-                                bs,
-                                tint,
-                            ));
-                        }
-                        for i in [0u32, 1, 2, 0, 2, 3] {
-                            solid_i.push(base + i);
+                        let planes = [[(x0, z0), (x1, z1)], [(x1, z0), (x0, z1)]];
+                        for plane in planes.iter() {
+                            let pa = plane[0];
+                            let pb = plane[1];
+                            // both windings (pipeline culls back faces)
+                            let quads = [
+                                [
+                                    (pa.0, y0, pa.1),
+                                    (pb.0, y0, pb.1),
+                                    (pb.0, y1, pb.1),
+                                    (pa.0, y1, pa.1),
+                                ],
+                                [
+                                    (pb.0, y0, pb.1),
+                                    (pa.0, y0, pa.1),
+                                    (pa.0, y1, pa.1),
+                                    (pb.0, y1, pb.1),
+                                ],
+                            ];
+                            let uvs = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+                            for quad in quads.iter() {
+                                let base = solid_v.len() as u32;
+                                for (ci, p) in quad.iter().enumerate() {
+                                    solid_v.push(pack_vertex(
+                                        p.0,
+                                        p.1,
+                                        p.2,
+                                        uvs[ci][0],
+                                        uvs[ci][1],
+                                        tile_i,
+                                        6, /* normal = cross (shade 0.85) */
+                                        3, /* ao = full */
+                                        sky.min(15),
+                                        bl.min(15),
+                                        bs,
+                                        tint,
+                                    ));
+                                }
+                                for i in [0u32, 1, 2, 0, 2, 3] {
+                                    solid_i.push(base + i);
+                                }
+                            }
                         }
                     }
                 }
-                }
-            }
             }
         }
     }
@@ -613,36 +646,36 @@ pub fn mesh_sections(
             }
             let (solid_v, solid_i) = (&mut o.sv, &mut o.si);
             for ly in (sec * 16)..(sec * 16 + 16) {
-            for lz in 0..16usize {
-                for lx in 0..16usize {
-                    let bs = getb(&blocks, lx as i32, ly as i32, lz as i32);
-                    if !is_model_state(bs) {
-                        continue;
+                for lz in 0..16usize {
+                    for lx in 0..16usize {
+                        let bs = getb(&blocks, lx as i32, ly as i32, lz as i32);
+                        if !is_model_state(bs) {
+                            continue;
+                        }
+                        // deterministic per-position hash picks weighted variants
+                        let hash = vc_rng::rng::Rng::hash3(
+                            0x9E37_79B9,
+                            pos.0.wrapping_mul(31) + lx as i32,
+                            ly as i32,
+                            pos.1.wrapping_mul(31) + lz as i32,
+                        );
+                        emit_model_block(
+                            models,
+                            hash,
+                            lx,
+                            ly,
+                            lz,
+                            bs,
+                            &blocks,
+                            &light,
+                            &blight,
+                            smooth != 0,
+                            biome_at(lx, lz),
+                            solid_v,
+                            solid_i,
+                        );
                     }
-                    // deterministic per-position hash picks weighted variants
-                    let hash = vc_rng::rng::Rng::hash3(
-                        0x9E37_79B9,
-                        pos.0.wrapping_mul(31) + lx as i32,
-                        ly as i32,
-                        pos.1.wrapping_mul(31) + lz as i32,
-                    );
-                    emit_model_block(
-                        models,
-                        hash,
-                        lx,
-                        ly,
-                        lz,
-                        bs,
-                        &blocks,
-                        &light,
-                        &blight,
-                        smooth != 0,
-                        biome_at(lx, lz),
-                        solid_v,
-                        solid_i,
-                    );
                 }
-            }
             }
         }
     }
@@ -713,13 +746,20 @@ fn emit_model_block(
     solid_v: &mut Vec<Vertex>,
     solid_i: &mut Vec<u32>,
 ) {
-    let Some(choices) = models.by_state.get(&bs) else { return };
+    let Some(choices) = models.by_state.get(&bs) else {
+        return;
+    };
     // each CHOICE independently picks one weighted alternative, hashed by
     // world position (variants = 1 choice with N alts; multipart = N choices)
     for (ci, choice) in choices.iter().enumerate() {
-        let chosen = pick_weighted(choice, pos_hash ^ (ci as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        let chosen = pick_weighted(
+            choice,
+            pos_hash ^ (ci as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15),
+        );
         let m = &chosen.model;
-        emit_model_faces(models, m, lx, ly, lz, bs, blocks, light, blight, smooth, biome, solid_v, solid_i);
+        emit_model_faces(
+            models, m, lx, ly, lz, bs, blocks, light, blight, smooth, biome, solid_v, solid_i,
+        );
     }
 }
 
@@ -768,7 +808,12 @@ fn emit_model_faces(
             let n = f.dir.normal();
             if let Some(c) = f.cullface {
                 let cn = c.normal();
-                let nb = sb(getb(blocks, wx + cn[0] as i32, wy + cn[1] as i32, wz + cn[2] as i32));
+                let nb = sb(getb(
+                    blocks,
+                    wx + cn[0] as i32,
+                    wy + cn[1] as i32,
+                    wz + cn[2] as i32,
+                ));
                 if is_opaque(nb) {
                     continue;
                 }
@@ -823,7 +868,11 @@ fn emit_model_faces(
                     let s1 = is_opaque(sb(getb(blocks, c1[0], c1[1], c1[2])));
                     let s2 = is_opaque(sb(getb(blocks, c2[0], c2[1], c2[2])));
                     let cr = is_opaque(sb(getb(blocks, c3[0], c3[1], c3[2])));
-                    aos[ci] = if s1 && s2 { 0 } else { 3 - (s1 as u32 + s2 as u32 + cr as u32) };
+                    aos[ci] = if s1 && s2 {
+                        0
+                    } else {
+                        3 - (s1 as u32 + s2 as u32 + cr as u32)
+                    };
                 }
             }
 
@@ -858,7 +907,7 @@ fn tangent_axes(d: vc_pack::model::FaceDir) -> (usize, usize) {
     match d {
         vc_pack::model::FaceDir::Up | vc_pack::model::FaceDir::Down => (0, 2), // x, z
         vc_pack::model::FaceDir::North | vc_pack::model::FaceDir::South => (0, 1), // x, y
-        vc_pack::model::FaceDir::West | vc_pack::model::FaceDir::East => (2, 1),   // z, y
+        vc_pack::model::FaceDir::West | vc_pack::model::FaceDir::East => (2, 1), // z, y
     }
 }
 
@@ -960,9 +1009,24 @@ fn greedy_merge(
 
             // texture orientation per face (v flipped on sides so texture top = block top)
             let (t00, t10, t11, t01): ([f32; 2], [f32; 2], [f32; 2], [f32; 2]) = match d {
-                0 => ([0.0, w as f32], [0.0, 0.0], [h as f32, 0.0], [h as f32, w as f32]),
-                1 => ([0.0, 0.0], [w as f32, 0.0], [w as f32, h as f32], [0.0, h as f32]),
-                _ => ([0.0, h as f32], [w as f32, h as f32], [w as f32, 0.0], [0.0, 0.0]),
+                0 => (
+                    [0.0, w as f32],
+                    [0.0, 0.0],
+                    [h as f32, 0.0],
+                    [h as f32, w as f32],
+                ),
+                1 => (
+                    [0.0, 0.0],
+                    [w as f32, 0.0],
+                    [w as f32, h as f32],
+                    [0.0, h as f32],
+                ),
+                _ => (
+                    [0.0, h as f32],
+                    [w as f32, h as f32],
+                    [w as f32, 0.0],
+                    [0.0, 0.0],
+                ),
             };
 
             let ao = [
@@ -982,7 +1046,11 @@ fn greedy_merge(
             // per-STATE tiles (log axis rotation: rings on the ±axis faces)
             let t = state_tiles(state);
             let tile_i = if d == 1 {
-                if dir > 0 { t[0] } else { t[1] }
+                if dir > 0 {
+                    t[0]
+                } else {
+                    t[1]
+                }
             } else if d == 0 {
                 t[2] // ±X faces
             } else {
@@ -1020,11 +1088,7 @@ fn greedy_merge(
             for (c, t, a, s) in corners.iter() {
                 let p = local(*c);
                 verts.push(pack_vertex(
-                    p[0], p[1], p[2],
-                    t[0], t[1],
-                    tile_i, nrm, *a, *s, bl,
-                    state,
-                    tint,
+                    p[0], p[1], p[2], t[0], t[1], tile_i, nrm, *a, *s, bl, state, tint,
                 ));
             }
 
@@ -1056,7 +1120,6 @@ fn greedy_merge(
 mod tests {
     use super::*;
 
-
     /// reference light for a snapshot (differential bridge, Phase 4)
     fn lref(snap: &[Option<Arc<Chunk>>; 9]) -> [Option<Arc<vc_world::light::LightData>>; 9] {
         vc_world::light::reference_lightdata(snap)
@@ -1068,9 +1131,15 @@ mod tests {
         c.set_state(8, 8, 8, state);
         let c = Arc::new(c);
         [
-            None, Some(Arc::clone(&c)), None,
-            Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
-            None, Some(Arc::clone(&c)), None,
+            None,
+            Some(Arc::clone(&c)),
+            None,
+            Some(Arc::clone(&c)),
+            Some(Arc::clone(&c)),
+            Some(Arc::clone(&c)),
+            None,
+            Some(Arc::clone(&c)),
+            None,
         ]
     }
 
@@ -1102,7 +1171,10 @@ mod tests {
         let x_rings2 = faces.iter().any(|(n, t)| *n == 1 && *t == TILE_LOG_TOP);
         let y_bark = faces.iter().any(|(n, t)| *n == 2 && *t == TILE_LOG_SIDE);
         let z_bark = faces.iter().any(|(n, t)| *n == 4 && *t == TILE_LOG_SIDE);
-        assert!(x_rings && x_rings2, "±X faces must use the ring tile, got {faces:?}");
+        assert!(
+            x_rings && x_rings2,
+            "±X faces must use the ring tile, got {faces:?}"
+        );
         assert!(y_bark && z_bark, "±Y/±Z faces must use bark, got {faces:?}");
     }
 
@@ -1146,9 +1218,14 @@ mod tests {
     fn builtin_pack_model_blocks_mesh() {
         // 1. compile the real pack exactly as the game does at boot
         let source = std::sync::Arc::new(vc_pack::pack::FolderSource::new(
-            concat!(env!("CARGO_MANIFEST_DIR"), "/../../builtin-pack"), "test"));
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../builtin-pack"),
+            "test",
+        ));
         use vc_pack::pack::PackSource as _;
-        assert!(source.exists(), "builtin pack missing — run from voxelcraft/");
+        assert!(
+            source.exists(),
+            "builtin pack missing — run from voxelcraft/"
+        );
         let mut by_state: std::collections::HashMap<u16, Vec<vc_pack::model::ModelChoice>> =
             Default::default();
         for pb in vc_blocks::blocks::PROP_BLOCKS.iter() {
@@ -1162,13 +1239,18 @@ mod tests {
                 .unwrap_or_else(|e| panic!("dispatch {name:?}: {e}", name = pb.name));
             by_state.extend(map);
         }
-        let mut set = vc_pack::model::ModelSet { by_state, tiles: Default::default() };
+        let mut set = vc_pack::model::ModelSet {
+            by_state,
+            tiles: Default::default(),
+        };
         let mut atlas = vc_render::textures::generate_atlas();
         let anims = vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
         // every model face resolved to a real pack tile (planks/cobble)
         assert!(!set.tiles.is_empty(), "no pack textures registered");
         assert!(
-            set.tiles.values().all(|&t| t >= vc_render::textures::PACK_TILE_BASE),
+            set.tiles
+                .values()
+                .all(|&t| t >= vc_render::textures::PACK_TILE_BASE),
             "pack textures must land in the pack tile range"
         );
         // the animated cobble strip was recognized — 1.10 adds the
@@ -1199,9 +1281,15 @@ mod tests {
         c.set_state(8, 8, 8, 63);
         let c = Arc::new(c);
         let snap = [
-            None, None, None,
-            None, Some(Arc::clone(&c)), None,
-            None, None, None,
+            None,
+            None,
+            None,
+            None,
+            Some(Arc::clone(&c)),
+            None,
+            None,
+            None,
+            None,
         ];
         let lsnap = lref(&snap);
         let md = mesh_chunk((0, 0), &snap, &lsnap, true);
@@ -1209,7 +1297,11 @@ mod tests {
         for v in md.solid.0.iter() {
             dirs.insert(((v.w1 >> 16) & 7) as u8);
         }
-        assert!(md.solid.0.len() >= 24, "slab needs ≥6 quads, got {}", md.solid.0.len());
+        assert!(
+            md.solid.0.len() >= 24,
+            "slab needs ≥6 quads, got {}",
+            md.solid.0.len()
+        );
         assert_eq!(dirs, std::collections::BTreeSet::from([0, 1, 2, 3, 4, 5]));
         // top face verts at y=8/16=0.5
         for v in md.solid.0.iter() {
@@ -1223,9 +1315,15 @@ mod tests {
         c2.set_state(8, 8, 8, 64);
         let c2 = Arc::new(c2);
         let snap2 = [
-            None, None, None,
-            None, Some(Arc::clone(&c2)), None,
-            None, None, None,
+            None,
+            None,
+            None,
+            None,
+            Some(Arc::clone(&c2)),
+            None,
+            None,
+            None,
+            None,
         ];
         let lsnap2 = lref(&snap2);
         let md2 = mesh_chunk((0, 0), &snap2, &lsnap2, true);
@@ -1233,7 +1331,10 @@ mod tests {
             if ((v.w1 >> 16) & 7) == 2 {
                 let py = (v.w1 & 0xFFFF) as f32 / 128.0;
                 // block at ly=8, top slab occupies the upper half → y=9.0
-                assert!((py - 9.0).abs() < 0.01, "top-slab up face y {py} (want 9.0)");
+                assert!(
+                    (py - 9.0).abs() < 0.01,
+                    "top-slab up face y {py} (want 9.0)"
+                );
             }
         }
 
@@ -1243,13 +1344,23 @@ mod tests {
         c3.set_state(8, 8, 8, 65);
         let c3 = Arc::new(c3);
         let snap3 = [
-            None, None, None,
-            None, Some(Arc::clone(&c3)), None,
-            None, None, None,
+            None,
+            None,
+            None,
+            None,
+            Some(Arc::clone(&c3)),
+            None,
+            None,
+            None,
+            None,
         ];
         let lsnap3 = lref(&snap3);
         let md3 = mesh_chunk((0, 0), &snap3, &lsnap3, true);
-        assert!(md3.solid.0.len() >= 40, "stairs need ≥10 quads, got {}", md3.solid.0.len());
+        assert!(
+            md3.solid.0.len() >= 40,
+            "stairs need ≥10 quads, got {}",
+            md3.solid.0.len()
+        );
         let mut step_verts = 0;
         for v in md3.solid.0.iter() {
             if ((v.w1 >> 16) & 7) == 2 {
@@ -1268,22 +1379,38 @@ mod tests {
         c4.set_state(8, 8, 8, 77);
         let c4 = Arc::new(c4);
         let snap4 = [
-            None, None, None,
-            None, Some(Arc::clone(&c4)), None,
-            None, None, None,
+            None,
+            None,
+            None,
+            None,
+            Some(Arc::clone(&c4)),
+            None,
+            None,
+            None,
+            None,
         ];
         let lsnap4 = lref(&snap4);
         let md4 = mesh_chunk((0, 0), &snap4, &lsnap4, true);
         // post (6 dirs × 4) + side (3 faces × 4) ≥ 36 verts
-        assert!(md4.solid.0.len() >= 36, "fence post+side, got {}", md4.solid.0.len());
+        assert!(
+            md4.solid.0.len() >= 36,
+            "fence post+side, got {}",
+            md4.solid.0.len()
+        );
         // unconnected fence (73) → post only, fewer verts
         let mut c5 = Chunk::empty();
         c5.set_state(8, 8, 8, 73);
         let c5 = Arc::new(c5);
         let snap5 = [
-            None, None, None,
-            None, Some(Arc::clone(&c5)), None,
-            None, None, None,
+            None,
+            None,
+            None,
+            None,
+            Some(Arc::clone(&c5)),
+            None,
+            None,
+            None,
+            None,
         ];
         let lsnap5 = lref(&snap5);
         let md5 = mesh_chunk((0, 0), &snap5, &lsnap5, true);
@@ -1343,14 +1470,25 @@ mod tests {
             c.biome = Box::new([biome; 256]);
             let c = Arc::new(c);
             [
-                None, Some(Arc::clone(&c)), None,
-                Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
-                None, Some(Arc::clone(&c)), None,
+                None,
+                Some(Arc::clone(&c)),
+                None,
+                Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
+                None,
+                Some(Arc::clone(&c)),
+                None,
             ]
         };
 
         // grass top in Forest(3): top face tinted, sides not
-        let md = mesh_chunk((0, 0), &snap_for(3, GRASS), &lref(&snap_for(3, GRASS)), true);
+        let md = mesh_chunk(
+            (0, 0),
+            &snap_for(3, GRASS),
+            &lref(&snap_for(3, GRASS)),
+            true,
+        );
         let top_tint = (md.solid.0.iter())
             .filter(|v| ((v.w1 >> 16) & 7) == 2) // normal 2 = +Y
             .map(|v| (v.w3 >> 8) as u8)
@@ -1361,7 +1499,9 @@ mod tests {
             .collect::<Vec<u8>>();
         assert!(!top_tint.is_empty());
         assert!(
-            top_tint.iter().all(|&t| t == tint::pack(tint::KIND_GRASS, 3)),
+            top_tint
+                .iter()
+                .all(|&t| t == tint::pack(tint::KIND_GRASS, 3)),
             "grass top must carry the Forest grass tint, got {top_tint:?}"
         );
         assert!(
@@ -1370,16 +1510,32 @@ mod tests {
         );
 
         // oak leaves in Plains(2): every face foliage-tinted
-        let md = mesh_chunk((0, 0), &snap_for(2, LEAVES), &lref(&snap_for(2, LEAVES)), true);
+        let md = mesh_chunk(
+            (0, 0),
+            &snap_for(2, LEAVES),
+            &lref(&snap_for(2, LEAVES)),
+            true,
+        );
         assert!(
-            md.solid.0.iter().all(|v| (v.w3 >> 8) as u8 == tint::pack(tint::KIND_FOLIAGE, 2)),
+            md.solid
+                .0
+                .iter()
+                .all(|v| (v.w3 >> 8) as u8 == tint::pack(tint::KIND_FOLIAGE, 2)),
             "leaves faces all carry the Plains foliage tint"
         );
 
         // water in Ocean(0)
-        let md = mesh_chunk((0, 0), &snap_for(0, WATER), &lref(&snap_for(0, WATER)), true);
+        let md = mesh_chunk(
+            (0, 0),
+            &snap_for(0, WATER),
+            &lref(&snap_for(0, WATER)),
+            true,
+        );
         assert!(
-            md.water.0.iter().all(|v| (v.w3 >> 8) as u8 == tint::pack(tint::KIND_WATER, 0)),
+            md.water
+                .0
+                .iter()
+                .all(|v| (v.w3 >> 8) as u8 == tint::pack(tint::KIND_WATER, 0)),
             "water faces carry the Ocean water tint"
         );
 
@@ -1392,7 +1548,17 @@ mod tests {
             c.biome[8 * 16 + x] = if x < 8 { 2 } else { 3 };
         }
         let c = Arc::new(c);
-        let snap = [None, None, None, None, Some(Arc::clone(&c)), None, None, None, None];
+        let snap = [
+            None,
+            None,
+            None,
+            None,
+            Some(Arc::clone(&c)),
+            None,
+            None,
+            None,
+            None,
+        ];
         let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
         let tops: Vec<u8> = (md.solid.0.iter())
             .filter(|v| ((v.w1 >> 16) & 7) == 2)
@@ -1411,7 +1577,7 @@ mod tests {
         // single stone / log / cross plant — geometry + packing baseline
         for (state, want_verts) in [
             (STONE, 24usize), // 6 faces × 4 corners
-            (OAK_LOG_X, 24),         // 6 faces, rotated tiles
+            (OAK_LOG_X, 24),  // 6 faces, rotated tiles
             (GLASS, 24),      // neighbor rules keep all faces
         ] {
             let gsnap = golden_snap(state);
@@ -1445,16 +1611,25 @@ mod tests {
         let snap = {
             let c = Arc::new(c);
             [
-                Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
-                Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
-                Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)),
             ]
         };
         let lsnap = lref(&snap);
         let md = mesh_chunk((0, 0), &snap, &lsnap, true);
         let (n, h) = mesh_hash(&md);
         // pin both: count (structure) + hash (bit-exact packing/lighting)
-        assert_eq!(n, 1816, "terrain-patch golden vertex count drifted (was 1816)");
+        assert_eq!(
+            n, 1816,
+            "terrain-patch golden vertex count drifted (was 1816)"
+        );
         assert_eq!(
             h, 0x45fd_baab_86e9_3dcb,
             "terrain-patch golden hash changed — mesher/lighting/packing drift; \
@@ -1482,9 +1657,15 @@ mod tests {
         }
         let c = Arc::new(c);
         let snap = [
-            None, None, None,
-            None, Some(Arc::clone(&c)), None,
-            None, None, None,
+            None,
+            None,
+            None,
+            None,
+            Some(Arc::clone(&c)),
+            None,
+            None,
+            None,
+            None,
         ];
         let lsnap = lref(&snap);
         let md = mesh_chunk((0, 0), &snap, &lsnap, true);
@@ -1515,7 +1696,6 @@ mod tests {
             "glowstone block-light golden set changed — light BFS regression"
         );
     }
-
 }
 
 #[cfg(test)]
@@ -1557,10 +1737,22 @@ mod phase3_tests {
         // single-section remesh
         let cache = full.sections.clone();
         let p1 = mesh_sections(pos, &snap, &lsnap, 2, 1 << 7, &cache, None);
-        assert_eq!(p1.merged.solid.0, full.merged.solid.0, "vertices (solid) must match");
-        assert_eq!(p1.merged.solid.1, full.merged.solid.1, "indices (solid) must match");
-        assert_eq!(p1.merged.water.0, full.merged.water.0, "vertices (water) must match");
-        assert_eq!(p1.merged.water.1, full.merged.water.1, "indices (water) must match");
+        assert_eq!(
+            p1.merged.solid.0, full.merged.solid.0,
+            "vertices (solid) must match"
+        );
+        assert_eq!(
+            p1.merged.solid.1, full.merged.solid.1,
+            "indices (solid) must match"
+        );
+        assert_eq!(
+            p1.merged.water.0, full.merged.water.0,
+            "vertices (water) must match"
+        );
+        assert_eq!(
+            p1.merged.water.1, full.merged.water.1,
+            "indices (water) must match"
+        );
 
         // multi-section remesh (a typical edit's light band)
         let p3 = mesh_sections(pos, &snap, &lsnap, 2, 0b111 << 4, &cache, None);
@@ -1573,7 +1765,10 @@ mod phase3_tests {
             cache2 = step.sections.clone();
         }
         let final_merged = mesh_sections(pos, &snap, &lsnap, 2, 0, &cache2, None).merged;
-        assert_eq!(final_merged.solid.1, full.merged.solid.1, "all-cached merge == full");
+        assert_eq!(
+            final_merged.solid.1, full.merged.solid.1,
+            "all-cached merge == full"
+        );
     }
 
     /// mesh_chunk (bench/game path) == mesh_sections(all).merged — the two

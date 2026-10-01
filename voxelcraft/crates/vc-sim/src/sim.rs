@@ -413,7 +413,8 @@ impl Sim {
         // ... and the hive system (lazy registration + the work
         // clocks + the day-release gate). Honey-level writes and bee
         // releases queue for the game layer.
-        self.hives.tick(world, scope.center, scope.radius, self.is_day);
+        self.hives
+            .tick(world, scope.center, scope.radius, self.is_day);
 
         // 6b. spawners (Phase 5 §27): dungeon block entities — activation
         // gate, delay, 4-attempt cycles, 6-mob cap

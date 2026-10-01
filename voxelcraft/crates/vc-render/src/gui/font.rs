@@ -456,13 +456,7 @@ impl FontEngine {
             h,
             top_rel_baseline: top_rel,
         };
-        self.pending.push(PendingUpload {
-            x,
-            y,
-            w,
-            h,
-            bytes,
-        });
+        self.pending.push(PendingUpload { x, y, w, h, bytes });
         self.version += 1;
         self.glyphs.insert((c, cell_dev), g);
         Some(g)
@@ -751,7 +745,10 @@ mod tests {
         let cap = e.cap_ratio * px;
         assert!((cap - 14.0).abs() < 0.5, "cap ≈ 0.875 × cell (got {cap})");
         let b = e.baseline_for_cell(16.0);
-        assert!((b - 15.0).abs() < 0.75, "baseline ≈ 15 at cell 16 (got {b})");
+        assert!(
+            (b - 15.0).abs() < 0.75,
+            "baseline ≈ 15 at cell 16 (got {b})"
+        );
     }
 
     // ---- the established voxel engine round 2: cached run strips (the splash) ------------
@@ -801,4 +798,3 @@ mod tests {
         assert!(bad.is_none(), "byte-length mismatch rejected (10 != 2*2*4)");
     }
 }
-

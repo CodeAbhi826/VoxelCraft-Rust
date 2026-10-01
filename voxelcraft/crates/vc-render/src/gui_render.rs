@@ -729,7 +729,12 @@ impl GuiFrame {
         let c_src = BTN_CORNER;
         // clamp: dst smaller than 2x corners -> single stretched quad
         if dw < corner_dst * 2 || dh < corner_dst * 2 {
-            self.push(tex, Rect::new(dx, dy, dw, dh), Rect::new(sx, sy, s_size, s_size), tint);
+            self.push(
+                tex,
+                Rect::new(dx, dy, dw, dh),
+                Rect::new(sx, sy, s_size, s_size),
+                tint,
+            );
             return;
         }
         let mid_w = dw - corner_dst * 2;
@@ -1069,7 +1074,9 @@ impl GuiRenderer {
         // weirdness; every texel is white so src (0,0,1,1) is exact.
         // Non-sRGB: the tint is a linear vertex value; white is white
         // either way, and the format matches how the value is used.
-        let solid_px = [255u8, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255];
+        let solid_px = [
+            255u8, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ];
         let white = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("gui-solid"),
             size: wgpu::Extent3d {
@@ -1166,8 +1173,10 @@ impl GuiRenderer {
             ],
         });
         self.bind_groups[QuadTexture::IconAtlas as usize] = Some(bg);
-        self.sheet_dims[QuadTexture::IconAtlas as usize] =
-            (crate::item_icon_cache::ICON_ATLAS_PX, crate::item_icon_cache::ICON_ATLAS_PX);
+        self.sheet_dims[QuadTexture::IconAtlas as usize] = (
+            crate::item_icon_cache::ICON_ATLAS_PX,
+            crate::item_icon_cache::ICON_ATLAS_PX,
+        );
     }
 
     /// Sync the runtime font engine's glyph atlas: creates the
@@ -1292,12 +1301,7 @@ impl GuiRenderer {
         let x1 = q.dst.x + q.dst.w;
         let y1 = q.dst.y + q.dst.h;
         let corners = rotated_corners(x0, y0, x1, y1, q.rot);
-        let uvs = [
-            [u0, v0],
-            [u1, v0],
-            [u1, v1],
-            [u0, v1],
-        ];
+        let uvs = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
         for (pos, uv) in corners.into_iter().zip(uvs) {
             self.vertex_staging.push(GuiVertex {
                 pos,
@@ -1364,11 +1368,7 @@ impl GuiRenderer {
             };
         }
         let vb = &self.vb_pool[slot].buf;
-        queue.write_buffer(
-            vb,
-            0,
-            bytemuck::cast_slice(&self.vertex_staging),
-        );
+        queue.write_buffer(vb, 0, bytemuck::cast_slice(&self.vertex_staging));
         pass.set_pipeline(&self.pipe);
         pass.set_index_buffer(self.ib.slice(..), wgpu::IndexFormat::Uint32);
         pass.set_vertex_buffer(0, vb.slice(..));
@@ -1405,11 +1405,7 @@ impl GuiRenderer {
             // Game HUD garbled)
             let first_i = first * 6;
             let n_idx = count * 6;
-            pass.draw_indexed(
-                first_i..first_i + n_idx,
-                0,
-                0..1,
-            );
+            pass.draw_indexed(first_i..first_i + n_idx, 0, 0..1);
         }
         Ok(())
     }
@@ -1489,8 +1485,16 @@ mod tests {
         let mut f = GuiFrame::default();
         f.button(&w, false);
         assert_eq!(f.quads.len(), 9, "3x3 9-slice");
-        let x0 = f.quads.iter().map(|q| q.dst.x).fold(f32::INFINITY, f32::min);
-        let y0 = f.quads.iter().map(|q| q.dst.y).fold(f32::INFINITY, f32::min);
+        let x0 = f
+            .quads
+            .iter()
+            .map(|q| q.dst.x)
+            .fold(f32::INFINITY, f32::min);
+        let y0 = f
+            .quads
+            .iter()
+            .map(|q| q.dst.y)
+            .fold(f32::INFINITY, f32::min);
         let x1 = f
             .quads
             .iter()
@@ -1542,7 +1546,10 @@ mod tests {
         let mut f = GuiFrame::default();
         f.button(&w, false);
         // cell 2 = ButtonDisabled: every src rect inside x 40..60
-        assert!(f.quads.iter().all(|q| q.src.x >= 40 && q.src.x + q.src.w <= 60));
+        assert!(f
+            .quads
+            .iter()
+            .all(|q| q.src.x >= 40 && q.src.x + q.src.w <= 60));
         // no hover overlay on disabled
         assert!(!f.quads.iter().any(|q| q.texture == QuadTexture::Solid));
     }
@@ -1804,7 +1811,7 @@ mod tests {
         let mut ui = UiCanvas::new();
         let w = btn_h(1, 100, 100, 400, 40, "Singleplayer", "", true);
         ui.draw_button(&w, true); // hovered: 9-slice + overlay + label
-        // chrome layer: 9-slice + hover overlay, zero glyphs
+                                  // chrome layer: 9-slice + hover overlay, zero glyphs
         assert!(
             ui.gui_frame
                 .quads
@@ -1818,20 +1825,17 @@ mod tests {
             ui.gui_frame.quads.len()
         );
         // text layer: the label's glyphs + shadows, all from the atlas
+        assert!(ui
+            .gui_frame
+            .text_quads
+            .iter()
+            .all(|q| q.texture == QuadTexture::GlyphAtlas));
+        // hovered + enabled: the vanilla yellow label tint
         assert!(
             ui.gui_frame
                 .text_quads
                 .iter()
-                .all(|q| q.texture == QuadTexture::GlyphAtlas)
-        );
-        // hovered + enabled: the vanilla yellow label tint
-        assert!(
-            ui.gui_frame.text_quads.iter().any(|q| q.tint == [
-                1.0,
-                1.0,
-                160.0 / 255.0,
-                1.0
-            ]),
+                .any(|q| q.tint == [1.0, 1.0, 160.0 / 255.0, 1.0]),
             "label glyphs present"
         );
     }
@@ -1852,7 +1856,10 @@ mod tests {
         for [x, y] in cs {
             assert!(x.is_finite() && y.is_finite(), "finite corners");
             let d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
-            assert!((d2 - r2).abs() < 1e-3, "corner on the circle ({d2} vs {r2})");
+            assert!(
+                (d2 - r2).abs() < 1e-3,
+                "corner on the circle ({d2} vs {r2})"
+            );
         }
         // -20 deg in +y-down UI space: the TL corner moves BELOW its
         // axis-aligned position (the text's right end tips UP — the
@@ -1865,7 +1872,10 @@ mod tests {
             - q.iter().map(|c| c[0]).fold(f32::MAX, f32::min);
         let h: f32 = q.iter().map(|c| c[1]).fold(f32::MIN, f32::max)
             - q.iter().map(|c| c[1]).fold(f32::MAX, f32::min);
-        assert!((w - 10.0).abs() < 1e-3 && (h - 20.0).abs() < 1e-3, "90 deg swaps extents");
+        assert!(
+            (w - 10.0).abs() < 1e-3 && (h - 20.0).abs() < 1e-3,
+            "90 deg swaps extents"
+        );
     }
 
     #[test]
@@ -1905,7 +1915,10 @@ mod tests {
         f.solid_over(10.25, 20.5, 3.5, 2.25, [0.9; 4]);
         assert_eq!(f.quads.len(), 1);
         assert_eq!(f.text_quads.len(), 1);
-        assert_eq!(f.quads[0].dst.w, 96.5, "fractional width survives (no int quantize)");
+        assert_eq!(
+            f.quads[0].dst.w, 96.5,
+            "fractional width survives (no int quantize)"
+        );
         assert_eq!(f.text_quads[0].dst.x, 10.25, "fractional origin survives");
         assert_eq!(f.quads[0].texture, QuadTexture::Solid);
         assert_eq!(f.text_quads[0].texture, QuadTexture::Solid);

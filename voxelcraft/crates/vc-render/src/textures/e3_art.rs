@@ -124,7 +124,11 @@ pub(super) fn stained_terracotta_art(a: &mut [u8], t: u16, color: u8, rng: &mut 
         }
     }
     for i in 0..16 {
-        let (r, g, b) = (base[0] * 110 / 100, base[1] * 110 / 100, base[2] * 110 / 100);
+        let (r, g, b) = (
+            base[0] * 110 / 100,
+            base[1] * 110 / 100,
+            base[2] * 110 / 100,
+        );
         put(a, t, i, 0, r.min(255), g.min(255), b.min(255), 255);
     }
 }
@@ -227,7 +231,11 @@ pub(super) fn plate_art(a: &mut [u8], t: u16, gold: bool) {
     } else {
         (200, 160, 160, 166)
     };
-    let (lo_r, lo_g, lo_b): (i32, i32, i32) = if gold { (170, 126, 44) } else { (128, 128, 134) };
+    let (lo_r, lo_g, lo_b): (i32, i32, i32) = if gold {
+        (170, 126, 44)
+    } else {
+        (128, 128, 134)
+    };
     // flat plate filling most of the tile (pressure-plate proportions)
     for y in 3..13 {
         for x in 2..14 {
@@ -402,7 +410,7 @@ pub(super) fn mule_art(a: &mut [u8], t: u16) {
 /// E3 spawn-egg palettes (horse / donkey / mule — kinds 20..=22; the
 /// E1/E2 egg_art renders the shell + spots from these pairs).
 pub const E3_EGG_PALETTES: [(i32, i32, i32, i32, i32, i32); 3] = [
-    (140, 96, 58, 240, 234, 226),  // horse: chestnut + cream spots
-    (110, 92, 72, 200, 190, 170),  // donkey: grey-brown + light muzzle
-    (70, 52, 40, 160, 130, 100),   // mule: dark bay + tan spots
+    (140, 96, 58, 240, 234, 226), // horse: chestnut + cream spots
+    (110, 92, 72, 200, 190, 170), // donkey: grey-brown + light muzzle
+    (70, 52, 40, 160, 130, 100),  // mule: dark bay + tan spots
 ];

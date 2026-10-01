@@ -7,11 +7,11 @@ use crate::panorama::{PanoResources, PanoUniform, PanoView};
 use crate::textures;
 use crate::ui::{UiCanvas, UI_H, UI_W};
 use glam::{Mat4, Vec3, Vec4};
+use rustc_hash::FxHashMap;
 use std::collections::HashMap;
 use vc_mesh::mesh::{MeshData, Vertex};
 use vc_world::world::ChunkPos;
 use wgpu::util::DeviceExt;
-use rustc_hash::FxHashMap;
 
 // ---------------------------------------------------------------- uniforms
 
@@ -2236,8 +2236,7 @@ impl Renderer {
         } else {
             format!(
                 "{} ({:?}, wgpu)",
-                adapter_info.driver_info,
-                adapter_info.backend
+                adapter_info.driver_info, adapter_info.backend
             )
         };
 
@@ -3743,11 +3742,13 @@ impl Renderer {
             [w as f32, h as f32, 1.0, 1.0],
             [0.0, h as f32, 0.0, 1.0],
         ];
-        self.ui_vb = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("ui-vb"),
-            contents: bytemuck::cast_slice(&verts),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
+        self.ui_vb = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ui-vb"),
+                contents: bytemuck::cast_slice(&verts),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
         self.ui_tex = tex;
         self.ui_view = view;
         self.ui_tex_size = (w, h);
@@ -4737,9 +4738,7 @@ impl Renderer {
                 binding: 1 + 2 * k,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float {
-                        filterable: true,
-                    },
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::D2,
                     multisampled: false,
                 },
@@ -4756,9 +4755,7 @@ impl Renderer {
             binding: 33,
             visibility: wgpu::ShaderStages::FRAGMENT,
             ty: wgpu::BindingType::Texture {
-                sample_type: wgpu::TextureSampleType::Float {
-                    filterable: true,
-                },
+                sample_type: wgpu::TextureSampleType::Float { filterable: true },
                 view_dimension: wgpu::TextureViewDimension::D2,
                 multisampled: false,
             },
@@ -4907,9 +4904,7 @@ impl Renderer {
     /// Returns Err(reason) when the pass cannot pair with the VS.
     fn v2_check_fs_interface(wgsl: &str) -> Result<(), String> {
         let mut fe = naga::front::wgsl::Frontend::new();
-        let module = fe
-            .parse(wgsl)
-            .map_err(|e| format!("WGSL re-parse: {e}"))?;
+        let module = fe.parse(wgsl).map_err(|e| format!("WGSL re-parse: {e}"))?;
         let mut val = naga::valid::Validator::new(
             naga::valid::ValidationFlags::all(),
             naga::valid::Capabilities::all(),
@@ -4985,7 +4980,10 @@ impl Renderer {
                 ));
                 continue;
             }
-            if let Some(&k) = ctx.iter().find(|&&k| k < 255 && k >= self.v2_ctx_count as u8) {
+            if let Some(&k) = ctx
+                .iter()
+                .find(|&&k| k < 255 && k >= self.v2_ctx_count as u8)
+            {
                 report.push_str(&format!(
                     "  {}: skipped — colortex{k} is beyond this device's binding budget ({} pairs)\n",
                     p.program, self.v2_ctx_count
@@ -5055,7 +5053,15 @@ impl Renderer {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
-            report.push_str(&format!("  {}: installed ({})\n", p.program, if p.is_final { "final→surface" } else { "composite" }));
+            report.push_str(&format!(
+                "  {}: installed ({})\n",
+                p.program,
+                if p.is_final {
+                    "final→surface"
+                } else {
+                    "composite"
+                }
+            ));
             built.push(V2Pass {
                 pipe,
                 ubuf,
@@ -5066,8 +5072,7 @@ impl Renderer {
         if built.is_empty() {
             return report;
         }
-        let scratch =
-            Self::make_v2_scratch(&self.device, self.config.width, self.config.height);
+        let scratch = Self::make_v2_scratch(&self.device, self.config.width, self.config.height);
         let bgs = built
             .iter()
             .map(|p| {
@@ -5121,8 +5126,7 @@ impl Renderer {
         let Some(chain) = self.v2_chain.as_mut() else {
             return;
         };
-        chain.scratch =
-            Self::make_v2_scratch(&self.device, self.config.width, self.config.height);
+        chain.scratch = Self::make_v2_scratch(&self.device, self.config.width, self.config.height);
         for (i, p) in chain.passes.iter().enumerate() {
             chain.bgs[i] = [
                 Self::v2_bg(
@@ -5256,7 +5260,8 @@ impl Renderer {
                     // vanilla writes screenshots without alpha
                     let _ = img
                         .write_to(&mut out, image::ImageFormat::Png)
-                        .map(|_: ()| ()) as Result<(), image::ImageError>;
+                        .map(|_: ()| ())
+                        as Result<(), image::ImageError>;
                     out.into_inner()
                 })
                 .unwrap_or_default()
@@ -5310,10 +5315,9 @@ impl Renderer {
         self.queue.submit(Some(enc.finish()));
         let slice = buf.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
-        slice
-            .map_async(wgpu::MapMode::Read, move |r| {
-                let _ = tx.send(r);
-            });
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
         let _ = self.device.poll(wgpu::Maintain::Wait);
         let _ = rx.recv_timeout(std::time::Duration::from_secs(2));
         let data = slice.get_mapped_range().to_vec();
@@ -5891,108 +5895,101 @@ impl Renderer {
                 pass.draw(0..3, 0..1);
                 stats.draws += 1;
             } else {
-            // 1. sky (§28: skipped in skyless dimensions — the nether's
-            // fog-colored clear color IS the sky)
-            if !sky.skyless {
-                pass.set_pipeline(sky_p);
-                pass.set_bind_group(0, &self.world_bg, &[]);
-                pass.draw(0..3, 0..1);
-            }
-
-            // 2. terrain — Phase 9: region-grouped near→far (approximately
-            // front-to-back for early-z), whole origin buffer bound once,
-            // arena re-bound once per region run; MDI where supported
-            pass.set_pipeline(terrain_p);
-            pass.set_bind_group(0, &self.world_bg, &[]);
-            pass.set_vertex_buffer(1, self.origin_vb.slice(..));
-            self.issue_draws(&mut pass, &terrain_list, 0, &mut stats);
-            stats.binds += 1; // the origin bind
-
-            // 3. selection wireframe
-            if selection.is_some() {
-                pass.set_pipeline(line_p);
-                pass.set_bind_group(0, &self.line_bg, &[]);
-                pass.set_vertex_buffer(0, self.line_vb.slice(..));
-                pass.draw(0..24, 0..1);
-            }
-
-            // 3.5 Round A (F3+G): chunk-border boxes — the vertical
-            // wireframe of every chunk column within ~2 chunks of the
-            // camera, one instance per column via the SAME line pipeline
-            // (per-box offset uniform rewritten between instances — the
-            // count is tiny (≤25), the per-instance uniform write is
-            // negligible, and it reuses the proven depth-blend state).
-            if let Some((bcx, bcz)) = chunk_borders {
-                pass.set_pipeline(line_p);
-                for dx in -2..=2 {
-                    for dz in -2..=2 {
-                        let cx = bcx + dx;
-                        let cz = bcz + dz;
-                        let border_u = LineUniform {
-                            vp: vp.to_cols_array_2d(),
-                            offset: [
-                                cx as f32 * 16.0,
-                                0.0,
-                                cz as f32 * 16.0,
-                                1.0,
-                            ],
-                            // yellow (the vanilla F3+G tint family)
-                            color: [0.9, 0.85, 0.2, 0.55],
-                        };
-                        // scale trick: the unit-cube edge geometry spans
-                        // 0..1 — multiply by writing a scaled offset is
-                        // impossible, so borders ride a SECOND vertex
-                        // buffer holding the pre-scaled 16-block box
-                        pass.set_bind_group(0, &self.line_bg, &[]);
-                        self.queue.write_buffer(
-                            &self.line_buf,
-                            0,
-                            bytemuck::bytes_of(&border_u),
-                        );
-                        pass.set_vertex_buffer(0, self.chunk_border_vb.slice(..));
-                        pass.draw(0..24, 0..1);
-                    }
+                // 1. sky (§28: skipped in skyless dimensions — the nether's
+                // fog-colored clear color IS the sky)
+                if !sky.skyless {
+                    pass.set_pipeline(sky_p);
+                    pass.set_bind_group(0, &self.world_bg, &[]);
+                    pass.draw(0..3, 0..1);
                 }
-                stats.binds += 1;
-            }
 
-            // 4. water (far → near, blended) — reversed region-major order,
-            // same origin rows, same zero-rebind submission
-            pass.set_pipeline(water_p);
-            pass.set_bind_group(0, &self.world_bg, &[]);
-            pass.set_vertex_buffer(1, self.origin_vb.slice(..));
-            self.issue_draws(&mut pass, &water_list, args_water_off, &mut stats);
-            stats.binds += 1; // the origin bind
+                // 2. terrain — Phase 9: region-grouped near→far (approximately
+                // front-to-back for early-z), whole origin buffer bound once,
+                // arena re-bound once per region run; MDI where supported
+                pass.set_pipeline(terrain_p);
+                pass.set_bind_group(0, &self.world_bg, &[]);
+                pass.set_vertex_buffer(1, self.origin_vb.slice(..));
+                self.issue_draws(&mut pass, &terrain_list, 0, &mut stats);
+                stats.binds += 1; // the origin bind
 
-            // 4.5 particles (§16.2 pass 4): billboard quads uploaded per
-            // frame, alpha-blended, depth-tested but not written — after
-            // the translucent water pass, before clouds
-            if !particles.is_empty() {
-                // CLAMPED write: the budget is the buffer size — an
-                // over-full scene drops its tail verts instead of
-                // panicking the device (the draw clamp below already
-                // had this semantics; the write did not)
-                let n_verts = particles
-                    .len()
-                    .min(PARTICLE_VERT_BUDGET);
-                let bytes = bytemuck::cast_slice(&particles[..n_verts]);
-                self.queue.write_buffer(&self.particle_vb, 0, bytes);
-                pass.set_pipeline(part_p);
-                pass.set_bind_group(0, &self.part_bg, &[]);
-                pass.set_vertex_buffer(0, self.particle_vb.slice(..));
-                let n = n_verts as u32;
-                pass.draw(0..n, 0..1);
-                stats.particles += n / 6;
-            }
+                // 3. selection wireframe
+                if selection.is_some() {
+                    pass.set_pipeline(line_p);
+                    pass.set_bind_group(0, &self.line_bg, &[]);
+                    pass.set_vertex_buffer(0, self.line_vb.slice(..));
+                    pass.draw(0..24, 0..1);
+                }
 
-            // 5. clouds — the vanilla 3-state: OFF hidden; Fast = the
-            // solid opaque plane; Fancy = the alpha-blended translucent layer
-            if clouds > 0 {
-                pass.set_pipeline(if clouds > 1 { cloud_blend_p } else { cloud_p });
-                pass.set_bind_group(0, &self.cloud_bg, &[]);
-                pass.set_vertex_buffer(0, self.cloud_vb.slice(..));
-                pass.draw(0..6, 0..1);
-            }
+                // 3.5 Round A (F3+G): chunk-border boxes — the vertical
+                // wireframe of every chunk column within ~2 chunks of the
+                // camera, one instance per column via the SAME line pipeline
+                // (per-box offset uniform rewritten between instances — the
+                // count is tiny (≤25), the per-instance uniform write is
+                // negligible, and it reuses the proven depth-blend state).
+                if let Some((bcx, bcz)) = chunk_borders {
+                    pass.set_pipeline(line_p);
+                    for dx in -2..=2 {
+                        for dz in -2..=2 {
+                            let cx = bcx + dx;
+                            let cz = bcz + dz;
+                            let border_u = LineUniform {
+                                vp: vp.to_cols_array_2d(),
+                                offset: [cx as f32 * 16.0, 0.0, cz as f32 * 16.0, 1.0],
+                                // yellow (the vanilla F3+G tint family)
+                                color: [0.9, 0.85, 0.2, 0.55],
+                            };
+                            // scale trick: the unit-cube edge geometry spans
+                            // 0..1 — multiply by writing a scaled offset is
+                            // impossible, so borders ride a SECOND vertex
+                            // buffer holding the pre-scaled 16-block box
+                            pass.set_bind_group(0, &self.line_bg, &[]);
+                            self.queue.write_buffer(
+                                &self.line_buf,
+                                0,
+                                bytemuck::bytes_of(&border_u),
+                            );
+                            pass.set_vertex_buffer(0, self.chunk_border_vb.slice(..));
+                            pass.draw(0..24, 0..1);
+                        }
+                    }
+                    stats.binds += 1;
+                }
+
+                // 4. water (far → near, blended) — reversed region-major order,
+                // same origin rows, same zero-rebind submission
+                pass.set_pipeline(water_p);
+                pass.set_bind_group(0, &self.world_bg, &[]);
+                pass.set_vertex_buffer(1, self.origin_vb.slice(..));
+                self.issue_draws(&mut pass, &water_list, args_water_off, &mut stats);
+                stats.binds += 1; // the origin bind
+
+                // 4.5 particles (§16.2 pass 4): billboard quads uploaded per
+                // frame, alpha-blended, depth-tested but not written — after
+                // the translucent water pass, before clouds
+                if !particles.is_empty() {
+                    // CLAMPED write: the budget is the buffer size — an
+                    // over-full scene drops its tail verts instead of
+                    // panicking the device (the draw clamp below already
+                    // had this semantics; the write did not)
+                    let n_verts = particles.len().min(PARTICLE_VERT_BUDGET);
+                    let bytes = bytemuck::cast_slice(&particles[..n_verts]);
+                    self.queue.write_buffer(&self.particle_vb, 0, bytes);
+                    pass.set_pipeline(part_p);
+                    pass.set_bind_group(0, &self.part_bg, &[]);
+                    pass.set_vertex_buffer(0, self.particle_vb.slice(..));
+                    let n = n_verts as u32;
+                    pass.draw(0..n, 0..1);
+                    stats.particles += n / 6;
+                }
+
+                // 5. clouds — the vanilla 3-state: OFF hidden; Fast = the
+                // solid opaque plane; Fancy = the alpha-blended translucent layer
+                if clouds > 0 {
+                    pass.set_pipeline(if clouds > 1 { cloud_blend_p } else { cloud_p });
+                    pass.set_bind_group(0, &self.cloud_bg, &[]);
+                    pass.set_vertex_buffer(0, self.cloud_vb.slice(..));
+                    pass.draw(0..6, 0..1);
+                }
             } // panorama else-branch (world passes)
         }
 
@@ -6223,12 +6220,7 @@ impl Renderer {
                     timestamp_writes: None,
                     occlusion_query_set: None,
                 });
-                match gui.draw(
-                    &self.device,
-                    &self.queue,
-                    &mut pass,
-                    &ui.gui_frame.quads,
-                ) {
+                match gui.draw(&self.device, &self.queue, &mut pass, &ui.gui_frame.quads) {
                     Ok(()) => {
                         stats.gui_quads = ui.gui_frame.quads.len() as u32;
                     }
@@ -6489,7 +6481,11 @@ static FILE_LOG: std::sync::OnceLock<Option<std::sync::Mutex<std::fs::File>>> =
 #[cfg(not(target_arch = "wasm32"))]
 pub fn init_file_log(path: &std::path::Path) {
     use std::io::Write;
-    if let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+    if let Ok(f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
         let mut f = f;
         let _ = writeln!(
             f,
@@ -6563,7 +6559,12 @@ pub fn report_debug_log(cat: &str, msg: &str) {
     if !is_verbose() {
         return;
     }
-    report_boot_log(&format!("[t+{:8.1}s][{}] {}", debug_since_start(), cat, msg));
+    report_boot_log(&format!(
+        "[t+{:8.1}s][{}] {}",
+        debug_since_start(),
+        cat,
+        msg
+    ));
 }
 
 #[cfg(test)]
@@ -6798,7 +6799,10 @@ mod round15b_sky_tests {
     #[test]
     fn sun_cell_size_matches_wiki() {
         let full = 2.0 * (15.0f32 / 100.0).atan(); // 17.06 deg
-        assert!((full.to_degrees() - 17.06).abs() < 0.02, "17.06 deg, got {full:?}");
+        assert!(
+            (full.to_degrees() - 17.06).abs() < 0.02,
+            "17.06 deg, got {full:?}"
+        );
         let edge = (full / 2.0).cos(); // cos(8.53 deg)
         assert!((edge - 0.98894).abs() < 2e-4, "edge cos, got {edge:?}");
         // the shader's disc window brackets the edge
@@ -6814,7 +6818,10 @@ mod round15b_sky_tests {
     #[test]
     fn moon_cell_size_matches_wiki() {
         let full = 2.0 * (10.0f32 / 100.0).atan(); // 11.42 deg
-        assert!((full.to_degrees() - 11.42).abs() < 0.02, "11.42 deg, got {full:?}");
+        assert!(
+            (full.to_degrees() - 11.42).abs() < 0.02,
+            "11.42 deg, got {full:?}"
+        );
         let edge = (full / 2.0).cos(); // cos(5.71 deg)
         assert!((edge - 0.99503).abs() < 2e-4, "edge cos, got {edge:?}");
         assert!(

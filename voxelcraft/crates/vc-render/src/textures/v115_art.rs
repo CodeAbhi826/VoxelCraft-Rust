@@ -226,7 +226,8 @@ pub(super) fn honey_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     for y in 0..16 {
         for x in 0..16 {
             let edge = x == 0 || x == 15 || y == 0 || y == 15;
-            let corner = (x < 3 && y < 3) || (x > 12 && y < 3) || (x < 3 && y > 12) || (x > 12 && y > 12);
+            let corner =
+                (x < 3 && y < 3) || (x > 12 && y < 3) || (x < 3 && y > 12) || (x > 12 && y > 12);
             let (r, g, b, al) = if edge {
                 (HONEY_D[0], HONEY_D[1], HONEY_D[2], 210)
             } else if corner {
@@ -340,9 +341,9 @@ pub(super) fn honey_bottle_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
         "................",
     ];
     art(a, t, rows, &|c| match c {
-        'K' => Some((96, 70, 40, 255)),       // cork
-        'D' => Some((74, 54, 34, 255)),       // neck shadow
-        'G' => Some((196, 220, 228, 190)),    // glass body (translucent)
+        'K' => Some((96, 70, 40, 255)),    // cork
+        'D' => Some((74, 54, 34, 255)),    // neck shadow
+        'G' => Some((196, 220, 228, 190)), // glass body (translucent)
         'H' => Some((HONEY_M[0], HONEY_M[1], HONEY_M[2], 235)),
         'L' => Some((HONEY_L[0], HONEY_L[1], HONEY_L[2], 235)),
         _ => None,
@@ -435,8 +436,8 @@ pub(super) fn bee_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
         'W' => Some((BEE_WING[0], BEE_WING[1], BEE_WING[2], 160)), // translucent wings
         'S' => Some((BEE_DARK[0], BEE_DARK[1], BEE_DARK[2], 255)), // head/thorax
         'H' => Some((BEE_AMBER[0], BEE_AMBER[1], BEE_AMBER[2], 255)), // amber stripes
-        'D' => Some((BEE_DARK[0], BEE_DARK[1], BEE_DARK[2], 255)),   // dark stripes
-        'w' => Some((60, 46, 30, 255)),  // the stinger
+        'D' => Some((BEE_DARK[0], BEE_DARK[1], BEE_DARK[2], 255)), // dark stripes
+        'w' => Some((60, 46, 30, 255)),                            // the stinger
         _ => None,
     });
 }

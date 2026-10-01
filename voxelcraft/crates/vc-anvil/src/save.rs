@@ -30,15 +30,15 @@
 //! can never desync gameplay from saved blocks.
 
 use crate::anvil;
-use vc_blocks::blocks::{
-    self, prop_state_decode, prop_state_encode, COBBLE_STAIRS, OAK_FENCE, OAK_SLAB,
-    BIRCH_LOG_X, BIRCH_LOG_Z, OAK_LOG_X, OAK_LOG_Z, SPRUCE_LOG_X, SPRUCE_LOG_Z,
-};
-use vc_chunk::chunk::{Chunk, Section, SECTION_COUNT, SECTION_LEN};
-use vc_nbt::nbt::{self, Nbt};
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use vc_blocks::blocks::{
+    self, prop_state_decode, prop_state_encode, BIRCH_LOG_X, BIRCH_LOG_Z, COBBLE_STAIRS, OAK_FENCE,
+    OAK_LOG_X, OAK_LOG_Z, OAK_SLAB, SPRUCE_LOG_X, SPRUCE_LOG_Z,
+};
+use vc_chunk::chunk::{Chunk, Section, SECTION_COUNT, SECTION_LEN};
+use vc_nbt::nbt::{self, Nbt};
 
 /// the 1.16.5 reference game (`https://reference wiki /Data_version`).
 pub const DATA_VERSION: i32 = 2586;
@@ -60,14 +60,13 @@ const STATUS_FULL: &str = "full";
 ///  the vanilla ids live-verified from the wiki Biome page: taiga=5,
 ///  swamp=6, jungle=21, birch_forest=27, savanna=35, badlands=37)
 const BIOME_TO_VANILLA: [i32; 28] = [
-    0, 16, 1, 4, 2, 12, 3,
-    8,  // Nether Wastes
-    5,  // Taiga
-    27, // Birch Forest
-    21, // Jungle
-    35, // Savanna
-    6,  // Swamp
-    37, // Badlands
+    0, 16, 1, 4, 2, 12, 3, 8,   // Nether Wastes
+    5,   // Taiga
+    27,  // Birch Forest
+    21,  // Jungle
+    35,  // Savanna
+    6,   // Swamp
+    37,  // Badlands
     14,  // Mushroom Fields (live-verified in gen.rs)
     132, // Flower Forest (Bedrock-classic value; Java unverified, disclosed)
     130, // Sunflower Plains (Bedrock-classic; Java unverified, disclosed)
@@ -240,7 +239,10 @@ fn derived_registry_name(s: u16) -> Option<String> {
 /// vanilla palette entry → our state id; `None` = unknown name (→ air).
 fn vanilla_to_state(name: &str, props: &[(String, String)]) -> Option<u16> {
     let prop = |key: &str| -> Option<&str> {
-        props.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str())
+        props
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| v.as_str())
     };
     // Namespace interop (read-side, namespace-AGNOSTIC): palette entries
     // written by third-party world editors of the wider 1.16.5-era
@@ -269,8 +271,10 @@ fn vanilla_to_state(name: &str, props: &[(String, String)]) -> Option<u16> {
         _ => None,
     };
     if let Some(b) = prop_block {
-        let set: Vec<(&str, &str)> =
-            props.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+        let set: Vec<(&str, &str)> = props
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
         return prop_state_encode(b, &set); // missing props → vanilla defaults
     }
     // grass variants (snowy property selects our Snowy Grass id)
@@ -468,7 +472,9 @@ pub fn chunk_to_nbt(
             {
                 continue; // already written above
             }
-            let Some(lsec) = &ld.sections[sy] else { continue };
+            let Some(lsec) = &ld.sections[sy] else {
+                continue;
+            };
             let mut sec_nbt = Nbt::compound();
             sec_nbt.set("Y", Nbt::Byte(sy as i8));
             let mut air = Nbt::compound();
@@ -493,8 +499,14 @@ pub fn chunk_to_nbt(
 
     // ---- Heightmaps (approximation, see module doc) ----
     let mut heightmaps = Nbt::compound();
-    heightmaps.set("WORLD_SURFACE", Nbt::LongArray(pack_heightmap(&chunk.height)));
-    heightmaps.set("MOTION_BLOCKING", Nbt::LongArray(pack_heightmap(&chunk.height)));
+    heightmaps.set(
+        "WORLD_SURFACE",
+        Nbt::LongArray(pack_heightmap(&chunk.height)),
+    );
+    heightmaps.set(
+        "MOTION_BLOCKING",
+        Nbt::LongArray(pack_heightmap(&chunk.height)),
+    );
     level.set("Heightmaps", heightmaps);
 
     let mut root = Nbt::compound();
@@ -623,14 +635,12 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
             }
             // Phase 4 §28: light arrays — materialize the section when present
             if let Some(sky) = sec.get("SkyLight").and_then(|d| d.as_i8_slice()) {
-                let lsec = out_light
-                    .sections[sy]
-                    .get_or_insert_with(|| {
-                        Box::new(vc_world::light::LightSection {
-                            sky: Box::new([0u8; 4096]),
-                            blk: Box::new([0u8; 4096]),
-                        })
-                    });
+                let lsec = out_light.sections[sy].get_or_insert_with(|| {
+                    Box::new(vc_world::light::LightSection {
+                        sky: Box::new([0u8; 4096]),
+                        blk: Box::new([0u8; 4096]),
+                    })
+                });
                 *lsec.sky = unpack_nibbles(sky);
                 if let Some(blk) = sec.get("BlockLight").and_then(|d| d.as_i8_slice()) {
                     *lsec.blk = unpack_nibbles(blk);
@@ -789,7 +799,10 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
         "generatorName",
         Nbt::String(if meta.flat { "flat" } else { "default" }.into()),
     );
-    data.set("MapFeatures", Nbt::Byte(if meta.structures { 1 } else { 0 }));
+    data.set(
+        "MapFeatures",
+        Nbt::Byte(if meta.structures { 1 } else { 0 }),
+    );
     data.set(
         "BonusChestEnabled",
         Nbt::Byte(if meta.bonus_chest { 1 } else { 0 }),
@@ -797,7 +810,12 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
     data.set("Time", Nbt::Long(meta.game_time));
     data.set(
         "LastPlayed",
-        Nbt::Long(web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)),
+        Nbt::Long(
+            web_time::SystemTime::now()
+                .duration_since(web_time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0),
+        ),
     );
     let mut vc = Nbt::compound();
     if let Some(p) = &meta.player {
@@ -911,7 +929,10 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
         Err(_) => return Ok(None), // corrupt → caller regenerates
     };
     let data = root.get("Data").ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::InvalidData, "level.dat: no Data compound")
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "level.dat: no Data compound",
+        )
     })?;
     let get_i64 = |k: &str| data.get(k).and_then(|v| v.as_i64());
     // Phase 1: read the saved mode back (vanilla keys; permissive defaults
@@ -988,7 +1009,9 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
                     for it in items {
                         let Nbt::Compound(ifs) = it else { continue };
                         let pf = |k: &str| {
-                            ifs.iter().find(|(k2, _)| k2 == k).and_then(|(_, v)| v.as_i64())
+                            ifs.iter()
+                                .find(|(k2, _)| k2 == k)
+                                .and_then(|(_, v)| v.as_i64())
                         };
                         let (Some(slot), Some(block), Some(count)) =
                             (pf("Slot"), pf("Block"), pf("Count"))
@@ -1012,7 +1035,9 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
                     for it in items {
                         let Nbt::Compound(ifs) = it else { continue };
                         let pf = |k: &str| {
-                            ifs.iter().find(|(k2, _)| k2 == k).and_then(|(_, v)| v.as_i64())
+                            ifs.iter()
+                                .find(|(k2, _)| k2 == k)
+                                .and_then(|(_, v)| v.as_i64())
                         };
                         let (Some(piece), Some(block), Some(count)) =
                             (pf("Piece"), pf("Block"), pf("Count"))
@@ -1030,7 +1055,9 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
                 .and_then(|v| {
                     if let Nbt::Compound(ifs) = v {
                         let pf = |k: &str| {
-                            ifs.iter().find(|(k2, _)| k2 == k).and_then(|(_, v)| v.as_i64())
+                            ifs.iter()
+                                .find(|(k2, _)| k2 == k)
+                                .and_then(|(_, v)| v.as_i64())
                         };
                         let (block, count) = (pf("Block")?, pf("Count")?);
                         Some((block as u16, count as u8))
@@ -1045,20 +1072,12 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
         if let Some(Nbt::List(list)) = find("Containers") {
             for c in list {
                 let Nbt::Compound(fields) = c else { continue };
-                let cf = |k: &str| {
-                    fields.iter().find(|(key, _)| key == k).map(|(_, v)| v)
+                let cf = |k: &str| fields.iter().find(|(key, _)| key == k).map(|(_, v)| v);
+                let i32_of = |k: &str| cf(k).and_then(|v| v.as_i64()).map(|v| v as i32);
+                let (Some(x), Some(y), Some(z)) = (i32_of("X"), i32_of("Y"), i32_of("Z")) else {
+                    continue;
                 };
-                let i32_of = |k: &str| {
-                    cf(k).and_then(|v| v.as_i64()).map(|v| v as i32)
-                };
-                let (Some(x), Some(y), Some(z)) = (
-                    i32_of("X"),
-                    i32_of("Y"),
-                    i32_of("Z"),
-                ) else { continue };
-                let kind = cf("Kind")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(96) as u16; // default: chest
+                let kind = cf("Kind").and_then(|v| v.as_i64()).unwrap_or(96) as u16; // default: chest
                 let mut slots = Vec::new();
                 if let Some(Nbt::List(items)) = cf("Items") {
                     for it in items {
@@ -1083,7 +1102,11 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
                         }
                     }
                 }
-                meta.containers.push(ContainerMeta { pos: [x, y, z], kind, slots });
+                meta.containers.push(ContainerMeta {
+                    pos: [x, y, z],
+                    kind,
+                    slots,
+                });
             }
         }
     }
@@ -1172,7 +1195,9 @@ pub struct WorldEntry {
 pub fn list_worlds() -> Vec<WorldEntry> {
     let root = saves_root();
     let mut out = Vec::new();
-    let Ok(rd) = fs::read_dir(&root) else { return out };
+    let Ok(rd) = fs::read_dir(&root) else {
+        return out;
+    };
     for entry in rd.flatten() {
         let dir = entry.path();
         if !dir.is_dir() {
@@ -1186,7 +1211,11 @@ pub fn list_worlds() -> Vec<WorldEntry> {
                 .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs())
                 .unwrap_or(0);
-            out.push(WorldEntry { dir, meta, last_played });
+            out.push(WorldEntry {
+                dir,
+                meta,
+                last_played,
+            });
         }
     }
     out.sort_by_key(|e| std::cmp::Reverse(e.last_played));
@@ -1226,7 +1255,10 @@ pub fn delete_world(dir: &Path) -> bool {
 /// new directory on success.
 pub fn copy_world_dir(src: &Path) -> std::io::Result<PathBuf> {
     let meta = read_level_dat(src)?.ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::InvalidData, "not a world (no level.dat)")
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "not a world (no level.dat)",
+        )
     })?;
     let base = sanitize_world_name(&format!("{} copy", meta.name));
     // place the copy NEXT TO the source (in-game that is saves_root/, so
@@ -1281,19 +1313,35 @@ pub fn store_chunk(
     last_update: i64,
     light: Option<&vc_world::light::LightData>,
 ) -> std::io::Result<()> {
-    anvil::write_chunk(world_dir, cx, cz, &chunk_to_nbt(cx, cz, chunk, last_update, light))
+    anvil::write_chunk(
+        world_dir,
+        cx,
+        cz,
+        &chunk_to_nbt(cx, cz, chunk, last_update, light),
+    )
 }
 
 /// Persist many chunks in one pass — one compact-and-rewrite per touched
 /// region file (autosave path; ~400 chunks → a handful of rewrites).
 pub fn store_chunks(
     world_dir: &Path,
-    entries: &[(i32, i32, &Chunk, Option<&std::sync::Arc<vc_world::light::LightData>>)],
+    entries: &[(
+        i32,
+        i32,
+        &Chunk,
+        Option<&std::sync::Arc<vc_world::light::LightData>>,
+    )],
     last_update: i64,
 ) -> std::io::Result<()> {
     let encoded: Vec<(i32, i32, Vec<u8>)> = entries
         .iter()
-        .map(|(cx, cz, c, l)| (*cx, *cz, chunk_to_nbt(*cx, *cz, c, last_update, l.map(|a| a.as_ref()))))
+        .map(|(cx, cz, c, l)| {
+            (
+                *cx,
+                *cz,
+                chunk_to_nbt(*cx, *cz, c, last_update, l.map(|a| a.as_ref())),
+            )
+        })
         .collect();
     anvil::write_chunks(world_dir, &encoded)
 }
@@ -1316,9 +1364,9 @@ pub fn load_chunk(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::SystemTime;
     use vc_blocks::blocks::*;
     use vc_chunk::chunk::idx;
-    use std::time::SystemTime;
 
     fn tmp_dir(tag: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!(
@@ -1363,15 +1411,25 @@ mod tests {
         // property blocks: defaults and non-defaults
         c.set_state(2, 4, 2, 63); // oak_slab half=bottom (default)
         c.set_state(3, 4, 3, 64); // oak_slab half=top
-        c.set_state(4, 70, 4, prop_state_encode(COBBLE_STAIRS, &[("facing", "east"), ("half", "top")]).unwrap());
-        c.set_state(5, 70, 5, prop_state_encode(OAK_FENCE, &[("east", "true"), ("south", "true")]).unwrap());
+        c.set_state(
+            4,
+            70,
+            4,
+            prop_state_encode(COBBLE_STAIRS, &[("facing", "east"), ("half", "top")]).unwrap(),
+        );
+        c.set_state(
+            5,
+            70,
+            5,
+            prop_state_encode(OAK_FENCE, &[("east", "true"), ("south", "true")]).unwrap(),
+        );
         // log axis variants
         c.set_state(6, 70, 6, OAK_LOG_X);
         c.set_state(7, 70, 7, OAK_LOG_Z);
         c.set_state(8, 70, 8, BIRCH_LOG_X);
         c.set_state(9, 70, 9, SPRUCE_LOG_Z);
         c.set(0, 70, 0, OAK_LOG); // plain axis=y
-        // high section content (section 12)
+                                  // high section content (section 12)
         c.set(0, 200, 0, GLOWSTONE);
         c.set(1, 200, 1, OBSIDIAN);
         // birch + spruce materials
@@ -1445,7 +1503,12 @@ mod tests {
         let mut b = demo_chunk();
         b.set(0, 1, 0, OBSIDIAN);
         let d = Chunk::empty(); // all-air chunk survives the cycle too
-        let entries: Vec<(i32, i32, &Chunk, Option<&std::sync::Arc<vc_world::light::LightData>>)> = vec![
+        let entries: Vec<(
+            i32,
+            i32,
+            &Chunk,
+            Option<&std::sync::Arc<vc_world::light::LightData>>,
+        )> = vec![
             (0, 0, &a, None),
             (31, 31, &b, None),
             (-5, 7, &d, None),
@@ -1471,7 +1534,10 @@ mod tests {
         assert_eq!(level.get("Status").unwrap().as_str(), Some("full"));
         // sections: palette entries carry voxelcraft: names, BlockStates sized right
         let sections = level.get("Sections").unwrap().as_list().unwrap();
-        let sec0 = sections.iter().find(|s| s.get("Y").and_then(|y| y.as_i64()) == Some(0)).unwrap();
+        let sec0 = sections
+            .iter()
+            .find(|s| s.get("Y").and_then(|y| y.as_i64()) == Some(0))
+            .unwrap();
         let palette = sec0.get("Palette").unwrap().as_list().unwrap();
         assert!(palette.len() >= 8); // bedrock/stone/ores/grass/…
         for entry in palette {
@@ -1479,7 +1545,12 @@ mod tests {
             assert!(n.starts_with("voxelcraft:"), "palette name {n}");
         }
         // 4-bit packing → 256 longs; 5-bit (our palette ≥ 9 distinct) → 342
-        let longs = sec0.get("BlockStates").unwrap().as_i64_slice().unwrap().len();
+        let longs = sec0
+            .get("BlockStates")
+            .unwrap()
+            .as_i64_slice()
+            .unwrap()
+            .len();
         assert!(longs == 256 || longs == 342);
         // biomes: IntArray(256) with vanilla ids. Quadrants:
         // (x<8,z<8) → Forest(4), (x≥8,z<8) → Plains(1),
@@ -1488,8 +1559,12 @@ mod tests {
         assert_eq!(bi.len(), 256);
         assert_eq!(bi[0], 4); // (x=0,z=0) → Forest
         assert_eq!(bi[15 * 16 + 15], 0); // (x=15,z=15) → Ocean
-        // heightmaps: 37 longs, 9-bit
-        let hm = level.get("Heightmaps").unwrap().get("WORLD_SURFACE").unwrap();
+                                         // heightmaps: 37 longs, 9-bit
+        let hm = level
+            .get("Heightmaps")
+            .unwrap()
+            .get("WORLD_SURFACE")
+            .unwrap();
         assert_eq!(hm.as_i64_slice().unwrap().len(), 37);
     }
 
@@ -1533,7 +1608,10 @@ mod tests {
         // state accessor is get_state — kept as the honest both-sides check)
         assert_eq!(chunk.get(1, 0, 0), OAK_LOG);
         assert_eq!(chunk.get_state(1, 0, 0), OAK_LOG_X);
-        assert_eq!(chunk.sections[0].as_ref().unwrap().states_flat()[1], OAK_LOG_X);
+        assert_eq!(
+            chunk.sections[0].as_ref().unwrap().states_flat()[1],
+            OAK_LOG_X
+        );
         assert_eq!(chunk.biome[0], 2); // plains → our id 2
         assert_eq!(chunk.height[0], 0); // top non-air at y=0
     }
@@ -1588,7 +1666,10 @@ mod tests {
         // corrupt one palette name in-place (stone → sTonE) — must still
         // parse (that state becomes air), never panic
         let needle = b"voxelcraft:stone";
-        let pos = bytes.windows(needle.len()).position(|w| w == needle).unwrap();
+        let pos = bytes
+            .windows(needle.len())
+            .position(|w| w == needle)
+            .unwrap();
         bytes[pos + 11] = b'X'; // voxelcraft:Xtone
         let back = chunk_from_nbt(&bytes);
         assert!(back.is_ok(), "mutated chunk still parses");
@@ -1649,7 +1730,15 @@ mod tests {
             seed: 0xDEAD_BEEF_CAFE_1234,
             name: "Test World".into(),
             spawn: (-17, 71, 239),
-            player: Some(PlayerMeta { pos: [1.5, 72.0, -3.25], yaw: -0.75, pitch: 0.5, slots: Vec::new(), selected: 0, armor: Vec::new(), offhand: (0, 0) }),
+            player: Some(PlayerMeta {
+                pos: [1.5, 72.0, -3.25],
+                yaw: -0.75,
+                pitch: 0.5,
+                slots: Vec::new(),
+                selected: 0,
+                armor: Vec::new(),
+                offhand: (0, 0),
+            }),
             game_time: 4242,
             game_type: 1,
             hardcore: false,
@@ -1692,7 +1781,10 @@ mod tests {
         assert_eq!(back.containers[0].kind, 96);
         assert_eq!(back.containers[0].slots, vec![(3, 82, 4), (7, 84, 2)]);
         // empty-container worlds write no Containers tag at all
-        let bare = WorldMeta { containers: Vec::new(), ..meta.clone() };
+        let bare = WorldMeta {
+            containers: Vec::new(),
+            ..meta.clone()
+        };
         write_level_dat(&dir, &bare).unwrap();
         let back2 = read_level_dat(&dir).unwrap().expect("present");
         assert!(back2.containers.is_empty());
@@ -1709,12 +1801,20 @@ mod tests {
         let mut c = demo_chunk();
         // player digs a hole and places a fence
         c.set(8, 4, 8, AIR);
-        c.set_state(8, 4, 8, prop_state_encode(OAK_FENCE, &[("west", "true")]).unwrap());
+        c.set_state(
+            8,
+            4,
+            8,
+            prop_state_encode(OAK_FENCE, &[("west", "true")]).unwrap(),
+        );
         store_chunk(&dir, 0, 0, &c, 9, None).unwrap();
         let back = load_chunk(&dir, 0, 0).unwrap().expect("present");
         let back = (back.0, back.1);
         let fence = back.0.sections[0].as_ref().unwrap().states_flat()[idx(8, 4, 8)];
-        assert_eq!(fence, prop_state_encode(OAK_FENCE, &[("west", "true")]).unwrap());
+        assert_eq!(
+            fence,
+            prop_state_encode(OAK_FENCE, &[("west", "true")]).unwrap()
+        );
     }
 
     #[test]
@@ -1745,8 +1845,12 @@ mod tests {
         let (generated, _outbound) = gen.generate_chunk(0, 0, Vec::new());
         let mut chunk = (*generated).clone(); // detach from Arc for editing
         chunk.set(8, 70, 8, GLOWSTONE); // a player edit
-        let entries: Vec<(i32, i32, &Chunk, Option<&std::sync::Arc<vc_world::light::LightData>>)> =
-            vec![(0, 0, &chunk, None)];
+        let entries: Vec<(
+            i32,
+            i32,
+            &Chunk,
+            Option<&std::sync::Arc<vc_world::light::LightData>>,
+        )> = vec![(0, 0, &chunk, None)];
         store_chunks(&dir, &entries, 100).unwrap();
         write_level_dat(
             &dir,
@@ -1754,7 +1858,15 @@ mod tests {
                 seed,
                 name: "VoxelCraft".into(),
                 spawn: (8, 70, 8),
-                player: Some(PlayerMeta { pos: [8.5, 90.0, 8.5], yaw: 1.0, pitch: -0.5, slots: Vec::new(), selected: 0, armor: Vec::new(), offhand: (0, 0) }),
+                player: Some(PlayerMeta {
+                    pos: [8.5, 90.0, 8.5],
+                    yaw: 1.0,
+                    pitch: -0.5,
+                    slots: Vec::new(),
+                    selected: 0,
+                    armor: Vec::new(),
+                    offhand: (0, 0),
+                }),
                 game_time: 100,
                 game_type: 0,
                 hardcore: true,

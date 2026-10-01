@@ -47,7 +47,11 @@ const IRON_D: [i32; 3] = [130, 130, 138];
 /// the hoe's drag lines). `wet` swaps to the dark waterlogged palette
 /// (moisture 1..7, VERIFIED w/Farmland §Hydration).
 pub(super) fn farmland_art(a: &mut [u8], t: u16, wet: bool) {
-    let (l, d) = if wet { (SOIL_WET_L, SOIL_WET_D) } else { (SOIL_L, SOIL_D) };
+    let (l, d) = if wet {
+        (SOIL_WET_L, SOIL_WET_D)
+    } else {
+        (SOIL_L, SOIL_D)
+    };
     // the top strip (y 0..4) shows a touch of un-tilled crust — the
     // block reads as dirt from the side; the furrow body below
     for y in 0..16usize {
@@ -82,11 +86,21 @@ pub(super) fn wheat_art(a: &mut [u8], t: u16, stage: u8, _rng: &mut Rng) {
         0 => {
             // a single tiny sprout
             let rows = [
-                "................", "................", "................",
-                "................", "................", "................",
-                "................", "................", "................",
-                "................", "................", "................",
-                "......g.........", ".....ggg........", "......g.........",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "......g.........",
+                ".....ggg........",
+                "......g.........",
                 "......g.........",
             ];
             art(a, t, rows, &|c| match c {
@@ -97,11 +111,21 @@ pub(super) fn wheat_art(a: &mut [u8], t: u16, stage: u8, _rng: &mut Rng) {
         1 | 2 => {
             // a few thin blades
             let rows = [
-                "................", "................", "................",
-                "................", "................", "................",
-                "................", "......g...g.....", ".....g...g......",
-                "..g...g..g...g..", "..g..g....g..g..", "...g.g...g.g....",
-                "...g.g...g.g....", "....g.....g.....", "....g.....g.....",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "......g...g.....",
+                ".....g...g......",
+                "..g...g..g...g..",
+                "..g..g....g..g..",
+                "...g.g...g.g....",
+                "...g.g...g.g....",
+                "....g.....g.....",
+                "....g.....g.....",
                 "....g.....g.....",
             ];
             art(a, t, rows, &|c| match c {
@@ -112,7 +136,11 @@ pub(super) fn wheat_art(a: &mut [u8], t: u16, stage: u8, _rng: &mut Rng) {
         _ => {
             // stalk columns + heads at the top when ripening
             for (i, x) in [3usize, 6, 9, 12].iter().enumerate() {
-                let sway = if (s + i as u8).is_multiple_of(2) { 1i32 } else { -1 };
+                let sway = if (s + i as u8).is_multiple_of(2) {
+                    1i32
+                } else {
+                    -1
+                };
                 for y in top..base {
                     // slight sway toward the top third
                     let dx = if y < top + h / 3 { sway } else { 0 };
@@ -126,7 +154,16 @@ pub(super) fn wheat_art(a: &mut [u8], t: u16, stage: u8, _rng: &mut Rng) {
                     put(a, t, *x as i32 + dx, y as i32, r, g, b, 255);
                     if golden && y < top + 4 {
                         // the awn fringe beside each head
-                        put(a, t, *x as i32 + dx + 1, y as i32, HEAD_D[0], HEAD_D[1], HEAD_D[2], 255);
+                        put(
+                            a,
+                            t,
+                            *x as i32 + dx + 1,
+                            y as i32,
+                            HEAD_D[0],
+                            HEAD_D[1],
+                            HEAD_D[2],
+                            255,
+                        );
                     }
                 }
             }
@@ -166,7 +203,16 @@ pub(super) fn root_crop_art(a: &mut [u8], t: u16, carrot: bool, stage: u8, _rng:
             // slight x sway for organic feel
             let sway = (((x * 7 + y * 3) % 5) as i32) - 2;
             if sway.abs() < 2 {
-                put(a, t, x as i32 + if y < top_y + 2 { sway } else { 0 }, y as i32, r, g, b, 255);
+                put(
+                    a,
+                    t,
+                    x as i32 + if y < top_y + 2 { sway } else { 0 },
+                    y as i32,
+                    r,
+                    g,
+                    b,
+                    255,
+                );
             }
         }
     }
@@ -208,8 +254,24 @@ pub(super) fn beetroot_art(a: &mut [u8], t: u16, stage: u8, _rng: &mut Rng) {
         }
     }
     if beet {
-        for (x, y) in [(6usize, 13usize), (7, 13), (8, 13), (6, 14), (7, 14), (8, 14)] {
-            put(a, t, x as i32, y as i32, BEET_ROOT[0], BEET_ROOT[1], BEET_ROOT[2], 255);
+        for (x, y) in [
+            (6usize, 13usize),
+            (7, 13),
+            (8, 13),
+            (6, 14),
+            (7, 14),
+            (8, 14),
+        ] {
+            put(
+                a,
+                t,
+                x as i32,
+                y as i32,
+                BEET_ROOT[0],
+                BEET_ROOT[1],
+                BEET_ROOT[2],
+                255,
+            );
         }
     }
 }

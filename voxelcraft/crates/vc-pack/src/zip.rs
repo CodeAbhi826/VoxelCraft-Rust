@@ -53,9 +53,8 @@ impl ZipFiles {
         }
         let eocd = eocd?;
         let rd16 = |o: usize| u16::from_le_bytes([bytes[o], bytes[o + 1]]);
-        let rd32 = |o: usize| {
-            u32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]])
-        };
+        let rd32 =
+            |o: usize| u32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
         let total_entries = rd16(eocd + 10) as usize;
         let cd_size = rd32(eocd + 12) as usize;
         let cd_offset = rd32(eocd + 16) as usize;
@@ -233,10 +232,10 @@ mod tests {
     /// same zip, but the payload is deflate-compressed (method 8) — the
     /// method every real-world pack zip actually uses
     fn build_deflate_zip(files: &[(&str, &[u8])]) -> Vec<u8> {
-
         let mut deflated: Vec<(String, Vec<u8>, Vec<u8>, u32)> = Vec::new();
         for (name, data) in files {
-            let mut enc = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+            let mut enc =
+                flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
             use std::io::Write;
             enc.write_all(data).unwrap();
             let comp = enc.finish().unwrap();
@@ -302,7 +301,10 @@ mod tests {
             ("data/demo/recipes/x.json", b"{\"type\":\"voxelcraft:crafting_shapeless\",\"ingredients\":[{\"item\":\"voxelcraft:stone\"}],\"result\":{\"item\":\"voxelcraft:cobblestone\"}}"),
         ]);
         let zf = ZipFiles::from_bytes(&zip).expect("zip parses");
-        assert_eq!(zf.list("data/"), vec!["data/demo/recipes/x.json".to_string()]);
+        assert_eq!(
+            zf.list("data/"),
+            vec!["data/demo/recipes/x.json".to_string()]
+        );
         assert!(zf.read("pack.mcmeta").is_some());
         assert!(zf.read("data/demo/recipes/x.json").is_some());
         assert!(zf.read("nope.json").is_none());
@@ -312,10 +314,15 @@ mod tests {
     fn deflate_zip_roundtrip() {
         let zip = build_deflate_zip(&[
             ("pack.mcmeta", b"{\"pack\":{\"pack_format\":6}}"),
-            ("data/demo/tags/items/t.json", b"{\"replace\":false,\"values\":[\"voxelcraft:bone\"]}"),
+            (
+                "data/demo/tags/items/t.json",
+                b"{\"replace\":false,\"values\":[\"voxelcraft:bone\"]}",
+            ),
         ]);
         let zf = ZipFiles::from_bytes(&zip).expect("zip parses");
-        let tag = zf.read("data/demo/tags/items/t.json").expect("deflate entry inflates");
+        let tag = zf
+            .read("data/demo/tags/items/t.json")
+            .expect("deflate entry inflates");
         assert!(tag.starts_with(b"{\"replace\""));
         assert_eq!(zf.list("data/").len(), 1);
     }

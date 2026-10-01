@@ -6,9 +6,9 @@ pub mod draw;
 pub mod gpu_mesh;
 pub mod gui;
 pub mod gui_render;
+pub mod iris;
 pub mod item_icon_cache;
 pub mod panorama;
-pub mod iris;
 /// LabPBR 1.3 material decode + the WGSL PBR/POM snippet (clean-room
 /// against the published labPBR spec; wired into the resource-pack
 /// material scan 2026-09-20)

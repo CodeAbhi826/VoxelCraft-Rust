@@ -35,41 +35,104 @@ pub const LOOT_NONE: u16 = 255;
 
 /// Fish class — the four 1.7.2 fish (all in our registry)
 pub const FISH_TABLE: [LootRow; 4] = [
-    LootRow { item: RAW_FISH, name: "Raw Fish" },
-    LootRow { item: RAW_SALMON, name: "Raw Salmon" },
-    LootRow { item: CLOWNFISH, name: "Clownfish" },
-    LootRow { item: PUFFERFISH, name: "Pufferfish" },
+    LootRow {
+        item: RAW_FISH,
+        name: "Raw Fish",
+    },
+    LootRow {
+        item: RAW_SALMON,
+        name: "Raw Salmon",
+    },
+    LootRow {
+        item: CLOWNFISH,
+        name: "Clownfish",
+    },
+    LootRow {
+        item: PUFFERFISH,
+        name: "Pufferfish",
+    },
 ];
 
 /// Treasure class — only the enchanted book exists in our registry today;
 /// the rest are listed as LOOT_NONE rows so the vanilla table shape is
 /// visible and testable (see the module doc for the adaptation).
 pub const TREASURE_TABLE: [LootRow; 7] = [
-    LootRow { item: LOOT_NONE, name: "Enchanted Fishing Rod" },
-    LootRow { item: LOOT_NONE, name: "Enchanted Bow" },
-    LootRow { item: ENCHANTED_BOOK, name: "Enchanted Book" },
-    LootRow { item: LOOT_NONE, name: "Name Tag" },
-    LootRow { item: LOOT_NONE, name: "Tripwire Hook" },
-    LootRow { item: LOOT_NONE, name: "Lily Pad" },
-    LootRow { item: LOOT_NONE, name: "Saddle" },
+    LootRow {
+        item: LOOT_NONE,
+        name: "Enchanted Fishing Rod",
+    },
+    LootRow {
+        item: LOOT_NONE,
+        name: "Enchanted Bow",
+    },
+    LootRow {
+        item: ENCHANTED_BOOK,
+        name: "Enchanted Book",
+    },
+    LootRow {
+        item: LOOT_NONE,
+        name: "Name Tag",
+    },
+    LootRow {
+        item: LOOT_NONE,
+        name: "Tripwire Hook",
+    },
+    LootRow {
+        item: LOOT_NONE,
+        name: "Lily Pad",
+    },
+    LootRow {
+        item: LOOT_NONE,
+        name: "Saddle",
+    },
 ];
 
 /// Junk class — implementable subset (water bottles, rotten flesh,
 /// string, leather, bone live in our registry; rod/bowl/stick/ink rows
 /// are LOOT_NONE placeholders for the same reason)
 pub const JUNK_TABLE: [LootRow; 10] = [
-    LootRow { item: LOOT_NONE, name: "Damaged Fishing Rod" },
-    LootRow { item: POTION_WATER, name: "Water Bottle" },
-    LootRow { item: ROTTEN_FLESH, name: "Rotten Flesh" },
-    LootRow { item: STRING, name: "String" },
-    LootRow { item: LEATHER, name: "Leather" },
+    LootRow {
+        item: LOOT_NONE,
+        name: "Damaged Fishing Rod",
+    },
+    LootRow {
+        item: POTION_WATER,
+        name: "Water Bottle",
+    },
+    LootRow {
+        item: ROTTEN_FLESH,
+        name: "Rotten Flesh",
+    },
+    LootRow {
+        item: STRING,
+        name: "String",
+    },
+    LootRow {
+        item: LEATHER,
+        name: "Leather",
+    },
     // the completeness audit: the bowl item now exists (the V15
     // window) — the junk row's palette-absent marker is retired
-    LootRow { item: BOWL, name: "Bowl" },
-    LootRow { item: LOOT_NONE, name: "Stick" },
-    LootRow { item: BONE, name: "Bone" },
-    LootRow { item: LOOT_NONE, name: "Tripwire Hook" },
-    LootRow { item: LOOT_NONE, name: "Ink Sac (x10)" },
+    LootRow {
+        item: BOWL,
+        name: "Bowl",
+    },
+    LootRow {
+        item: LOOT_NONE,
+        name: "Stick",
+    },
+    LootRow {
+        item: BONE,
+        name: "Bone",
+    },
+    LootRow {
+        item: LOOT_NONE,
+        name: "Tripwire Hook",
+    },
+    LootRow {
+        item: LOOT_NONE,
+        name: "Ink Sac (x10)",
+    },
 ];
 
 /// the three loot classes
@@ -240,8 +303,8 @@ mod tests {
         assert_eq!(PUFFERFISH_POISON_TICKS, 1200); // 1:00
         assert_eq!(PUFFERFISH_HUNGER_TICKS, 300); // 0:15
         assert_eq!(PUFFERFISH_NAUSEA_TICKS, 300); // 0:15
-        // observable poison cadence: max(3-tick L4 cadence, 10-tick hurt
-        // immunity) = 10 ticks = 1 HP/s
+                                                  // observable poison cadence: max(3-tick L4 cadence, 10-tick hurt
+                                                  // immunity) = 10 ticks = 1 HP/s
         assert_eq!(pufferfish_poison_interval(), 10);
     }
 

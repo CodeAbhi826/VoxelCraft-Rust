@@ -80,7 +80,11 @@ pub(super) fn jungle_log_top(a: &mut [u8], t: u16, rng: &mut Rng) {
             let (br, bg, bb) = if r > 7.0 {
                 (74, 56, 32) // bark rim
             } else if ring == 0 {
-                (154 + jit(0, 8, rng), 118 + jit(0, 8, rng), 74 + jit(0, 6, rng))
+                (
+                    154 + jit(0, 8, rng),
+                    118 + jit(0, 8, rng),
+                    74 + jit(0, 6, rng),
+                )
             } else {
                 (132, 100, 60)
             };

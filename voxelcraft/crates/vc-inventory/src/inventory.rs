@@ -47,16 +47,40 @@ impl ItemStack {
     };
 
     pub const fn new(block: u16, count: u8) -> Self {
-        ItemStack { block, count, ench: 0, ench2: 0, dmg: 0, prior: 0, name: 0 }
+        ItemStack {
+            block,
+            count,
+            ench: 0,
+            ench2: 0,
+            dmg: 0,
+            prior: 0,
+            name: 0,
+        }
     }
 
     pub const fn new_enchanted(block: u16, count: u8, ench: u16) -> Self {
-        ItemStack { block, count, ench, ench2: 0, dmg: 0, prior: 0, name: 0 }
+        ItemStack {
+            block,
+            count,
+            ench,
+            ench2: 0,
+            dmg: 0,
+            prior: 0,
+            name: 0,
+        }
     }
 
     /// Round 13: a damaged armor piece (the anvil/grindstone repair input)
     pub const fn new_damaged(block: u16, count: u8, dmg: u16, prior: u8) -> Self {
-        ItemStack { block, count, ench: 0, ench2: 0, dmg, prior, name: 0 }
+        ItemStack {
+            block,
+            count,
+            ench: 0,
+            ench2: 0,
+            dmg,
+            prior,
+            name: 0,
+        }
     }
 
     /// decode the carried enchant → (registry id, level) or None
@@ -95,9 +119,9 @@ impl ItemStack {
     /// Round 13: does this stack carry the given enchant id? Returns
     /// its level when present.
     pub fn enchant_level(&self, id: u8) -> Option<u8> {
-        self.enchants().iter().find_map(|e| {
-            e.filter(|&(i, _)| i == id).map(|(_, l)| l)
-        })
+        self.enchants()
+            .iter()
+            .find_map(|e| e.filter(|&(i, _)| i == id).map(|(_, l)| l))
     }
 
     /// Round 13: vanilla stacking identity — "Named items do not stack
@@ -136,7 +160,9 @@ pub struct Inventory {
 
 impl Inventory {
     pub fn new(capacity: usize) -> Self {
-        Inventory { slots: vec![ItemStack::EMPTY; capacity] }
+        Inventory {
+            slots: vec![ItemStack::EMPTY; capacity],
+        }
     }
 
     /// vanilla pickup: merge into existing stacks first (hotbar-first
@@ -192,7 +218,9 @@ impl Inventory {
         let plain = self
             .slots
             .iter()
-            .filter(|s| s.block == block && s.count > 0 && s.stackable_with(&ItemStack::new(block, 1)))
+            .filter(|s| {
+                s.block == block && s.count > 0 && s.stackable_with(&ItemStack::new(block, 1))
+            })
             .map(|s| s.count as u32)
             .sum::<u32>();
         if plain < n as u32 {
@@ -217,11 +245,7 @@ impl Inventory {
 
     /// click semantics for container UIs: swap/merge the cursor with a
     /// slot; LEFT = whole stack, RIGHT = single item (place) / half (take)
-    pub fn slot_click(
-        slot: &mut ItemStack,
-        cursor: &mut ItemStack,
-        right_click: bool,
-    ) {
+    pub fn slot_click(slot: &mut ItemStack, cursor: &mut ItemStack, right_click: bool) {
         if !right_click {
             // whole-stack swap or merge (Round 13: merges require the
             // vanilla stacking identity — renamed/damaged/enchanted

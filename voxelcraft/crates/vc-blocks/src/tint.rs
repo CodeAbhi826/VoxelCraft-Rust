@@ -66,8 +66,8 @@ pub fn grass_color(biome: u8) -> [f32; 3] {
         6 => rgb(0x8AB689), // Mountains
         7 => rgb(0x77624B), // Nether Wastes (§28)
         // Phase 10 (live wiki biome-color table, JE columns):
-        8 => rgb(0x86B783), // Taiga
-        9 => rgb(0x88BB67), // Birch Forest
+        8 => rgb(0x86B783),  // Taiga
+        9 => rgb(0x88BB67),  // Birch Forest
         10 => rgb(0x59C93C), // Jungle
         11 => rgb(0xBFB755), // Savanna
         12 => rgb(0x6A7039), // Swamp
@@ -77,7 +77,7 @@ pub fn grass_color(biome: u8) -> [f32; 3] {
         15 => rgb(0x91BD59), // Sunflower Plains (wiki: #91BD59)
         16 => rgb(0x80B497), // Ice Spikes (wiki: #80B497)
         17 => rgb(0x507A32), // Dark Forest (wiki: #507A32)
-        _ => rgb(0x91BD59), // default
+        _ => rgb(0x91BD59),  // default
     }
 }
 
@@ -94,8 +94,8 @@ pub fn foliage_color(biome: u8) -> [f32; 3] {
         6 => rgb(0x6B9959), // Mountains
         7 => rgb(0x6B5442), // Nether Wastes (§28)
         // Phase 10 (live wiki biome-color table, JE columns):
-        8 => rgb(0x68A464), // Taiga
-        9 => rgb(0x6BA941), // Birch Forest
+        8 => rgb(0x68A464),  // Taiga
+        9 => rgb(0x6BA941),  // Birch Forest
         10 => rgb(0x30BB0B), // Jungle
         11 => rgb(0xAEA42A), // Savanna
         12 => rgb(0x8DB127), // Swamp
@@ -127,8 +127,8 @@ pub fn water_color(biome: u8) -> [f32; 3] {
         // Phase 10 (live wiki water-color table; savanna/birch/jungle/
         // badlands keep the default blue — the wiki lists no special
         // value for them)
-        8 => rgb(0x287082), // Taiga
-        9 => rgb(0x3F76E4), // Birch Forest
+        8 => rgb(0x287082),  // Taiga
+        9 => rgb(0x3F76E4),  // Birch Forest
         10 => rgb(0x3F76E4), // Jungle
         11 => rgb(0x3F76E4), // Savanna
         12 => rgb(0x617B64), // Swamp (murky green — wiki)
@@ -173,7 +173,9 @@ pub fn lut_rgba() -> Vec<u8> {
         let f = foliage_color(b);
         let w = water_color(b);
         for (i, c) in [g, f, w].iter().enumerate() {
-            let hex = ((c[0] * 255.0) as u32) << 16 | ((c[1] * 255.0) as u32) << 8 | (c[2] * 255.0) as u32;
+            let hex = ((c[0] * 255.0) as u32) << 16
+                | ((c[1] * 255.0) as u32) << 8
+                | (c[2] * 255.0) as u32;
             put(&mut data, (i + 1) as u8, b, hex);
         }
     }
@@ -189,7 +191,13 @@ pub fn lut_rgba() -> Vec<u8> {
 #[inline]
 pub fn block_face_tint(block: u16, top_face: bool) -> u8 {
     match block {
-        GRASS => if top_face { KIND_GRASS } else { TINT_NONE },
+        GRASS => {
+            if top_face {
+                KIND_GRASS
+            } else {
+                TINT_NONE
+            }
+        }
         TALL_GRASS => KIND_GRASS,
         LEAVES => KIND_FOLIAGE,
         BIRCH_LEAVES => KIND_FOLIAGE,
@@ -287,7 +295,10 @@ mod tests {
         assert_eq!(block_face_tint_packed(GRASS, true, 3), pack(KIND_GRASS, 3));
         assert_eq!(block_face_tint_packed(GRASS, false, 3), TINT_NONE);
         // leaves: oak biome-tinted, birch/spruce fixed
-        assert_eq!(block_face_tint_packed(LEAVES, true, 2), pack(KIND_FOLIAGE, 2));
+        assert_eq!(
+            block_face_tint_packed(LEAVES, true, 2),
+            pack(KIND_FOLIAGE, 2)
+        );
         assert_eq!(
             block_face_tint_packed(BIRCH_LEAVES, true, 2),
             pack(KIND_FOLIAGE, SLOT_BIRCH)

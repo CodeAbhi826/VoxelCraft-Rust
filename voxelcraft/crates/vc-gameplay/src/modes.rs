@@ -166,11 +166,26 @@ impl GameMode {
     /// the original game's; these carry the same meaning in our own words).
     pub fn describe_lines(self) -> (&'static str, &'static str) {
         match self {
-            GameMode::Survival => ("EXPLORE, BUILD, AND SURVIVE", "SEEK OUT RESOURCES, WATCH YOUR HEALTH"),
-            GameMode::Creative => ("UNLIMITED RESOURCES, FREE FLYING", "DESTROY BLOCKS INSTANTLY"),
-            GameMode::Hardcore => ("SAME AS SURVIVAL, HARDER MODE", "ONE LIFE ONLY - DEATH LOCKS THE WORLD"),
-            GameMode::Adventure => ("EXPLORE AND INTERACT ONLY", "BLOCK BREAKING AND PLACING DISABLED"),
-            GameMode::Spectator => ("FLY THROUGH WALLS, NO INTERACTION", "COMMAND-ONLY MODE IN VANILLA"),
+            GameMode::Survival => (
+                "EXPLORE, BUILD, AND SURVIVE",
+                "SEEK OUT RESOURCES, WATCH YOUR HEALTH",
+            ),
+            GameMode::Creative => (
+                "UNLIMITED RESOURCES, FREE FLYING",
+                "DESTROY BLOCKS INSTANTLY",
+            ),
+            GameMode::Hardcore => (
+                "SAME AS SURVIVAL, HARDER MODE",
+                "ONE LIFE ONLY - DEATH LOCKS THE WORLD",
+            ),
+            GameMode::Adventure => (
+                "EXPLORE AND INTERACT ONLY",
+                "BLOCK BREAKING AND PLACING DISABLED",
+            ),
+            GameMode::Spectator => (
+                "FLY THROUGH WALLS, NO INTERACTION",
+                "COMMAND-ONLY MODE IN VANILLA",
+            ),
         }
     }
 
@@ -254,7 +269,7 @@ mod tests {
     #[test]
     fn unknown_game_type_falls_back_to_survival() {
         assert_eq!(GameMode::from_save(2, false), GameMode::Adventure); // E2
-        // 1.8: Spectator (GameType 3) loads now — was a Survival fallback
+                                                                        // 1.8: Spectator (GameType 3) loads now — was a Survival fallback
         assert_eq!(GameMode::from_save(3, false), GameMode::Spectator);
         assert_eq!(GameMode::from_save(999, false), GameMode::Survival);
         // creative id + hardcore flag is not a real vanilla combination;
@@ -355,7 +370,10 @@ mod v18_tests {
         let sp = GameMode::Spectator;
         assert!(sp.allows_flight(), "always flying");
         assert!(sp.invulnerable(), "no damage");
-        assert!(sp.depletes_items() && sp.drops_blocks(), "never interacts anyway");
+        assert!(
+            sp.depletes_items() && sp.drops_blocks(),
+            "never interacts anyway"
+        );
         assert!(!GameMode::ALL.contains(&sp), "not in the create cycle");
         assert_eq!(sp.vanilla_game_type(), 3, "GameType 3");
         assert_eq!(GameMode::from_save(3, false), sp);

@@ -20,8 +20,8 @@
 //! tests pass).
 
 use crate::world::{ChunkPos, World};
-use std::collections::VecDeque;
 use rustc_hash::FxHashMap;
+use std::collections::VecDeque;
 use std::sync::Arc;
 use vc_blocks::blocks::*;
 use vc_chunk::chunk::Chunk;
@@ -1002,7 +1002,6 @@ pub fn reference_lightdata(snap: &[Option<Arc<Chunk>>; 9]) -> [Option<Arc<LightD
 mod tests {
     use super::*;
 
-
     /// hand-built 5×5 world with variance: floor + hill + cave + water pool.
     /// The inner 3×3 (all chunks with |x|<=1, |z|<=1) is the comparison
     /// region; the outer ring is uniform floor so no light enters the pads
@@ -1065,9 +1064,10 @@ mod tests {
                                     + (y as i32 - 70).abs()
                                     + (lz as i32 - 8).abs()
                                     <= 3
-                                    && c.get(lx, y, lz) == 0 {
-                                        c.set(lx, y, lz, LEAVES);
-                                    }
+                                    && c.get(lx, y, lz) == 0
+                                {
+                                    c.set(lx, y, lz, LEAVES);
+                                }
                             }
                         }
                     }

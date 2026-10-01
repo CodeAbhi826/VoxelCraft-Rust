@@ -305,9 +305,7 @@ impl Player {
             // debug starter palette (Phase 2 sandbox crutch, back when
             // mobs/food did not exist) is retired — every progression
             // system it papered over has since shipped.
-            inv: vc_inventory::inventory::Inventory::new(
-                vc_inventory::inventory::INV_SLOTS,
-            ),
+            inv: vc_inventory::inventory::Inventory::new(vc_inventory::inventory::INV_SLOTS),
             selected: 0,
             fov: 1.2217, // 70 degrees
             fov_cur: 1.2217,
@@ -607,8 +605,7 @@ impl Player {
         let feet_state = world.get_state(fx, feet_y, fz);
         let feet_fl = water_level(feet_state);
         self.in_water = feet_fl != 255 && {
-            let above_is_water =
-                state_block(world.get_state(fx, feet_y + 1, fz)) == WATER;
+            let above_is_water = state_block(world.get_state(fx, feet_y + 1, fz)) == WATER;
             let surface = feet_y as f32 + fluid_height(feet_fl, above_is_water);
             surface > self.pos.y + 0.2
         };
@@ -617,15 +614,14 @@ impl Player {
         let head_state = world.get_state(fx, head_y, fz);
         let head_fl = water_level(head_state);
         self.head_in_water = head_fl != 255 && {
-            let above_is_water =
-                state_block(world.get_state(fx, head_y + 1, fz)) == WATER;
+            let above_is_water = state_block(world.get_state(fx, head_y + 1, fz)) == WATER;
             let surface = head_y as f32 + fluid_height(head_fl, above_is_water);
             surface > eye_y
         };
         let feet_block = state_block(feet_state); // folded id (lava/vine)
-        // Phase E2 (VERIFIED w/Lava): contact damage 4 HP per 10 ticks
-        // (the every-tick damage is reduced by the half-second damage
-        // immunity window); the game layer applies the timed damage.
+                                                  // Phase E2 (VERIFIED w/Lava): contact damage 4 HP per 10 ticks
+                                                  // (the every-tick damage is reduced by the half-second damage
+                                                  // immunity window); the game layer applies the timed damage.
         self.in_lava = feet_block == LAVA;
         // ---- audit-fix (1.2 vines, VERIFIED w/Vines: "Vines are
         // climbable non-solid vegetation blocks" + w/Vines §History
@@ -694,13 +690,11 @@ impl Player {
             let in_bush = state_block(feet_state) == SWEET_BERRY_BUSH
                 && berry_bush_age(feet_state) >= 1
                 && (input.fwd || input.back || input.left || input.right);
-            let on_campfire = state_block(
-                world.get_state(
-                    self.pos.x.floor() as i32,
-                    (self.pos.y - 0.1).floor() as i32,
-                    self.pos.z.floor() as i32,
-                ),
-            ) == CAMPFIRE
+            let on_campfire = state_block(world.get_state(
+                self.pos.x.floor() as i32,
+                (self.pos.y - 0.1).floor() as i32,
+                self.pos.z.floor() as i32,
+            )) == CAMPFIRE
                 && campfire_lit(world.get_state(
                     self.pos.x.floor() as i32,
                     (self.pos.y - 0.1).floor() as i32,
@@ -887,10 +881,19 @@ impl Player {
                 // ("maximum downward speed is reduced... at about 3
                 // blocks per second", VERIFIED w/Ladder).
                 let wall_behind = has_input
-                    && (Self::collides(world, Vec3::new(self.pos.x + 0.45, self.pos.y + 0.1, self.pos.z))
-                        || Self::collides(world, Vec3::new(self.pos.x - 0.45, self.pos.y + 0.1, self.pos.z))
-                        || Self::collides(world, Vec3::new(self.pos.x, self.pos.y + 0.1, self.pos.z + 0.45))
-                        || Self::collides(world, Vec3::new(self.pos.x, self.pos.y + 0.1, self.pos.z - 0.45)));
+                    && (Self::collides(
+                        world,
+                        Vec3::new(self.pos.x + 0.45, self.pos.y + 0.1, self.pos.z),
+                    ) || Self::collides(
+                        world,
+                        Vec3::new(self.pos.x - 0.45, self.pos.y + 0.1, self.pos.z),
+                    ) || Self::collides(
+                        world,
+                        Vec3::new(self.pos.x, self.pos.y + 0.1, self.pos.z + 0.45),
+                    ) || Self::collides(
+                        world,
+                        Vec3::new(self.pos.x, self.pos.y + 0.1, self.pos.z - 0.45),
+                    ));
                 let climb_up = input.jump || wall_behind;
                 let target_y = if input.sneak {
                     0.0
@@ -966,8 +969,7 @@ impl Player {
         // claim — no drain, no regen; the turtle-shell helmet and the
         // conduit's own effect source are deferred with the armor/
         // conduit-block features — disclosed in the research doc).
-        let water_breathing =
-            vc_gameplay::effects::water_breathing_active(&self.effects);
+        let water_breathing = vc_gameplay::effects::water_breathing_active(&self.effects);
         self.air_accum += dt;
         let mut air_ticks = 0u8;
         while self.air_accum >= TICK_DT && air_ticks < 40 {
@@ -1040,10 +1042,8 @@ impl Player {
             if hs > 1e-3 {
                 let ax = self.pos.x + pre_vx / hs * 0.5;
                 let az = self.pos.z + pre_vz / hs * 0.5;
-                let lip_solid =
-                    Self::collides(world, Vec3::new(ax, self.pos.y + 0.05, az));
-                let above_free =
-                    !Self::collides(world, Vec3::new(ax, self.pos.y + 1.05, az));
+                let lip_solid = Self::collides(world, Vec3::new(ax, self.pos.y + 0.05, az));
+                let above_free = !Self::collides(world, Vec3::new(ax, self.pos.y + 1.05, az));
                 let headroom =
                     !Self::collides(world, Vec3::new(self.pos.x, self.pos.y + 1.95, self.pos.z));
                 if lip_solid && above_free && headroom {
@@ -1075,13 +1075,8 @@ impl Player {
             let pz = self.pos.z + wish.z * 0.6;
             let feet_y = self.pos.y;
             let blocked = Self::collides(world, Vec3::new(px, feet_y + 0.1, pz));
-            let step_clear = !Self::collides(
-                world,
-                Vec3::new(px, feet_y + 1.1, pz),
-            ) && !Self::collides(
-                world,
-                Vec3::new(self.pos.x, feet_y + 1.9, self.pos.z),
-            );
+            let step_clear = !Self::collides(world, Vec3::new(px, feet_y + 1.1, pz))
+                && !Self::collides(world, Vec3::new(self.pos.x, feet_y + 1.9, self.pos.z));
             if blocked && step_clear {
                 // the completeness audit: Jump Boost rides the autojump
                 // too (the same launch, VERIFIED w/Effect §Jump_Boost)
@@ -1178,11 +1173,7 @@ impl Player {
                 // ≈0.014 b/t per level of surface drop): pushes the
                 // player downstream — rivers/waterfalls now CARRY you
                 if self.in_water {
-                    let f = world.water_flow(
-                        feet_flow_cell.0,
-                        feet_flow_cell.1,
-                        feet_flow_cell.2,
-                    );
+                    let f = world.water_flow(feet_flow_cell.0, feet_flow_cell.1, feet_flow_cell.2);
                     let mag = (f[0] * f[0] + f[1] * f[1] + f[2] * f[2]).sqrt();
                     if mag > 1e-4 {
                         // scale: differential (1..=8) → accel up to
@@ -1234,8 +1225,12 @@ impl Player {
                 let dir_z = look.z / lh;
                 // steer + accelerate toward the look heading
                 let accel = 1.6; // b/s per tick steering strength
-                self.vel.x += (dir_x * ELYTRA_MAX_SPEED - self.vel.x).min(accel).max(-accel);
-                self.vel.z += (dir_z * ELYTRA_MAX_SPEED - self.vel.z).min(accel).max(-accel);
+                self.vel.x += (dir_x * ELYTRA_MAX_SPEED - self.vel.x)
+                    .min(accel)
+                    .max(-accel);
+                self.vel.z += (dir_z * ELYTRA_MAX_SPEED - self.vel.z)
+                    .min(accel)
+                    .max(-accel);
                 // descent: gentle sink (not the −78.4 terminal dive)
                 self.vel.y = (self.vel.y + GRAVITY * TICK_DT * 0.25).max(-ELYTRA_DESCENT);
                 if self.vel.y.is_nan() {
@@ -1293,12 +1288,11 @@ impl Player {
             // Hay_Bale: "Falling onto a hay bale reduces the fall damage
             // by 80%, meaning whatever falls on a hay bale takes 20% of
             // the normal fall damage"): probe the block we landed on
-            let landed_on = world
-                .get_block(
-                    self.pos.x.floor() as i32,
-                    (self.pos.y - 0.06).floor() as i32,
-                    self.pos.z.floor() as i32,
-                );
+            let landed_on = world.get_block(
+                self.pos.x.floor() as i32,
+                (self.pos.y - 0.06).floor() as i32,
+                self.pos.z.floor() as i32,
+            );
             let dmg = self.fall_dist - 3.0;
             self.pending_fall_dmg += if landed_on == HAY_BALE || landed_on == HONEY_BLOCK {
                 // 1.15: "As with hay bales, falling onto a honey block
@@ -2044,9 +2038,7 @@ mod v172_tests {
             "level IV active"
         );
         assert!(
-            p.effects
-                .amplifier(EffectKind::Hunger)
-                .is_some(),
+            p.effects.amplifier(EffectKind::Hunger).is_some(),
             "hunger half of the pufferfish"
         );
 
@@ -2061,10 +2053,7 @@ mod v172_tests {
         }
         assert!((dealt_total - 19.0).abs() < 1e-6, "total {dealt_total}");
         assert!((p.health - 1.0).abs() < 1e-6, "floors at 1 HP, never kills");
-        assert!(
-            p.effects.amplifier(EffectKind::Poison).is_none(),
-            "expired"
-        );
+        assert!(p.effects.amplifier(EffectKind::Poison).is_none(), "expired");
     }
 
     #[test]
@@ -2075,7 +2064,8 @@ mod v172_tests {
         p.health = 20.0;
         p.apply_pufferfish_poison();
         // trim the exposure to 25 ticks
-        p.effects.apply(vc_gameplay::effects::EffectKind::Poison, 3, 25);
+        p.effects
+            .apply(vc_gameplay::effects::EffectKind::Poison, 3, 25);
         let mut dealt = 0.0;
         for _ in 0..25 {
             let (dmg, _) = p.effects.tick(p.health);
@@ -2124,7 +2114,6 @@ mod v18_tests {
 #[cfg(test)]
 mod v19_tests {
     use super::*;
-
 
     /// 1.9 elytra: the glide constants preserve the wiki's 10:1 ratio
     /// ("approximately 10 blocks of horizontal distance for each block of
@@ -2287,7 +2276,6 @@ mod auditfix_tests {
     use super::*;
     use std::sync::Arc;
 
-
     /// a vine column: solid walls both sides at x=0/x=2, vines at (1, y)
     /// for y in 66..=76 — the classic 1×1 climbable shaft (the ladder
     /// page's "inside a 1×1 ladder shaft" arrangement)
@@ -2362,7 +2350,11 @@ mod auditfix_tests {
             "descent capped at 3 b/s (got {})",
             p.vel.y
         );
-        assert!(p.pos.y > 65.0, "player has not fallen through (y={})", p.pos.y);
+        assert!(
+            p.pos.y > 65.0,
+            "player has not fallen through (y={})",
+            p.pos.y
+        );
         // no fall damage is queued from the dive into the vines (the
         // climb reset — the engine's ladder semantics)
         assert_eq!(p.pending_fall_dmg, 0.0);
@@ -2386,84 +2378,95 @@ mod auditfix_tests {
         }
         assert!(p.on_vine);
         assert!(p.vel.y.abs() < 0.5, "hanging, not falling (vy={})", p.vel.y);
-        assert!((p.pos.y - 70.0).abs() < 0.2, "held position (y={})", p.pos.y);
-    }
-
-#[cfg(test)]
-mod v116_tests {
-    use super::*;
-    use std::sync::Arc;
-
-    fn flat_floor() -> World {
-        let mut w = World::new(7);
-        for dz in -1i32..=1 {
-            for dx in -1i32..=1 {
-                let mut c = vc_chunk::chunk::Chunk::empty();
-                for y in 0..=64i32 {
-                    for lz in 0..16usize {
-                        for lx in 0..16usize {
-                            c.set(lx, y as usize, lz, vc_blocks::blocks::STONE);
-                        }
-                    }
-                }
-                w.insert_generated((dx, dz), Arc::new(c), Vec::new());
-            }
-        }
-        w.dirty.clear();
-        w
-    }
-
-    /// 1.16 (Nether Update, part 1): soul fire contact — 2 HP per
-    /// half-second through the shared damage-immunity window (VERIFIED
-    /// w/Soul_Fire: "the fire inflicts damage at a rate of 2 HP per tick,
-    /// twice as many as with the normal fire (although damage immunity
-    /// reduces this to once every half-second)"). 0.6 s of standing in
-    /// the flame queues exactly one 2.0 HP packet.
-    #[test]
-    fn soul_fire_contact_doubles_the_campfire_rate() {
-        let mut w = flat_floor();
-        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
-        p.flying = false;
-        let mut input = Input::default();
-        w.set_block(0, 65, 0, vc_blocks::blocks::SOUL_FIRE);
-        // 0.6 s at 60 Hz: the first 0.5 s window fires (2.0 HP), the
-        // remainder accumulates but has not fired yet
-        for _ in 0..36 {
-            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
-        }
-        let dmg = p.take_pending_hazard_damage();
-        assert_eq!(dmg, 2.0, "soul fire queues 2 HP per 0.5 s window, got {dmg}");
-        // leaving the flame resets the accumulator (no bleed-over packet)
-        w.set_block(0, 65, 0, vc_blocks::blocks::AIR);
-        for _ in 0..6 {
-            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
-        }
-        assert_eq!(p.take_pending_hazard_damage(), 0.0, "no damage after leaving");
-    }
-
-    /// 2026-09-19 (smoke-triage follow-up): the SAME contract at the
-    /// e2e_v116 cadence — dt=0.1 x 6 (the 20 Hz substep accumulator must
-    /// quantize the window identically at frame-rates the smoke harness
-    /// uses). A falling player must NOT accumulate (the e2e pins the
-    /// player for exactly this reason — see the restored determinism
-    /// hardening in e2e_v116).
-    #[test]
-    fn soul_fire_contact_at_e2e_cadence() {
-        let mut w = flat_floor();
-        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
-        p.flying = false;
-        let mut input = Input::default();
-        w.set_block(0, 65, 0, vc_blocks::blocks::SOUL_FIRE);
-        for _ in 0..6 {
-            let _ = p.update(0.1, 0.0, &w, &mut input, 1.0, true);
-        }
-        assert_eq!(
-            p.take_pending_hazard_damage(),
-            2.0,
-            "e2e cadence (0.1 x 6) must queue the same 2 HP packet"
+        assert!(
+            (p.pos.y - 70.0).abs() < 0.2,
+            "held position (y={})",
+            p.pos.y
         );
     }
-}
+
+    #[cfg(test)]
+    mod v116_tests {
+        use super::*;
+        use std::sync::Arc;
+
+        fn flat_floor() -> World {
+            let mut w = World::new(7);
+            for dz in -1i32..=1 {
+                for dx in -1i32..=1 {
+                    let mut c = vc_chunk::chunk::Chunk::empty();
+                    for y in 0..=64i32 {
+                        for lz in 0..16usize {
+                            for lx in 0..16usize {
+                                c.set(lx, y as usize, lz, vc_blocks::blocks::STONE);
+                            }
+                        }
+                    }
+                    w.insert_generated((dx, dz), Arc::new(c), Vec::new());
+                }
+            }
+            w.dirty.clear();
+            w
+        }
+
+        /// 1.16 (Nether Update, part 1): soul fire contact — 2 HP per
+        /// half-second through the shared damage-immunity window (VERIFIED
+        /// w/Soul_Fire: "the fire inflicts damage at a rate of 2 HP per tick,
+        /// twice as many as with the normal fire (although damage immunity
+        /// reduces this to once every half-second)"). 0.6 s of standing in
+        /// the flame queues exactly one 2.0 HP packet.
+        #[test]
+        fn soul_fire_contact_doubles_the_campfire_rate() {
+            let mut w = flat_floor();
+            let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+            p.flying = false;
+            let mut input = Input::default();
+            w.set_block(0, 65, 0, vc_blocks::blocks::SOUL_FIRE);
+            // 0.6 s at 60 Hz: the first 0.5 s window fires (2.0 HP), the
+            // remainder accumulates but has not fired yet
+            for _ in 0..36 {
+                let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+            }
+            let dmg = p.take_pending_hazard_damage();
+            assert_eq!(
+                dmg, 2.0,
+                "soul fire queues 2 HP per 0.5 s window, got {dmg}"
+            );
+            // leaving the flame resets the accumulator (no bleed-over packet)
+            w.set_block(0, 65, 0, vc_blocks::blocks::AIR);
+            for _ in 0..6 {
+                let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+            }
+            assert_eq!(
+                p.take_pending_hazard_damage(),
+                0.0,
+                "no damage after leaving"
+            );
+        }
+
+        /// 2026-09-19 (smoke-triage follow-up): the SAME contract at the
+        /// e2e_v116 cadence — dt=0.1 x 6 (the 20 Hz substep accumulator must
+        /// quantize the window identically at frame-rates the smoke harness
+        /// uses). A falling player must NOT accumulate (the e2e pins the
+        /// player for exactly this reason — see the restored determinism
+        /// hardening in e2e_v116).
+        #[test]
+        fn soul_fire_contact_at_e2e_cadence() {
+            let mut w = flat_floor();
+            let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+            p.flying = false;
+            let mut input = Input::default();
+            w.set_block(0, 65, 0, vc_blocks::blocks::SOUL_FIRE);
+            for _ in 0..6 {
+                let _ = p.update(0.1, 0.0, &w, &mut input, 1.0, true);
+            }
+            assert_eq!(
+                p.take_pending_hazard_damage(),
+                2.0,
+                "e2e cadence (0.1 x 6) must queue the same 2 HP packet"
+            );
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2550,7 +2553,9 @@ mod farm_player_tests {
     /// 4 x armorPoints - 2 x damage)) with 0 toughness.
     #[test]
     fn armor_attribute_and_damage_reduction() {
-        use vc_blocks::blocks::{DIAMOND_BOOTS, DIAMOND_CHESTPLATE, DIAMOND_HELMET, DIAMOND_LEGGINGS, IRON_CHESTPLATE};
+        use vc_blocks::blocks::{
+            DIAMOND_BOOTS, DIAMOND_CHESTPLATE, DIAMOND_HELMET, DIAMOND_LEGGINGS, IRON_CHESTPLATE,
+        };
         let mut p = Player::new(Vec3::new(0.0, 64.0, 0.0));
         // no armor: no reduction
         assert_eq!(p.armor_points, 0);
@@ -2694,7 +2699,10 @@ mod farm_player_tests {
             "sprint-jump = 0.2 + 0.1 per sprinted meter (moved {meters:.4}), got {}",
             p.hunger.exhaustion
         );
-        assert!(p.hunger.exhaustion >= 0.2, "the jump component alone is 0.2");
+        assert!(
+            p.hunger.exhaustion >= 0.2,
+            "the jump component alone is 0.2"
+        );
     }
 
     /// sprinting costs 0.1 exhaustion per meter, swimming 0.01 per

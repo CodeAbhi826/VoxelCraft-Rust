@@ -213,14 +213,17 @@ pub fn norm_id(s: &str) -> std::borrow::Cow<'_, str> {
     };
     // legacy-NAME interop: the ecosystem's own coined names map onto
     // OUR vocabulary (see legacy_aliases) — read-side only
-    let bare = crate::legacy_aliases::legacy_name_alias(bare)
-        .unwrap_or(std::borrow::Cow::Borrowed(bare));
+    let bare =
+        crate::legacy_aliases::legacy_name_alias(bare).unwrap_or(std::borrow::Cow::Borrowed(bare));
     std::borrow::Cow::Owned(format!("{}:{bare}", crate::model::NS))
 }
 
 /// reverse lookup (E2E / logs: show the vanilla name of an engine id)
 pub fn item_name_by_id(id: u16) -> Option<&'static str> {
-    VANILLA_ITEM_NAMES.iter().find(|(_, i)| *i == id).map(|(n, _)| *n)
+    VANILLA_ITEM_NAMES
+        .iter()
+        .find(|(_, i)| *i == id)
+        .map(|(n, _)| *n)
 }
 
 // ---------------------------------------------------------------------------
@@ -333,7 +336,6 @@ impl TagStore {
         members.iter().any(|m| m == item_name)
     }
 
-
     pub fn len(&self) -> usize {
         self.map.len()
     }
@@ -415,8 +417,7 @@ impl JsonRecipe {
                         for (i, s) in grid.iter().enumerate() {
                             let sx = i % size;
                             let sy = i / size;
-                            let inside = (ox..ox + pw).contains(&sx)
-                                && (oy..oy + ph).contains(&sy);
+                            let inside = (ox..ox + pw).contains(&sx) && (oy..oy + ph).contains(&sy);
                             if !inside && !s.is_empty() {
                                 continue 'outer;
                             }
@@ -431,8 +432,7 @@ impl JsonRecipe {
                 // matching fails on ingredient overlap (a
                 // [tag:planks + oak_planks] recipe against one oak-planks
                 // stack must try both assignments)
-                let stacks: Vec<&GridItem> =
-                    grid.iter().filter(|s| !s.is_empty()).collect();
+                let stacks: Vec<&GridItem> = grid.iter().filter(|s| !s.is_empty()).collect();
                 let need: Vec<&Ingredient> = self.shapeless.iter().collect();
                 shapeless_match(&need, &stacks, tags)
             }
@@ -482,10 +482,16 @@ pub struct GridItem {
 }
 impl GridItem {
     pub fn empty() -> Self {
-        GridItem { name: String::new(), count: 0 }
+        GridItem {
+            name: String::new(),
+            count: 0,
+        }
     }
     pub fn item(name: &str, count: u8) -> Self {
-        GridItem { name: name.to_string(), count }
+        GridItem {
+            name: name.to_string(),
+            count,
+        }
     }
     pub fn is_empty(&self) -> bool {
         self.count == 0
@@ -517,74 +523,71 @@ pub fn parse_recipe(id: &str, json: &serde_json::Value) -> Result<JsonRecipe, St
     // prefix — normalize before the match (see norm_id)
     let ty = norm_id(r#type);
     let r#type = ty.as_ref();
-    let (shaped, shapeless): (Option<ShapedGrid>, Vec<Ingredient>) =
-        match r#type {
-            "voxelcraft:crafting_shaped" => {
-                let pattern = json
-                    .get("pattern")
-                    .and_then(|p| p.as_array())
-                    .ok_or("shaped recipe without pattern")?;
-                if pattern.is_empty() || pattern.len() > 3 {
-                    return Err(format!("pattern height {} (max 3)", pattern.len()));
-                }
-                let key = json
-                    .get("key")
-                    .and_then(|k| k.as_object())
-                    .ok_or("shaped recipe without key")?;
-                let mut rows: Vec<Vec<Option<Ingredient>>> = Vec::new();
-                let mut w = 0usize;
-                for row in pattern {
-                    let row = row.as_str().ok_or("pattern row not a string")?;
-                    if row.len() > 3 {
-                        return Err(format!("pattern row width {} (max 3)", row.len()));
-                    }
-                    w = w.max(row.len());
-                    let mut cells: Vec<Option<Ingredient>> = Vec::new();
-                    for ch in row.chars() {
-                        if ch == ' ' {
-                            cells.push(None);
-                        } else {
-                            let spec = key
-                                .get(&ch.to_string())
-                                .ok_or(format!("pattern char {ch:?} not in key"))?;
-                            cells.push(Some(parse_ingredient(spec)?));
-                        }
-                    }
-                    rows.push(cells);
-                }
-                // pad short rows to the bounding width (a " #X" row in a
-                // "X #" grid — vanilla patterns are rectangles)
-                for row in rows.iter_mut() {
-                    while row.len() < w {
-                        row.push(None);
-                    }
-                }
-                (Some(rows), Vec::new())
+    let (shaped, shapeless): (Option<ShapedGrid>, Vec<Ingredient>) = match r#type {
+        "voxelcraft:crafting_shaped" => {
+            let pattern = json
+                .get("pattern")
+                .and_then(|p| p.as_array())
+                .ok_or("shaped recipe without pattern")?;
+            if pattern.is_empty() || pattern.len() > 3 {
+                return Err(format!("pattern height {} (max 3)", pattern.len()));
             }
-            "voxelcraft:crafting_shapeless" => {
-                let ings = json
-                    .get("ingredients")
-                    .and_then(|i| i.as_array())
-                    .ok_or("shapeless recipe without ingredients")?;
-                let mut out = Vec::new();
-                for spec in ings {
-                    out.push(parse_ingredient(spec)?);
+            let key = json
+                .get("key")
+                .and_then(|k| k.as_object())
+                .ok_or("shaped recipe without key")?;
+            let mut rows: Vec<Vec<Option<Ingredient>>> = Vec::new();
+            let mut w = 0usize;
+            for row in pattern {
+                let row = row.as_str().ok_or("pattern row not a string")?;
+                if row.len() > 3 {
+                    return Err(format!("pattern row width {} (max 3)", row.len()));
                 }
-                if out.len() > 9 {
-                    return Err(format!("{} shapeless ingredients (max 9)", out.len()));
+                w = w.max(row.len());
+                let mut cells: Vec<Option<Ingredient>> = Vec::new();
+                for ch in row.chars() {
+                    if ch == ' ' {
+                        cells.push(None);
+                    } else {
+                        let spec = key
+                            .get(&ch.to_string())
+                            .ok_or(format!("pattern char {ch:?} not in key"))?;
+                        cells.push(Some(parse_ingredient(spec)?));
+                    }
                 }
-                (None, out)
+                rows.push(cells);
             }
-            // vanilla 1.16.5 also ships smelting/blasting/smoking/
-            // campfire_cooking/stonecutting/smithing — the engine's
-            // furnace/brewing registries are code-side (§29), so these
-            // types are honestly reported as unsupported
-            other => return Err(format!("recipe type {other} not supported yet")),
-        };
+            // pad short rows to the bounding width (a " #X" row in a
+            // "X #" grid — vanilla patterns are rectangles)
+            for row in rows.iter_mut() {
+                while row.len() < w {
+                    row.push(None);
+                }
+            }
+            (Some(rows), Vec::new())
+        }
+        "voxelcraft:crafting_shapeless" => {
+            let ings = json
+                .get("ingredients")
+                .and_then(|i| i.as_array())
+                .ok_or("shapeless recipe without ingredients")?;
+            let mut out = Vec::new();
+            for spec in ings {
+                out.push(parse_ingredient(spec)?);
+            }
+            if out.len() > 9 {
+                return Err(format!("{} shapeless ingredients (max 9)", out.len()));
+            }
+            (None, out)
+        }
+        // vanilla 1.16.5 also ships smelting/blasting/smoking/
+        // campfire_cooking/stonecutting/smithing — the engine's
+        // furnace/brewing registries are code-side (§29), so these
+        // types are honestly reported as unsupported
+        other => return Err(format!("recipe type {other} not supported yet")),
+    };
 
-    let result_json = json
-        .get("result")
-        .ok_or("recipe without result")?;
+    let result_json = json.get("result").ok_or("recipe without result")?;
     let result_name = result_json
         .get("item")
         .and_then(|i| i.as_str())
@@ -606,9 +609,9 @@ pub fn parse_recipe(id: &str, json: &serde_json::Value) -> Result<JsonRecipe, St
 
 fn parse_ingredient(spec: &serde_json::Value) -> Result<Ingredient, String> {
     if let Some(item) = spec.get("item").and_then(|i| i.as_str()) {
-        Ok(Ingredient::Item(
-            item_id_by_name(item).ok_or(format!("ingredient {item} not in the engine palette"))?,
-        ))
+        Ok(Ingredient::Item(item_id_by_name(item).ok_or(format!(
+            "ingredient {item} not in the engine palette"
+        ))?))
     } else if let Some(tag) = spec.get("tag").and_then(|t| t.as_str()) {
         // tag refs arrive as `ns:tag` with ANY namespace — canonicalize
         // onto ours at this single parse boundary (the tag-store keys
@@ -676,7 +679,11 @@ impl LootTable {
     /// roll the table → stacks of (item, count). Referenced sub-tables
     /// resolve through `lookup` (name → table) with a depth guard of 8
     /// (vanilla forbids recursion; cycles would loop forever).
-    pub fn roll(&self, rng: &mut Rng, lookup: &dyn Fn(&str) -> Option<LootTable>) -> Vec<(u16, u8)> {
+    pub fn roll(
+        &self,
+        rng: &mut Rng,
+        lookup: &dyn Fn(&str) -> Option<LootTable>,
+    ) -> Vec<(u16, u8)> {
         let mut out = Vec::new();
         self.roll_into(rng, lookup, &mut out, 0);
         out
@@ -756,8 +763,7 @@ pub fn parse_loot_table(json: &serde_json::Value) -> Result<LootTable, String> {
         .and_then(|p| p.as_array())
         .ok_or("loot table without pools")?;
     for pool in pool_arr {
-        let rolls = parse_rolls(pool.get("rolls"))
-            .ok_or("pool without (parsable) rolls")?;
+        let rolls = parse_rolls(pool.get("rolls")).ok_or("pool without (parsable) rolls")?;
         let mut entries = Vec::new();
         let entry_arr = pool
             .get("entries")
@@ -769,7 +775,11 @@ pub fn parse_loot_table(json: &serde_json::Value) -> Result<LootTable, String> {
                 .and_then(|w| w.as_u64())
                 .unwrap_or(1)
                 .clamp(1, u32::MAX as u64) as u32;
-            let kind = match entry.get("type").and_then(|t| t.as_str()).map(|t| norm_id(t)) {
+            let kind = match entry
+                .get("type")
+                .and_then(|t| t.as_str())
+                .map(|t| norm_id(t))
+            {
                 // 1.16.5 uses the namespaced form ("voxelcraft:item") —
                 // norm_id already mapped the legacy interop prefix onto
                 // ours; the bare form (some third-party tools emit it)
@@ -815,9 +825,7 @@ pub fn parse_loot_table(json: &serde_json::Value) -> Result<LootTable, String> {
                         .to_string();
                     LootKind::Table(name)
                 }
-                Some(other) => {
-                    return Err(format!("loot entry type {other} not supported"))
-                }
+                Some(other) => return Err(format!("loot entry type {other} not supported")),
                 None => return Err("loot entry without type".into()),
             };
             entries.push(LootEntry { weight, kind });
@@ -843,8 +851,7 @@ fn parse_rolls(v: Option<&serde_json::Value>) -> Option<Rolls> {
         serde_json::Value::Object(o) => {
             let min = o.get("min").and_then(|m| m.as_f64())? as f32;
             let max = o.get("max").and_then(|m| m.as_f64())? as f32;
-            let is_binomial = o.get("type").and_then(|t| t.as_str())
-                == Some("voxelcraft:binomial");
+            let is_binomial = o.get("type").and_then(|t| t.as_str()) == Some("voxelcraft:binomial");
             if is_binomial {
                 // n × p → fixed expected value (binomial support is out of
                 // scope; the approximation is documented in the report)
@@ -935,7 +942,10 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                         loot_item_w(GOLD_ORE, 4, 1.0, 2.0),
                         loot_item_w(COAL, 6, 2.0, 6.0), // fix #4: the real coal item (was the ore stand-in)
                         loot_item_w(BONE, 3, 1.0, 4.0),
-                        LootEntry { weight: 3, kind: LootKind::Empty },
+                        LootEntry {
+                            weight: 3,
+                            kind: LootKind::Empty,
+                        },
                     ],
                 },
             ],
@@ -958,54 +968,51 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                         loot_item_w(GOLD_ORE, 3, 1.0, 3.0),
                         loot_item_w(EMERALD_ORE, 2, 1.0, 2.0),
                         loot_item_w(DIAMOND_ORE, 1, 1.0, 1.0),
-                        LootEntry { weight: 4, kind: LootKind::Empty },
+                        LootEntry {
+                            weight: 4,
+                            kind: LootKind::Empty,
+                        },
                     ],
                 },
             ],
         },
         // jar: chests/jungle_temple
         "voxelcraft:chests/jungle_temple" => LootTable {
-            pools: vec![
-                LootPool {
-                    rolls: Rolls::Uniform { min: 2.0, max: 5.0 },
-                    entries: vec![
-                        loot_item_w(ROTTEN_FLESH, 5, 1.0, 4.0),
-                        loot_item_w(BONE, 4, 1.0, 4.0),
-                        loot_item_w(FEATHER, 3, 1.0, 3.0),
-                        loot_item_w(ENDER_PEARL, 1, 1.0, 1.0),
-                    ],
-                },
-            ],
+            pools: vec![LootPool {
+                rolls: Rolls::Uniform { min: 2.0, max: 5.0 },
+                entries: vec![
+                    loot_item_w(ROTTEN_FLESH, 5, 1.0, 4.0),
+                    loot_item_w(BONE, 4, 1.0, 4.0),
+                    loot_item_w(FEATHER, 3, 1.0, 3.0),
+                    loot_item_w(ENDER_PEARL, 1, 1.0, 1.0),
+                ],
+            }],
         },
         // jar: chests/stronghold_corridor
         "voxelcraft:chests/stronghold_corridor" => LootTable {
-            pools: vec![
-                LootPool {
-                    rolls: Rolls::Uniform { min: 2.0, max: 4.0 },
-                    entries: vec![
-                        loot_item_w(IRON_ORE, 5, 1.0, 4.0),
-                        loot_item_w(GOLD_ORE, 3, 1.0, 3.0),
-                        loot_item_w(REDSTONE_ORE, 3, 4.0, 8.0),
-                        loot_item_w(ENDER_PEARL, 1, 1.0, 2.0),
-                    ],
-                },
-            ],
+            pools: vec![LootPool {
+                rolls: Rolls::Uniform { min: 2.0, max: 4.0 },
+                entries: vec![
+                    loot_item_w(IRON_ORE, 5, 1.0, 4.0),
+                    loot_item_w(GOLD_ORE, 3, 1.0, 3.0),
+                    loot_item_w(REDSTONE_ORE, 3, 4.0, 8.0),
+                    loot_item_w(ENDER_PEARL, 1, 1.0, 2.0),
+                ],
+            }],
         },
         // jar: chests/stronghold_library
         "voxelcraft:chests/stronghold_library" => LootTable {
-            pools: vec![
-                LootPool {
-                    rolls: Rolls::Uniform { min: 2.0, max: 4.0 },
-                    entries: vec![
-                        // vanilla's paper/books/enchanted books adapt to
-                        // the palette's book + bookshelf items
-                        loot_item_w(ENCHANTED_BOOK, 4, 1.0, 2.0),
-                        loot_item_w(BOOKSHELF, 2, 1.0, 1.0),
-                        // paper is palette-absent — leather stands in
-                        loot_item_w(LEATHER, 3, 1.0, 3.0),
-                    ],
-                },
-            ],
+            pools: vec![LootPool {
+                rolls: Rolls::Uniform { min: 2.0, max: 4.0 },
+                entries: vec![
+                    // vanilla's paper/books/enchanted books adapt to
+                    // the palette's book + bookshelf items
+                    loot_item_w(ENCHANTED_BOOK, 4, 1.0, 2.0),
+                    loot_item_w(BOOKSHELF, 2, 1.0, 1.0),
+                    // paper is palette-absent — leather stands in
+                    loot_item_w(LEATHER, 3, 1.0, 3.0),
+                ],
+            }],
         },
         // 1.11: chests/woodland_mansion (VERIFIED live 2026-09-07,
         // reference wiki /Woodland_Mansion §Loot capture
@@ -1035,9 +1042,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                 // palette-present)
                 LootPool {
                     rolls: Rolls::Uniform { min: 1.0, max: 4.0 },
-                    entries: vec![
-                        loot_item_w(COAL, 15, 1.0, 4.0),
-                    ],
+                    entries: vec![loot_item_w(COAL, 15, 1.0, 4.0)],
                 },
                 // pool 3: rolls 3 (live weights / 40, 1-8 each)
                 LootPool {
@@ -1054,7 +1059,10 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                 // leaving the empty partner
                 LootPool {
                     rolls: Rolls::Fixed(1),
-                    entries: vec![LootEntry { weight: 1, kind: LootKind::Empty }],
+                    entries: vec![LootEntry {
+                        weight: 1,
+                        kind: LootKind::Empty,
+                    }],
                 },
             ],
         },
@@ -1130,7 +1138,9 @@ impl FolderFiles {
         })
     }
     fn walk(dir: &Path, rel: &str, out: &mut Vec<String>) {
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
         for e in entries.flatten() {
             let path = e.path();
             let name = e.file_name().to_string_lossy().to_string();
@@ -1200,12 +1210,18 @@ pub fn scan_pack(id: &str, files: &dyn PackFiles) -> Option<DataPackReport> {
 
     // --- data/<ns>/recipes/*.json ---
     for f in files.list("data/") {
-        let Some(rest) = f.strip_prefix("data/") else { continue };
+        let Some(rest) = f.strip_prefix("data/") else {
+            continue;
+        };
         let mut parts = rest.splitn(2, '/');
         let Some(_ns) = parts.next() else { continue };
         let Some(path) = parts.next() else { continue };
-        let Some((folder, file)) = path.split_once('/') else { continue };
-        let Some(name) = file.strip_suffix(".json") else { continue };
+        let Some((folder, file)) = path.split_once('/') else {
+            continue;
+        };
+        let Some(name) = file.strip_suffix(".json") else {
+            continue;
+        };
         // fully-qualified resource id: `ns:<path under the content
         // folder>` — the vanilla addressing (jar: data/voxelcraft/
         // loot_tables/chests/simple_dungeon.json ⇄
@@ -1218,9 +1234,7 @@ pub fn scan_pack(id: &str, files: &dyn PackFiles) -> Option<DataPackReport> {
                 match serde_json::from_slice::<serde_json::Value>(&raw) {
                     Ok(json) => match parse_recipe(&fq_name, &json) {
                         Ok(r) => report.recipes.push(r),
-                        Err(e) => report
-                            .skipped
-                            .push(format!("{f}: {e}")),
+                        Err(e) => report.skipped.push(format!("{f}: {e}")),
                     },
                     Err(e) => report.skipped.push(format!("{f}: invalid JSON ({e})")),
                 }
@@ -1230,9 +1244,7 @@ pub fn scan_pack(id: &str, files: &dyn PackFiles) -> Option<DataPackReport> {
                 match serde_json::from_slice::<serde_json::Value>(&raw) {
                     Ok(json) => match parse_loot_table(&json) {
                         Ok(t) => report.loot_tables.push((fq_name, t)),
-                        Err(e) => report
-                            .skipped
-                            .push(format!("{f}: {e}")),
+                        Err(e) => report.skipped.push(format!("{f}: {e}")),
                     },
                     Err(e) => report.skipped.push(format!("{f}: invalid JSON ({e})")),
                 }
@@ -1251,10 +1263,7 @@ pub fn scan_pack(id: &str, files: &dyn PackFiles) -> Option<DataPackReport> {
                 let Some(raw) = files.read(&f) else { continue };
                 match serde_json::from_slice::<TagFile>(&raw) {
                     Ok(tag) => report.tags.push((
-                        (
-                            registry.to_string(),
-                            format!("{}:{tag_name}", ns_of(rest)),
-                        ),
+                        (registry.to_string(), format!("{}:{tag_name}", ns_of(rest))),
                         tag,
                     )),
                     Err(e) => report.skipped.push(format!("{f}: invalid JSON ({e})")),
@@ -1399,7 +1408,11 @@ pub fn scan_datapacks(root: &Path) -> LoadedData {
                 .unwrap_or("pack")
                 .to_string();
             if let Ok(bytes) = std::fs::read(&path) {
-                if let Some(zf) = crate::zip::ZipFiles::from_bytes(&bytes) { if let Some(r) = scan_pack(&id, &zf) { reports.push(r) } }
+                if let Some(zf) = crate::zip::ZipFiles::from_bytes(&bytes) {
+                    if let Some(r) = scan_pack(&id, &zf) {
+                        reports.push(r)
+                    }
+                }
             }
         }
     }
@@ -1486,7 +1499,10 @@ mod tests {
     fn name_bridge_is_bidirectional_and_honest() {
         // forward: every mapped name resolves
         assert_eq!(item_id_by_name("voxelcraft:bone"), Some(BONE));
-        assert_eq!(item_id_by_name("voxelcraft:glass_bottle"), Some(POTION_EMPTY));
+        assert_eq!(
+            item_id_by_name("voxelcraft:glass_bottle"),
+            Some(POTION_EMPTY)
+        );
         assert_eq!(item_id_by_name("voxelcraft:spawner"), Some(SPAWNER));
         // palette-absent names resolve to None — never a lookalike
         assert_eq!(item_id_by_name("voxelcraft:stick"), None);
@@ -1513,12 +1529,18 @@ mod tests {
         store.apply(
             "items",
             "demo:things",
-            &TagFile { replace: false, values: vec!["voxelcraft:bone".into()] },
+            &TagFile {
+                replace: false,
+                values: vec!["voxelcraft:bone".into()],
+            },
         );
         store.apply(
             "items",
             "demo:things",
-            &TagFile { replace: false, values: vec!["voxelcraft:string".into()] },
+            &TagFile {
+                replace: false,
+                values: vec!["voxelcraft:string".into()],
+            },
         );
         let (members, unknown) = store.members("items", "demo:things");
         assert_eq!(members, vec!["voxelcraft:bone", "voxelcraft:string"]);
@@ -1527,7 +1549,10 @@ mod tests {
         store.apply(
             "items",
             "demo:things",
-            &TagFile { replace: true, values: vec!["voxelcraft:feather".into()] },
+            &TagFile {
+                replace: true,
+                values: vec!["voxelcraft:feather".into()],
+            },
         );
         let (members, _) = store.members("items", "demo:things");
         assert_eq!(members, vec!["voxelcraft:feather"]);
@@ -1535,12 +1560,18 @@ mod tests {
         store.apply(
             "items",
             "demo:a",
-            &TagFile { replace: false, values: vec!["#demo:b".into()] },
+            &TagFile {
+                replace: false,
+                values: vec!["#demo:b".into()],
+            },
         );
         store.apply(
             "items",
             "demo:b",
-            &TagFile { replace: false, values: vec!["#demo:a".into(), "voxelcraft:arrow".into()] },
+            &TagFile {
+                replace: false,
+                values: vec!["#demo:a".into(), "voxelcraft:arrow".into()],
+            },
         );
         let (members, unknown) = store.members("items", "demo:a");
         assert!(members.contains(&"voxelcraft:arrow".to_string()));
@@ -1577,7 +1608,10 @@ mod tests {
         tags.apply(
             "items",
             "voxelcraft:planks",
-            &TagFile { replace: false, values: vec!["voxelcraft:oak_planks".into()] },
+            &TagFile {
+                replace: false,
+                values: vec!["voxelcraft:oak_planks".into()],
+            },
         );
         let grid = vec![
             GridItem::item("voxelcraft:oak_planks", 3),
@@ -1597,7 +1631,10 @@ mod tests {
             "result": {"item": "voxelcraft:crafting_table"}
         });
         let r = parse_recipe("demo:bowish", &bowish).unwrap();
-        let mk = |s: &str| GridItem { name: s.to_string(), count: 1 };
+        let mk = |s: &str| GridItem {
+            name: s.to_string(),
+            count: 1,
+        };
         let mut grid = vec![GridItem::empty(); 9];
         grid[1] = mk("voxelcraft:oak_log");
         grid[2] = mk("voxelcraft:string");
@@ -1616,12 +1653,18 @@ mod tests {
         tags.apply(
             "items",
             "demo:any",
-            &TagFile { replace: false, values: vec!["voxelcraft:bone".into(), "voxelcraft:string".into()] },
+            &TagFile {
+                replace: false,
+                values: vec!["voxelcraft:bone".into(), "voxelcraft:string".into()],
+            },
         );
         // ONE bone stack satisfies the Item(bone) ingredient; the Tag may
         // not greedily steal it
         let grid = vec![GridItem::item("voxelcraft:bone", 2)];
-        assert!(!r.matches(&grid, 1, &tags), "one stack cannot feed two ingredients");
+        assert!(
+            !r.matches(&grid, 1, &tags),
+            "one stack cannot feed two ingredients"
+        );
         let grid = vec![
             GridItem::item("voxelcraft:bone", 2),
             GridItem::item("voxelcraft:bone", 1),
@@ -1752,7 +1795,10 @@ mod tests {
         std::fs::create_dir_all(a.join("data/first/loot_tables/chests")).unwrap();
         std::fs::write(
             a.join("pack.mcmeta"),
-            format!("{{\"pack\":{{\"pack_format\":{},\"description\":\"a\"}}}}", PACK_FORMAT_LEGACY_ERA),
+            format!(
+                "{{\"pack\":{{\"pack_format\":{},\"description\":\"a\"}}}}",
+                PACK_FORMAT_LEGACY_ERA
+            ),
         )
         .unwrap();
         std::fs::write(
@@ -1767,7 +1813,10 @@ mod tests {
         std::fs::create_dir_all(b.join("data/voxelcraft/loot_tables/chests")).unwrap();
         std::fs::write(
             b.join("pack.mcmeta"),
-            format!("{{\"pack\":{{\"pack_format\":{},\"description\":\"b\"}}}}", PACK_FORMAT_LEGACY_ERA),
+            format!(
+                "{{\"pack\":{{\"pack_format\":{},\"description\":\"b\"}}}}",
+                PACK_FORMAT_LEGACY_ERA
+            ),
         )
         .unwrap();
         std::fs::write(
@@ -1782,7 +1831,9 @@ mod tests {
         assert_eq!(loaded.packs.len(), 2, "{:?}", loaded.packs.len());
         // B sorted after A → B's table wins the name (last pack wins)
         let mut rng = Rng::new(3);
-        let stacks = loaded.roll("voxelcraft:chests/simple_dungeon", &mut rng).unwrap();
+        let stacks = loaded
+            .roll("voxelcraft:chests/simple_dungeon", &mut rng)
+            .unwrap();
         assert_eq!(stacks, vec![(GOLD_ORE, 1)]);
 
         std::fs::remove_dir_all(&root).ok();
@@ -1799,17 +1850,19 @@ mod tests {
         let files: Vec<(&str, Vec<u8>)> = vec![
             (
                 "pack.mcmeta",
-                format!("{{\"pack\":{{\"pack_format\":{}}}}}", PACK_FORMAT_LEGACY_ERA).into_bytes(),
+                format!(
+                    "{{\"pack\":{{\"pack_format\":{}}}}}",
+                    PACK_FORMAT_LEGACY_ERA
+                )
+                .into_bytes(),
             ),
-            (
-                "data/z/recipes/cobble_stone.json",
-                recipe.to_vec(),
-            ),
+            ("data/z/recipes/cobble_stone.json", recipe.to_vec()),
         ];
         let mut zip = Vec::new();
         let mut central = Vec::new();
         for (name, data) in &files {
-            let mut enc = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+            let mut enc =
+                flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
             enc.write_all(data).unwrap();
             let comp = enc.finish().unwrap();
             let mut crc = flate2::Crc::new();
@@ -1884,9 +1937,17 @@ mod tests {
             .collect();
         assert_eq!(
             items,
-            [BONE, STRING, GUNPOWDER, ROTTEN_FLESH, ARROW_ITEM, IRON_ORE, SPIDER_EYE]
-                .into_iter()
-                .collect()
+            [
+                BONE,
+                STRING,
+                GUNPOWDER,
+                ROTTEN_FLESH,
+                ARROW_ITEM,
+                IRON_ORE,
+                SPIDER_EYE
+            ]
+            .into_iter()
+            .collect()
         );
         let mut rng = Rng::new(11);
         for _ in 0..200 {
@@ -1937,5 +1998,4 @@ mod tests {
         }
         assert!(got_bone, "the mansion roll yields pool-3 drops");
     }
-
 }

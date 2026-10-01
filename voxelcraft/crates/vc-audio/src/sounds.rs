@@ -13,10 +13,10 @@
 //! - distance ATTENUATION + stereo PAN (spatial positioning)
 //! - procedural MUSIC pads (day/night) + AMBIENT cave sounds
 
-use vc_blocks::blocks::SoundFamily;
-use vc_rng::rng::Rng;
 use serde::Deserialize;
 use std::collections::HashMap;
+use vc_blocks::blocks::SoundFamily;
+use vc_rng::rng::Rng;
 
 pub const RATE: u32 = 22050;
 
@@ -157,8 +157,8 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
             Take::Fall => 13,
         };
     let j = 1.0 + 0.14 * ((v as f32 * 1.7).sin() * 0.5); // ±14% cutoff jitter
-    // hit: light + short (the mining cadence); step: soft + shorter;
-    // fall: heavy + LONG (the landing thud)
+                                                         // hit: light + short (the mining cadence); step: soft + shorter;
+                                                         // fall: heavy + LONG (the landing thud)
     let (amp, dec_scale) = match take {
         Take::Dig => (1.0, 1.0),
         Take::Hit => (0.62, 0.6),
@@ -168,13 +168,25 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
     match f {
         SoundFamily::Grass => {
             let mut g = one_pole_lp(
-                noise_burst((3600.0 * dec_scale) as usize, 11 + v as u64, 0.5 * amp, 0.004, 0.14 * dec_scale),
+                noise_burst(
+                    (3600.0 * dec_scale) as usize,
+                    11 + v as u64,
+                    0.5 * amp,
+                    0.004,
+                    0.14 * dec_scale,
+                ),
                 1100.0 * j,
             );
             mix_into(
                 &mut g,
                 &one_pole_lp(
-                    noise_burst((1200.0 * dec_scale) as usize, 12 + v as u64, 0.25 * amp, 0.002, 0.05 * dec_scale),
+                    noise_burst(
+                        (1200.0 * dec_scale) as usize,
+                        12 + v as u64,
+                        0.25 * amp,
+                        0.002,
+                        0.05 * dec_scale,
+                    ),
                     2400.0 * j,
                 ),
                 1.0,
@@ -182,18 +194,34 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
             clamp_amp(g)
         }
         SoundFamily::Dirt => clamp_amp(one_pole_lp(
-            noise_burst((3200.0 * dec_scale) as usize, 21 + v as u64, 0.55 * amp, 0.004, 0.12 * dec_scale),
+            noise_burst(
+                (3200.0 * dec_scale) as usize,
+                21 + v as u64,
+                0.55 * amp,
+                0.004,
+                0.12 * dec_scale,
+            ),
             700.0 * j,
         )),
         SoundFamily::Stone => {
             let mut s = one_pole_hp(
                 one_pole_lp(
-                    noise_burst((2200.0 * dec_scale) as usize, 31 + v as u64, 0.5 * amp, 0.002, 0.09 * dec_scale),
+                    noise_burst(
+                        (2200.0 * dec_scale) as usize,
+                        31 + v as u64,
+                        0.5 * amp,
+                        0.002,
+                        0.09 * dec_scale,
+                    ),
                     5500.0 * j,
                 ),
                 1400.0 / j,
             );
-            mix_into(&mut s, &ping(2400.0 * j, 0.03, 0.35 * amp, 32 + v as u64), 1.0);
+            mix_into(
+                &mut s,
+                &ping(2400.0 * j, 0.03, 0.35 * amp, 32 + v as u64),
+                1.0,
+            );
             clamp_amp(s)
         }
         SoundFamily::Wood => {
@@ -201,7 +229,13 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
             mix_into(
                 &mut w,
                 &one_pole_lp(
-                    noise_burst((1400.0 * dec_scale) as usize, 41 + v as u64, 0.3 * amp, 0.002, 0.06 * dec_scale),
+                    noise_burst(
+                        (1400.0 * dec_scale) as usize,
+                        41 + v as u64,
+                        0.3 * amp,
+                        0.002,
+                        0.06 * dec_scale,
+                    ),
                     900.0 * j,
                 ),
                 1.0,
@@ -209,7 +243,13 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
             clamp_amp(w)
         }
         SoundFamily::Sand => {
-            let raw = noise_burst((5000.0 * dec_scale) as usize, 51 + v as u64, 0.42 * amp, 0.01, 0.2 * dec_scale);
+            let raw = noise_burst(
+                (5000.0 * dec_scale) as usize,
+                51 + v as u64,
+                0.42 * amp,
+                0.01,
+                0.2 * dec_scale,
+            );
             let mut sa = one_pole_lp(raw, 800.0 * j);
             let mut rng = Rng::new(52 + v as u64);
             for s in sa.iter_mut() {
@@ -220,17 +260,41 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
             clamp_amp(sa)
         }
         SoundFamily::Leaves => clamp_amp(one_pole_hp(
-            noise_burst((2500.0 * dec_scale) as usize, 61 + v as u64, 0.32 * amp, 0.004, 0.1 * dec_scale),
+            noise_burst(
+                (2500.0 * dec_scale) as usize,
+                61 + v as u64,
+                0.32 * amp,
+                0.004,
+                0.1 * dec_scale,
+            ),
             2800.0 / j,
         )),
         SoundFamily::Glass => {
             let mut gl = one_pole_hp(
-                noise_burst((4500.0 * dec_scale) as usize, 71 + v as u64, 0.45 * amp, 0.001, 0.18 * dec_scale),
+                noise_burst(
+                    (4500.0 * dec_scale) as usize,
+                    71 + v as u64,
+                    0.45 * amp,
+                    0.001,
+                    0.18 * dec_scale,
+                ),
                 3200.0 / j,
             );
-            mix_into(&mut gl, &ping(3700.0 * j, 0.09, 0.3 * amp, 72 + v as u64), 1.0);
-            mix_into(&mut gl, &ping(3050.0 / j, 0.07, 0.28 * amp, 73 + v as u64), 1.0);
-            mix_into(&mut gl, &ping(2400.0 * j, 0.06, 0.25 * amp, 74 + v as u64), 1.0);
+            mix_into(
+                &mut gl,
+                &ping(3700.0 * j, 0.09, 0.3 * amp, 72 + v as u64),
+                1.0,
+            );
+            mix_into(
+                &mut gl,
+                &ping(3050.0 / j, 0.07, 0.28 * amp, 73 + v as u64),
+                1.0,
+            );
+            mix_into(
+                &mut gl,
+                &ping(2400.0 * j, 0.06, 0.25 * amp, 74 + v as u64),
+                1.0,
+            );
             clamp_amp(gl)
         }
         SoundFamily::Wool => {
@@ -239,7 +303,13 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
             mix_into(
                 &mut wl,
                 &one_pole_lp(
-                    noise_burst((900.0 * dec_scale) as usize, 91 + v as u64, 0.22 * amp, 0.003, 0.08 * dec_scale),
+                    noise_burst(
+                        (900.0 * dec_scale) as usize,
+                        91 + v as u64,
+                        0.22 * amp,
+                        0.003,
+                        0.08 * dec_scale,
+                    ),
                     600.0 * j,
                 ),
                 1.0,
@@ -247,13 +317,25 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
             clamp_amp(wl)
         }
         SoundFamily::Water | SoundFamily::None => clamp_amp(one_pole_lp(
-            noise_burst((6600.0 * dec_scale) as usize, 81 + v as u64, 0.55 * amp, 0.02, 0.3 * dec_scale),
+            noise_burst(
+                (6600.0 * dec_scale) as usize,
+                81 + v as u64,
+                0.55 * amp,
+                0.02,
+                0.3 * dec_scale,
+            ),
             2400.0 * j,
         )),
         // ---- Sub-round 5: the new material classes ----
         // gravel: crunchy mid-low noise with a loose-stone rattle
         SoundFamily::Gravel => {
-            let raw = noise_burst((4200.0 * dec_scale) as usize, 101 + v as u64, 0.5 * amp, 0.003, 0.16 * dec_scale);
+            let raw = noise_burst(
+                (4200.0 * dec_scale) as usize,
+                101 + v as u64,
+                0.5 * amp,
+                0.003,
+                0.16 * dec_scale,
+            );
             let mut gv = one_pole_lp(raw, 620.0 * j);
             let mut rng = Rng::new(102 + v as u64);
             for s in gv.iter_mut() {
@@ -269,12 +351,26 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
         // resonance)
         SoundFamily::Metal => {
             let mut m = thump(210.0 * j, 0.16 * dec_scale, 0.5 * amp);
-            mix_into(&mut m, &ping(1560.0 * j, 0.11 * dec_scale, 0.3 * amp, 111 + v as u64), 1.0);
-            mix_into(&mut m, &ping(2340.0 / j, 0.08 * dec_scale, 0.22 * amp, 112 + v as u64), 1.0);
+            mix_into(
+                &mut m,
+                &ping(1560.0 * j, 0.11 * dec_scale, 0.3 * amp, 111 + v as u64),
+                1.0,
+            );
+            mix_into(
+                &mut m,
+                &ping(2340.0 / j, 0.08 * dec_scale, 0.22 * amp, 112 + v as u64),
+                1.0,
+            );
             mix_into(
                 &mut m,
                 &one_pole_hp(
-                    noise_burst((900.0 * dec_scale) as usize, 113 + v as u64, 0.18 * amp, 0.001, 0.03 * dec_scale),
+                    noise_burst(
+                        (900.0 * dec_scale) as usize,
+                        113 + v as u64,
+                        0.18 * amp,
+                        0.001,
+                        0.03 * dec_scale,
+                    ),
                     2600.0 * j,
                 ),
                 1.0,
@@ -284,20 +380,40 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
         // plant: crisp short foliage snap (bamho/bush class)
         SoundFamily::Plant => {
             let mut p = one_pole_hp(
-                noise_burst((1600.0 * dec_scale) as usize, 121 + v as u64, 0.4 * amp, 0.001, 0.07 * dec_scale),
+                noise_burst(
+                    (1600.0 * dec_scale) as usize,
+                    121 + v as u64,
+                    0.4 * amp,
+                    0.001,
+                    0.07 * dec_scale,
+                ),
                 1800.0 / j,
             );
-            mix_into(&mut p, &ping(2900.0 * j, 0.03, 0.2 * amp, 122 + v as u64), 1.0);
+            mix_into(
+                &mut p,
+                &ping(2900.0 * j, 0.03, 0.2 * amp, 122 + v as u64),
+                1.0,
+            );
             clamp_amp(p)
         }
         // chain: a short metallic clink (two quick partials)
         SoundFamily::Chain => {
             let mut c = ping(2050.0 * j, 0.05 * dec_scale, 0.4 * amp, 131 + v as u64);
-            mix_into(&mut c, &ping(3400.0 / j, 0.035 * dec_scale, 0.3 * amp, 132 + v as u64), 1.0);
+            mix_into(
+                &mut c,
+                &ping(3400.0 / j, 0.035 * dec_scale, 0.3 * amp, 132 + v as u64),
+                1.0,
+            );
             mix_into(
                 &mut c,
                 &one_pole_hp(
-                    noise_burst((700.0 * dec_scale) as usize, 133 + v as u64, 0.22 * amp, 0.001, 0.02 * dec_scale),
+                    noise_burst(
+                        (700.0 * dec_scale) as usize,
+                        133 + v as u64,
+                        0.22 * amp,
+                        0.001,
+                        0.02 * dec_scale,
+                    ),
                     3000.0 * j,
                 ),
                 1.0,
@@ -311,12 +427,22 @@ fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
             mix_into(
                 &mut w,
                 &one_pole_lp(
-                    noise_burst((1500.0 * dec_scale) as usize, 141 + v as u64, 0.3 * amp, 0.003, 0.07 * dec_scale),
+                    noise_burst(
+                        (1500.0 * dec_scale) as usize,
+                        141 + v as u64,
+                        0.3 * amp,
+                        0.003,
+                        0.07 * dec_scale,
+                    ),
                     640.0 * j,
                 ),
                 1.0,
             );
-            mix_into(&mut w, &ping(190.0 * j, 0.09 * dec_scale, 0.25 * amp, 142 + v as u64), 1.0);
+            mix_into(
+                &mut w,
+                &ping(190.0 * j, 0.09 * dec_scale, 0.25 * amp, 142 + v as u64),
+                1.0,
+            );
             clamp_amp(w)
         }
     }
@@ -342,7 +468,11 @@ fn pop_recipe() -> Vec<f32> {
 /// lever click: heavier mechanical clack
 fn lever_recipe() -> Vec<f32> {
     let mut c = thump(320.0, 0.05, 0.7);
-    mix_into(&mut c, &one_pole_hp(noise_burst(600, 404, 0.4, 0.001, 0.03), 1800.0), 1.0);
+    mix_into(
+        &mut c,
+        &one_pole_hp(noise_burst(600, 404, 0.4, 0.001, 0.03), 1800.0),
+        1.0,
+    );
     clamp_amp(c)
 }
 
@@ -366,7 +496,11 @@ fn drink_recipe() -> Vec<f32> {
 /// potion splash (§29, breaking a stand / filling a bottle): watery pip
 fn splash_recipe() -> Vec<f32> {
     let mut s = ping(900.0, 0.07, 0.3, 407);
-    mix_into(&mut s, &one_pole_lp(noise_burst(900, 408, 0.3, 0.001, 0.06), 2500.0), 1.0);
+    mix_into(
+        &mut s,
+        &one_pole_lp(noise_burst(900, 408, 0.3, 0.001, 0.06), 2500.0),
+        1.0,
+    );
     clamp_amp(s)
 }
 
@@ -406,7 +540,11 @@ fn villager_trade_recipe() -> Vec<f32> {
 /// player hurt: sharp low thud + brief noise gasp
 fn hurt_recipe() -> Vec<f32> {
     let mut v = thump(90.0, 0.16, 0.55);
-    mix_into(&mut v, &noise_burst((0.08 * RATE as f32) as usize, 77, 0.25, 0.02, 0.8), 0.8);
+    mix_into(
+        &mut v,
+        &noise_burst((0.08 * RATE as f32) as usize, 77, 0.25, 0.02, 0.8),
+        0.8,
+    );
     clamp_amp(v)
 }
 
@@ -452,7 +590,11 @@ fn explosion_recipe() -> Vec<f32> {
 /// skeleton bow: the twang — quick ping + pluck noise
 fn bow_recipe() -> Vec<f32> {
     let mut v = ping(500.0, 0.08, 0.4, 731);
-    mix_into(&mut v, &noise_burst((0.05 * RATE as f32) as usize, 732, 0.3, 0.01, 1.5), 1.0);
+    mix_into(
+        &mut v,
+        &noise_burst((0.05 * RATE as f32) as usize, 732, 0.3, 0.01, 1.5),
+        1.0,
+    );
     clamp_amp(v)
 }
 
@@ -491,10 +633,9 @@ fn eerie_recipe() -> Vec<f32> {
         .map(|i| {
             let t = i as f32 / RATE as f32;
             let env = (t / 1.6).min(1.0) * (-(t - 1.6).abs().max(0.0) * 2.0).exp().min(1.0);
-            let beat =
-                (2.0 * std::f32::consts::PI * 220.0 * t).sin() * 0.4
-                    + (2.0 * std::f32::consts::PI * 223.0 * t).sin() * 0.4
-                    + (2.0 * std::f32::consts::PI * 110.5 * t).sin() * 0.2;
+            let beat = (2.0 * std::f32::consts::PI * 220.0 * t).sin() * 0.4
+                + (2.0 * std::f32::consts::PI * 223.0 * t).sin() * 0.4
+                + (2.0 * std::f32::consts::PI * 110.5 * t).sin() * 0.2;
             beat * env * 0.5
         })
         .collect()
@@ -598,20 +739,14 @@ fn music_pad(minor: bool) -> Vec<f32> {
 /// wooden container OPEN: a creaky rise (the chest-lid character —
 /// rising filtered noise + a wood thump).
 fn chest_open_recipe() -> Vec<f32> {
-    let mut c = one_pole_lp(
-        noise_burst(2600, 211, 0.4, 0.12, 0.22),
-        900.0,
-    );
+    let mut c = one_pole_lp(noise_burst(2600, 211, 0.4, 0.12, 0.22), 900.0);
     mix_into(&mut c, &thump(140.0, 0.14, 0.5), 1.0);
     clamp_amp(c)
 }
 
 /// wooden container CLOSE: the creak in reverse + a firmer latch thump.
 fn chest_close_recipe() -> Vec<f32> {
-    let mut c = one_pole_lp(
-        noise_burst(2000, 212, 0.45, 0.01, 0.16),
-        800.0,
-    );
+    let mut c = one_pole_lp(noise_burst(2000, 212, 0.45, 0.01, 0.16), 800.0);
     mix_into(&mut c, &thump(120.0, 0.1, 0.6), 1.0);
     clamp_amp(c)
 }
@@ -664,20 +799,14 @@ fn xp_orb_recipe() -> Vec<f32> {
 
 /// underwater ENTER: a muffled plunge (low-passed splash).
 fn water_enter_recipe() -> Vec<f32> {
-    let mut w = one_pole_lp(
-        noise_burst(4200, 241, 0.5, 0.01, 0.3),
-        500.0,
-    );
+    let mut w = one_pole_lp(noise_burst(4200, 241, 0.5, 0.01, 0.3), 500.0);
     mix_into(&mut w, &thump(90.0, 0.2, 0.4), 1.0);
     clamp_amp(w)
 }
 
 /// underwater EXIT: the brighter emerge splash.
 fn water_exit_recipe() -> Vec<f32> {
-    let mut w = one_pole_lp(
-        noise_burst(3200, 242, 0.5, 0.005, 0.22),
-        1600.0,
-    );
+    let mut w = one_pole_lp(noise_burst(3200, 242, 0.5, 0.005, 0.22), 1600.0);
     mix_into(&mut w, &ping(600.0, 0.05, 0.2, 243), 1.0);
     clamp_amp(w)
 }
@@ -699,10 +828,7 @@ fn water_loop_recipe() -> Vec<f32> {
 /// weather.rain: a one-second rain tile (dense soft high noise) — the
 /// game layer loops it while rain is active.
 fn rain_recipe() -> Vec<f32> {
-    let mut r = one_pole_hp(
-        noise_burst(RATE as usize, 251, 0.22, 0.15, 0.85),
-        900.0,
-    );
+    let mut r = one_pole_hp(noise_burst(RATE as usize, 251, 0.22, 0.15, 0.85), 900.0);
     r = one_pole_lp(r, 3400.0);
     clamp_amp(r)
 }
@@ -710,10 +836,7 @@ fn rain_recipe() -> Vec<f32> {
 /// entity.lightning_bolt.impact: the sharp crack before the thunder
 /// roll (a hard noise snap + a sub thump).
 fn lightning_impact_recipe() -> Vec<f32> {
-    let mut l = one_pole_hp(
-        noise_burst(1400, 261, 0.8, 0.001, 0.05),
-        700.0,
-    );
+    let mut l = one_pole_hp(noise_burst(1400, 261, 0.8, 0.001, 0.05), 700.0);
     mix_into(&mut l, &thump(60.0, 0.25, 0.7), 1.0);
     clamp_amp(l)
 }
@@ -840,9 +963,18 @@ impl SoundBank {
             // splash for break/place/hit but the registry's
             // block.water.step / block.water.splash rows need these two
             // takes to exist — the family loop above skips Water
-            ("step/water", family_recipe(SoundFamily::Water, 0, Take::Step)),
-            ("dig/water1", family_recipe(SoundFamily::Water, 0, Take::Dig)),
-            ("dig/water2", family_recipe(SoundFamily::Water, 1, Take::Dig)),
+            (
+                "step/water",
+                family_recipe(SoundFamily::Water, 0, Take::Step),
+            ),
+            (
+                "dig/water1",
+                family_recipe(SoundFamily::Water, 0, Take::Dig),
+            ),
+            (
+                "dig/water2",
+                family_recipe(SoundFamily::Water, 1, Take::Dig),
+            ),
             ("ui/click", click_recipe()),
             ("entity/item/pickup", pop_recipe()),
             ("block/lever", lever_recipe()),
@@ -898,7 +1030,12 @@ impl SoundBank {
             index.insert(n.clone(), i);
         }
         let wavs = data.iter().map(|d| to_wav16(d, RATE)).collect();
-        SoundBank { names, index, data, wavs }
+        SoundBank {
+            names,
+            index,
+            data,
+            wavs,
+        }
     }
 
     /// recipe slot by name (registry "sounds[].name" resolves through this)
@@ -1289,21 +1426,126 @@ pub fn family_event(f: SoundFamily, kind: FamilyEvent) -> &'static str {
     use SoundFamily as SF;
     // rows: (family, break, place, hit, step, fall)
     const TABLE: &[(SF, &str, &str, &str, &str, &str)] = &[
-        (SF::Grass, "block.grass.break", "block.grass.place", "block.grass.hit", "block.grass.step", "block.grass.fall"),
-        (SF::Dirt, "block.dirt.break", "block.dirt.place", "block.dirt.hit", "block.dirt.step", "block.dirt.fall"),
-        (SF::Stone, "block.stone.break", "block.stone.place", "block.stone.hit", "block.stone.step", "block.stone.fall"),
-        (SF::Wood, "block.wood.break", "block.wood.place", "block.wood.hit", "block.wood.step", "block.wood.fall"),
-        (SF::Sand, "block.sand.break", "block.sand.place", "block.sand.hit", "block.sand.step", "block.sand.fall"),
-        (SF::Leaves, "block.leaves.break", "block.leaves.place", "block.leaves.hit", "block.leaves.step", "block.leaves.fall"),
-        (SF::Glass, "block.glass.break", "block.glass.place", "block.glass.hit", "block.glass.step", "block.glass.fall"),
-        (SF::Wool, "block.wool.break", "block.wool.place", "block.wool.hit", "block.wool.step", "block.wool.fall"),
-        (SF::Gravel, "block.gravel.break", "block.gravel.place", "block.gravel.hit", "block.gravel.step", "block.gravel.fall"),
-        (SF::Metal, "block.metal.break", "block.metal.place", "block.metal.hit", "block.metal.step", "block.metal.fall"),
-        (SF::Plant, "block.plant.break", "block.plant.place", "block.plant.hit", "block.plant.step", "block.plant.fall"),
-        (SF::Chain, "block.chain.break", "block.chain.place", "block.chain.hit", "block.chain.step", "block.chain.fall"),
-        (SF::NetherWood, "block.nether_wood.break", "block.nether_wood.place", "block.nether_wood.hit", "block.nether_wood.step", "block.nether_wood.fall"),
-        (SF::Water, "block.water.splash", "block.water.splash", "block.water.splash", "block.water.step", "block.water.splash"),
-        (SF::None, "block.stone.break", "block.stone.place", "block.stone.hit", "block.stone.step", "block.stone.fall"),
+        (
+            SF::Grass,
+            "block.grass.break",
+            "block.grass.place",
+            "block.grass.hit",
+            "block.grass.step",
+            "block.grass.fall",
+        ),
+        (
+            SF::Dirt,
+            "block.dirt.break",
+            "block.dirt.place",
+            "block.dirt.hit",
+            "block.dirt.step",
+            "block.dirt.fall",
+        ),
+        (
+            SF::Stone,
+            "block.stone.break",
+            "block.stone.place",
+            "block.stone.hit",
+            "block.stone.step",
+            "block.stone.fall",
+        ),
+        (
+            SF::Wood,
+            "block.wood.break",
+            "block.wood.place",
+            "block.wood.hit",
+            "block.wood.step",
+            "block.wood.fall",
+        ),
+        (
+            SF::Sand,
+            "block.sand.break",
+            "block.sand.place",
+            "block.sand.hit",
+            "block.sand.step",
+            "block.sand.fall",
+        ),
+        (
+            SF::Leaves,
+            "block.leaves.break",
+            "block.leaves.place",
+            "block.leaves.hit",
+            "block.leaves.step",
+            "block.leaves.fall",
+        ),
+        (
+            SF::Glass,
+            "block.glass.break",
+            "block.glass.place",
+            "block.glass.hit",
+            "block.glass.step",
+            "block.glass.fall",
+        ),
+        (
+            SF::Wool,
+            "block.wool.break",
+            "block.wool.place",
+            "block.wool.hit",
+            "block.wool.step",
+            "block.wool.fall",
+        ),
+        (
+            SF::Gravel,
+            "block.gravel.break",
+            "block.gravel.place",
+            "block.gravel.hit",
+            "block.gravel.step",
+            "block.gravel.fall",
+        ),
+        (
+            SF::Metal,
+            "block.metal.break",
+            "block.metal.place",
+            "block.metal.hit",
+            "block.metal.step",
+            "block.metal.fall",
+        ),
+        (
+            SF::Plant,
+            "block.plant.break",
+            "block.plant.place",
+            "block.plant.hit",
+            "block.plant.step",
+            "block.plant.fall",
+        ),
+        (
+            SF::Chain,
+            "block.chain.break",
+            "block.chain.place",
+            "block.chain.hit",
+            "block.chain.step",
+            "block.chain.fall",
+        ),
+        (
+            SF::NetherWood,
+            "block.nether_wood.break",
+            "block.nether_wood.place",
+            "block.nether_wood.hit",
+            "block.nether_wood.step",
+            "block.nether_wood.fall",
+        ),
+        (
+            SF::Water,
+            "block.water.splash",
+            "block.water.splash",
+            "block.water.splash",
+            "block.water.step",
+            "block.water.splash",
+        ),
+        (
+            SF::None,
+            "block.stone.break",
+            "block.stone.place",
+            "block.stone.hit",
+            "block.stone.step",
+            "block.stone.fall",
+        ),
     ];
     for &(fam, brk, place, hit, step, fall) in TABLE {
         if fam == f {
@@ -1368,7 +1610,9 @@ pub mod native_audio {
 
     impl AudioBackend for RodioOut {
         fn play(&self, bank: &SoundBank, slot: usize, volume: f32, pitch: f32, pan: f32) {
-            let Some(base) = bank.data.get(slot) else { return };
+            let Some(base) = bank.data.get(slot) else {
+                return;
+            };
             let mut samples = resample(base, pitch);
             // Sub-round 5: the underwater muffle (one-pole 500 Hz — the
             // native stand-in for vanilla's low-pass master bus)
@@ -1378,10 +1622,7 @@ pub mod native_audio {
             // stereo from pan: equal-power law
             let l = (0.5 * (1.0 - pan) + 0.5).sqrt();
             let r = (0.5 * (1.0 + pan) + 0.5).sqrt();
-            let stereo: Vec<f32> = samples
-                .iter()
-                .flat_map(|s| [*s * l, *s * r])
-                .collect();
+            let stereo: Vec<f32> = samples.iter().flat_map(|s| [*s * l, *s * r]).collect();
             let src = rodio::buffer::SamplesBuffer::new(2u16, RATE, stereo);
             if let Ok(sink) = rodio::Sink::try_new(&self.handle) {
                 sink.set_volume(volume.clamp(0.0, 1.0));
@@ -1453,7 +1694,9 @@ pub mod web_audio {
     impl AudioBackend for WebAudioOut {
         fn play(&self, bank: &SoundBank, slot: usize, volume: f32, pitch: f32, pan: f32) {
             let ctx_guard = self.inner.ctx.borrow();
-            let Some(ctx) = ctx_guard.as_ref() else { return };
+            let Some(ctx) = ctx_guard.as_ref() else {
+                return;
+            };
             let mut bufs = self.inner.buffers.borrow_mut();
             if slot >= bufs.len() {
                 bufs.resize(slot + 1, None);
@@ -1481,7 +1724,9 @@ pub mod web_audio {
                 }
                 return; // this play is dropped; the next one lands decoded
             }
-            let Some(buf) = bufs[slot].clone() else { return };
+            let Some(buf) = bufs[slot].clone() else {
+                return;
+            };
             if let Ok(src) = web_sys::AudioContext::create_buffer_source(ctx) {
                 web_sys::AudioBufferSourceNode::set_buffer(&src, Some(&buf));
                 let pr = web_sys::AudioBufferSourceNode::playback_rate(&src);
@@ -1502,10 +1747,7 @@ pub mod web_audio {
                         None
                     };
                     if let Some(f) = filter.as_ref() {
-                        web_sys::BiquadFilterNode::set_type(
-                            f,
-                            web_sys::BiquadFilterType::Lowpass,
-                        );
+                        web_sys::BiquadFilterNode::set_type(f, web_sys::BiquadFilterType::Lowpass);
                         let freq = web_sys::BiquadFilterNode::frequency(f);
                         web_sys::AudioParam::set_value(&freq, 500.0);
                     }
@@ -1537,7 +1779,9 @@ pub mod web_audio {
                 if inner.ctx.borrow().is_some() {
                     return;
                 }
-                let Ok(ctx) = web_sys::AudioContext::new() else { return };
+                let Ok(ctx) = web_sys::AudioContext::new() else {
+                    return;
+                };
                 let mut bufs: Vec<Option<web_sys::AudioBuffer>> = Vec::with_capacity(wavs.len());
                 for wav in wavs.iter() {
                     let decoded = decode(&ctx, wav).await;
@@ -1624,7 +1868,10 @@ mod tests {
         // hard right of a yaw-0 listener (right = +X): pan > 0.5
         let (v, p) = spatialize(Some([10.0, 64.0, 0.0]), ear, 0.0, 16.0);
         assert!(p > 0.5, "right-side pan {p}");
-        assert!((v - (1.0f32 - 10.0f32 / 16.0).powi(2)).abs() < 1e-3, "volume {v}");
+        assert!(
+            (v - (1.0f32 - 10.0f32 / 16.0).powi(2)).abs() < 1e-3,
+            "volume {v}"
+        );
         // outside the attenuation range: silent
         let (v, _) = spatialize(Some([40.0, 64.0, 0.0]), ear, 0.0, 16.0);
         assert!(v < 1e-4, "volume past range {v}");

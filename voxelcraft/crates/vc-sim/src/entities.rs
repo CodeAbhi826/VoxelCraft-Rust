@@ -227,12 +227,7 @@ impl ItemSystem {
                 ]
             };
             // (corners CCW seen from outside, normal, shade, tile, uv per corner)
-            let faces: [(
-                [[f32; 3]; 4],
-                [f32; 3],
-                f32,
-                u16,
-            ); 6] = [
+            let faces: [([[f32; 3]; 4], [f32; 3], f32, u16); 6] = [
                 // +Y top
                 (
                     [
@@ -555,17 +550,17 @@ impl XpOrbSystem {
         out: &mut Vec<vc_particles::particles::ParticleVertex>,
     ) {
         for o in self.orbs.iter() {
-            let tile = if o.value >= 17 { TILE_XP_ORB_BIG } else { TILE_XP_ORB };
+            let tile = if o.value >= 17 {
+                TILE_XP_ORB_BIG
+            } else {
+                TILE_XP_ORB
+            };
             // [1.12 fix] 32-tile atlas rows (was %16//16)
             let tx = (tile % 32) as f32;
             let ty = (tile / 32) as f32;
             // green↔yellow flash (VERIFIED: "fade between green and yellow")
             let flash = 0.5 + 0.5 * (time * 3.0 + o.pos[0]).sin();
-            let col = [
-                0.55 + flash * 0.45,
-                0.85 + flash * 0.15,
-                0.25,
-            ];
+            let col = [0.55 + flash * 0.45, 0.85 + flash * 0.15, 0.25];
             let bob = (time * 2.0 + o.pos[0] + o.pos[2]).sin() * 0.05;
             let half = 0.12f32;
             let corners = [
@@ -733,7 +728,11 @@ mod tests {
         assert_eq!(split_xp(1), vec![1]);
         assert_eq!(split_xp(5), vec![3, 1, 1]); // zombie kill
         assert_eq!(split_xp(10), vec![7, 3]);
-        assert_eq!(split_xp(12000).iter().sum::<i32>(), 12000, "dragon XP preserved");
+        assert_eq!(
+            split_xp(12000).iter().sum::<i32>(),
+            12000,
+            "dragon XP preserved"
+        );
         // every orb value is one of the base values
         for v in split_xp(976) {
             assert!(ORB_VALUES.contains(&v), "value {v} not a base value");

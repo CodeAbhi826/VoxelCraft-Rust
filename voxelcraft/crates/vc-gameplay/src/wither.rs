@@ -153,7 +153,9 @@ impl WitherSystem {
     /// Player melee hit (the game layer ray-tests the wither AABB).
     /// Charging = invulnerable (VERIFIED). Returns the damage dealt.
     pub fn damage(&mut self, amount: f32) -> (f32, bool) {
-        let Some(w) = &mut self.wither else { return (0.0, false) };
+        let Some(w) = &mut self.wither else {
+            return (0.0, false);
+        };
         if w.charging() || !w.alive() {
             return (0.0, w.charging());
         }
@@ -170,7 +172,9 @@ impl WitherSystem {
 
     pub fn tick(&mut self, player: Option<[f32; 3]>) -> Vec<WitherEvent> {
         let mut events = Vec::new();
-        let Some(w) = &mut self.wither else { return events };
+        let Some(w) = &mut self.wither else {
+            return events;
+        };
         if !w.alive() {
             // death transition: fire Died exactly once, then inert
             if !self.died_fired {
@@ -213,7 +217,9 @@ impl WitherSystem {
         let dist = player.map(|p| {
             (p[0] - w.pos[0]).powi(2) + (p[1] - w.pos[1]).powi(2) + (p[2] - w.pos[2]).powi(2)
         });
-        let in_range = dist.map(|d| d < AGGRO_BLOCKS * AGGRO_BLOCKS).unwrap_or(false);
+        let in_range = dist
+            .map(|d| d < AGGRO_BLOCKS * AGGRO_BLOCKS)
+            .unwrap_or(false);
 
         // main head: black skull every 2 s at the target (VERIFIED)
         if w.skull_cd > 0 {
@@ -363,7 +369,8 @@ mod tests {
         }
         let evs = sys.tick(Some([10.0, 75.0, 10.0]));
         assert!(
-            evs.iter().any(|e| matches!(e, WitherEvent::BirthExplosion(_))),
+            evs.iter()
+                .any(|e| matches!(e, WitherEvent::BirthExplosion(_))),
             "tick 220 fires the birth explosion"
         );
         // now vulnerable

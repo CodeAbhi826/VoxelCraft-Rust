@@ -79,7 +79,8 @@ fn now_secs() -> u32 {
 fn compress(payload: &[u8], scheme: u8) -> std::io::Result<Vec<u8>> {
     match scheme {
         COMPRESSION_ZLIB => {
-            let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+            let mut enc =
+                flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
             enc.write_all(payload)?;
             enc.finish()
         }
@@ -153,11 +154,12 @@ pub fn read_chunk(world_dir: &Path, cx: i32, cz: i32) -> std::io::Result<Option<
     if available < 5 {
         return Ok(None);
     }
-    let record_len = u32::from_be_bytes(
-        bytes[start..start + 4].try_into().map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::UnexpectedEof, format!("anvil: short length field: {e}"))
-        })?,
-    ) as usize;
+    let record_len = u32::from_be_bytes(bytes[start..start + 4].try_into().map_err(|e| {
+        std::io::Error::new(
+            std::io::ErrorKind::UnexpectedEof,
+            format!("anvil: short length field: {e}"),
+        )
+    })?) as usize;
     if record_len == 0 || record_len.saturating_add(4) > available {
         return Ok(None); // corrupt length — treat chunk as absent
     }
@@ -197,7 +199,10 @@ pub fn write_chunks(world_dir: &Path, entries: &[(i32, i32, Vec<u8>)]) -> std::i
     let mut by_region: ByRegion<'_> = ByRegion::new();
     for (cx, cz, nbt) in entries {
         let key = (cx.div_euclid(32), cz.div_euclid(32));
-        by_region.entry(key).or_default().push((*cx, *cz, nbt.as_slice()));
+        by_region
+            .entry(key)
+            .or_default()
+            .push((*cx, *cz, nbt.as_slice()));
     }
     for ((rx, rz), chunks) in by_region {
         let mut p = world_dir.to_path_buf();
@@ -213,7 +218,6 @@ pub fn write_chunks(world_dir: &Path, entries: &[(i32, i32, Vec<u8>)]) -> std::i
 /// uncompressed NBT)]. The path is derived by the caller (write_chunks);
 /// unlike `region_path` this does no directory side effects.
 fn rewrite_region(path: &Path, chunks: &[(i32, i32, &[u8])]) -> std::io::Result<()> {
-
     // 1. collect existing records (raw, still compressed)
     let mut records: Vec<Option<RawChunk>> = vec![None; CHUNKS_PER_SIDE * CHUNKS_PER_SIDE];
     let mut timestamps = vec![0u32; CHUNKS_PER_SIDE * CHUNKS_PER_SIDE];
@@ -282,9 +286,7 @@ fn rewrite_region(path: &Path, chunks: &[(i32, i32, &[u8])]) -> std::io::Result<
         if sectors > u8::MAX as u32 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::FileTooLarge,
-                format!(
-                    "anvil: a record spans {sectors} sectors (max 255)"
-                ),
+                format!("anvil: a record spans {sectors} sectors (max 255)"),
             ));
         }
         // header entry
@@ -320,13 +322,16 @@ fn rewrite_region(path: &Path, chunks: &[(i32, i32, &[u8])]) -> std::io::Result<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vc_nbt::nbt;
     use std::time::SystemTime;
+    use vc_nbt::nbt;
 
     fn tmp_dir(tag: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!(
             "vc-anvil-{tag}-{}-{}",
-            SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos(),
             std::process::id()
         ));
         fs::create_dir_all(&d).unwrap();
@@ -362,7 +367,7 @@ mod tests {
         // sector-aligned total size
         assert_eq!(raw.len() % SECTOR_BYTES, 0);
         assert!(raw.len() >= 3 * SECTOR_BYTES); // header + at least 1 data sector
-        // header location: slot (3 & 31) + 32*(5 & 31) = 163
+                                                // header location: slot (3 & 31) + 32*(5 & 31) = 163
         let slot = slot_index(3, 5);
         let sector = be3_to_u32(&raw[slot * 4..slot * 4 + 4]);
         let count = raw[slot * 4 + 3] as u32;
@@ -427,7 +432,11 @@ mod tests {
         write_chunk(&dir, -1, -1, &n).unwrap();
         assert_eq!(read_chunk(&dir, -1, -1).unwrap().unwrap(), n);
         assert_eq!(
-            region_path(&dir, -1, -1).file_name().unwrap().to_str().unwrap(),
+            region_path(&dir, -1, -1)
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap(),
             "r.-1.-1.mca"
         );
         // (-1, -1) and (31, 31) share that region but different slots
@@ -464,7 +473,11 @@ mod tests {
         write_chunks(&dir, &entries).unwrap();
         // every chunk readable, byte-exact
         for (x, z, bytes) in &entries {
-            assert_eq!(read_chunk(&dir, *x, *z).unwrap().unwrap(), *bytes, "chunk ({x},{z})");
+            assert_eq!(
+                read_chunk(&dir, *x, *z).unwrap().unwrap(),
+                *bytes,
+                "chunk ({x},{z})"
+            );
         }
         // exactly three region files exist (grouped, not one per chunk)
         let mut names: Vec<String> = fs::read_dir(dir.join("region"))

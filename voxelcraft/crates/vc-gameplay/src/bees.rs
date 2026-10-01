@@ -233,9 +233,11 @@ impl HiveSystem {
             let k = self.scan_t / 20;
             let cx = sim_center.0 + (k % 17) - 8;
             let cz = sim_center.1 + ((k / 17) % 17) - 8;
-            let in_ring = cx.wrapping_sub(sim_center.0).saturating_abs().max(
-                cz.wrapping_sub(sim_center.1).saturating_abs(),
-            ) <= sim_radius;
+            let in_ring = cx
+                .wrapping_sub(sim_center.0)
+                .saturating_abs()
+                .max(cz.wrapping_sub(sim_center.1).saturating_abs())
+                <= sim_radius;
             if in_ring && world.chunk((cx, cz)).is_some() {
                 for y in HIVE_SCAN_Y_MIN..=HIVE_SCAN_Y_MAX {
                     for lx in 0..16usize {
@@ -248,13 +250,12 @@ impl HiveSystem {
                                     cz * 16 + lz as i32,
                                 ])
                             {
-                                let pos = [
-                                    cx * 16 + lx as i32,
-                                    y,
-                                    cz * 16 + lz as i32,
-                                ];
+                                let pos = [cx * 16 + lx as i32, y, cz * 16 + lz as i32];
                                 let natural = b == BEE_NEST;
-                                let mut data = HiveData { bees: Vec::new(), natural };
+                                let mut data = HiveData {
+                                    bees: Vec::new(),
+                                    natural,
+                                };
                                 if natural {
                                     // "generate with 2-3 bees in them"
                                     let n = 2 + (self.rng.next_range(2)) as usize;
@@ -298,7 +299,11 @@ impl HiveSystem {
                 if is_day || sb.angry {
                     let done = data.bees.remove(i);
                     if done.nectar {
-                        let bump = if self.rng.next_range(100) < 1 { 2u8 } else { 1u8 };
+                        let bump = if self.rng.next_range(100) < 1 {
+                            2u8
+                        } else {
+                            1u8
+                        };
                         levels.push((*pos, bump));
                         self.honey_total += 1;
                     }
@@ -396,14 +401,14 @@ impl HiveSystem {
         for dy in [0i32, -1, -2] {
             let y = hive[1] + dy;
             if world.get_block(hive[0], y, hive[2]) == AIR {
-                return [
-                    hive[0] as f32 + 0.5,
-                    y as f32 + 0.3,
-                    hive[2] as f32 + 0.5,
-                ];
+                return [hive[0] as f32 + 0.5, y as f32 + 0.3, hive[2] as f32 + 0.5];
             }
         }
-        [hive[0] as f32 + 0.5, hive[1] as f32 + 0.3, hive[2] as f32 + 0.5]
+        [
+            hive[0] as f32 + 0.5,
+            hive[1] as f32 + 0.3,
+            hive[2] as f32 + 0.5,
+        ]
     }
 }
 
@@ -532,7 +537,13 @@ mod tests {
         let w = world_with_hive(false, 0);
         let mut sys = HiveSystem::new(9);
         let hive = [8, 70, 8];
-        sys.hives.insert(hive, HiveData { bees: Vec::new(), natural: false });
+        sys.hives.insert(
+            hive,
+            HiveData {
+                bees: Vec::new(),
+                natural: false,
+            },
+        );
         assert!(sys.enter(hive, 10.0, true), "enter at capacity");
         // three nectar bees inside (the honey bump only comes from
         // pollinated bees — "Every pollinated bee that leaves the hive
@@ -569,7 +580,13 @@ mod tests {
         let w = world_with_hive(false, 0);
         let mut sys = HiveSystem::new(10);
         let hive = [8, 70, 8];
-        sys.hives.insert(hive, HiveData { bees: Vec::new(), natural: false });
+        sys.hives.insert(
+            hive,
+            HiveData {
+                bees: Vec::new(),
+                natural: false,
+            },
+        );
         sys.enter(hive, 10.0, false);
         sys.enter(hive, 10.0, false);
         let n = sys.anger(hive);
@@ -654,7 +671,13 @@ mod tests {
         let mut w = world_with_hive(false, 0);
         let mut sys = HiveSystem::new(11);
         let hive = [8, 70, 8];
-        sys.hives.insert(hive, HiveData { bees: Vec::new(), natural: false });
+        sys.hives.insert(
+            hive,
+            HiveData {
+                bees: Vec::new(),
+                natural: false,
+            },
+        );
         // the block vanishes (broken)
         w.set_block_state(8, 70, 8, AIR);
         sys.scan_t = 144 * 20 - 1;

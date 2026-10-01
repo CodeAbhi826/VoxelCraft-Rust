@@ -56,7 +56,7 @@ pub(super) fn grindstone_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let o: [i32; 3] = [138, 138, 138]; // stone
     let s: [i32; 3] = [104, 104, 104]; // stone rim
     let i: [i32; 3] = [168, 168, 168]; // stone highlight hub
-    // base fill: the wooden frame color everywhere
+                                       // base fill: the wooden frame color everywhere
     for y in 0..16 {
         for x in 0..16 {
             put(a, t, x, y, w[0], w[1], w[2], 255);

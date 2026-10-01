@@ -125,7 +125,11 @@ impl PanoResources {
                 wgpu::ImageCopyTexture {
                     texture: &tex,
                     mip_level: 0,
-                    origin: wgpu::Origin3d { x: 0, y: 0, z: face },
+                    origin: wgpu::Origin3d {
+                        x: 0,
+                        y: 0,
+                        z: face,
+                    },
                     aspect: wgpu::TextureAspect::All,
                 },
                 &data[face as usize * (SIZE as usize * SIZE as usize * 4)
@@ -327,11 +331,7 @@ fn vnoise3(x: f32, y: f32, z: f32) -> f32 {
     let c00 = lerp(hash3(xi, yi, zi), hash3(xi + 1, yi, zi), u);
     let c10 = lerp(hash3(xi, yi + 1, zi), hash3(xi + 1, yi + 1, zi), u);
     let c01 = lerp(hash3(xi, yi, zi + 1), hash3(xi + 1, yi, zi + 1), u);
-    let c11 = lerp(
-        hash3(xi, yi + 1, zi + 1),
-        hash3(xi + 1, yi + 1, zi + 1),
-        u,
-    );
+    let c11 = lerp(hash3(xi, yi + 1, zi + 1), hash3(xi + 1, yi + 1, zi + 1), u);
     lerp(lerp(c00, c10, v), lerp(c01, c11, v), w)
 }
 
@@ -469,26 +469,21 @@ pub fn paint_cubemap(size: u32) -> Vec<u8> {
                         // (crimson-forest stand: dense, tall — the canopies
                         // must read as trees, not a hedge line)
                         let cells = 132.0;
-                        let cell = ((az + std::f32::consts::PI)
-                            / (std::f32::consts::TAU)
-                            * cells)
+                        let cell = ((az + std::f32::consts::PI) / (std::f32::consts::TAU) * cells)
                             .floor() as i32;
                         let h = hash3(cell, 77, 0);
                         if h < 0.78 {
-                            let local = ((az + std::f32::consts::PI)
-                                / std::f32::consts::TAU
+                            let local = ((az + std::f32::consts::PI) / std::f32::consts::TAU
                                 * cells)
                                 .fract();
                             let hgt = 0.04 + 0.14 * hash3(cell, 78, 0);
                             // canopy profile, quantized to two steps (blocky)
-                            let prof =
-                                (std::f32::consts::PI * local).sin().clamp(0.0, 1.0);
+                            let prof = (std::f32::consts::PI * local).sin().clamp(0.0, 1.0);
                             let prof = if prof > 0.55 { 1.0 } else { 0.6 };
                             let tree_top = near_h + hgt * prof;
                             let tree_base = near_h - 0.012;
                             if below > tree_base && below < tree_top {
-                                let is_trunk =
-                                    below < tree_base + 0.006 && prof == 1.0;
+                                let is_trunk = below < tree_base + 0.006 && prof == 1.0;
                                 let shade = hash3(cell, 79, 0);
                                 let tcol = if shade < 0.5 { tree_lit } else { tree_dark };
                                 col2 = if is_trunk { trunk } else { tcol };
@@ -557,7 +552,10 @@ mod tests {
         let up = px(2, 32, 32);
         assert!(up[0] > up[2], "up face must be crimson sky, got {up:?}");
         let down = px(3, 32, 32);
-        assert!(down[0] > down[1], "down face must be netherrack, got {down:?}");
+        assert!(
+            down[0] > down[1],
+            "down face must be netherrack, got {down:?}"
+        );
 
         // optional visual dump for inspection (never set in CI):
         //   PANORAMA_DUMP=/tmp/pano cargo test -p vc-render panorama
@@ -579,8 +577,7 @@ mod tests {
                         *c = (srgb(*c as f32 / 255.0) * 255.0).round() as u8;
                     }
                 }
-                let img = image::RgbaImage::from_raw(384, 384, slice)
-                    .expect("face buffer size");
+                let img = image::RgbaImage::from_raw(384, 384, slice).expect("face buffer size");
                 let _ = img.save(format!("{dir}/pano_{face}.png"));
             }
         }

@@ -192,9 +192,13 @@ impl GuiTextureSet {
         };
 
         let mut hunger_px = vec![0u8; 27 * 9 * 4];
-        for (i, variant) in [HungerVariant::Empty, HungerVariant::Full, HungerVariant::Half]
-            .into_iter()
-            .enumerate()
+        for (i, variant) in [
+            HungerVariant::Empty,
+            HungerVariant::Full,
+            HungerVariant::Half,
+        ]
+        .into_iter()
+        .enumerate()
         {
             let mut tile = [0u8; 9 * 9 * 4];
             draw_hunger(&mut tile, 9, variant);
@@ -226,7 +230,10 @@ impl GuiTextureSet {
         };
 
         let mut bubbles_px = vec![0u8; 18 * 9 * 4];
-        for (i, variant) in [BubbleVariant::Full, BubbleVariant::Gone].into_iter().enumerate() {
+        for (i, variant) in [BubbleVariant::Full, BubbleVariant::Gone]
+            .into_iter()
+            .enumerate()
+        {
             let mut tile = [0u8; 9 * 9 * 4];
             draw_bubble(&mut tile, 9, variant);
             put_tile_9(&mut bubbles_px, i, &tile);
@@ -376,7 +383,12 @@ mod tests {
             (&set.hunger, 9, 9, 3),
             (&set.armor, 9, 9, 3),
             (&set.bubbles, 9, 9, 2),
-            (&set.effects, 9, 9, crate::textures::gui_art::EFFECT_ICON_COUNT),
+            (
+                &set.effects,
+                9,
+                9,
+                crate::textures::gui_art::EFFECT_ICON_COUNT,
+            ),
             (&set.widgets, 20, 20, 6),
             (&set.hotbar_bg, 182, 22, 1),
             (&set.hotbar_sel, 24, 22, 1),

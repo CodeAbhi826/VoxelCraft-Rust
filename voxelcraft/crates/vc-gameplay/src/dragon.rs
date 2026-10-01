@@ -158,7 +158,9 @@ impl DragonSystem {
     /// dragon's AABB first). Non-player damage never routes here
     /// (VERIFIED: only players and explosions damage the dragon).
     pub fn damage(&mut self, amount: f32) -> f32 {
-        let Some(d) = &mut self.dragon else { return 0.0 };
+        let Some(d) = &mut self.dragon else {
+            return 0.0;
+        };
         if d.dying.is_some() {
             return 0.0;
         }
@@ -172,14 +174,13 @@ impl DragonSystem {
     /// Hit-test a crystal by id-less proximity: returns the index of the
     /// alive crystal within `reach` of the ray-hit point.
     pub fn crystal_hit(&self, point: [f32; 3], reach: f32) -> Option<usize> {
-        self.crystals
-            .iter()
-            .position(|c| {
-                c.alive
-                    && (c.pos[0] - point[0]).powi(2) + (c.pos[1] - point[1]).powi(2)
-                        + (c.pos[2] - point[2]).powi(2)
-                        < reach * reach
-            })
+        self.crystals.iter().position(|c| {
+            c.alive
+                && (c.pos[0] - point[0]).powi(2)
+                    + (c.pos[1] - point[1]).powi(2)
+                    + (c.pos[2] - point[2]).powi(2)
+                    < reach * reach
+        })
     }
 
     /// Player attack on a crystal: it detonates (power 6 — VERIFIED). If
@@ -210,7 +211,9 @@ impl DragonSystem {
     /// the fight — vanilla keeps the chunks loaded, our sim gate holds).
     pub fn tick(&mut self, world: &World, player: Option<[f32; 3]>) -> Vec<DragonEvent> {
         let mut events = Vec::new();
-        let Some(d) = &mut self.dragon else { return events };
+        let Some(d) = &mut self.dragon else {
+            return events;
+        };
 
         // ---- death sequence (VERIFIED timing) ----
         if let Some(mut t) = d.dying {
@@ -260,11 +263,7 @@ impl DragonSystem {
             DragonPhase::Circle => {
                 // orbit the island center at radius 30, height ~85
                 d.orbit_yaw += 0.01;
-                let target = [
-                    30.0 * d.orbit_yaw.cos(),
-                    85.0,
-                    30.0 * d.orbit_yaw.sin(),
-                ];
+                let target = [30.0 * d.orbit_yaw.cos(), 85.0, 30.0 * d.orbit_yaw.sin()];
                 steer(d, target, 0.03);
                 if d.phase_t > 100 + (self.rng.next_range(60) as i32) {
                     d.phase = if self.rng.next_range(3) == 0 {
@@ -362,16 +361,14 @@ mod tests {
     #[test]
     fn fight_begins_with_ten_crystals_and_cycles() {
         let mut sys = DragonSystem::new(7);
-        let tops: Vec<(i32, i32, i32)> = (0..10)
-            .map(|i| (i * 8, 80 + i, i * 8))
-            .collect();
+        let tops: Vec<(i32, i32, i32)> = (0..10).map(|i| (i * 8, 80 + i, i * 8)).collect();
         sys.begin_fight(&tops);
         assert!(sys.dragon.as_ref().unwrap().alive());
         assert_eq!(sys.crystals.len(), 10); // VERIFIED count
         assert!(sys.fought_once);
         // crystals sit one block above their pillar tops
         assert_eq!(sys.crystals[3].pos[1], 84.0); // tops[3].1 = 83 + 1
-        // tick without a player: no events, fight paused
+                                                  // tick without a player: no events, fight paused
         let w = World::new(1);
         assert!(sys.tick(&w, None).is_empty());
     }
@@ -411,7 +408,7 @@ mod tests {
         // one crystal near the dragon
         sys.begin_fight(&[(0, 80, 0)]);
         sys.damage(20.0); // dragon at 180, hurt
-        // park the dragon within the crystal's 32-block heal cuboid
+                          // park the dragon within the crystal's 32-block heal cuboid
         sys.dragon.as_mut().unwrap().pos = [0.5, 81.0, 0.5];
         // crystal heals 1 HP per 10 ticks within the 32 cuboid
         let w = World::new(1);

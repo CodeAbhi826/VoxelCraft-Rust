@@ -509,13 +509,13 @@ fn floor_div(a: i32, b: i32) -> i32 {
     }
 }
 
-/// 1.16 (Nether Update, part 2): the nether region biome â a
+/// 1.16 (Nether Update, part 2): the nether region biome — a
 /// deterministic 2x2-chunk cell hash (contiguous forest regions, not
 /// per-column confetti). Shares VERIFIED against the wiki infobox
 /// rows: crimson forest "22% of the Nether by volume", warped forest
 /// "around 8% of the Nether by volume" (the rarest of the five);
 /// the nether wastes fill the rest. The region scale is the engine's
-/// disclosed adaptation â vanilla's 3D biome climate sampler needs
+/// disclosed adaptation — vanilla's 3D biome climate sampler needs
 /// the full multi-noise stack.
 pub fn nether_region_biome(seed: u64, cx: i32, cz: i32) -> Biome {
     let region_x = floor_div(cx, 2);

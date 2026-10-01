@@ -12,10 +12,10 @@
 //!
 //! Deltas vs 1.16.5 (documented per spec §0 honesty rules):
 //! * vanilla falling water is a distinct level-8 full-height block; we use
-//!   level-1 flow in the falling column (same spread/decay behavior,
-//!   uniform render height today)
-//! * lava is not in the block registry yet — lava ticks land with its
-//!   registration (Phase 7)
+//!   level-1 flow in the falling column (same spread/decay behavior;
+//!   the mesher's water-above fold renders the column full height — T3)
+//! * lava IS registered (blocks.rs LAVA, 161) with the Phase-E2 fluid
+//!   below — the mesher culls lava-lava boundaries (T4)
 //! * water does not break cross-plants it flows into (it stops at them;
 //!   vanilla replaces them) — scheduled with the plant interaction work
 

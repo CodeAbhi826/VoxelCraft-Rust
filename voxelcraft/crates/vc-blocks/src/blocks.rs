@@ -816,7 +816,7 @@ pub const E3_EGG_HORSE: u16 = 197;
 pub const E3_EGG_DONKEY: u16 = 198;
 pub const E3_EGG_MULE: u16 = 199;
 // ---------------------------------------------------------------------------
-// 1.7.2 bracket — V2 block window (ids 200..=242 [merged renumber past the E-series], states 236..=294).
+// 1.7.2 bracket — V2 block window (ids 200..=242 [merged renumber past the E-series], states 400..=442).
 // The pre-1.7 registry is fully allocated (identity states 0..=56, model
 // states 57..=88, sim states 89..=235). New blocks get ids past 102 that
 // [merge 2026-09-06] the F-series (1.7.2-1.10) block ids were shifted
@@ -988,7 +988,7 @@ pub const PRISMARINE_CRYSTALS: u16 = 261;
 
 /// first state of the V3 window (1.8 bracket)
 pub const V3_STATE_BASE: u16 = 447;
-pub const V3_COUNT: u16 = 19; // ids 162..=180
+pub const V3_COUNT: u16 = 19; // ids 243..=261
 pub const V3_STATE_TO_BLOCK: [u16; V3_COUNT as usize] = [
     SLIME_BLOCK,
     COARSE_DIRT,
@@ -1056,7 +1056,7 @@ pub const ELYTRA: u16 = 270;
 pub const SHIELD: u16 = 271;
 
 pub const V4_STATE_BASE: u16 = 466;
-pub const V4_COUNT: u16 = 10; // ids 181..=190
+pub const V4_COUNT: u16 = 10; // ids 262..=271
 pub const V4_STATE_TO_BLOCK: [u16; V4_COUNT as usize] = [
     GRASS_PATH,
     PURPUR_BLOCK,
@@ -1185,7 +1185,7 @@ pub const SPAWN_EGG_HUSK: u16 = 289;
 pub const SPAWN_EGG_STRAY: u16 = 290;
 
 pub const V5_STATE_BASE: u16 = 476;
-pub const V5_COUNT: u16 = 4; // ids 191..=194
+pub const V5_COUNT: u16 = 4; // ids 272..=275
 pub const V5_STATE_TO_BLOCK: [u16; V5_COUNT as usize] = [
     MAGMA_BLOCK,
     NETHER_WART_BLOCK,
@@ -6465,7 +6465,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
         SoundFamily::Wood,
     ),
     // redstone core (Phase 6 §25): cross-rendered components; power lives
-    // in the sim states (wire 113..128, lever 129/130, torch 131/132)
+    // in the sim states (wire 96..=111, lever 112/113, torch 114/115)
     d(
         "Redstone Wire",
         [TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE],

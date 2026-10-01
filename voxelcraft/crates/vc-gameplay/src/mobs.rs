@@ -523,9 +523,8 @@ impl MobKind {
 
     /// attacks on sight (zombie/skeleton/creeper/spider; enderman is
     /// neutral until provoked). Phase E1: + magma cube, blaze,
-    /// zombie villager.
-    /// neutral until provoked). 1.10: stray/husk inherit their base
-    /// kinds' hostility; the polar bear is neutral (only near cubs)
+    /// zombie villager. 1.10: stray/husk inherit their base kinds'
+    /// hostility; the polar bear is neutral (only near cubs)
     pub fn hostile(self) -> bool {
         matches!(
             self,

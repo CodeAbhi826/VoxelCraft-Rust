@@ -638,8 +638,8 @@ fn main_emit(@builtin(workgroup_id) wid: vec3<u32>,
 // section assembly.
 // ---------------------------------------------------------------------------
 
-/// LUT region offsets, ALL derived from vc-blocks (STATE_COUNT=236,
-/// BLOCK_COUNT=103) so a new block/state grows the layout with them —
+/// LUT region offsets, ALL derived from vc-blocks (STATE_COUNT=863,
+/// BLOCK_COUNT=533) so a new block/state grows the layout with them —
 /// the Phase 10 END_PORTAL_FRAME state (235) collided with the old
 /// hardcoded layout ([0..235) state→block ended exactly where the
 /// flags region began, and the clamps/offsets were frozen at 234/101).

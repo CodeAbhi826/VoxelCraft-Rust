@@ -10,7 +10,8 @@ use vc_world::world::ChunkPos;
 /// engine-drawn missing-texture tile (magenta/black checker) — §46 fallback
 pub const TILE_MISSING: u16 = 63;
 
-/// snapshot values are STATE ids (u16 truncated to u8, ≤ 62 today);
+/// snapshot values are STATE ids (u16 — the registry spans 0..=863 and
+/// the padded snapshot buffer carries full u16 states; T7 doc fix);
 /// property lookups fold them to block ids
 #[inline]
 fn sb(s: u16) -> u16 {

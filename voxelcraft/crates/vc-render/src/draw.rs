@@ -37,6 +37,7 @@
 //! draws = chunks (loop path) or regions (MDI path).
 
 use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
 use vc_world::world::ChunkPos;
 
 /// chunks per mesh-region side (8 → 128×128 blocks, ≈1–16 MB arena)
@@ -267,9 +268,9 @@ pub fn occlusion_visible(
     chunks: &FxHashMap<ChunkPos, ChunkGpu>,
     cam_chunk: ChunkPos,
     cam_band: u8,
-) -> Option<std::collections::HashSet<ChunkPos>> {
+) -> Option<rustc_hash::FxHashSet<ChunkPos>> {
     chunks.get(&cam_chunk)?;
-    let mut seen: std::collections::HashSet<(ChunkPos, u8)> = Default::default();
+    let mut seen: rustc_hash::FxHashSet<(ChunkPos, u8)> = Default::default();
     let mut queue: std::collections::VecDeque<(ChunkPos, u8)> = Default::default();
     seen.insert((cam_chunk, cam_band));
     queue.push_back((cam_chunk, cam_band));
@@ -297,7 +298,7 @@ pub fn occlusion_visible(
             queue.push_back((p, b - 1));
         }
     }
-    let mut vis: std::collections::HashSet<ChunkPos> = Default::default();
+    let mut vis: rustc_hash::FxHashSet<ChunkPos> = Default::default();
     vis.insert(cam_chunk); // the column you stand in is always drawn
     for (p, b) in seen {
         if let Some(g) = chunks.get(&p) {
@@ -325,7 +326,7 @@ pub fn occlusion_visible(
 #[derive(Default)]
 pub struct OcclCache {
     key: (ChunkPos, u8, u64),
-    vis: std::collections::HashSet<ChunkPos>,
+    vis: rustc_hash::FxHashSet<ChunkPos>,
 }
 
 /// cached flood: recomputes only when (cam chunk, band, mesh revision)
@@ -338,7 +339,7 @@ pub fn occlusion_visible_cached<'a>(
     cam_band: u8,
     mesh_rev: u64,
     cache: &'a mut OcclCache,
-) -> Option<&'a std::collections::HashSet<ChunkPos>> {
+) -> Option<&'a rustc_hash::FxHashSet<ChunkPos>> {
     if cache.key == (cam_chunk, cam_band, mesh_rev) && !cache.vis.is_empty() {
         return Some(&cache.vis);
     }

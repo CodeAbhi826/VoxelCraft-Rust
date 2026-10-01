@@ -8,7 +8,6 @@ use crate::textures;
 use crate::ui::{UiCanvas, UI_H, UI_W};
 use glam::{Mat4, Vec3, Vec4};
 use rustc_hash::FxHashMap;
-use std::collections::HashMap;
 use vc_mesh::mesh::{MeshData, Vertex};
 use vc_world::world::ChunkPos;
 use wgpu::util::DeviceExt;
@@ -888,7 +887,40 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
-    let c = textureSample(atlas_tex, atlas_samp, in.uv);
+    // T9 (2026-10-01): tile-safe sampling — the same guard family the
+    // terrain/water shaders carry, adapted to the particle's ATLAS-space
+    // uv (no fract, no tile offset). The sub-tile rect is one 16-texel
+    // tile's quarter (8 texels, quarter-grid aligned: the u0 texel =
+    // tx*16 + qx*8), so the quarter's origin derives from the uv itself.
+    // (1) MIP-2 GRADIENT CAP (4 texels = 4/512 atlas units — the terrain
+    //     shader's cap): deep mips are never selected, so tiles can never
+    //     bleed at distance.
+    // (2) LOD-AWARE INSET clamped to the QUARTER: bilinear at mip L is
+    //     quarter-safe inside [q0 + 2^L/2, q0 + 8 - 2^L/2] texels — the
+    //     unclamped edge of a flush quarter (qx=0/qy=0 sits ON the tile
+    //     boundary) blends the NEIGHBORING tile's texels. Up close the
+    //     band is half a texel (identical fidelity); at the cap it is 2
+    //     texels (the quarter keeps its inner 4).
+    var gdx = dpdx(in.uv);
+    var gdy = dpdy(in.uv);
+    let glen = max(length(gdx), length(gdy));
+    let gcap = 4.0 / 512.0;
+    if (glen > gcap) {
+        let gs = gcap / glen;
+        gdx = gdx * gs;
+        gdy = gdy * gs;
+    }
+    // effective mip texels per pixel (<= 4 under the cap):
+    // atlas-units/px × 512
+    let tgrad = max(length(gdx), length(gdy)) * 512.0;
+    // half a texel of the effective mip, clamped to [1, 4] half-texels,
+    // in atlas units (1 texel = 1/512 → N half-texels = N/1024)
+    let band = clamp(max(tgrad * 16.0, 1.0), 1.0, 4.0) / 1024.0;
+    let inset = band * 512.0;
+    let uvt = in.uv * 512.0;
+    let q0 = floor(uvt / 8.0) * 8.0;
+    let uv = clamp(uvt, q0 + inset * 0.5, q0 + 8.0 - inset * 0.5) / 512.0;
+    let c = textureSampleGrad(atlas_tex, atlas_samp, uv, gdx, gdy);
     if (c.a < 0.1) { discard; }
     var rgb = c.rgb * in.col;
     let d = distance(in.world, G.cam.xyz);
@@ -1631,7 +1663,7 @@ pub struct Renderer {
     pub adapter_name: String,
     pub chunks: FxHashMap<ChunkPos, ChunkGpu>,
     /// 8×8-chunk mesh-region arenas (Phase 9 §14: regional mega-buffers)
-    regions: HashMap<(i32, i32), RegionArena>,
+    regions: FxHashMap<(i32, i32), RegionArena>,
     /// true when the device exposes MULTI_DRAW_INDIRECT +
     /// INDIRECT_FIRST_INSTANCE (native Vulkan/DX12/Metal) — one
     /// multi_draw_indexed_indirect per region run; false → zero-rebind
@@ -3476,7 +3508,7 @@ impl Renderer {
             adapter_desc,
             adapter_name,
             chunks: FxHashMap::default(),
-            regions: HashMap::new(),
+            regions: FxHashMap::default(),
             draw_mdi,
             args_buf,
             msaa: 0,

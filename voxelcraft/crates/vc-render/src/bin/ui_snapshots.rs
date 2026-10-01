@@ -11,15 +11,6 @@ use vc_render::ui::{self, UiCanvas};
 /// a neutral mid-tone stand-in for the blurred panorama
 const PANO: [u8; 4] = [96, 122, 146, 255];
 
-fn snap(name: &str, paint: &dyn Fn(&mut UiCanvas)) {
-    let mut ui = UiCanvas::new();
-    ui.resize(ui::UI_W, ui::UI_H);
-    paint(&mut ui);
-    let p = format!("{name}.png");
-    ui.dump_png_flat(&p, PANO);
-    println!("wrote {p}");
-}
-
 fn main() {
     // `--size WxH` shoots the whole set at a different live canvas size
     // (e.g. 1920x1080, 2560x1440) through the SAME set_live_ui_size path
@@ -63,7 +54,6 @@ fn main() {
         ui.dump_png_flat(&p, PANO);
         println!("wrote {p}");
     };
-    let _ = snap;
 
     // title
     let ws = ui::layout_title(false);

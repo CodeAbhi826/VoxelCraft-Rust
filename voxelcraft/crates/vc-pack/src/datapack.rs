@@ -795,8 +795,12 @@ pub fn parse_loot_table(json: &serde_json::Value) -> Result<LootTable, String> {
                     if let Some(fns) = entry.get("functions").and_then(|f| f.as_array()) {
                         for f in fns {
                             let f_kind = f.get("function").and_then(|n| n.as_str());
-                            if f_kind == Some("voxelcraft:set_count")
-                                || f_kind == Some("voxelcraft:set_count")
+                            // T10 fix (2026-10-01): the duplicated identical
+                            // condition hid the bare form — bare-form
+                            // set_count functions were silently dropped
+                            // (bare item/empty/loot_table entry forms are
+                            // accepted above)
+                            if f_kind == Some("voxelcraft:set_count") || f_kind == Some("set_count")
                             {
                                 if let Some(c) = f.get("count") {
                                     functions.push(LootFn::SetCount {
@@ -1321,6 +1325,10 @@ impl LoadedData {
             packs: reports,
             ..Default::default()
         };
+        // the clone is REQUIRED by the design: `out.packs` stays populated
+        // for the UI pack list (game.rs reads it) and the load tests pin
+        // its length — a mem::take would empty it (T10 note, 2026-10-01;
+        // load-time only, not a hot path)
         for pack in out.packs.clone() {
             for r in pack.recipes {
                 out.recipes.push(r);

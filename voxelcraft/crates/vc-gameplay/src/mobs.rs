@@ -623,8 +623,8 @@ impl MobKind {
     /// The spawn-egg mapping: egg id 0..=15 (SPAWN_EGG_BASE + i) in the
     /// SAME order as vc_blocks's BLOCK_TABLE egg rows + the EGG_PALETTES
     /// art table (order guarded by the egg roundtrip tests both sides).
-    pub fn from_egg(i: u8) -> MobKind {
-        match i {
+    pub fn from_egg(i: u8) -> Option<MobKind> {
+        let kind = match i {
             0 => MobKind::SnowGolem,
             1 => MobKind::MagmaCube,
             2 => MobKind::Blaze,
@@ -646,9 +646,10 @@ impl MobKind {
             17 => MobKind::Witch,
             18 => MobKind::Bat,
             // NOTE: index 19 (the E2 "Wither Spawn Egg") has no MobKind
-            // arm — the wither is a boss entity outside MobSystem (the
-            // egg stub falls through to Chicken; pre-existing E2
-            // behavior, disclosed in the worklog audit).
+            // arm — the wither is a boss entity outside MobSystem. T10 fix
+            // (2026-10-01): the old catch-all fell through to Chicken
+            // (spawning a chicken on wither-egg use); unknown eggs now
+            // spawn NOTHING.
             // Phase E3 (1.5–1.6): kinds 20..=22 (horse, donkey, mule —
             // egg ids 197..=199; blocks.rs egg_mob decodes those to
             // 20..=22, guarded by the roundtrip test)
@@ -697,8 +698,12 @@ impl MobKind {
             47 => MobKind::Silverfish,
             // the backlog round's weather-conversion mob — kind 48
             48 => MobKind::ZombifiedPiglin,
-            _ => MobKind::Chicken,
-        }
+            // T10 fix (2026-10-01): unknown eggs (the wither-egg stub and
+            // any other unmapped id) spawn NOTHING — the old catch-all
+            // spawned a Chicken
+            _ => return None,
+        };
+        Some(kind)
     }
 
     /// inverse of from_egg (egg id for a kind)
@@ -4360,7 +4365,6 @@ fn ai_tick(
                 m.bee = Some(bee);
             } else {
                 // -- DAY: the trip phases --
-                let mut restore = true;
                 match bee.phase {
                     super::bees::PH_HOVER => {
                         // hover near the hive; periodically seek a
@@ -4486,10 +4490,9 @@ fn ai_tick(
                         bee.phase = super::bees::PH_HOVER;
                     }
                 }
-                let _ = &mut restore;
-                if restore {
-                    m.bee = Some(bee);
-                }
+                // T10 fix (2026-10-01): the vestigial always-true `restore`
+                // flag is gone — the write-back is unconditional
+                m.bee = Some(bee);
             }
         }
         // bees handle their own steering — skip the generic AI below
@@ -7001,7 +7004,7 @@ mod tests {
             // husk — vanilla has these spawn eggs; deferred until the
             // registry grows the egg rows, disclosed in the worklog)
             if d.kind.egg_id() != 255 {
-                assert_eq!(MobKind::from_egg(d.kind.egg_id()), d.kind);
+                assert_eq!(MobKind::from_egg(d.kind.egg_id()), Some(d.kind));
             }
         }
         // verified rows
@@ -7735,15 +7738,15 @@ mod v111_tests {
         assert_eq!(MobKind::from_name("vindicator"), Some(MobKind::Vindicator));
         assert_eq!(MobKind::from_name("evoker"), Some(MobKind::Evoker));
         assert_eq!(MobKind::from_name("vex"), Some(MobKind::Vex));
-        assert_eq!(MobKind::from_egg(23), MobKind::Llama);
-        assert_eq!(MobKind::from_egg(24), MobKind::Vindicator);
-        assert_eq!(MobKind::from_egg(25), MobKind::Evoker);
-        assert_eq!(MobKind::from_egg(26), MobKind::Vex);
+        assert_eq!(MobKind::from_egg(23).unwrap(), MobKind::Llama);
+        assert_eq!(MobKind::from_egg(24).unwrap(), MobKind::Vindicator);
+        assert_eq!(MobKind::from_egg(25).unwrap(), MobKind::Evoker);
+        assert_eq!(MobKind::from_egg(26).unwrap(), MobKind::Vex);
         assert_eq!(MobKind::Llama.egg_id(), 23);
         assert_eq!(MobKind::Evoker.egg_id(), 25);
         // 1.12 (World of Color): parrot + illusioner — 32 kinds
         assert_eq!(MOB_DATA.len(), 49, "+ the 1.13 aquatic eight + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
-        assert_eq!(MobKind::from_egg(30), MobKind::Parrot);
+        assert_eq!(MobKind::from_egg(30).unwrap(), MobKind::Parrot);
         assert_eq!(MobKind::Parrot.egg_id(), 30);
         assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
         assert!(MobKind::Illusioner.hostile());
@@ -7830,8 +7833,8 @@ mod v111_tests {
     /// pre-existing kind-5 item
     #[test]
     fn v111_readded_egg_map() {
-        assert_eq!(MobKind::from_egg(27), MobKind::Husk);
-        assert_eq!(MobKind::from_egg(28), MobKind::Stray);
+        assert_eq!(MobKind::from_egg(27).unwrap(), MobKind::Husk);
+        assert_eq!(MobKind::from_egg(28).unwrap(), MobKind::Stray);
         assert_eq!(MobKind::Husk.egg_id(), 27);
         assert_eq!(MobKind::Stray.egg_id(), 28);
         // the changelog's five NEW eggs: llama/vindicator/evoker/vex +
@@ -8382,7 +8385,11 @@ mod v113_tests {
             MobKind::TropicalFish,
             MobKind::Turtle,
         ] {
-            assert_eq!(MobKind::from_egg(k.egg_id()), k, "{k:?} egg roundtrip");
+            assert_eq!(
+                MobKind::from_egg(k.egg_id()),
+                Some(k),
+                "{k:?} egg roundtrip"
+            );
         }
         // registry ids (VERIFIED: the 1.13 entity id set)
         assert_eq!(MobKind::Drowned.registry_id(), "voxelcraft:drowned");
@@ -8810,7 +8817,7 @@ mod v114_tests {
         // passive, not hostile/neutral/aquatic (the creature category)
         assert!(!d.kind.hostile() && !d.kind.neutral() && !d.kind.aquatic());
         // egg + name roundtrips
-        assert_eq!(MobKind::from_egg(40), MobKind::Fox);
+        assert_eq!(MobKind::from_egg(40).unwrap(), MobKind::Fox);
         assert_eq!(MobKind::Fox.egg_id(), 40);
         assert_eq!(MobKind::from_name("fox"), Some(MobKind::Fox));
         assert_eq!(MobKind::Fox.name(), "voxelcraft:fox");
@@ -9007,7 +9014,7 @@ fn v115_bee_def_row() {
     assert_eq!(d.armor, 0.0);
     assert!(MobKind::Bee.flies(), "bees hover (no gravity)");
     assert_eq!(MobKind::Bee.egg_id(), 41);
-    assert_eq!(MobKind::from_egg(41), MobKind::Bee);
+    assert_eq!(MobKind::from_egg(41).unwrap(), MobKind::Bee);
     assert_eq!(MobKind::Bee.sprite_tile(), TILE_MOB_BEE);
 }
 
@@ -9625,9 +9632,9 @@ fn v116b_forest_mob_def_rows() {
     assert_eq!(MobKind::Strider.egg_id(), 42);
     assert_eq!(MobKind::Piglin.egg_id(), 43);
     assert_eq!(MobKind::Hoglin.egg_id(), 44);
-    assert_eq!(MobKind::from_egg(42), MobKind::Strider);
-    assert_eq!(MobKind::from_egg(43), MobKind::Piglin);
-    assert_eq!(MobKind::from_egg(44), MobKind::Hoglin);
+    assert_eq!(MobKind::from_egg(42).unwrap(), MobKind::Strider);
+    assert_eq!(MobKind::from_egg(43).unwrap(), MobKind::Piglin);
+    assert_eq!(MobKind::from_egg(44).unwrap(), MobKind::Hoglin);
     assert_eq!(MobKind::Strider.sprite_tile(), TILE_MOB_STRIDER);
     assert_eq!(MobKind::Piglin.sprite_tile(), TILE_MOB_PIGLIN);
     assert_eq!(MobKind::Hoglin.sprite_tile(), TILE_MOB_HOGLIN);
@@ -9647,9 +9654,9 @@ fn v116b_forest_mob_def_rows() {
     assert_eq!(MobKind::from_name("cave_spider"), Some(MobKind::CaveSpider));
     assert_eq!(MobKind::from_name("silverfish"), Some(MobKind::Silverfish));
     // the egg window: kinds 45..=47 roundtrip
-    assert_eq!(MobKind::from_egg(45), MobKind::Ghast);
-    assert_eq!(MobKind::from_egg(46), MobKind::CaveSpider);
-    assert_eq!(MobKind::from_egg(47), MobKind::Silverfish);
+    assert_eq!(MobKind::from_egg(45).unwrap(), MobKind::Ghast);
+    assert_eq!(MobKind::from_egg(46).unwrap(), MobKind::CaveSpider);
+    assert_eq!(MobKind::from_egg(47).unwrap(), MobKind::Silverfish);
     assert_eq!(MobKind::Ghast.egg_id(), 45);
     assert_eq!(MobKind::CaveSpider.egg_id(), 46);
     assert_eq!(MobKind::Silverfish.egg_id(), 47);

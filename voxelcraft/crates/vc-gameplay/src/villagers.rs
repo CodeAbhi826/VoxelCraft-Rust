@@ -29,7 +29,7 @@
 //! - villager entity state (XP/level/stock) lives in memory: it resets on
 //!   world reload (vanilla persists per-entity NBT — logged open tail)
 
-use std::collections::HashSet;
+use rustc_hash::FxHashSet;
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
 
@@ -552,7 +552,7 @@ pub struct Villagers {
     rng: Rng,
     next_id: u32,
     /// village wells already populated (never double-spawn)
-    populated: HashSet<[i32; 2]>,
+    populated: FxHashSet<[i32; 2]>,
     /// total trades executed since boot (stats/F3/E2E)
     pub trades_done: u64,
     /// total ever spawned (E2E)
@@ -571,7 +571,7 @@ impl Villagers {
             list: Vec::with_capacity(32),
             rng: Rng::new(seed ^ 0x01A1_1A9E),
             next_id: 1,
-            populated: HashSet::new(),
+            populated: FxHashSet::default(),
             trades_done: 0,
             spawned_total: 0,
             last_tick: 0,

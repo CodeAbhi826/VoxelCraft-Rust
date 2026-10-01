@@ -7,7 +7,8 @@
 //! produces the same update order. This is the backbone the Phase-6
 //! regression suite hashes.
 
-use std::collections::{BTreeMap, HashSet};
+use rustc_hash::FxHashSet;
+use std::collections::BTreeMap;
 
 pub struct TickScheduler {
     /// (due_tick, insertion_seq) → position
@@ -17,7 +18,7 @@ pub struct TickScheduler {
     /// from exploding the queue exponentially (each change notifies ~7
     /// neighbors; without dedupe a 4-wire oscillator reaches 10⁴ entries
     /// within a hundred ticks).
-    pending_pos: HashSet<[i32; 3]>,
+    pending_pos: FxHashSet<[i32; 3]>,
     seq: u64,
     /// current sim tick (20 Hz since world start)
     now: u64,
@@ -37,7 +38,7 @@ impl TickScheduler {
     pub fn new() -> Self {
         TickScheduler {
             queue: BTreeMap::new(),
-            pending_pos: HashSet::new(),
+            pending_pos: FxHashSet::default(),
             seq: 0,
             now: 0,
             scheduled_total: 0,

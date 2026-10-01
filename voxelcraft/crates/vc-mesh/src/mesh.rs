@@ -2,6 +2,7 @@
 //! with the JSON-model path (blockstate dispatch, Phase 1).
 //! Pure function over a 3x3 chunk snapshot → safe on worker threads.
 
+use rustc_hash::FxHashMap;
 use std::sync::Arc;
 use vc_blocks::blocks::*;
 use vc_chunk::chunk::Chunk;

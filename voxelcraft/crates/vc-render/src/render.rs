@@ -206,6 +206,19 @@ pub struct PostParams {
     pub sharpen: f32,
 }
 
+/// One frame's draw inputs for `Renderer::render` — a single params struct
+/// instead of a 10-argument signature (clippy too_many_arguments, 10/7).
+pub struct RenderFrame<'a> {
+    pub cam: &'a Camera,
+    pub sky: &'a SkyState,
+    pub selection: Option<(i32, i32, i32)>,
+    pub post: PostParams,
+    pub clouds: u8,
+    pub panorama: Option<PanoView>,
+    pub particles: &'a [vc_particles::particles::ParticleVertex],
+    pub chunk_borders: Option<(i32, i32)>,
+}
+
 #[derive(Default)]
 pub struct RenderStats {
     pub chunks: u32,
@@ -5284,7 +5297,7 @@ impl Renderer {
             return;
         }
         // bytes-per-row must be a multiple of 256 — pad and trim after
-        let bytes_per_row = ((w * 4 + 255) / 256) * 256;
+        let bytes_per_row = (w * 4).div_ceil(256) * 256;
         let buf = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("screenshot-buf"),
             size: (bytes_per_row * h) as u64,
@@ -5321,7 +5334,7 @@ impl Renderer {
         let _ = self.device.poll(wgpu::Maintain::Wait);
         let _ = rx.recv_timeout(std::time::Duration::from_secs(2));
         let data = slice.get_mapped_range().to_vec();
-        let _ = buf.unmap();
+        buf.unmap();
         // unpad rows + BGRA→RGBA (Bgra8UnormSrgb is the surface format;
         // Rgba8UnormSrgb surfaces need no swap)
         let swap = self.config.format == wgpu::TextureFormat::Bgra8UnormSrgb
@@ -5329,7 +5342,7 @@ impl Renderer {
         let mut px = Vec::with_capacity((w * h * 4) as usize);
         for y in 0..h {
             let row = &data[(y * bytes_per_row) as usize..((y * bytes_per_row) + w * 4) as usize];
-            for c in row.chunks_exact(4) {
+            for c in row.as_chunks::<4>() {
                 if swap {
                     px.push(c[2]);
                     px.push(c[1]);
@@ -5345,18 +5358,18 @@ impl Renderer {
         self.screenshot_png = Some(px);
     }
 
-    pub fn render(
-        &mut self,
-        cam: &Camera,
-        sky: &SkyState,
-        ui: &mut UiCanvas,
-        selection: Option<(i32, i32, i32)>,
-        post: &PostParams,
-        clouds: u8,
-        panorama: Option<PanoView>,
-        particles: &[vc_particles::particles::ParticleVertex],
-        chunk_borders: Option<(i32, i32)>,
-    ) -> RenderStats {
+    pub fn render(&mut self, draw: RenderFrame<'_>, ui: &mut UiCanvas) -> RenderStats {
+        let RenderFrame {
+            cam,
+            sky,
+            selection,
+            post,
+            clouds,
+            panorama,
+            particles,
+            chunk_borders,
+        } = draw;
+        let post = &post;
         let frame = match self.surface.get_current_texture() {
             Ok(f) => f,
             Err(e) => {

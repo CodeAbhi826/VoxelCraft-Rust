@@ -445,15 +445,25 @@ pub fn mesh_sections(
                                     let nwl = water_level(nbs);
                                     let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
                                     let nabove = getb(&blocks, ncell[0], ncell[1] + 1, ncell[2]);
-                                    let my_h = fluid_height(water_level(bs), above == b);
-                                    let nb_h = fluid_height(nwl, nabove == b);
+                                    // T3 fix (2026-10-01): `above` is a raw
+                                    // STATE id — fold it to the owning BLOCK
+                                    // id before comparing to `b` (the old
+                                    // `above == b` compared a state id to the
+                                    // WATER BLOCK id, so flowing-water states
+                                    // 89..=95 never matched and the
+                                    // full-height-column arm never fired)
+                                    let my_h = fluid_height(water_level(bs), sb(above) == b);
+                                    let nb_h = fluid_height(nwl, sb(nabove) == b);
                                     vis = my_h > nb_h + 1e-4;
                                 }
                                 if vis {
                                     let l = getl(&light, ncell[0], ncell[1], ncell[2]) as u64;
                                     let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
                                     let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
-                                    let aw = if above == b { 1u64 } else { 0u64 };
+                                    // T3 fix (2026-10-01): fold the raw STATE
+                                    // id to the owning BLOCK id before the
+                                    // compare (see the height-compare note)
+                                    let aw = if sb(above) == b { 1u64 } else { 0u64 };
                                     let wt = vc_blocks::tint::block_face_tint_packed(
                                         b,
                                         false,
@@ -531,6 +541,19 @@ pub fn mesh_sections(
                             // flat per face — no per-corner smoothing needed)
                             let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
 
+                            // Greedy merge key (u64, bits 0..52) — T1/T2 fix
+                            // (2026-10-01): the state rides bits 28..44 as a
+                            // FULL u16 (states span 0..=862 and grow; the old
+                            // layout decoded only 8 bits and parked the tint
+                            // byte at bit 36, overlapping state bits 8+ —
+                            // every world-stored state ≥ 256 truncated) and
+                            // the §18 tint byte rides bits 44..52, ABOVE the
+                            // state field:
+                            //   bits 0..4    bl (4)
+                            //   bits 4..20   sky_pack (16)
+                            //   bits 20..28  ao_pack (8)
+                            //   bits 28..44  state (16)
+                            //   bits 44..52  tint (8)
                             let key = ((bs as u64) << 28)
                                 | (ao_pack << 20)
                                 | (sky_pack << 4)
@@ -540,7 +563,7 @@ pub fn mesh_sections(
                                     d == 1 && dir > 0,
                                     biome_at(cell[0] as usize, cell[2] as usize),
                                 ) as u64)
-                                    << 36);
+                                    << 44);
                             smask[vi * du + ui] = key;
                         }
                     }
@@ -975,12 +998,12 @@ fn greedy_merge(
 
             let (state, ao_pack, sky_pack, water_aw, bl_pack, tint) = if is_solid {
                 (
-                    ((key >> 28) & 0xff) as u16, // STATE id
+                    ((key >> 28) & 0xffff) as u16, // STATE id — full 16 bits (T1)
                     (key >> 20) & 0xff,
                     (key >> 4) & 0xffff,
                     0u64,
                     key & 0xf,
-                    ((key >> 36) & 0xff) as u8, // §18 biome tint
+                    ((key >> 44) & 0xff) as u8, // §18 biome tint (T2, above the state)
                 )
             } else {
                 let l = (key >> 1) & 0xf;
@@ -1208,6 +1231,105 @@ mod tests {
             assert_eq!(tile, TILE_TALL_GRASS);
             assert_eq!(state, TALL_GRASS);
         }
+    }
+
+    /// T1 fix gate (2026-10-01): states ≥ 256 must round-trip through the
+    /// GREEDY solid path. The old greedy key decoded only 8 state bits
+    /// (`((key >> 28) & 0xff)`) — anvil 283 → 27 and the V13 basalt state
+    /// 738 → 222 — so every window state meshed with a truncated id and
+    /// the wrong tiles (state_tiles resolves the LOW byte's block).
+    /// Window states have no pack model (is_model_state false for every
+    /// window), so they all take the greedy path.
+    #[test]
+    fn greedy_state_above_255_round_trips() {
+        let cases = [
+            ANVIL_STATE,           // 283 → 27 with the old decode
+            V13_STATE_BASE + 22,   // the basalt state, 738 → 222 with the old decode
+        ];
+        for s in cases {
+            let snap = snap_with(s);
+            let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
+            assert!(!md.solid.0.is_empty(), "state {s} must emit geometry");
+            for v in md.solid.0.iter() {
+                let (_, _, state) = decode(v);
+                assert_eq!(
+                    state, s,
+                    "state {s} must round-trip through the greedy key untruncated"
+                );
+            }
+        }
+    }
+
+    /// T2 fix gate (2026-10-01): the tinted V2 state (acacia leaves, 420)
+    /// must keep its tint. The old key parked the §18 tint byte at bit 36,
+    /// overlapping state bits 8+ — state 420 has bit 8 set, so the tint
+    /// decoded as 0xC3 = pack(KIND_WATER, 3) and foliage rendered with the
+    /// water tint. The tint byte rides bit 44 now, above the 16-bit state
+    /// field, and the decoded KIND must be FOLIAGE.
+    #[test]
+    fn greedy_tinted_v2_state_keeps_tint() {
+        let s = V2_STATE_BASE + (ACACIA_LEAVES - 200); // the acacia-leaves state, 420
+        let snap = snap_with(s);
+        let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
+        assert!(!md.solid.0.is_empty());
+        for v in md.solid.0.iter() {
+            let (_, _, state) = decode(v);
+            assert_eq!(state, s, "state {s} must round-trip through the greedy key");
+            let tint = ((v.w3 >> 8) & 0xff) as u8;
+            assert_ne!(
+                tint >> 6,
+                vc_blocks::tint::KIND_WATER,
+                "foliage tint must not decode to the WATER kind (the old bit-36 overlap)"
+            );
+        }
+    }
+
+    /// T3 fix gate (2026-10-01): a falling water column renders FULL-height
+    /// side sheets. The old `above == b` compared the raw STATE id above to
+    /// the WATER BLOCK id (9) — flowing states 89..=95 never matched, so the
+    /// full-height-column arm of fluid_height never fired for flows AND the
+    /// level-1 cell under a source kept `water_top_open` true: its side-top
+    /// edge dropped to (8−1)/9 (py 1124), leaving a see-through gap under
+    /// the source's 0.875 surface. With the fold (`sb(above) == b`) the
+    /// level-1 cell gets water_above → full height and a closed top edge.
+    #[test]
+    fn falling_water_column_full_height() {
+        let mut c = Chunk::empty();
+        c.set_state(8, 8, 8, WATER_FLOW_BASE); // level 1 under the source
+        c.set_state(8, 9, 8, WATER); // the source
+        let c = Arc::new(c);
+        let snap = [
+            None,
+            Some(Arc::clone(&c)),
+            None,
+            Some(Arc::clone(&c)),
+            Some(Arc::clone(&c)),
+            Some(Arc::clone(&c)),
+            None,
+            Some(Arc::clone(&c)),
+            None,
+        ];
+        let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
+        // side-face vertices only (normals 0/1/4/5 — not the top/bottom)
+        let mut pys: Vec<u32> = Vec::new();
+        for v in md.water.0.iter() {
+            let normal = ((v.w1 >> 16) as u8) & 7;
+            if normal == 2 || normal == 3 {
+                continue;
+            }
+            pys.push(v.w1 & 0xFFFF);
+        }
+        assert!(!pys.is_empty(), "water column must emit side geometry");
+        pys.sort_unstable();
+        pys.dedup();
+        // with the fix the column's sides span 8.0 / 9.0 / 9.875
+        // (y*128+0.5 → py 1024 / 1152 / 1264). The old (8−level)/9 height
+        // put the level-1 top edge at 8.78 → py 1124 — the see-through gap.
+        assert_eq!(
+            pys,
+            vec![1024, 1152, 1264],
+            "water column sides must be full-height (no (8−level)/9 gap edge), got {pys:?}"
+        );
     }
 
     /// Phase-1 gate test: compile the REAL builtin pack (assets/) and mesh

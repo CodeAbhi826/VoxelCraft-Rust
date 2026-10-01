@@ -12298,6 +12298,14 @@ pub fn face_visible(b: u16, n: u16) -> bool {
         // water visible through non-water, non-opaque neighbors (air, glass, plants)
         return !is_opaque(n) && n != WATER;
     }
+    if b == LAVA {
+        // lava culled against lava (T4 fix, 2026-10-01: the old fall-through
+        // to !is_opaque made LAVA non-opaque so BOTH sides of every
+        // lava-lava boundary emitted faces — double faces — and interior
+        // 0.875-height top faces rendered inside lava bodies), visible
+        // through non-opaque non-lava neighbors
+        return !is_opaque(n) && n != LAVA;
+    }
     if b == LEAVES || b == BIRCH_LEAVES || b == SPRUCE_LEAVES {
         // "fancy" leaves: render even against other leaves
         return !is_opaque(n);
@@ -15284,6 +15292,31 @@ mod farming_tests {
         for m in 1..=7u8 {
             assert_eq!(state_tiles(farmland_state(m))[0], TILE_FARMLAND_WET);
         }
+    }
+
+    /// T4 fix gate (2026-10-01): lava is culled against lava and visible
+    /// through non-opaque non-lava neighbors. The old fall-through to
+    /// `!is_opaque(n)` made LAVA (non-opaque) visible against ITSELF, so
+    /// BOTH sides of every lava-lava boundary emitted faces (double faces)
+    /// and interior top faces rendered inside lava bodies. Water/GLASS/ICE
+    /// keep their same-block culling; the V2 stained-glass and slime gaps
+    /// are ledgered separately (T10).
+    #[test]
+    fn lava_face_culling() {
+        assert!(!face_visible(LAVA, LAVA), "lava-lava boundary must cull");
+        assert!(face_visible(LAVA, AIR), "lava must show against air");
+        assert!(face_visible(LAVA, GLASS), "lava must show through glass");
+        assert!(!face_visible(LAVA, STONE), "lava must cull against opaque");
+        // the water cases are unchanged
+        assert!(
+            !face_visible(WATER, WATER),
+            "water-water boundary must cull"
+        );
+        assert!(face_visible(WATER, AIR), "water must show against air");
+        assert!(
+            !face_visible(GLASS, GLASS),
+            "glass-glass boundary must cull"
+        );
     }
 
     /// per-stage tiles: wheat 1/stage; carrots/potatoes 4-over-8; beets 1

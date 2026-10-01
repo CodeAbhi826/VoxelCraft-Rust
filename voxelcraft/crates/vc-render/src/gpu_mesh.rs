@@ -316,9 +316,14 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
     let sky_pack = (sky[0] << 12u) | (sky[1] << 8u) | (sky[2] << 4u) | sky[3];
     let bl = min(job_get_blk(j, ncell[0], ncell[1], ncell[2]), 15u);
     let tint = tint_packed(b, d == 1u && dir > 0, biome_at(j, cell[0], cell[2]));
-    // solid key: state<<28 | ao<<20 | sky<<4 | bl | tint<<36 (u64 split)
+    // solid key (u64 split) — T1/T2 fix (2026-10-01), mirrors the Rust
+    // greedy key in vc-mesh: bits 0..4 bl | 4..20 sky | 20..28 ao |
+    // 28..44 state (FULL 16 bits — the old build truncated to 8) |
+    // 44..52 tint (above the state field). klo = low word, khi = high:
+    //   klo bits 28..32 = state bits 0..4, khi bits 0..12 = state bits 4..16,
+    //   khi bits 12..20 = tint.
     smask_lo[t] = bl | (sky_pack << 4u) | (ao_pack << 20u) | ((bs & 0xFu) << 28u);
-    smask_hi[t] = (bs >> 4u) | (tint << 4u);
+    smask_hi[t] = ((bs >> 4u) & 0xFFFu) | (tint << 12u);
 }
 
 // VC-16 pack — port of vc_mesh pack_vertex (same IEEE f32 rounding)
@@ -466,11 +471,14 @@ fn scan_solid(emit: bool, d: u32, dir: i32, sl: i32, ylo: u32,
                     h = h + 1u;
                 }
                 if emit {
-                    let state = ((khi & 0xFu) << 4u) | (klo >> 28u);
+                    // T1/T2 decode: state = full 16 bits (khi 0..12 = state
+                    // bits 4..16, klo 28..32 = state bits 0..4); tint = khi
+                    // bits 12..20 (above the state field).
+                    let state = ((khi & 0xFFFu) << 4u) | (klo >> 28u);
                     let ao_pack = (klo >> 20u) & 0xFFu;
                     let sky_pack = (klo >> 4u) & 0xFFFFu;
                     let bl = klo & 0xFu;
-                    let tint = (khi >> 4u) & 0xFFu;
+                    let tint = (khi >> 12u) & 0xFFu;
                     emit_quad(state, ao_pack, sky_pack, bl, tint, true, 0u, 0u,
                               d, dir, sl, ylo, off_u, off_v, ui, vi, w, h,
                               gunit, quads);
@@ -1850,5 +1858,116 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// T1/T2 fix gate (2026-10-01): CPU↔GPU greedy-mesh equivalence for
+    /// states ≥ 256. The old key layout truncated the state to 8 bits on
+    /// BOTH sides (CPU `((key >> 28) & 0xff)`, WGSL `((khi & 0xF) << 4) |
+    /// (klo >> 28)`) and parked the tint byte at bit 36, overlapping state
+    /// bits 8+ — window states meshed with truncated ids and wrong tints,
+    /// and the two meshers could even disagree with each other. The state
+    /// rides bits 28..44 as a full u16 and the tint rides bits 44..52 on
+    /// both sides now; this test pins the two meshers byte-identical on a
+    /// chunk of window states (anvil 283, white stained glass 400, acacia
+    /// leaves 420, V13 basalt 738). Skips gracefully when no adapter exists.
+    #[test]
+    fn gpu_mesh_parity_states_above_255() {
+        use vc_blocks::blocks::{ANVIL_STATE, V13_STATE_BASE, V2_STATE_BASE};
+        use vc_chunk::chunk::Chunk;
+        use vc_mesh::mesh::{build_mesh_inputs, mesh_sections};
+        use vc_world::light::reference_lightdata;
+
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::None,
+            compatible_surface: None,
+            force_fallback_adapter: true,
+        }));
+        let Some(adapter) = adapter else {
+            eprintln!("SKIP gpu_mesh_parity_states_above_255: no GPU adapter");
+            return;
+        };
+        if !adapter
+            .get_downlevel_capabilities()
+            .flags
+            .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS)
+        {
+            eprintln!("SKIP gpu_mesh_parity_states_above_255: adapter lacks compute");
+            return;
+        }
+        let (device, queue) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("gpu-mesh-state-test"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                ..Default::default()
+            },
+            None,
+        ))
+        .expect("headless device");
+
+        // one chunk, four window states ≥ 256 placed in a row (they all
+        // take the greedy solid path — is_model_state is false for every
+        // window state)
+        let states = [
+            ANVIL_STATE,                           // 283
+            V2_STATE_BASE,                         // 400 (white stained glass)
+            V2_STATE_BASE + (ACACIA_LEAVES - 200), // 420 (tinted foliage)
+            V13_STATE_BASE + 22,                   // 738 (basalt)
+        ];
+        let mut c = Chunk::empty();
+        for (i, s) in states.iter().enumerate() {
+            c.set_state(2 + i as usize * 3, 8, 8, *s);
+        }
+        let chunk = Arc::new(c);
+        let snap: [Option<Arc<Chunk>>; 9] = std::array::from_fn(|i| {
+            if i == 4 {
+                Some(Arc::clone(&chunk))
+            } else {
+                None
+            }
+        });
+        let lsnap = reference_lightdata(&snap);
+        let pos: vc_world::world::ChunkPos = (0, 0);
+
+        let want = mesh_sections(pos, &snap, &lsnap, 2, u16::MAX, &[], None).merged;
+        let inputs = build_mesh_inputs(&snap, &lsnap);
+        assert!(
+            !inputs.has_cross && !inputs.has_models,
+            "test states must stay in the greedy-only regime"
+        );
+        let mut mesher = GpuMesher::new(&device, &queue);
+        mesher.enqueue(
+            GpuMeshJobMeta {
+                pos,
+                mask: u16::MAX,
+                smooth: 2,
+                prev: vec![None; 16],
+                center: Some(Arc::clone(&chunk)),
+            },
+            inputs,
+        );
+        let done = mesher.wait_done(&device, &queue);
+        assert_eq!(done.len(), 1, "one job per batch");
+        let got = &done[0].mesh;
+        assert_eq!(
+            got.solid.0, want.solid.0,
+            "solid verts differ (states ≥ 256)"
+        );
+        assert_eq!(
+            got.solid.1, want.solid.1,
+            "solid indices differ (states ≥ 256)"
+        );
+        assert_eq!(
+            got.water.0, want.water.0,
+            "water verts differ (states ≥ 256)"
+        );
+        assert_eq!(
+            got.water.1, want.water.1,
+            "water indices differ (states ≥ 256)"
+        );
     }
 }

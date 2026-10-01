@@ -36,6 +36,9 @@ pub struct ItemSystem {
     pub picked_total: u64,
 }
 
+/// One cuboid face: (corners CCW seen from outside, normal, shade, tile).
+type CuboidFace = ([[f32; 3]; 4], [f32; 3], f32, u16);
+
 impl ItemSystem {
     pub fn new(seed: u64) -> Self {
         ItemSystem {
@@ -227,7 +230,7 @@ impl ItemSystem {
                 ]
             };
             // (corners CCW seen from outside, normal, shade, tile, uv per corner)
-            let faces: [([[f32; 3]; 4], [f32; 3], f32, u16); 6] = [
+            let faces: [CuboidFace; 6] = [
                 // +Y top
                 (
                     [

@@ -4,7 +4,6 @@
 use crate::gen::TerrainGen;
 use crate::light::LightData;
 use rustc_hash::FxHashSet;
-use std::collections::HashSet;
 use std::sync::Arc;
 // 2026-09-21b perf round: every integer-keyed map in this crate swaps
 // std SipHash for FxHash — the chunk map is the single hottest lookup in

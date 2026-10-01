@@ -37,7 +37,6 @@
 //! draws = chunks (loop path) or regions (MDI path).
 
 use rustc_hash::FxHashMap;
-use rustc_hash::FxHashSet;
 use vc_world::world::ChunkPos;
 
 /// chunks per mesh-region side (8 → 128×128 blocks, ≈1–16 MB arena)

@@ -6527,7 +6527,7 @@ mod phase3_icon_tests {
         ui.draw_stack(&s, 100, 100, &atlas);
         assert_eq!(ui.gui_frame.quads.len(), before, "no icon without cells");
         // publish a ready cell for block 3
-        let mut cells = HashMap::new();
+        let mut cells = rustc_hash::FxHashMap::default();
         cells.insert(3u16, [2u8, 1u8]);
         ui.set_icon_cells(Arc::new(cells));
         ui.clear();

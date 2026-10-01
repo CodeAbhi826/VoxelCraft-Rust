@@ -261,9 +261,7 @@ mod tests {
                 let y = 80 - l;
                 for dx in -half..=half {
                     for dz in -half..=half {
-                        if (8 + dx).clamp(0, 15) == 8 + dx
-                            && (8 + dz).clamp(0, 15) == 8 + dz
-                        {
+                        if (8 + dx).clamp(0, 15) == 8 + dx && (8 + dz).clamp(0, 15) == 8 + dz {
                             c.set((8 + dx) as usize, y as usize, (8 + dz) as usize, IRON_BLOCK);
                         }
                     }
@@ -378,7 +376,11 @@ mod tests {
     /// 64 at 28, 80 at 35, and 96 with a complete frame of 42").
     #[test]
     fn conduit_range_matches_the_java_ladder() {
-        assert_eq!(conduit_range(15), 0.0, "below the 16-block minimum: inactive");
+        assert_eq!(
+            conduit_range(15),
+            0.0,
+            "below the 16-block minimum: inactive"
+        );
         assert_eq!(conduit_range(16), 32.0);
         assert_eq!(conduit_range(20), 32.0, "16..=20 all read 32");
         assert_eq!(conduit_range(21), 48.0);

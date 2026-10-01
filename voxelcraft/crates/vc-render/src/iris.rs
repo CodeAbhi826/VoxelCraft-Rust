@@ -830,9 +830,7 @@ pub fn analyze_pack(dir: &Path) -> Option<IrisPackInfo> {
         {
             if let Ok(src) = std::fs::read_to_string(path) {
                 for name in uniforms_declared(&src) {
-                    if reference.contains(&name.as_str())
-                        && !uniforms_used.contains(&name)
-                    {
+                    if reference.contains(&name.as_str()) && !uniforms_used.contains(&name) {
                         uniforms_used.push(name);
                     }
                 }

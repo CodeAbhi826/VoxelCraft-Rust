@@ -149,7 +149,9 @@ fn main() {
         ));
     }
     pa_src.push_str("];\n");
-    pa_src.push_str(&format!("pub static EMBEDDED_CA_TOTAL_BYTES: u64 = {pa_total};\n"));
+    pa_src.push_str(&format!(
+        "pub static EMBEDDED_CA_TOTAL_BYTES: u64 = {pa_total};\n"
+    ));
     fs::write(out_dir.join("embedded_classic_art.rs"), pa_src)
         .expect("write embedded_classic_art.rs");
 

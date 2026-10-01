@@ -6,7 +6,9 @@ pub struct Rng {
 
 impl Rng {
     pub fn new(seed: u64) -> Self {
-        Rng { state: if seed == 0 { 0x9E3779B97F4A7C15 } else { seed } }
+        Rng {
+            state: if seed == 0 { 0x9E3779B97F4A7C15 } else { seed },
+        }
     }
 
     pub fn next_u64(&mut self) -> u64 {

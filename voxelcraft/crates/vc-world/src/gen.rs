@@ -1,13 +1,13 @@
 //! World generation: simplex noise, fBm, biomes, caves, trees.
 //! Fully deterministic per seed; pure functions (safe on worker threads).
 
+use crate::vanilla_noise::VanillaTerrain;
 use crate::world::Dimension;
 use std::sync::Arc;
 use vc_blocks::blocks::*;
 use vc_chunk::chunk::Chunk;
 #[cfg(test)]
 use vc_chunk::chunk::CHUNK_LEN;
-use crate::vanilla_noise::VanillaTerrain;
 use vc_rng::rng::Rng;
 
 /// the chunk-generator return: the finished chunk + queued cross-chunk
@@ -841,7 +841,7 @@ impl TerrainGen {
             // layer-stack rivers); sand-over-dirt bed, water fills to
             // sea level through the standard fluid fill.
             (Biome::River, SAND, DIRT)
-} else if h <= vc_chunk::SEA_LEVEL + 1 {
+        } else if h <= vc_chunk::SEA_LEVEL + 1 {
             (Biome::Beach, SAND, SAND)
         } else if h > 96 {
             if h > 112 {
@@ -1109,23 +1109,17 @@ impl TerrainGen {
                                 continue; // only carve solids
                             }
                             // liquid guard: never carve adjacent to water
-                            let near_water = (lx > 0 && chunk.get(lx - 1, by as usize, lz) == WATER)
-                                || (lx < 15
-                                    && chunk.get(lx + 1, by as usize, lz) == WATER)
-                                || (lz > 0
-                                    && chunk.get(lx, by as usize, lz - 1) == WATER)
-                                || (lz < 15
-                                    && chunk.get(lx, by as usize, lz + 1) == WATER)
-                                || (by > 0
-                                    && chunk.get(lx, (by - 1) as usize, lz) == WATER)
-                                || (by < 127
-                                    && chunk.get(lx, (by + 1) as usize, lz) == WATER);
+                            let near_water = (lx > 0
+                                && chunk.get(lx - 1, by as usize, lz) == WATER)
+                                || (lx < 15 && chunk.get(lx + 1, by as usize, lz) == WATER)
+                                || (lz > 0 && chunk.get(lx, by as usize, lz - 1) == WATER)
+                                || (lz < 15 && chunk.get(lx, by as usize, lz + 1) == WATER)
+                                || (by > 0 && chunk.get(lx, (by - 1) as usize, lz) == WATER)
+                                || (by < 127 && chunk.get(lx, (by + 1) as usize, lz) == WATER);
                             if near_water {
                                 continue;
                             }
-                            if border_margin
-                                && by > chunk.height[col_idx] as i32 - 12
-                            {
+                            if border_margin && by > chunk.height[col_idx] as i32 - 12 {
                                 continue;
                             }
                             let dy = (by as f64 + 0.5 - py) / h;
@@ -1179,15 +1173,7 @@ impl TerrainGen {
     /// One vanilla-style ellipsoid ore blob at the chunk-local center,
     /// replacing base-stone only; edge jitter is a per-position hash so
     /// the blob shape is stream-order independent.
-    fn ore_blob(
-        &self,
-        chunk: &mut Chunk,
-        cx: i32,
-        cy: i32,
-        cz: i32,
-        state: u16,
-        size: u32,
-    ) {
+    fn ore_blob(&self, chunk: &mut Chunk, cx: i32, cy: i32, cz: i32, state: u16, size: u32) {
         let a = size as f64 / 8.0;
         let mut rng = Rng::new(Rng::hash3(
             self.seed ^ 0x0BE5,
@@ -1306,10 +1292,8 @@ impl TerrainGen {
         let mut climate = [[(0f64, 0f64); 7]; 7];
         for (gz, row) in climate.iter_mut().enumerate() {
             for (gx, cell) in row.iter_mut().enumerate() {
-                *cell = self.climate_depth_scale(
-                    ox + (gx as i32 - 1) * 4,
-                    oz + (gz as i32 - 1) * 4,
-                );
+                *cell =
+                    self.climate_depth_scale(ox + (gx as i32 - 1) * 4, oz + (gz as i32 - 1) * 4);
             }
         }
 
@@ -1365,22 +1349,17 @@ impl TerrainGen {
                     let wz = (oz + lz as i32 * 4) as f64;
                     let d = match c.mush_island {
                         Some(isl) => (isl - (ly * 8) as f64) / 8.0,
-                        None => self.vterrain.density(
-                            wx,
-                            (ly * 8) as f64,
-                            wz,
-                            c.h_eff,
-                            c.amp,
-                            c.rnd,
-                        ),
+                        None => {
+                            self.vterrain
+                                .density(wx, (ly * 8) as f64, wz, c.h_eff, c.amp, c.rnd)
+                        }
                     };
                     dens[(ly * 5 + lz) * 5 + lx] = d;
                 }
             }
         }
-        let getdens = |lxx: usize, lyy: usize, lzz: usize| -> f64 {
-            dens[(lyy * 5 + lzz) * 5 + lxx]
-        };
+        let getdens =
+            |lxx: usize, lyy: usize, lzz: usize| -> f64 { dens[(lyy * 5 + lzz) * 5 + lxx] };
 
         // per-block fill
         for z in 0..16usize {
@@ -1495,8 +1474,7 @@ impl TerrainGen {
                         if y >= surf {
                             break;
                         }
-                        if chunk.get(x, y as usize, z) == STONE
-                            && emerald_ore(self.seed, wx, y, wz)
+                        if chunk.get(x, y as usize, z) == STONE && emerald_ore(self.seed, wx, y, wz)
                         {
                             chunk.set(x, y as usize, z, EMERALD_ORE);
                         }
@@ -1553,7 +1531,6 @@ impl TerrainGen {
         // base stone only)
         self.place_ores(&mut chunk, &mut rng);
 
-
         // pass 2: inbound edits from neighbors (trees poking into this chunk)
         for (idx, id) in inbound {
             let cur = chunk.get_idx(idx as usize);
@@ -1567,12 +1544,12 @@ impl TerrainGen {
 
         // pass 3: decorations (trees, plants) — deterministic per chunk
         let set_dec = |chunk: &mut Chunk,
-                           outbound: &mut Vec<(i32, i32, i32, u16)>,
-                           wx: i32,
-                           wy: i32,
-                           wz: i32,
-                           id: u16,
-                           replace_leaves: bool| {
+                       outbound: &mut Vec<(i32, i32, i32, u16)>,
+                       wx: i32,
+                       wy: i32,
+                       wz: i32,
+                       id: u16,
+                       replace_leaves: bool| {
             if !(0..=255).contains(&wy) {
                 return;
             }
@@ -1580,10 +1557,8 @@ impl TerrainGen {
             let lzi = wz - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) {
                 let cur = chunk.get(lxi as usize, wy as usize, lzi as usize);
-                let trunk = id == OAK_LOG
-                    || id == DARK_OAK_LOG
-                    || id == ACACIA_LOG
-                    || id == JUNGLE_LOG;
+                let trunk =
+                    id == OAK_LOG || id == DARK_OAK_LOG || id == ACACIA_LOG || id == JUNGLE_LOG;
                 if cur == AIR
                     || (replace_leaves
                         && trunk
@@ -1689,7 +1664,15 @@ impl TerrainGen {
             // jungle trees take the bush form: 1 JUNGLE_LOG + an oak
             // leaf blob, no tall trunk.
             if biome_here == Biome::Jungle && rng.next_f32() < 0.25 {
-                set_dec(&mut chunk, &mut outbound, ox + lx, y0, oz + lz, JUNGLE_LOG, true);
+                set_dec(
+                    &mut chunk,
+                    &mut outbound,
+                    ox + lx,
+                    y0,
+                    oz + lz,
+                    JUNGLE_LOG,
+                    true,
+                );
                 // leaf ring around the log (ragged corners) + a cap above
                 for (dy, r) in [(0i32, 1i32), (1, 1), (2, 1)] {
                     let ly = y0 + dy;
@@ -1737,7 +1720,15 @@ impl TerrainGen {
                 let top_y = y0 + base_h + lean_len;
                 // vertical trunk
                 for ty in 0..base_h {
-                    set_dec(&mut chunk, &mut outbound, ox + lx, y0 + ty, oz + lz, log, true);
+                    set_dec(
+                        &mut chunk,
+                        &mut outbound,
+                        ox + lx,
+                        y0 + ty,
+                        oz + lz,
+                        log,
+                        true,
+                    );
                 }
                 // diagonal segment (axis state when in-chunk; neighbor
                 // outbound keeps the plain id — axis-variant outbound edits
@@ -1968,13 +1959,12 @@ impl TerrainGen {
             // discipline)
             let nest_roll = Rng::hash3(self.seed ^ 0xBEE5, ox + lx, 0, oz + lz) % 1000;
             let nest_ok = match biome_here {
-                Biome::Plains | Biome::SunflowerPlains => nest_roll < 50,  // 5%
-                Biome::FlowerForest => nest_roll < 20,                     // 2%
-                Biome::Forest | Biome::BirchForest => nest_roll < 2,       // 0.2%
+                Biome::Plains | Biome::SunflowerPlains => nest_roll < 50, // 5%
+                Biome::FlowerForest => nest_roll < 20,                    // 2%
+                Biome::Forest | Biome::BirchForest => nest_roll < 2,      // 0.2%
                 _ => false,
             };
-            let oak_or_birch =
-                matches!((log, leaf), (OAK_LOG, LEAVES) | (BIRCH_LOG, BIRCH_LEAVES));
+            let oak_or_birch = matches!((log, leaf), (OAK_LOG, LEAVES) | (BIRCH_LOG, BIRCH_LEAVES));
             if nest_ok && oak_or_birch {
                 // a nest cell beside the trunk, mid-canopy height — the
                 // side + height are hash-derived too (no stream draws).
@@ -2174,8 +2164,7 @@ impl TerrainGen {
             // round's flora test caught; now the pair places only when
             // both h+1 AND h+2 are air)
             let tall_ok = tall_top == 0
-                || (h + 2 <= 255
-                    && chunk.get(lx as usize, (h + 2) as usize, lz as usize) == AIR);
+                || (h + 2 <= 255 && chunk.get(lx as usize, (h + 2) as usize, lz as usize) == AIR);
             if tall_ok {
                 set_dec(
                     &mut chunk,
@@ -2249,9 +2238,7 @@ impl TerrainGen {
         // wild-bush feel.
         {
             let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
-            if (b == Biome::Taiga || b == Biome::Snowy)
-                && rng.next_f32() < 1.0 / 12.0
-            {
+            if (b == Biome::Taiga || b == Biome::Snowy) && rng.next_f32() < 1.0 / 12.0 {
                 let bushes = 3 + rng.next_range(4) as i32; // 3..6
                 for _ in 0..bushes {
                     let lx = rng.next_range(16) as i32;
@@ -2266,7 +2253,12 @@ impl TerrainGen {
                         continue;
                     }
                     let age = 1 + rng.next_range(3) as u8; // 1..=3
-                    chunk.set(lx as usize, (h + 1) as usize, lz as usize, berry_bush_state(age));
+                    chunk.set(
+                        lx as usize,
+                        (h + 1) as usize,
+                        lz as usize,
+                        berry_bush_state(age),
+                    );
                 }
             }
         }
@@ -2335,12 +2327,20 @@ impl TerrainGen {
                 let col_idx = fz as usize * 16 + fx as usize;
                 let surf = chunk.height[col_idx] as i32;
                 let fy = (surf - 24 + rng.next_range(10) as i32).max(10); // 15..24 under
-                // skull: 3×3 bone cap with eye sockets
+                                                                          // skull: 3×3 bone cap with eye sockets
                 for dx in 0..3 {
                     for dz in 0..3 {
                         let is_eye = (dx == 1) && (dz == 0 || dz == 2);
                         let id = if is_eye { COAL_ORE } else { BONE_BLOCK };
-                        set_dec(&mut chunk, &mut outbound, ox + fx + dx, fy, oz + fz + dz, id, false);
+                        set_dec(
+                            &mut chunk,
+                            &mut outbound,
+                            ox + fx + dx,
+                            fy,
+                            oz + fz + dz,
+                            id,
+                            false,
+                        );
                     }
                 }
                 // spine: a chain of bone segments descending sideways
@@ -2351,7 +2351,15 @@ impl TerrainGen {
                     let id = if i % 3 == 2 { COAL_ORE } else { BONE_BLOCK };
                     set_dec(&mut chunk, &mut outbound, ox + sx, fy, oz + sz, id, false);
                     if i % 2 == 0 {
-                        set_dec(&mut chunk, &mut outbound, ox + sx, fy - 1, oz + sz, BONE_BLOCK, false);
+                        set_dec(
+                            &mut chunk,
+                            &mut outbound,
+                            ox + sx,
+                            fy - 1,
+                            oz + sz,
+                            BONE_BLOCK,
+                            false,
+                        );
                     }
                 }
             }
@@ -2454,7 +2462,13 @@ impl TerrainGen {
                         // arranged above and around the stalk, forming a
                         // dome")
                         set_dec(
-                            &mut chunk, &mut outbound, ox + lx, cap_y, oz + lz, cap_block, false,
+                            &mut chunk,
+                            &mut outbound,
+                            ox + lx,
+                            cap_y,
+                            oz + lz,
+                            cap_block,
+                            false,
                         );
                         for dx in -1..=1 {
                             for dz in -1..=1 {
@@ -2462,18 +2476,33 @@ impl TerrainGen {
                                     continue;
                                 }
                                 set_dec(
-                                    &mut chunk, &mut outbound,
-                                    ox + lx + dx, cap_y, oz + lz + dz, cap_block, false,
+                                    &mut chunk,
+                                    &mut outbound,
+                                    ox + lx + dx,
+                                    cap_y,
+                                    oz + lz + dz,
+                                    cap_block,
+                                    false,
                                 );
                                 set_dec(
-                                    &mut chunk, &mut outbound,
-                                    ox + lx + dx, cap_y - 1, oz + lz + dz, cap_block, false,
+                                    &mut chunk,
+                                    &mut outbound,
+                                    ox + lx + dx,
+                                    cap_y - 1,
+                                    oz + lz + dz,
+                                    cap_block,
+                                    false,
                                 );
                                 // side slabs hang one lower, edges only
                                 if dx.abs() == 1 || dz.abs() == 1 {
                                     set_dec(
-                                        &mut chunk, &mut outbound,
-                                        ox + lx + dx, cap_y - 2, oz + lz + dz, cap_block, false,
+                                        &mut chunk,
+                                        &mut outbound,
+                                        ox + lx + dx,
+                                        cap_y - 2,
+                                        oz + lz + dz,
+                                        cap_block,
+                                        false,
                                     );
                                 }
                             }
@@ -2483,8 +2512,13 @@ impl TerrainGen {
                         for dx in -2..=2 {
                             for dz in -2..=2 {
                                 set_dec(
-                                    &mut chunk, &mut outbound,
-                                    ox + lx + dx, cap_y, oz + lz + dz, cap_block, false,
+                                    &mut chunk,
+                                    &mut outbound,
+                                    ox + lx + dx,
+                                    cap_y,
+                                    oz + lz + dz,
+                                    cap_block,
+                                    false,
                                 );
                             }
                         }
@@ -2512,7 +2546,15 @@ impl TerrainGen {
                     } else {
                         MUSHROOM_BROWN
                     };
-                    set_dec(&mut chunk, &mut outbound, ox + lx, h + 1, oz + lz, id, false);
+                    set_dec(
+                        &mut chunk,
+                        &mut outbound,
+                        ox + lx,
+                        h + 1,
+                        oz + lz,
+                        id,
+                        false,
+                    );
                 }
             }
         }
@@ -2730,12 +2772,7 @@ impl TerrainGen {
                                 // sea pickle cluster 1-4 (VERIFIED
                                 // "Up to 4 of them can be placed")
                                 let count = 1 + rng.next_range(4) as u8;
-                                chunk.set(
-                                    lx,
-                                    (h + 1) as usize,
-                                    lz,
-                                    sea_pickle_state(count),
-                                );
+                                chunk.set(lx, (h + 1) as usize, lz, sea_pickle_state(count));
                             }
                         } else if rng.next_f32() < 0.10 {
                             // sparse warm flora outside the reef patch
@@ -2750,9 +2787,7 @@ impl TerrainGen {
                             let kh = 2 + rng.next_range(3) as i32;
                             for dy in 1..=kh {
                                 let y = h + dy;
-                                if y < sea
-                                    && chunk.get(lx, y as usize, lz) == WATER
-                                {
+                                if y < sea && chunk.get(lx, y as usize, lz) == WATER {
                                     chunk.set(lx, y as usize, lz, KELP);
                                 }
                             }
@@ -2904,7 +2939,9 @@ impl TerrainGen {
         let (bd, bv) = self.climate_depth_scale(x, z);
         let (h_eff, amp, _) = self.density_params(x, z, bd, bv);
         let rnd = self.random_density_offset(x, z);
-        let d = self.vterrain.density(x as f64, y as f64, z as f64, h_eff, amp, rnd);
+        let d = self
+            .vterrain
+            .density(x as f64, y as f64, z as f64, h_eff, amp, rnd);
         if d <= 0.0 {
             return false;
         }
@@ -3095,12 +3132,7 @@ impl TerrainGen {
     // The opaque bedrock ceiling zeroes skylight for everything below —
     // exactly the vanilla "no sky light in the nether" rule, achieved
     // through the same column scan the light engine already runs.
-    fn generate_nether_chunk(
-        &self,
-        cx: i32,
-        cz: i32,
-        inbound: Vec<(u16, u16)>,
-    ) -> GenOut {
+    fn generate_nether_chunk(&self, cx: i32, cz: i32, inbound: Vec<(u16, u16)>) -> GenOut {
         let mut chunk = Chunk::empty();
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0D1D, cx, 0, cz));
         // the nether has no cross-chunk decorations (structures are
@@ -3351,8 +3383,8 @@ impl TerrainGen {
     /// the documented column-carver adaptation).
     fn gen_backlog_nether_regions(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
         use vc_blocks::blocks::{
-            BASALT, BLACKSTONE, BONE_BLOCK, MAGMA_BLOCK, NETHERRACK, SOUL_SAND, SOUL_SOIL,
-            SOUL_FIRE, CRIMSON_ROOTS, MUSHROOM_RED, MUSHROOM_BROWN,
+            BASALT, BLACKSTONE, BONE_BLOCK, CRIMSON_ROOTS, MAGMA_BLOCK, MUSHROOM_BROWN,
+            MUSHROOM_RED, NETHERRACK, SOUL_FIRE, SOUL_SAND, SOUL_SOIL,
         };
         let region = nether_region_biome(self.seed, cx, cz);
         if region == Biome::SoulSandValley {
@@ -3375,12 +3407,21 @@ impl TerrainGen {
                             // columns instead of a separate random scan,
                             // so fossils always land on real terrain)
                             if Rng::hash3(self.seed ^ 0xB0A5, wx, y as i32, wz).is_multiple_of(8) {
-                                let dir: i32 = if Rng::hash3(self.seed ^ 0xB0A6, wx, 0, wz).is_multiple_of(2) { 1 } else { -1 };
-                                let len = 4 + (Rng::hash3(self.seed ^ 0xB0A7, wx, y as i32, wz) % 4) as i32;
+                                let dir: i32 = if Rng::hash3(self.seed ^ 0xB0A6, wx, 0, wz)
+                                    .is_multiple_of(2)
+                                {
+                                    1
+                                } else {
+                                    -1
+                                };
+                                let len = 4
+                                    + (Rng::hash3(self.seed ^ 0xB0A7, wx, y as i32, wz) % 4) as i32;
                                 for d in 0..len {
                                     let fx = (x as i32 + d * dir).clamp(0, 15) as usize;
                                     let fz = z;
-                                    let fy = (y as i32 + 1 - (d / 3) + (d == 0) as i32).clamp(1, 126) as usize;
+                                    let fy = (y as i32 + 1 - (d / 3) + (d == 0) as i32)
+                                        .clamp(1, 126)
+                                        as usize;
                                     if chunk.get(fx, fy, fz) == 0 {
                                         chunk.set(fx, fy, fz, BONE_BLOCK);
                                     }
@@ -3390,23 +3431,21 @@ impl TerrainGen {
                             // throughout", VERIFIED — soul fire burns on
                             // soul soil only, the soul_fire placement rule)
                             if !sand
-                                && Rng::hash3(self.seed ^ 0x50F2, wx, y as i32, wz).is_multiple_of(60)
+                                && Rng::hash3(self.seed ^ 0x50F2, wx, y as i32, wz)
+                                    .is_multiple_of(60)
                             {
                                 chunk.set(x, y + 1, z, SOUL_FIRE);
-                            } else if Rng::hash3(self.seed ^ 0x50F3, wx, y as i32, wz).is_multiple_of(40) {
+                            } else if Rng::hash3(self.seed ^ 0x50F3, wx, y as i32, wz)
+                                .is_multiple_of(40)
+                            {
                                 // the sparse native vegetation: crimson
                                 // roots + mushrooms (VERIFIED row)
-                                let plant = match Rng::hash3(
-                                    self.seed ^ 0x50F4,
-                                    wx,
-                                    y as i32,
-                                    wz,
-                                ) % 3
-                                {
-                                    0 => CRIMSON_ROOTS,
-                                    1 => MUSHROOM_RED,
-                                    _ => MUSHROOM_BROWN,
-                                };
+                                let plant =
+                                    match Rng::hash3(self.seed ^ 0x50F4, wx, y as i32, wz) % 3 {
+                                        0 => CRIMSON_ROOTS,
+                                        1 => MUSHROOM_RED,
+                                        _ => MUSHROOM_BROWN,
+                                    };
                                 chunk.set(x, y + 1, z, plant);
                             }
                             break;
@@ -3523,9 +3562,9 @@ impl TerrainGen {
     /// to the two families.
     fn gen_v116b_nether_forests(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
         use vc_blocks::blocks::{
-            CRIMSON_FUNGUS, CRIMSON_NYLIUM, CRIMSON_ROOTS, NETHER_SPROUTS, NETHER_WART_BLOCK,
-            SHROOMLIGHT, TWISTING_VINES, WARPED_FUNGUS, WARPED_NYLIUM, WARPED_ROOTS,
-            WEEPING_VINES, WARPED_WART_BLOCK, CRIMSON_STEM, WARPED_STEM, NETHERRACK,
+            CRIMSON_FUNGUS, CRIMSON_NYLIUM, CRIMSON_ROOTS, CRIMSON_STEM, NETHERRACK,
+            NETHER_SPROUTS, NETHER_WART_BLOCK, SHROOMLIGHT, TWISTING_VINES, WARPED_FUNGUS,
+            WARPED_NYLIUM, WARPED_ROOTS, WARPED_STEM, WARPED_WART_BLOCK, WEEPING_VINES,
         };
         let region = nether_region_biome(self.seed, cx, cz);
         if region == Biome::NetherWastes {
@@ -3900,8 +3939,7 @@ impl TerrainGen {
                                 } else {
                                     BEDROCK
                                 };
-                                if feet == AIR && head == AIR && is_solid(floor)
-                                {
+                                if feet == AIR && head == AIR && is_solid(floor) {
                                     return (
                                         (dx * 16 + lx as i32) as f32 + 0.5,
                                         y as f32,
@@ -4552,7 +4590,17 @@ impl TerrainGen {
                         } else if dy == 0 {
                             put(chunk, x, y, z, PLANKS); // wood floor (VERIFIED)
                         } else if dy == 4 {
-                            put(chunk, x, y, z, if rng.next_f32() < 0.85 { PLANKS } else { COBBLE });
+                            put(
+                                chunk,
+                                x,
+                                y,
+                                z,
+                                if rng.next_f32() < 0.85 {
+                                    PLANKS
+                                } else {
+                                    COBBLE
+                                },
+                            );
                         } else {
                             put(chunk, x, y, z, AIR);
                         }
@@ -4805,7 +4853,12 @@ impl TerrainGen {
             let lxi = px - ox;
             let lzi = pz - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&(y + 4)) {
-                chunk.set_state(lxi as usize, (y + 4) as usize, lzi as usize, SPAWNER_SILVERFISH);
+                chunk.set_state(
+                    lxi as usize,
+                    (y + 4) as usize,
+                    lzi as usize,
+                    SPAWNER_SILVERFISH,
+                );
             }
         }
         // doorway from the corridor into the portal room
@@ -4853,15 +4906,15 @@ impl TerrainGen {
                 let angle = rng.next_f32() * std::f32::consts::TAU;
                 let length = 85 + rng.next_range(43) as i32; // 85..=127
                 let half_w = 2.0 + rng.next_f32() * 5.0; // < 15 wide total
-                // 2026-09-20: depth was 40..=62 — "up to 62 deep" is a
-                // MAXIMUM, not a minimum; every ravine being 40+ deep is
-                // what made each one a mega-canyon. Now 10..=62 (mean
-                // ~36, shallow ones included; [tuning] like the chance).
+                                                         // 2026-09-20: depth was 40..=62 — "up to 62 deep" is a
+                                                         // MAXIMUM, not a minimum; every ravine being 40+ deep is
+                                                         // what made each one a mega-canyon. Now 10..=62 (mean
+                                                         // ~36, shallow ones included; [tuning] like the chance).
                 let depth = 10 + rng.next_range(53) as i32; // ≤ 62
-                // 2026-09-20: the START LEVEL roll (10..=72) — see the
-                // doc comment above. Drawn after depth on the same
-                // stream: anchors/angle/length/width/depth are unchanged
-                // for any seed that previously rolled them.
+                                                            // 2026-09-20: the START LEVEL roll (10..=72) — see the
+                                                            // doc comment above. Drawn after depth on the same
+                                                            // stream: anchors/angle/length/width/depth are unchanged
+                                                            // for any seed that previously rolled them.
                 let top = 10 + rng.next_range(63) as i32; // 10..=72
                 out.push(Ravine {
                     x0,
@@ -4948,12 +5001,7 @@ impl TerrainGen {
     /// platform Y rides the island band]. Pillar heights: vanilla uses a
     /// fixed 10-entry table we did not capture this round — ours is a
     /// deterministic 78..103 spread [placeholder, disclosed in worklog].
-    fn generate_end_chunk(
-        &self,
-        cx: i32,
-        cz: i32,
-        _inbound: Vec<(u16, u16)>,
-    ) -> GenOut {
+    fn generate_end_chunk(&self, cx: i32, cz: i32, _inbound: Vec<(u16, u16)>) -> GenOut {
         let mut chunk = Chunk::empty();
         let outbound: Vec<(i32, i32, i32, u16)> = Vec::new();
         let ox = cx * 16;
@@ -4968,9 +5016,8 @@ impl TerrainGen {
                 let dist = ((wx * wx + wz * wz) as f32).sqrt();
                 // gentle island surface: 62-64 center, tapering to the rim
                 if dist < 60.0 {
-                    let surface = 63 - (dist / 30.0).floor() as i32 + (Rng::hash3(
-                        self.seed ^ 0xE1D5, wx, 0, wz,
-                    ) % 2) as i32;
+                    let surface = 63 - (dist / 30.0).floor() as i32
+                        + (Rng::hash3(self.seed ^ 0xE1D5, wx, 0, wz) % 2) as i32;
                     let surface = surface.clamp(58, 64);
                     // island thickness tapers to the rim (vanilla look)
                     let thick = ((60.0 - dist) / 12.0).ceil() as i32;
@@ -5059,7 +5106,7 @@ impl TerrainGen {
                 }
             }
             put(&mut chunk, 0, 63, 0, BEDROCK); // the egg pedestal (egg at 64)
-            // carve the inner 3×3 at y 62 — the victory portal fills it
+                                                // carve the inner 3×3 at y 62 — the victory portal fills it
             for dx in -1..=1i32 {
                 for dz in -1..=1i32 {
                     put(&mut chunk, dx, 62, dz, AIR);
@@ -5196,7 +5243,7 @@ impl TerrainGen {
                     }
                 }
                 put(chunk, x, deck + 3, z, NETHER_BRICKS); // roof
-                // pillars
+                                                           // pillars
                 if dz % 8 == 0 && dx == 0 {
                     for y in 8..deck {
                         put(chunk, x, y, z, NETHER_BRICKS);
@@ -5225,7 +5272,11 @@ impl TerrainGen {
             let lxi = sx - ox;
             let lzi = sz - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) {
-                let st = if pi == 0 { SPAWNER_BLAZE } else { SPAWNER_WITHER_SKELETON };
+                let st = if pi == 0 {
+                    SPAWNER_BLAZE
+                } else {
+                    SPAWNER_WITHER_SKELETON
+                };
                 chunk.set_state(lxi as usize, deck as usize + 1, lzi as usize, st);
             }
             // 3-block staircase down (VERIFIED)
@@ -5328,7 +5379,6 @@ impl TerrainGen {
     }
 }
 
-
 /// Phase E3: the badlands stained-terracotta band color for an absolute
 /// y level. Vanilla generates seed-shifted colored-terracotta layers in
 /// badlands ("found abundantly in badlands biomes" — VERIFIED w/
@@ -5414,16 +5464,8 @@ mod village_tests {
         // so probes read the block id directly (the fence STATE check below
         // uses get_state — the raw accessor).
         // well: water at center, cobble rim, fence post corner, plank roof
-        assert_eq!(
-            chunk.get(lx, ground, lz),
-            WATER,
-            "well center water"
-        );
-        assert_eq!(
-            chunk.get(lx + 1, ground, lz),
-            COBBLE,
-            "well rim cobble"
-        );
+        assert_eq!(chunk.get(lx, ground, lz), WATER, "well center water");
+        assert_eq!(chunk.get(lx + 1, ground, lz), COBBLE, "well rim cobble");
         assert_eq!(
             chunk.get(lx - 1, ground + 3, lz - 1),
             OAK_FENCE,
@@ -5434,11 +5476,7 @@ mod village_tests {
             73,
             "well post stores the no-connection fence STATE (not a log axis)"
         );
-        assert_eq!(
-            chunk.get(lx, ground + 4, lz),
-            PLANKS,
-            "well roof"
-        );
+        assert_eq!(chunk.get(lx, ground + 4, lz), PLANKS, "well roof");
     }
 
     /// generation is order-independent and deterministic: generating the
@@ -5526,7 +5564,6 @@ mod nether_tests {
     use super::*;
     use crate::world::Dimension;
 
-
     /// 1.7.2 refactor: Chunk::get FOLDS states to block ids itself, so the
     /// fold helper is identity (kept for the historical test prose). u16
     /// since the merge (block ids widened).
@@ -5604,9 +5641,15 @@ mod nether_tests {
                 break; // one region per seed
             }
         }
-        assert!(regions_sampled >= 3, "found SSV regions ({regions_sampled})");
+        assert!(
+            regions_sampled >= 3,
+            "found SSV regions ({regions_sampled})"
+        );
         assert!(soul > 40, "the soul floor exists ({soul} cells)");
-        assert!(fossils > 0, "nether fossils poke out ({fossils} bone cells)");
+        assert!(
+            fossils > 0,
+            "nether fossils poke out ({fossils} bone cells)"
+        );
         assert!(pillars > 30, "giant basalt pillars ({pillars} cells)");
     }
 
@@ -5616,9 +5659,8 @@ mod nether_tests {
     fn backlog_basalt_deltas_floor_trio() {
         let mut seed = 1u64;
         let (cx, cz) = loop {
-            let found = (0..64).find(|&c| {
-                nether_region_biome(seed, c * 2, c * 2) == Biome::BasaltDeltas
-            });
+            let found =
+                (0..64).find(|&c| nether_region_biome(seed, c * 2, c * 2) == Biome::BasaltDeltas);
             if let Some(c) = found {
                 break (c * 2, c * 2);
             }
@@ -5642,8 +5684,14 @@ mod nether_tests {
                 }
             }
         }
-        assert!(basalt > 200, "the deltas are basalt-dominated ({basalt} cells)");
-        assert!(blackstone > 0 || magma > 0, "the trio appears (bs {blackstone}, magma {magma})");
+        assert!(
+            basalt > 200,
+            "the deltas are basalt-dominated ({basalt} cells)"
+        );
+        assert!(
+            blackstone > 0 || magma > 0,
+            "the trio appears (bs {blackstone}, magma {magma})"
+        );
     }
 
     /// §28: the nether shell — bedrock floor + roof, nothing above 127
@@ -5701,8 +5749,8 @@ mod nether_tests {
                     // in its own bucket above) and the valley plants
                     // (crimson roots + mushrooms, VERIFIED
                     // w/Soul_Sand_Valley §vegetation)
-                    SOUL_SOIL | SOUL_FIRE | BONE_BLOCK | CRIMSON_ROOTS
-                    | MUSHROOM_RED | MUSHROOM_BROWN => {}
+                    SOUL_SOIL | SOUL_FIRE | BONE_BLOCK | CRIMSON_ROOTS | MUSHROOM_RED
+                    | MUSHROOM_BROWN => {}
                     // 1.16 (Nether Update, part 1): the V13 nether body —
                     // gold veins and the never-air-exposed debris (the
                     // soul-valley soil/fires are counted in the bucket
@@ -5713,13 +5761,10 @@ mod nether_tests {
                     // families — nylium floors, huge-fungi stems + wart
                     // caps + shroomlights, the undergrowth tufts and the
                     // weeping/twisting vines
-                    CRIMSON_NYLIUM | WARPED_NYLIUM
-                    | CRIMSON_STEM | WARPED_STEM
-                    | NETHER_WART_BLOCK | WARPED_WART_BLOCK
-                    | SHROOMLIGHT
-                    | CRIMSON_FUNGUS | WARPED_FUNGUS
-                    | WARPED_ROOTS | NETHER_SPROUTS
-                    | WEEPING_VINES | TWISTING_VINES => {}
+                    CRIMSON_NYLIUM | WARPED_NYLIUM | CRIMSON_STEM | WARPED_STEM
+                    | NETHER_WART_BLOCK | WARPED_WART_BLOCK | SHROOMLIGHT | CRIMSON_FUNGUS
+                    | WARPED_FUNGUS | WARPED_ROOTS | NETHER_SPROUTS | WEEPING_VINES
+                    | TWISTING_VINES => {}
                     _ => other += 1,
                 }
             }
@@ -5942,8 +5987,14 @@ mod nether_tests {
         }
         // the shares: crimson ~22%, warped ~8% of 108 samples (with
         // generous tolerance — the hash is deterministic but coarse)
-        assert!(crimson_regions >= 8, "crimson regions appear ({crimson_regions}/108)");
-        assert!(warped_regions >= 2, "warped regions appear ({warped_regions}/108)");
+        assert!(
+            crimson_regions >= 8,
+            "crimson regions appear ({crimson_regions}/108)"
+        );
+        assert!(
+            warped_regions >= 2,
+            "warped regions appear ({warped_regions}/108)"
+        );
         // the families generate their signature blocks
         assert!(saw_crimson_stem, "huge crimson fungi generate");
         assert!(saw_warped_stem, "huge warped fungi generate");
@@ -6181,7 +6232,6 @@ mod dungeon_tests {
 #[cfg(test)]
 mod phase10_tests {
     use super::*;
-
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
@@ -6488,7 +6538,6 @@ mod phase10_tests {
 mod v172_tests {
     use super::*;
 
-
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
     }
@@ -6562,7 +6611,11 @@ mod v172_tests {
             distinct.insert(b);
         }
         // 1.8: red sandstone is the filler between red sand and banding
-        assert_eq!(chunk.get(lx, h - 2, lz), RED_SANDSTONE, "1.8 red-sand filler");
+        assert_eq!(
+            chunk.get(lx, h - 2, lz),
+            RED_SANDSTONE,
+            "1.8 red-sand filler"
+        );
         assert!(
             distinct.len() >= 3,
             "banded terracotta layers (got {} colors)",
@@ -6570,8 +6623,8 @@ mod v172_tests {
         );
         // every banded block is terracotta family
         for &b in distinct.iter() {
-            let terracotta = b == TERRACOTTA
-                || (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b);
+            let terracotta =
+                b == TERRACOTTA || (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b);
             assert!(terracotta, "band block {b} is terracotta family");
         }
     }
@@ -6672,10 +6725,7 @@ mod v172_tests {
             }
         }
         assert!(lower > 0, "sunflowers present");
-        assert_eq!(
-            lower, upper,
-            "every sunflower carries its upper half"
-        );
+        assert_eq!(lower, upper, "every sunflower carries its upper half");
     }
 
     /// 1.14 (part 3): the two new flowers generate in their vanilla
@@ -6711,7 +6761,10 @@ mod v172_tests {
                 }
             }
         }
-        assert!(lily_forest > 0, "lily of the valley in forest (got {lily_forest})");
+        assert!(
+            lily_forest > 0,
+            "lily of the valley in forest (got {lily_forest})"
+        );
 
         // both join the flower-forest mix (the 10-way small-flower roll)
         let (cx, cz) = find_biome(&g, Biome::FlowerForest);
@@ -6760,7 +6813,6 @@ mod v172_tests {
 #[cfg(test)]
 mod v110_tests {
     use super::*;
-
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
@@ -6898,13 +6950,7 @@ mod e1_tests {
         let (ca, _) = a.generate_chunk(1, 1, Vec::new());
         let (cb, _) = b.generate_chunk(1, 1, Vec::new());
         let same = (0..CHUNK_LEN)
-            .map(|i| {
-                if ca.get_idx(i) == cb.get_idx(i) {
-                    0
-                } else {
-                    1
-                }
-            })
+            .map(|i| if ca.get_idx(i) == cb.get_idx(i) { 0 } else { 1 })
             .sum::<usize>();
         assert_eq!(same, 0, "same seed → identical End chunks");
     }
@@ -6917,8 +6963,13 @@ mod e1_tests {
         let b = gen.fortress_in_region(0, 0);
         assert_eq!(a, b, "deterministic per-region roll");
         // across a spread of regions, some carry fortresses (50% roll)
-        let with: usize = (0..20).filter(|i| gen.fortress_in_region(*i, 0).is_some()).count();
-        assert!((4..=16).contains(&with), "roughly half the regions, got {with}");
+        let with: usize = (0..20)
+            .filter(|i| gen.fortress_in_region(*i, 0).is_some())
+            .count();
+        assert!(
+            (4..=16).contains(&with),
+            "roughly half the regions, got {with}"
+        );
         // VERIFIED region size: 432 blocks
         let (x, z) = gen.fortress_in_region(1, 0).unwrap();
         assert!((432..=432 + 431).contains(&x) && (0..=431).contains(&z));
@@ -6939,8 +6990,7 @@ mod e1_tests {
                     let mut wart = false;
                     for dcx in -2..=2i32 {
                         for dcz in -2..=2i32 {
-                            let (chunk, _) =
-                                gen.generate_chunk(ccx + dcx, ccz + dcz, Vec::new());
+                            let (chunk, _) = gen.generate_chunk(ccx + dcx, ccz + dcz, Vec::new());
                             for i in 0..CHUNK_LEN {
                                 match chunk.get_idx(i) {
                                     NETHER_BRICKS => bricks += 1,
@@ -7119,11 +7169,7 @@ mod e2_tests {
         let Some((x, z, _probe_h)) = found else {
             panic!("no badlands column found in the probe window");
         };
-        let (chunk, _) = gen.generate_chunk(
-            x.div_euclid(16),
-            z.div_euclid(16),
-            Vec::new(),
-        );
+        let (chunk, _) = gen.generate_chunk(x.div_euclid(16), z.div_euclid(16), Vec::new());
         // scan the chunk for an uncarved badlands column (carver cuts
         // legitimately expose strata; the floor intent needs a column
         // whose surface survived)
@@ -7146,8 +7192,8 @@ mod e2_tests {
                 }
             }
         }
-        let surface = surface
-            .unwrap_or_else(|| panic!("no uncarved badlands floor column in the chunk"));
+        let surface =
+            surface.unwrap_or_else(|| panic!("no uncarved badlands floor column in the chunk"));
         // [merge 1.7.2] the SURFACE is red sand (1.7.2's verified floor);
         // the stained-terracotta banding the E3 bracket added lives in
         // the strata below the 1.8 red-sandstone filler — check the deep
@@ -7175,7 +7221,6 @@ mod e2_tests {
 #[cfg(test)]
 mod auditfix_tests {
     use super::*;
-
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
@@ -7213,7 +7258,10 @@ mod auditfix_tests {
         }
         assert!(chunks >= 4, "found jungle chunks to scan (got {chunks})");
         assert!(logs > 0, "jungle trunks exist (got {logs} JUNGLE_LOG)");
-        assert!(leaves > 0, "jungle canopy exists (got {leaves} JUNGLE_LEAVES)");
+        assert!(
+            leaves > 0,
+            "jungle canopy exists (got {leaves} JUNGLE_LEAVES)"
+        );
         assert!(vines > 0, "vines on trunks (got {vines} VINE)");
         assert!(ferns > 0, "fern ground cover (got {ferns} FERN)");
         // jungle wood must DOMINATE over oak in jungle-center chunks:
@@ -7315,7 +7363,10 @@ mod auditfix_tests {
             }
         }
         assert!(taiga_chunks >= 1, "found taiga chunks to scan");
-        assert!(ferns > 0, "taiga grows ferns (got {ferns} over {taiga_chunks} chunks)");
+        assert!(
+            ferns > 0,
+            "taiga grows ferns (got {ferns} over {taiga_chunks} chunks)"
+        );
     }
 }
 
@@ -7325,7 +7376,6 @@ mod auditfix_tests {
 #[cfg(test)]
 mod v111_tests {
     use super::*;
-
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
@@ -7415,7 +7465,10 @@ mod v111_tests {
         // all inside the anchor chunk (anchor-relative dx/dz within
         // ±6 — see emit_woodland_mansion), so a single-chunk scan sees
         // them all
-        assert!(spawners == 5 && chests == 2, "all 5 spawners + 2 chests in the anchor chunk (got {spawners}/{chests})");
+        assert!(
+            spawners == 5 && chests == 2,
+            "all 5 spawners + 2 chests in the anchor chunk (got {spawners}/{chests})"
+        );
     }
 
     /// 1.11: the mansion spawner states decode to their mobs via
@@ -7438,7 +7491,6 @@ mod v111_tests {
 #[cfg(test)]
 mod v113_tests {
     use super::*;
-
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
@@ -7500,7 +7552,10 @@ mod v113_tests {
             }
         }
         assert!(coral > 0, "warm oceans carry coral reefs (got {coral})");
-        assert!(pickles > 0, "sea pickles ride the reef patches (got {pickles})");
+        assert!(
+            pickles > 0,
+            "sea pickles ride the reef patches (got {pickles})"
+        );
         // ---- cold ocean: kelp + seagrass, NEVER coral ----
         let (cx, cz) = find_biome(&g, Biome::ColdOcean);
         let (mut kelp, mut seagrass) = (0usize, 0usize);
@@ -7527,7 +7582,10 @@ mod v113_tests {
             }
         }
         assert!(kelp > 0, "cold oceans grow kelp (got {kelp})");
-        assert!(seagrass > 0, "cold ocean floors carry seagrass (got {seagrass})");
+        assert!(
+            seagrass > 0,
+            "cold ocean floors carry seagrass (got {seagrass})"
+        );
         // ---- frozen ocean: the ice sheet + iceberg blue ice ----
         let (cx, cz) = find_biome(&g, Biome::FrozenOcean);
         let (mut ice_sheet, mut blue_ice) = (0usize, 0usize);
@@ -7645,7 +7703,10 @@ mod v113_tests {
                 }
             }
         }
-        assert!(bamboo > 0, "jungle fields carry bamboo shoots (got {bamboo})");
+        assert!(
+            bamboo > 0,
+            "jungle fields carry bamboo shoots (got {bamboo})"
+        );
         // never outside: taiga + snowy + plains + desert windows
         for b in [Biome::Taiga, Biome::Snowy, Biome::Plains, Biome::Desert] {
             let (cx, cz) = find_biome(&g, b);
@@ -7790,8 +7851,8 @@ mod v115_nest_tests {
                         let x = (i & 0x0F) as i32;
                         let z = ((i >> 4) & 0x0F) as i32;
                         let y = (i >> 8) as i32;
-                        let beside_trunk = [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(
-                            |(dx, dz)| {
+                        let beside_trunk =
+                            [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|(dx, dz)| {
                                 let nx = x + dx;
                                 let nz = z + dz;
                                 (0..16).contains(&nx)
@@ -7800,15 +7861,17 @@ mod v115_nest_tests {
                                         chunk.get(nx as usize, y as usize, nz as usize),
                                         OAK_LOG | BIRCH_LOG
                                     )
-                            },
-                        );
+                            });
                         assert!(beside_trunk, "nest at ({x},{y},{z}) beside a trunk");
                     }
                 }
             }
         }
         assert!(trees > 40, "the census region has trees (got {trees})");
-        assert!(nests > 0, "the 5% plains roll produces nests (got {nests} on {trees} trees)");
+        assert!(
+            nests > 0,
+            "the 5% plains roll produces nests (got {nests} on {trees} trees)"
+        );
         // the observed rate stays inside the wide binomial window
         let rate = nests as f32 / trees.max(1) as f32;
         assert!(rate < 0.25, "the nest rate stays plausible ({rate:.3})");
@@ -7820,7 +7883,7 @@ mod v115_nest_tests {
     #[test]
     fn v115_hive_state_roundtrip_in_world() {
         let mut w = flat_world();
-        use vc_blocks::blocks::{honey_level, hive_full, hive_state, BEE_NEST, BEEHIVE};
+        use vc_blocks::blocks::{hive_full, hive_state, honey_level, BEEHIVE, BEE_NEST};
         w.set_block_state(8, 70, 8, hive_state(BEE_NEST, 5));
         w.set_block_state(10, 70, 8, hive_state(BEEHIVE, 3));
         assert_eq!(honey_level(w.get_state(8, 70, 8)), 5);
@@ -7829,7 +7892,6 @@ mod v115_nest_tests {
         assert!(!hive_full(w.get_state(10, 70, 8)));
     }
 }
-
 
 // =====================================================================
 // 2026-09-20 rampart-fix round — the ravine-density regression tests
@@ -7852,8 +7914,7 @@ mod rampart_fix_tests {
     #[test]
     fn ravine_anchor_rate_in_envelope() {
         let g = agen();
-        let mut seen: std::collections::HashSet<(i32, i32)> =
-            std::collections::HashSet::new();
+        let mut seen: std::collections::HashSet<(i32, i32)> = std::collections::HashSet::new();
         let mut n = 0usize;
         for cx in -20..20i32 {
             for cz in -20..20i32 {
@@ -7882,8 +7943,7 @@ mod rampart_fix_tests {
         let g = agen();
         // collect the unique anchors covering a 12x12-chunk area
         let mut ravines: Vec<Ravine> = Vec::new();
-        let mut seen: std::collections::HashSet<(i32, i32)> =
-            std::collections::HashSet::new();
+        let mut seen: std::collections::HashSet<(i32, i32)> = std::collections::HashSet::new();
         for dcx in -6..6i32 {
             for dcz in -6..6i32 {
                 for r in g.ravines_near_chunk(10 + dcx, 10 + dcz) {
@@ -7926,7 +7986,10 @@ mod rampart_fix_tests {
         assert!(carved >= 8, "the anchors' neighborhoods carve ({carved})");
         let mean = depth_sum as f32 / carved as f32;
         assert!(mean < 30.0, "mean carved depth {mean:.1} < 30 (was 39.3)");
-        assert!(max_depth <= 62, "max carved depth {max_depth} respects the 62 grammar");
+        assert!(
+            max_depth <= 62,
+            "max carved depth {max_depth} respects the 62 grammar"
+        );
         let sky = sky_open as f32 / carved as f32;
         assert!(
             sky < 0.85,

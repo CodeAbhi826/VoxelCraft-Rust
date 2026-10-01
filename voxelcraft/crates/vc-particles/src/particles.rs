@@ -10,8 +10,8 @@
 //! imperceptible — vanilla bakes per frame, we document the difference).
 
 use vc_blocks::blocks::*;
-use vc_rng::rng::Rng;
 use vc_blocks::tint;
+use vc_rng::rng::Rng;
 
 /// pool cap — 64/break * 64 simultaneous breaks worst case; E2E asserts
 /// the cap is respected
@@ -214,7 +214,11 @@ impl ParticleSystem {
         let p = Particle {
             pos: [x + self.rng.next_f32(), y, z + self.rng.next_f32()],
             // slight wind drift; constant fall — 0.9 blocks/tick = 18 b/s
-            vel: [(self.rng.next_f32() - 0.5) * 0.08, -0.9, (self.rng.next_f32() - 0.5) * 0.08],
+            vel: [
+                (self.rng.next_f32() - 0.5) * 0.08,
+                -0.9,
+                (self.rng.next_f32() - 0.5) * 0.08,
+            ],
             life: 16 + self.rng.next_range(8) as i32,
             half: 0.5,
             u0: tx / 32.0,
@@ -289,11 +293,8 @@ impl ParticleSystem {
             if p.life <= 0 {
                 continue;
             }
-            let in_water = world.get_block(
-                p.pos[0] as i32,
-                p.pos[1] as i32,
-                p.pos[2] as i32,
-            ) == WATER;
+            let in_water =
+                world.get_block(p.pos[0] as i32, p.pos[1] as i32, p.pos[2] as i32) == WATER;
 
             // gravity / buoyancy
             p.vel[1] += if in_water { 0.02 } else { -p.grav };
@@ -303,9 +304,8 @@ impl ParticleSystem {
                 let target = p.pos[axis] + p.vel[axis];
                 let mut probe = p.pos;
                 probe[axis] = target;
-                let hit = is_solid(
-                    world.get_block(probe[0] as i32, probe[1] as i32, probe[2] as i32),
-                );
+                let hit =
+                    is_solid(world.get_block(probe[0] as i32, probe[1] as i32, probe[2] as i32));
                 if hit {
                     if axis == 1 {
                         p.vel[1] = 0.0;
@@ -343,11 +343,21 @@ impl ParticleSystem {
             }
             let r = [right[0] * p.half, right[1] * p.half, right[2] * p.half];
             let u = [up[0] * p.half, up[1] * p.half, up[2] * p.half];
-            let col = [p.light * p.tint[0], p.light * p.tint[1], p.light * p.tint[2]];
+            let col = [
+                p.light * p.tint[0],
+                p.light * p.tint[1],
+                p.light * p.tint[2],
+            ];
             // corners: (-r-u) (r-u) (r+u) (-r+u) with matching sub-tile UVs
             let corners = [
-                ([-r[0] - u[0], -r[1] - u[1], -r[2] - u[2]], [p.u0, p.v0 + p.dv]),
-                ([r[0] - u[0], r[1] - u[1], r[2] - u[2]], [p.u0 + p.du, p.v0 + p.dv]),
+                (
+                    [-r[0] - u[0], -r[1] - u[1], -r[2] - u[2]],
+                    [p.u0, p.v0 + p.dv],
+                ),
+                (
+                    [r[0] - u[0], r[1] - u[1], r[2] - u[2]],
+                    [p.u0 + p.du, p.v0 + p.dv],
+                ),
                 ([r[0] + u[0], r[1] + u[1], r[2] + u[2]], [p.u0 + p.du, p.v0]),
                 ([-r[0] + u[0], -r[1] + u[1], -r[2] + u[2]], [p.u0, p.v0]),
             ];
@@ -408,7 +418,10 @@ mod tests {
         assert_eq!(ps.spawned_total, 64);
         // tint baked (Forest grass = vanilla 0x79C05A)
         let t = ps.parts[0].tint;
-        assert!((t[1] - 0xC0 as f32 / 255.0).abs() < 0.02, "green-dominant {t:?}");
+        assert!(
+            (t[1] - 0xC0 as f32 / 255.0).abs() < 0.02,
+            "green-dominant {t:?}"
+        );
         // further bursts capped at MAX_PARTICLES
         for _ in 0..200 {
             ps.spawn_block_break(0, 65, 0, DIRT, 2, 15, 0);
@@ -437,7 +450,11 @@ mod tests {
         // sand bursts land ON the floor (floor top = y 64, particles stop at
         // the surface, never sink through)
         for p in &ps.parts {
-            assert!(p.pos[1] >= 63.9, "particle sank below the floor: {:?}", p.pos);
+            assert!(
+                p.pos[1] >= 63.9,
+                "particle sank below the floor: {:?}",
+                p.pos
+            );
         }
         // long enough → all dead (max life 26 ticks = 1.3 s)
         let mut t = 0.0f32;

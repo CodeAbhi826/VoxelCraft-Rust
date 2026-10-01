@@ -125,12 +125,30 @@ pub(super) fn glazed_top_art(a: &mut [u8], t: u16, color: u8, rng: &mut Rng) {
                 || (r - 9.5).abs() < 0.9 && ang.sin() < 0.0;
             if on_arc {
                 let c = lo;
-                put(a, t, x, y, jit(c[0], 5, rng), jit(c[1], 5, rng), jit(c[2], 5, rng), 255);
+                put(
+                    a,
+                    t,
+                    x,
+                    y,
+                    jit(c[0], 5, rng),
+                    jit(c[1], 5, rng),
+                    jit(c[2], 5, rng),
+                    255,
+                );
             }
             // nucleus: bright dot offset toward +x/+y (asymmetry pin)
             if r < 1.4 {
                 let c = hi;
-                put(a, t, x, y, jit(c[0], 4, rng), jit(c[1], 4, rng), jit(c[2], 4, rng), 255);
+                put(
+                    a,
+                    t,
+                    x,
+                    y,
+                    jit(c[0], 4, rng),
+                    jit(c[1], 4, rng),
+                    jit(c[2], 4, rng),
+                    255,
+                );
             }
         }
     }
@@ -180,7 +198,16 @@ pub(super) fn glazed_side_art(a: &mut [u8], t: u16, color: u8, rng: &mut Rng) {
     for y in [2, 3, 8, 9, 13] {
         for x in 0..16 {
             let c = if (x + y) % 4 == 0 { base } else { lo };
-            put(a, t, x, y, jit(c[0], 3, rng), jit(c[1], 3, rng), jit(c[2], 3, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(c[0], 3, rng),
+                jit(c[1], 3, rng),
+                jit(c[2], 3, rng),
+                255,
+            );
         }
     }
 }
@@ -225,10 +252,10 @@ pub(super) fn dye_art(a: &mut [u8], t: u16, color: u8, rng: &mut Rng) {
 /// pumpkin (cream), beetroot (mahogany) — the 1.12 taming set.
 pub(super) fn seeds_art(a: &mut [u8], t: u16, kind: u8) {
     let (body, tip) = match kind & 3 {
-        0 => ((219, 187, 78), (188, 152, 48)),    // wheat seeds
-        1 => ((94, 130, 45), (66, 96, 30)),       // melon seeds
-        2 => ((232, 214, 148), (204, 180, 104)),  // pumpkin seeds
-        _ => ((150, 70, 58), (118, 50, 40)),      // beetroot seeds
+        0 => ((219, 187, 78), (188, 152, 48)),   // wheat seeds
+        1 => ((94, 130, 45), (66, 96, 30)),      // melon seeds
+        2 => ((232, 214, 148), (204, 180, 104)), // pumpkin seeds
+        _ => ((150, 70, 58), (118, 50, 40)),     // beetroot seeds
     };
     let rows = [
         "................",
@@ -291,10 +318,10 @@ pub(super) fn cookie_art(a: &mut [u8], t: u16) {
 pub(super) fn parrot_art(a: &mut [u8], t: u16, variant: u8, rng: &mut Rng) {
     // (head+crest, body, wing edge, tail)
     const PALETTES: [[i32; 3]; 4] = [
-        [206, 48, 36],  // red — crimson macaw
-        [38, 88, 172],  // blue — hyacinth macaw
-        [74, 158, 62],  // green — black-billed amazon
-        [168, 84, 40],  // gray — cockatiel
+        [206, 48, 36], // red — crimson macaw
+        [38, 88, 172], // blue — hyacinth macaw
+        [74, 158, 62], // green — black-billed amazon
+        [168, 84, 40], // gray — cockatiel
     ];
     let p = match variant & 3 {
         3 => PALETTES[2], // cyan: green body, blue-and-yellow accents
@@ -326,11 +353,11 @@ pub(super) fn parrot_art(a: &mut [u8], t: u16, variant: u8, rng: &mut Rng) {
     art(a, t, rows, &|c| match c {
         'h' => Some((p[0], p[1], p[2], 255)),
         'H' => Some((p[0].min(255), p[1].min(255), 30, 255)), // crest highlight
-        'y' => Some((238, 208, 68, 255)),  // beak
+        'y' => Some((238, 208, 68, 255)),                     // beak
         'b' => Some((belly[0], belly[1], belly[2], 255)),
         'B' => Some((p[0], p[1], p[2], 255)),
-        'W' => Some((168, 96, 52, 255)),   // wing edge
-        't' => Some((88, 92, 116, 255)),   // tail feathers
+        'W' => Some((168, 96, 52, 255)), // wing edge
+        't' => Some((88, 92, 116, 255)), // tail feathers
         'T' => Some((120, 126, 150, 255)),
         _ => None,
     });

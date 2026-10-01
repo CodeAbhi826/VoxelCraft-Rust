@@ -169,11 +169,10 @@ impl Spawners {
                 let floor_ok = is_solid(world.get_block(sx, sy - 1, sz));
                 let clear_ok = !is_solid(world.get_block(sx, sy, sz))
                     && !is_solid(world.get_block(sx, sy + 1, sz));
-                if floor_ok && clear_ok
-                    && mobs.spawn_at(kind, sx, sy, sz).is_some() {
-                        spawned += 1;
-                        self.spawned_total += 1;
-                    }
+                if floor_ok && clear_ok && mobs.spawn_at(kind, sx, sy, sz).is_some() {
+                    spawned += 1;
+                    self.spawned_total += 1;
+                }
             }
 
             if spawned > 0 {
@@ -328,9 +327,17 @@ mod tests {
         assert_eq!(mob_kind(7), MobKind::CaveSpider);
         assert_eq!(mob_kind(8), MobKind::Silverfish);
         // and the blocks.rs state constants agree (the roundtrip class)
-        assert_eq!(mob_kind(vc_blocks::blocks::spawner_mob(
-            vc_blocks::blocks::SPAWNER_CAVESPIDER)), MobKind::CaveSpider);
-        assert_eq!(mob_kind(vc_blocks::blocks::spawner_mob(
-            vc_blocks::blocks::SPAWNER_SILVERFISH)), MobKind::Silverfish);
+        assert_eq!(
+            mob_kind(vc_blocks::blocks::spawner_mob(
+                vc_blocks::blocks::SPAWNER_CAVESPIDER
+            )),
+            MobKind::CaveSpider
+        );
+        assert_eq!(
+            mob_kind(vc_blocks::blocks::spawner_mob(
+                vc_blocks::blocks::SPAWNER_SILVERFISH
+            )),
+            MobKind::Silverfish
+        );
     }
 }

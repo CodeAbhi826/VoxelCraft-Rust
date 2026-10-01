@@ -182,10 +182,7 @@ impl Hunger {
         }
 
         let mut out = HungerTick::default();
-        if self.saturation > 0.0
-            && self.food >= SATURATED_FOOD
-            && should_heal
-        {
+        if self.saturation > 0.0 && self.food >= SATURATED_FOOD && should_heal {
             // 2. the saturation boost (VERIFIED w/Food §Saturation
             // boost: "heals 1 HP by consuming 1.5 saturation, and
             // activates every 0.5 seconds (10 ticks) when at full

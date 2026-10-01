@@ -666,10 +666,9 @@ impl Villagers {
             // horizontal distance to the axis + vertical containment
             let hd2 = (px - v.pos[0]).powi(2) + (pz - v.pos[2]).powi(2);
             let v_ok = py >= v.pos[1] - 0.1 && py <= v.pos[1] + 1.9;
-            if hd2 < 0.45 * 0.45 && v_ok
-                && best.map(|(bt, _)| t < bt).unwrap_or(true) {
-                    best = Some((t, v.id));
-                }
+            if hd2 < 0.45 * 0.45 && v_ok && best.map(|(bt, _)| t < bt).unwrap_or(true) {
+                best = Some((t, v.id));
+            }
         }
         best.map(|(_, id)| id)
     }

@@ -197,9 +197,7 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         // VERIFIED w/Charcoal: "obtained by smelting logs"; the
         // engine's 6-log set is the "any log" row, with the
         // log→planks craft untouched)
-        OAK_LOG | BIRCH_LOG | SPRUCE_LOG | ACACIA_LOG | DARK_OAK_LOG | JUNGLE_LOG => {
-            Some(CHARCOAL)
-        }
+        OAK_LOG | BIRCH_LOG | SPRUCE_LOG | ACACIA_LOG | DARK_OAK_LOG | JUNGLE_LOG => Some(CHARCOAL),
         // 1.16 (Nether Update, part 1 — VERIFIED w/Ancient_Debris
         // §Smelting: "Ancient Debris + Any fuel → Netherite Scrap" —
         // 2 XP per scrap (the page's reward row); w/Nether_Gold_Ore
@@ -365,9 +363,10 @@ impl Furnaces {
                 // their window states (unlit/lit pairs)
                 let (idle_state, lit_state) = match f.kind {
                     FurnaceKind::Furnace => (FURNACE_STATE, FURNACE_LIT),
-                    FurnaceKind::Blast => {
-                        (vc_blocks::blocks::V11_STATE_BASE, vc_blocks::blocks::V11_STATE_BASE + 1)
-                    }
+                    FurnaceKind::Blast => (
+                        vc_blocks::blocks::V11_STATE_BASE,
+                        vc_blocks::blocks::V11_STATE_BASE + 1,
+                    ),
                     FurnaceKind::Smoker => (
                         vc_blocks::blocks::V11_STATE_BASE + 2,
                         vc_blocks::blocks::V11_STATE_BASE + 3,
@@ -496,7 +495,11 @@ mod tests {
         // Phase E3 (VERIFIED live 2026-09-06, reference wiki /
         // Block_of_Coal: "One block of coal lasts 800 seconds (16000
         // ticks), which smelts 80 items" — 10x the coal item)
-        assert_eq!(fuel_ticks(COAL_BLOCK), 16000, "block of coal: 800 s, 80 items");
+        assert_eq!(
+            fuel_ticks(COAL_BLOCK),
+            16000,
+            "block of coal: 800 s, 80 items"
+        );
         assert_eq!(fuel_ticks(COAL_ORE), 0, "ore is not a fuel in vanilla");
         assert_eq!(fuel_ticks(STONE), 0, "stone is not a fuel");
         // 1.11 (VERIFIED live 2026-09-07):
@@ -505,7 +508,11 @@ mod tests {
         // scripts/v111_search_carpetfuel.json — the changelog's "0.3
         // items" is the rounded form)
         assert_eq!(fuel_ticks(WOOL_WHITE), 100, "1 wool smelts 0.5 items");
-        assert_eq!(fuel_ticks(CARPET_WHITE), 67, "1 carpet smelts 0.335 items (67 t)");
+        assert_eq!(
+            fuel_ticks(CARPET_WHITE),
+            67,
+            "1 carpet smelts 0.335 items (67 t)"
+        );
         assert_eq!(fuel_ticks(CARPET_RED), 67);
         assert_eq!(fuel_ticks(CARPET_BLACK), 67);
     }
@@ -701,7 +708,14 @@ mod v112_tests {
         assert_eq!(fuel_ticks(CHARCOAL), 1600);
         assert_eq!(fuel_ticks(CHARCOAL), fuel_ticks(COAL));
         // every log smelts into charcoal; planks never do
-        for log in [OAK_LOG, BIRCH_LOG, SPRUCE_LOG, ACACIA_LOG, DARK_OAK_LOG, JUNGLE_LOG] {
+        for log in [
+            OAK_LOG,
+            BIRCH_LOG,
+            SPRUCE_LOG,
+            ACACIA_LOG,
+            DARK_OAK_LOG,
+            JUNGLE_LOG,
+        ] {
             assert_eq!(smelt_result(log), Some(CHARCOAL), "log {log} → charcoal");
         }
         assert_eq!(smelt_result(PLANKS), None, "planks are not smeltable");
@@ -769,7 +783,10 @@ mod v112_tests {
             }
             assert!(changed.is_empty() || !changed.is_empty()); // tick ran
         }
-        assert!(lit_seen, "the blast furnace's world block must swap to the LIT V11 state");
+        assert!(
+            lit_seen,
+            "the blast furnace's world block must swap to the LIT V11 state"
+        );
     }
 
     /// 1.14 (part 2, VERIFIED w/Smoker): the smoker cooks the FOOD
@@ -861,10 +878,7 @@ mod v112_tests {
         assert_eq!(furnace_items, 1, "1 plank = 1 item (300 burn / 200 cook)");
         // the double burn rate: the blast furnace's flame lasts HALF
         // the sim ticks for the same fuel item
-        assert_eq!(
-            furnace_flame, 300,
-            "furnace flame: 300 burn ticks at 1x"
-        );
+        assert_eq!(furnace_flame, 300, "furnace flame: 300 burn ticks at 1x");
         assert_eq!(
             blast_flame, 150,
             "blast flame: 300 burn ticks at 2x = 150 sim ticks"

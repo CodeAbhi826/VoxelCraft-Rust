@@ -42,8 +42,8 @@
 //! future upgrade and is NOT needed for correctness at current mob
 //! counts.
 
-use vc_particles::particles::ParticleVertex;
 use vc_blocks::blocks::TILE_MOB_PLAYER;
+use vc_particles::particles::ParticleVertex;
 
 /// One joint in the hierarchy. Geometry is authored in MODEL PX
 /// (16 per block, origin at the entity's ground-plane center, +y up,
@@ -87,10 +87,7 @@ impl FaceTex {
     /// every face samples the same sub-rect (for boxes whose faces are
     /// visually uniform, e.g. limbs)
     pub fn uniform(tile: u16, r: [u8; 4]) -> Self {
-        FaceTex {
-            tile,
-            rect: [r; 6],
-        }
+        FaceTex { tile, rect: [r; 6] }
     }
 }
 
@@ -348,7 +345,11 @@ fn emit_box(
                 t[2] + r[2][0] * v[0] + r[2][1] * v[1] + r[2][2] * v[2],
             ];
             out.push(ParticleVertex {
-                pos: [pos[0] + w[0] * scale, pos[1] + w[1] * scale, pos[2] + w[2] * scale],
+                pos: [
+                    pos[0] + w[0] * scale,
+                    pos[1] + w[1] * scale,
+                    pos[2] + w[2] * scale,
+                ],
                 uv: uvs[ci],
                 col,
             });
@@ -519,38 +520,86 @@ pub fn humanoid(tile: u16, arms_forward: bool) -> EntityModel {
             (
                 5,
                 vec![
-                    Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.25, rot: [swing, 0.0, 0.0] },
-                    Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.75, rot: [-swing, 0.0, 0.0] },
+                    Key {
+                        t: 0.0,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.25,
+                        rot: [swing, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.5,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.75,
+                        rot: [-swing, 0.0, 0.0],
+                    },
                 ],
             ),
             (
                 6,
                 vec![
-                    Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.25, rot: [-swing, 0.0, 0.0] },
-                    Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.75, rot: [swing, 0.0, 0.0] },
+                    Key {
+                        t: 0.0,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.25,
+                        rot: [-swing, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.5,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.75,
+                        rot: [swing, 0.0, 0.0],
+                    },
                 ],
             ),
             // zombie arms: a small constant-cadence wobble
             (
                 3,
                 vec![
-                    Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.25, rot: [0.1, 0.0, 0.05] },
-                    Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.75, rot: [0.1, 0.0, -0.05] },
+                    Key {
+                        t: 0.0,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.25,
+                        rot: [0.1, 0.0, 0.05],
+                    },
+                    Key {
+                        t: 0.5,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.75,
+                        rot: [0.1, 0.0, -0.05],
+                    },
                 ],
             ),
             (
                 4,
                 vec![
-                    Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.25, rot: [0.1, 0.0, -0.05] },
-                    Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.75, rot: [0.1, 0.0, 0.05] },
+                    Key {
+                        t: 0.0,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.25,
+                        rot: [0.1, 0.0, -0.05],
+                    },
+                    Key {
+                        t: 0.5,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.75,
+                        rot: [0.1, 0.0, 0.05],
+                    },
                 ],
             ),
         ]
@@ -559,37 +608,85 @@ pub fn humanoid(tile: u16, arms_forward: bool) -> EntityModel {
             (
                 5,
                 vec![
-                    Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.25, rot: [swing, 0.0, 0.0] },
-                    Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.75, rot: [-swing, 0.0, 0.0] },
+                    Key {
+                        t: 0.0,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.25,
+                        rot: [swing, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.5,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.75,
+                        rot: [-swing, 0.0, 0.0],
+                    },
                 ],
             ),
             (
                 6,
                 vec![
-                    Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.25, rot: [-swing, 0.0, 0.0] },
-                    Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.75, rot: [swing, 0.0, 0.0] },
+                    Key {
+                        t: 0.0,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.25,
+                        rot: [-swing, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.5,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.75,
+                        rot: [swing, 0.0, 0.0],
+                    },
                 ],
             ),
             (
                 3,
                 vec![
-                    Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.25, rot: [-0.35, 0.0, 0.0] },
-                    Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.75, rot: [0.35, 0.0, 0.0] },
+                    Key {
+                        t: 0.0,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.25,
+                        rot: [-0.35, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.5,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.75,
+                        rot: [0.35, 0.0, 0.0],
+                    },
                 ],
             ),
             (
                 4,
                 vec![
-                    Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.25, rot: [0.35, 0.0, 0.0] },
-                    Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                    Key { t: 0.75, rot: [-0.35, 0.0, 0.0] },
+                    Key {
+                        t: 0.0,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.25,
+                        rot: [0.35, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.5,
+                        rot: [0.0, 0.0, 0.0],
+                    },
+                    Key {
+                        t: 0.75,
+                        rot: [-0.35, 0.0, 0.0],
+                    },
                 ],
             ),
         ]
@@ -608,17 +705,35 @@ pub fn humanoid(tile: u16, arms_forward: bool) -> EntityModel {
                     (
                         3,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.3, rot: [-0.5, 0.0, 0.0] },
-                            Key { t: 0.7, rot: [0.6, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.3,
+                                rot: [-0.5, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.7,
+                                rot: [0.6, 0.0, 0.0],
+                            },
                         ],
                     ),
                     (
                         4,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.3, rot: [-0.5, 0.0, 0.0] },
-                            Key { t: 0.7, rot: [0.6, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.3,
+                                rot: [-0.5, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.7,
+                                rot: [0.6, 0.0, 0.0],
+                            },
                         ],
                     ),
                 ],
@@ -629,9 +744,18 @@ pub fn humanoid(tile: u16, arms_forward: bool) -> EntityModel {
                 tracks: vec![(
                     0,
                     vec![
-                        Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                        Key { t: 0.5, rot: [0.0, 0.0, 0.14] },
-                        Key { t: 1.0, rot: [0.0, 0.0, 0.0] },
+                        Key {
+                            t: 0.0,
+                            rot: [0.0, 0.0, 0.0],
+                        },
+                        Key {
+                            t: 0.5,
+                            rot: [0.0, 0.0, 0.14],
+                        },
+                        Key {
+                            t: 1.0,
+                            rot: [0.0, 0.0, 0.0],
+                        },
                     ],
                 )],
             },
@@ -734,19 +858,43 @@ pub fn enderman(tile: u16) -> EntityModel {
                     (
                         5,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.25, rot: [0.45, 0.0, 0.0] },
-                            Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.75, rot: [-0.45, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.25,
+                                rot: [0.45, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.5,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.75,
+                                rot: [-0.45, 0.0, 0.0],
+                            },
                         ],
                     ),
                     (
                         6,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.25, rot: [-0.45, 0.0, 0.0] },
-                            Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.75, rot: [0.45, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.25,
+                                rot: [-0.45, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.5,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.75,
+                                rot: [0.45, 0.0, 0.0],
+                            },
                         ],
                     ),
                 ],
@@ -757,17 +905,35 @@ pub fn enderman(tile: u16) -> EntityModel {
                     (
                         3,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.4, rot: [-1.2, 0.0, 0.0] },
-                            Key { t: 0.8, rot: [0.3, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.4,
+                                rot: [-1.2, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.8,
+                                rot: [0.3, 0.0, 0.0],
+                            },
                         ],
                     ),
                     (
                         4,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.4, rot: [-1.2, 0.0, 0.0] },
-                            Key { t: 0.8, rot: [0.3, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.4,
+                                rot: [-1.2, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.8,
+                                rot: [0.3, 0.0, 0.0],
+                            },
                         ],
                     ),
                 ],
@@ -777,9 +943,18 @@ pub fn enderman(tile: u16) -> EntityModel {
                 tracks: vec![(
                     0,
                     vec![
-                        Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                        Key { t: 0.5, rot: [0.0, 0.0, 0.12] },
-                        Key { t: 1.0, rot: [0.0, 0.0, 0.0] },
+                        Key {
+                            t: 0.0,
+                            rot: [0.0, 0.0, 0.0],
+                        },
+                        Key {
+                            t: 0.5,
+                            rot: [0.0, 0.0, 0.12],
+                        },
+                        Key {
+                            t: 1.0,
+                            rot: [0.0, 0.0, 0.0],
+                        },
                     ],
                 )],
             },
@@ -881,37 +1056,85 @@ pub fn creeper(tile: u16) -> EntityModel {
                     (
                         3,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.25, rot: [0.5, 0.0, 0.0] },
-                            Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.75, rot: [-0.5, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.25,
+                                rot: [0.5, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.5,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.75,
+                                rot: [-0.5, 0.0, 0.0],
+                            },
                         ],
                     ),
                     (
                         4,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.25, rot: [-0.5, 0.0, 0.0] },
-                            Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.75, rot: [0.5, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.25,
+                                rot: [-0.5, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.5,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.75,
+                                rot: [0.5, 0.0, 0.0],
+                            },
                         ],
                     ),
                     (
                         5,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.25, rot: [-0.5, 0.0, 0.0] },
-                            Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.75, rot: [0.5, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.25,
+                                rot: [-0.5, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.5,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.75,
+                                rot: [0.5, 0.0, 0.0],
+                            },
                         ],
                     ),
                     (
                         6,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.25, rot: [0.5, 0.0, 0.0] },
-                            Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.75, rot: [-0.5, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.25,
+                                rot: [0.5, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.5,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.75,
+                                rot: [-0.5, 0.0, 0.0],
+                            },
                         ],
                     ),
                 ],
@@ -922,8 +1145,14 @@ pub fn creeper(tile: u16) -> EntityModel {
                 tracks: vec![(
                     0,
                     vec![
-                        Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                        Key { t: 1.0, rot: [-0.18, 0.0, 0.0] },
+                        Key {
+                            t: 0.0,
+                            rot: [0.0, 0.0, 0.0],
+                        },
+                        Key {
+                            t: 1.0,
+                            rot: [-0.18, 0.0, 0.0],
+                        },
                     ],
                 )],
             },
@@ -932,9 +1161,18 @@ pub fn creeper(tile: u16) -> EntityModel {
                 tracks: vec![(
                     0,
                     vec![
-                        Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                        Key { t: 0.5, rot: [0.0, 0.0, 0.14] },
-                        Key { t: 1.0, rot: [0.0, 0.0, 0.0] },
+                        Key {
+                            t: 0.0,
+                            rot: [0.0, 0.0, 0.0],
+                        },
+                        Key {
+                            t: 0.5,
+                            rot: [0.0, 0.0, 0.14],
+                        },
+                        Key {
+                            t: 1.0,
+                            rot: [0.0, 0.0, 0.0],
+                        },
                     ],
                 )],
             },
@@ -1027,10 +1265,22 @@ pub fn spider(tile: u16) -> EntityModel {
         walk_tracks.push((
             idx,
             vec![
-                Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                Key { t: 0.25, rot: [a, 0.0, 0.0] },
-                Key { t: 0.5, rot: [0.0, 0.0, 0.0] },
-                Key { t: 0.75, rot: [b, 0.0, 0.0] },
+                Key {
+                    t: 0.0,
+                    rot: [0.0, 0.0, 0.0],
+                },
+                Key {
+                    t: 0.25,
+                    rot: [a, 0.0, 0.0],
+                },
+                Key {
+                    t: 0.5,
+                    rot: [0.0, 0.0, 0.0],
+                },
+                Key {
+                    t: 0.75,
+                    rot: [b, 0.0, 0.0],
+                },
             ],
         ));
     }
@@ -1048,17 +1298,35 @@ pub fn spider(tile: u16) -> EntityModel {
                     (
                         3,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.5, rot: [-0.5, 0.0, 0.0] },
-                            Key { t: 1.0, rot: [0.0, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.5,
+                                rot: [-0.5, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 1.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
                         ],
                     ),
                     (
                         7,
                         vec![
-                            Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                            Key { t: 0.5, rot: [-0.5, 0.0, 0.0] },
-                            Key { t: 1.0, rot: [0.0, 0.0, 0.0] },
+                            Key {
+                                t: 0.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 0.5,
+                                rot: [-0.5, 0.0, 0.0],
+                            },
+                            Key {
+                                t: 1.0,
+                                rot: [0.0, 0.0, 0.0],
+                            },
                         ],
                     ),
                 ],
@@ -1068,9 +1336,18 @@ pub fn spider(tile: u16) -> EntityModel {
                 tracks: vec![(
                     0,
                     vec![
-                        Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                        Key { t: 0.5, rot: [0.0, 0.0, 0.12] },
-                        Key { t: 1.0, rot: [0.0, 0.0, 0.0] },
+                        Key {
+                            t: 0.0,
+                            rot: [0.0, 0.0, 0.0],
+                        },
+                        Key {
+                            t: 0.5,
+                            rot: [0.0, 0.0, 0.12],
+                        },
+                        Key {
+                            t: 1.0,
+                            rot: [0.0, 0.0, 0.0],
+                        },
                     ],
                 )],
             },
@@ -1114,8 +1391,14 @@ mod tests {
                 tracks: vec![(
                     1,
                     vec![
-                        Key { t: 0.0, rot: [0.0, 0.0, 0.0] },
-                        Key { t: 0.5, rot: [1.0, 0.0, 0.0] },
+                        Key {
+                            t: 0.0,
+                            rot: [0.0, 0.0, 0.0],
+                        },
+                        Key {
+                            t: 0.5,
+                            rot: [1.0, 0.0, 0.0],
+                        },
                     ],
                 )],
             }],
@@ -1143,10 +1426,7 @@ mod tests {
         let child_r = euler_xyz([0.5, 0.0, 0.0]);
         let pivot = [2.0f32, 12.0, 0.0];
         let v = [1.0f32, -6.0, 0.5];
-        let expected = mat_vec(
-            &root_r,
-            &add3(&pivot, &mat_vec(&child_r, &v)),
-        );
+        let expected = mat_vec(&root_r, &add3(&pivot, &mat_vec(&child_r, &v)));
         // the emit path's stored (rot, trans) composition:
         let trans = mat_vec(&root_r, &pivot);
         let rot = mat_mul(&root_r, &child_r);
@@ -1201,21 +1481,27 @@ mod tests {
         // 6 boxes × 6 faces × 6 verts
         assert_eq!(out.len(), 6 * 6 * 6, "vertex count");
         // all verts above ground and inside a sane radius
-        assert!(out.iter().all(|v| v.pos[1] >= 64.0 && v.pos[1] <= 64.0 + 2.1));
+        assert!(out
+            .iter()
+            .all(|v| v.pos[1] >= 64.0 && v.pos[1] <= 64.0 + 2.1));
         // top faces shaded 1.0, bottom 0.55: find the head's top and
         // bottom face verts (the brightest / darkest col)
         let max_c = out.iter().map(|v| v.col[1]).fold(f32::MIN, f32::max);
         let min_c = out.iter().map(|v| v.col[1]).fold(f32::MAX, f32::min);
         assert!((max_c - 1.0).abs() < 1e-4, "top shade present ({max_c})");
-        assert!((min_c - 0.55).abs() < 1e-4, "bottom shade present ({min_c})");
+        assert!(
+            (min_c - 0.55).abs() < 1e-4,
+            "bottom shade present ({min_c})"
+        );
         // uv within the zombie tile (tile 83: col 19, row 2 of 32)
         let u0 = (19.0 * 16.0) / 512.0;
         let u1 = (19.0 * 16.0 + 16.0) / 512.0;
         let v0 = (2.0 * 16.0) / 512.0;
         let v1 = (2.0 * 16.0 + 16.0) / 512.0;
-        assert!(out
-            .iter()
-            .all(|v| v.uv[0] >= u0 - 1e-5 && v.uv[0] <= u1 + 1e-5 && v.uv[1] >= v0 - 1e-5 && v.uv[1] <= v1 + 1e-5));
+        assert!(out.iter().all(|v| v.uv[0] >= u0 - 1e-5
+            && v.uv[0] <= u1 + 1e-5
+            && v.uv[1] >= v0 - 1e-5
+            && v.uv[1] <= v1 + 1e-5));
     }
 
     #[test]
@@ -1226,8 +1512,26 @@ mod tests {
         let mut a = Vec::new();
         let mut b = Vec::new();
         let scale = 1.95 / 32.0;
-        emit_model_vertices(&m, [0.0, 64.0, 0.0], 0.0, &idle, scale, [1.0; 3], [0.0, 0.0, -1.0], &mut a);
-        emit_model_vertices(&m, [0.0, 64.0, 0.0], 0.0, &hurt, scale, [1.0; 3], [0.0, 0.0, -1.0], &mut b);
+        emit_model_vertices(
+            &m,
+            [0.0, 64.0, 0.0],
+            0.0,
+            &idle,
+            scale,
+            [1.0; 3],
+            [0.0, 0.0, -1.0],
+            &mut a,
+        );
+        emit_model_vertices(
+            &m,
+            [0.0, 64.0, 0.0],
+            0.0,
+            &hurt,
+            scale,
+            [1.0; 3],
+            [0.0, 0.0, -1.0],
+            &mut b,
+        );
         assert_eq!(a.len(), b.len());
         // the head's top face (brightest verts) must have MOVED
         let top_a: Vec<[f32; 3]> = a

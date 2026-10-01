@@ -21,9 +21,27 @@ pub(super) fn mycelium_side(a: &mut [u8], t: u16, rng: &mut Rng) {
     for y in 0..16 {
         for x in 0..16 {
             if y < 3 {
-                put(a, t, x, y, 118 + jit(0, 10, rng), 100 + jit(0, 10, rng), 118 + jit(0, 10, rng), 255);
+                put(
+                    a,
+                    t,
+                    x,
+                    y,
+                    118 + jit(0, 10, rng),
+                    100 + jit(0, 10, rng),
+                    118 + jit(0, 10, rng),
+                    255,
+                );
             } else {
-                put(a, t, x, y, 134 + jit(0, 12, rng), 96 + jit(0, 12, rng), 67 + jit(0, 12, rng), 255);
+                put(
+                    a,
+                    t,
+                    x,
+                    y,
+                    134 + jit(0, 12, rng),
+                    96 + jit(0, 12, rng),
+                    67 + jit(0, 12, rng),
+                    255,
+                );
             }
         }
     }
@@ -51,8 +69,21 @@ pub(super) fn nether_bricks(a: &mut [u8], t: u16, rng: &mut Rng) {
             let offset = if row % 2 == 0 { 0 } else { 4 };
             let in_mortar_h = y % 4 == 3;
             let in_mortar_v = (x + offset) % 8 == 7;
-            let s = if in_mortar_h || in_mortar_v { mortar } else { brick };
-            put(a, t, x, y, jit(s[0], 6, rng), jit(s[1], 6, rng), jit(s[2], 6, rng), 255);
+            let s = if in_mortar_h || in_mortar_v {
+                mortar
+            } else {
+                brick
+            };
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(s[0], 6, rng),
+                jit(s[1], 6, rng),
+                jit(s[2], 6, rng),
+                255,
+            );
         }
     }
 }
@@ -78,7 +109,16 @@ pub(super) fn redstone_lamp(a: &mut [u8], t: u16, rng: &mut Rng, lit: bool) {
                     _ => cell,
                 }
             };
-            put(a, t, x, y, jit(c[0], 8, rng), jit(c[1], 8, rng), jit(c[2], 8, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(c[0], 8, rng),
+                jit(c[1], 8, rng),
+                jit(c[2], 8, rng),
+                255,
+            );
         }
     }
 }
@@ -92,7 +132,16 @@ pub(super) fn chiseled_stone_bricks(a: &mut [u8], t: u16, rng: &mut Rng) {
             let in_ring = (4..12).contains(&x) && (4..12).contains(&y);
             let on_ring_edge = in_ring && (x == 4 || x == 11 || y == 4 || y == 11);
             let c = if on_ring_edge { carved } else { base };
-            put(a, t, x, y, jit(c[0], 6, rng), jit(c[1], 6, rng), jit(c[2], 6, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(c[0], 6, rng),
+                jit(c[1], 6, rng),
+                jit(c[2], 6, rng),
+                255,
+            );
         }
     }
 }
@@ -106,7 +155,16 @@ pub(super) fn chiseled_sandstone(a: &mut [u8], t: u16, rng: &mut Rng) {
             let in_ring = (5..11).contains(&x) && (3..13).contains(&y);
             let on_edge = in_ring && (x == 5 || x == 10 || y == 3 || y == 12);
             let c = if on_edge { carved } else { base };
-            put(a, t, x, y, jit(c[0], 6, rng), jit(c[1], 6, rng), jit(c[2], 6, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(c[0], 6, rng),
+                jit(c[1], 6, rng),
+                jit(c[2], 6, rng),
+                255,
+            );
         }
     }
 }
@@ -120,7 +178,16 @@ pub(super) fn cut_sandstone(a: &mut [u8], t: u16, rng: &mut Rng) {
             let band = (y / 4) % 2 == 1;
             let groove = y % 4 == 0;
             let c = if groove || band { cut } else { base };
-            put(a, t, x, y, jit(c[0], 6, rng), jit(c[1], 6, rng), jit(c[2], 6, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(c[0], 6, rng),
+                jit(c[1], 6, rng),
+                jit(c[2], 6, rng),
+                255,
+            );
         }
     }
 }
@@ -139,7 +206,16 @@ pub(super) fn mushroom_block_red(a: &mut [u8], t: u16, rng: &mut Rng) {
             // pores on a 4-cell grid, skins between
             let pore_cell = (x % 4 == 1 || x % 4 == 2) && (y % 4 == 1 || y % 4 == 2);
             let c = if pore_cell { pore } else { skin };
-            put(a, t, x, y, jit(c[0], 10, rng), jit(c[1], 10, rng), jit(c[2], 10, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(c[0], 10, rng),
+                jit(c[1], 10, rng),
+                jit(c[2], 10, rng),
+                255,
+            );
         }
     }
 }
@@ -152,7 +228,16 @@ pub(super) fn mushroom_block_brown(a: &mut [u8], t: u16, rng: &mut Rng) {
         for x in 0..16 {
             let pore_cell = (x % 4 == 1 || x % 4 == 2) && (y % 4 == 1 || y % 4 == 2);
             let c = if pore_cell { pore } else { skin };
-            put(a, t, x, y, jit(c[0], 8, rng), jit(c[1], 8, rng), jit(c[2], 8, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(c[0], 8, rng),
+                jit(c[1], 8, rng),
+                jit(c[2], 8, rng),
+                255,
+            );
         }
     }
 }
@@ -165,7 +250,16 @@ pub(super) fn mushroom_stem(a: &mut [u8], t: u16, rng: &mut Rng) {
         for x in 0..16 {
             let ridge_col = (x / 2) % 2 == 1;
             let c = if ridge_col { ridge } else { base };
-            put(a, t, x, y, jit(c[0], 7, rng), jit(c[1], 7, rng), jit(c[2], 7, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(c[0], 7, rng),
+                jit(c[1], 7, rng),
+                jit(c[2], 7, rng),
+                255,
+            );
         }
     }
 }
@@ -176,28 +270,76 @@ pub(super) fn nether_wart_art(a: &mut [u8], t: u16, stage: u8) {
     // rows used per stage: sprout (2) → small (4) → tall (6) → bushy (8)
     let rows: [&str; 16] = match stage {
         0 => [
-            "................", "................", "................", "................",
-            "................", "................", "................", "................",
-            "................", "................", "................", "......W.........",
-            "......W.........", "......W.........", "......W.........", "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "......W.........",
+            "......W.........",
+            "......W.........",
+            "......W.........",
+            "................",
         ],
         1 => [
-            "................", "................", "................", "................",
-            "................", "................", "......W.........", ".....WWW........",
-            ".....WWW........", "..W..WWW..W.....", "..W..WWW..W.....", "..WW.WWW.WW.....",
-            "...WWWWW........", "....WWWW........", ".....WWW........", "......W.........",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "......W.........",
+            ".....WWW........",
+            ".....WWW........",
+            "..W..WWW..W.....",
+            "..W..WWW..W.....",
+            "..WW.WWW.WW.....",
+            "...WWWWW........",
+            "....WWWW........",
+            ".....WWW........",
+            "......W.........",
         ],
         2 => [
-            "................", "................", "......W.........", ".....WWW........",
-            ".....WWW........", "..W..WWW..W.....", "..WW.WWW.WW.....", "..WWWWWWWWW.....",
-            "...WWWWWWW......", "...WWWWWWW......", "..WWWWWWWWW.....", "..WWWWWWWWW.....",
-            "...WWWWWWW......", "....WWWWW.......", ".....WWW........", "......W.........",
+            "................",
+            "................",
+            "......W.........",
+            ".....WWW........",
+            ".....WWW........",
+            "..W..WWW..W.....",
+            "..WW.WWW.WW.....",
+            "..WWWWWWWWW.....",
+            "...WWWWWWW......",
+            "...WWWWWWW......",
+            "..WWWWWWWWW.....",
+            "..WWWWWWWWW.....",
+            "...WWWWWWW......",
+            "....WWWWW.......",
+            ".....WWW........",
+            "......W.........",
         ],
         _ => [
-            ".....W..W.......", "....WWWWW..W....", "...WWWWWWW......", "..WWWWWWWWW.....",
-            "..WWWWWWWWW.....", ".WWWWWWWWWWW....", ".WWWWWWWWWWW....", ".WWWWWWWWWWW....",
-            "..WWWWWWWWW.....", "..WWWWWWWWW.....", "...WWWWWWW......", "...WWWWWWW......",
-            "....WWWWW.......", ".....WWW........", "......W.........", "......W.........",
+            ".....W..W.......",
+            "....WWWWW..W....",
+            "...WWWWWWW......",
+            "..WWWWWWWWW.....",
+            "..WWWWWWWWW.....",
+            ".WWWWWWWWWWW....",
+            ".WWWWWWWWWWW....",
+            ".WWWWWWWWWWW....",
+            "..WWWWWWWWW.....",
+            "..WWWWWWWWW.....",
+            "...WWWWWWW......",
+            "...WWWWWWW......",
+            "....WWWWW.......",
+            ".....WWW........",
+            "......W.........",
+            "......W.........",
         ],
     };
     art(a, t, rows, &|c| match c {
@@ -293,17 +435,41 @@ pub(super) fn end_crystal_art(a: &mut [u8], t: u16) {
 pub(super) fn xp_orb_art(a: &mut [u8], t: u16, big: bool) {
     let rows: [&str; 16] = if big {
         [
-            "................", "................", "................", "................",
-            "......GGG.......", "....GGYYGG......", "...GGYOOYGG.....", "...GYOOOOGY.....",
-            "...GYOOOOGY.....", "...GGYOOYGG.....", "....GGYYGG......", "......GGG.......",
-            "................", "................", "................", "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "......GGG.......",
+            "....GGYYGG......",
+            "...GGYOOYGG.....",
+            "...GYOOOOGY.....",
+            "...GYOOOOGY.....",
+            "...GGYOOYGG.....",
+            "....GGYYGG......",
+            "......GGG.......",
+            "................",
+            "................",
+            "................",
+            "................",
         ]
     } else {
         [
-            "................", "................", "................", "................",
-            "................", "................", "......GG........", ".....GYYG.......",
-            ".....GYYG.......", "......GG........", "................", "................",
-            "................", "................", "................", "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "......GG........",
+            ".....GYYG.......",
+            ".....GYYG.......",
+            "......GG........",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
         ]
     };
     art(a, t, rows, &|c| match c {
@@ -506,21 +672,21 @@ pub(super) fn egg_art(a: &mut [u8], t: u16, base: (i32, i32, i32), spots: (i32, 
 /// The 16 spawn-egg palettes, in egg-id order (0..=15 — must match
 /// vc_gameplay::mobs::egg_mob_kind). Distinct two-tone pairs, ours.
 pub const EGG_PALETTES: [(i32, i32, i32, i32, i32, i32); 16] = [
-    (235, 240, 245, 180, 130, 40),   // snow golem: white + pumpkin
-    (58, 22, 22, 240, 130, 40),      // magma cube: dark red + ember
-    (250, 180, 60, 120, 40, 20),     // blaze: gold + ember red
-    (235, 200, 90, 60, 40, 30),      // ocelot: yellow + spots
-    (190, 190, 200, 90, 60, 40),     // iron golem: iron + rust
-    (70, 110, 70, 60, 90, 60),       // zombie villager: sickly green + robe
-    (190, 60, 60, 235, 235, 235),    // mooshroom: red + white
-    (60, 110, 60, 70, 40, 40),       // zombie
-    (200, 200, 200, 80, 80, 80),     // skeleton
-    (90, 200, 90, 40, 90, 40),       // creeper
-    (70, 60, 60, 140, 40, 40),       // spider
-    (20, 15, 20, 130, 70, 160),      // enderman
-    (80, 60, 40, 230, 230, 230),     // cow
-    (235, 170, 170, 200, 120, 120),  // pig
-    (235, 235, 235, 240, 200, 200),  // sheep
+    (235, 240, 245, 180, 130, 40),  // snow golem: white + pumpkin
+    (58, 22, 22, 240, 130, 40),     // magma cube: dark red + ember
+    (250, 180, 60, 120, 40, 20),    // blaze: gold + ember red
+    (235, 200, 90, 60, 40, 30),     // ocelot: yellow + spots
+    (190, 190, 200, 90, 60, 40),    // iron golem: iron + rust
+    (70, 110, 70, 60, 90, 60),      // zombie villager: sickly green + robe
+    (190, 60, 60, 235, 235, 235),   // mooshroom: red + white
+    (60, 110, 60, 70, 40, 40),      // zombie
+    (200, 200, 200, 80, 80, 80),    // skeleton
+    (90, 200, 90, 40, 90, 40),      // creeper
+    (70, 60, 60, 140, 40, 40),      // spider
+    (20, 15, 20, 130, 70, 160),     // enderman
+    (80, 60, 40, 230, 230, 230),    // cow
+    (235, 170, 170, 200, 120, 120), // pig
+    (235, 235, 235, 240, 200, 200), // sheep
     (240, 240, 240, 200, 160, 40),  // chicken
 ];
 
@@ -744,4 +910,3 @@ pub(super) fn ender_dragon_art(a: &mut [u8], t: u16) {
         _ => None,
     });
 }
-

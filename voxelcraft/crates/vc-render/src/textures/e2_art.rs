@@ -85,7 +85,13 @@ pub(super) fn beacon_beam_art(a: &mut [u8], t: u16) {
     for y in 0..16i32 {
         for x in 0..16i32 {
             let d = (x - 8).abs();
-            let a_ = if d < 2 { 210 } else if d < 4 { 130 } else { 60 };
+            let a_ = if d < 2 {
+                210
+            } else if d < 4 {
+                130
+            } else {
+                60
+            };
             put(a, t, x, y, 240, 250, 255, a_);
         }
     }
@@ -220,7 +226,11 @@ pub(super) fn tripwire_hook_art(a: &mut [u8], t: u16, powered: bool) {
         "................",
         "................",
     ];
-    let hot = if powered { (240, 60, 40, 255) } else { (120, 90, 60, 255) };
+    let hot = if powered {
+        (240, 60, 40, 255)
+    } else {
+        (120, 90, 60, 255)
+    };
     art(a, t, rows, &|c| match c {
         'H' => Some((140, 106, 70, 255)),
         'K' => Some(hot),
@@ -265,11 +275,28 @@ pub(super) fn command_block_art(a: &mut [u8], t: u16, on: bool) {
     let body = if on { [168, 150, 170] } else { base };
     for y in 0..16 {
         for x in 0..16 {
-            let v = jit(-8, 8, &mut Rng::new(t as u64 * 31 + y as u64 * 7 + x as u64));
-            put(a, t, x, y, (body[0] + v).clamp(0, 255), (body[1] + v).clamp(0, 255), (body[2] + v).clamp(0, 255), 255);
+            let v = jit(
+                -8,
+                8,
+                &mut Rng::new(t as u64 * 31 + y as u64 * 7 + x as u64),
+            );
+            put(
+                a,
+                t,
+                x,
+                y,
+                (body[0] + v).clamp(0, 255),
+                (body[1] + v).clamp(0, 255),
+                (body[2] + v).clamp(0, 255),
+                255,
+            );
         }
     }
-    let hot = if on { (255, 220, 90, 255) } else { (214, 210, 80, 255) };
+    let hot = if on {
+        (255, 220, 90, 255)
+    } else {
+        (214, 210, 80, 255)
+    };
     // chevron motif
     for i in 0..5 {
         put(a, t, 4 + i, 10 - i, hot.0, hot.1, hot.2, 255);
@@ -617,10 +644,10 @@ pub(super) fn wither_skull_proj_art(a: &mut [u8], t: u16) {
 /// Phase E2 egg palettes (kinds 17..=20: wither skeleton, witch, bat,
 /// wither) — appended to the E1 16-entry table at the call site.
 pub const E2_EGG_PALETTES: [(i32, i32, i32, i32, i32, i32); 4] = [
-    (44, 40, 42, 190, 60, 50),   // wither skeleton: black + red eyes
-    (60, 40, 90, 70, 120, 70),   // witch: purple hat + green skin
-    (96, 72, 58, 74, 56, 44),    // bat: brown + dark wings
-    (30, 26, 32, 220, 60, 60),   // wither: black + red
+    (44, 40, 42, 190, 60, 50), // wither skeleton: black + red eyes
+    (60, 40, 90, 70, 120, 70), // witch: purple hat + green skin
+    (96, 72, 58, 74, 56, 44),  // bat: brown + dark wings
+    (30, 26, 32, 220, 60, 60), // wither: black + red
 ];
 
 /// Coal — the fuel item (VERIFICATION-REPORT mechanical fix #4; VERIFIED

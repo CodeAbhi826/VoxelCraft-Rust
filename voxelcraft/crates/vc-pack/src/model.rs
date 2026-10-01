@@ -295,10 +295,9 @@ pub fn resolve_model(
     let mut chain: Vec<ModelJson> = Vec::new();
     let mut cur = loc.to_string();
     for _ in 0..PARENT_DEPTH_CAP {
-        let bytes = read(&model_path(&cur))
-            .ok_or_else(|| format!("model not found: {cur}"))?;
-        let json: ModelJson = serde_json::from_slice(&bytes)
-            .map_err(|e| format!("model {cur}: bad JSON: {e}"))?;
+        let bytes = read(&model_path(&cur)).ok_or_else(|| format!("model not found: {cur}"))?;
+        let json: ModelJson =
+            serde_json::from_slice(&bytes).map_err(|e| format!("model {cur}: bad JSON: {e}"))?;
         let parent = json.parent.clone();
         chain.push(json);
         match parent {
@@ -412,62 +411,32 @@ fn compile_face(
     // uv — implemented as a corner permutation at the end.
     let (base_verts, base_uv): ([[f32; 3]; 4], [[f32; 2]; 4]) = match dir {
         FaceDir::Up => {
-            let v = [
-                [x1, y2, z1],
-                [x1, y2, z2],
-                [x2, y2, z2],
-                [x2, y2, z1],
-            ];
+            let v = [[x1, y2, z1], [x1, y2, z2], [x2, y2, z2], [x2, y2, z1]];
             let uv = uv.unwrap_or([x1, z1, x2, z2]);
             (v, uv_pairs(uv))
         }
         FaceDir::Down => {
-            let v = [
-                [x1, y1, z2],
-                [x1, y1, z1],
-                [x2, y1, z1],
-                [x2, y1, z2],
-            ];
+            let v = [[x1, y1, z2], [x1, y1, z1], [x2, y1, z1], [x2, y1, z2]];
             let uv = uv.unwrap_or([x1, z1, x2, z2]);
             (v, uv_pairs(uv))
         }
         FaceDir::North => {
-            let v = [
-                [x2, y1, z1],
-                [x1, y1, z1],
-                [x1, y2, z1],
-                [x2, y2, z1],
-            ];
+            let v = [[x2, y1, z1], [x1, y1, z1], [x1, y2, z1], [x2, y2, z1]];
             let uv = uv.unwrap_or([x1, 16.0 - y1, x2, 16.0 - y2]);
             (v, uv_pairs(uv))
         }
         FaceDir::South => {
-            let v = [
-                [x1, y1, z2],
-                [x2, y1, z2],
-                [x2, y2, z2],
-                [x1, y2, z2],
-            ];
+            let v = [[x1, y1, z2], [x2, y1, z2], [x2, y2, z2], [x1, y2, z2]];
             let uv = uv.unwrap_or([x1, 16.0 - y1, x2, 16.0 - y2]);
             (v, uv_pairs(uv))
         }
         FaceDir::West => {
-            let v = [
-                [x1, y1, z1],
-                [x1, y1, z2],
-                [x1, y2, z2],
-                [x1, y2, z1],
-            ];
+            let v = [[x1, y1, z1], [x1, y1, z2], [x1, y2, z2], [x1, y2, z1]];
             let uv = uv.unwrap_or([z1, 16.0 - y1, z2, 16.0 - y2]);
             (v, uv_pairs(uv))
         }
         FaceDir::East => {
-            let v = [
-                [x2, y1, z2],
-                [x2, y1, z1],
-                [x2, y2, z1],
-                [x2, y2, z2],
-            ];
+            let v = [[x2, y1, z2], [x2, y1, z1], [x2, y2, z1], [x2, y2, z2]];
             let uv = uv.unwrap_or([z1, 16.0 - y1, z2, 16.0 - y2]);
             (v, uv_pairs(uv))
         }
@@ -513,12 +482,7 @@ fn compile_face(
 #[inline]
 fn uv_pairs(uv: [f32; 4]) -> [[f32; 2]; 4] {
     let (u1, v1, u2, v2) = (uv[0] / 16.0, uv[1] / 16.0, uv[2] / 16.0, uv[3] / 16.0);
-    [
-        [u1, v1],
-        [u2, v1],
-        [u2, v2],
-        [u1, v2],
-    ]
+    [[u1, v1], [u2, v1], [u2, v2], [u1, v2]]
 }
 
 /// rotate one point around `origin` about a single axis
@@ -627,7 +591,10 @@ fn eval_when(when: &serde_json::Value, props: &[(String, String)]) -> bool {
 }
 
 fn prop_matches(props: &[(String, String)], key: &str, value: &serde_json::Value) -> bool {
-    let cur = props.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str());
+    let cur = props
+        .iter()
+        .find(|(k, _)| k == key)
+        .map(|(_, v)| v.as_str());
     match (cur, value) {
         (Some(cur), serde_json::Value::String(s)) => cur == s,
         (Some(cur), serde_json::Value::Array(list)) => list
@@ -645,8 +612,8 @@ pub fn compile_block_dispatch(
 ) -> Result<HashMap<u16, Vec<ModelChoice>>, String> {
     let bs_path = format!("blockstates/{}.json", spec.name);
     let bytes = read(&bs_path).ok_or_else(|| format!("blockstate not found: {bs_path}"))?;
-    let bs: BlockstateJson = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("{bs_path}: bad JSON: {e}"))?;
+    let bs: BlockstateJson =
+        serde_json::from_slice(&bytes).map_err(|e| format!("{bs_path}: bad JSON: {e}"))?;
 
     // cache resolved (base) models by location
     let mut cache: HashMap<String, Arc<CompiledModel>> = HashMap::new();
@@ -696,20 +663,17 @@ pub fn compile_block_dispatch(
                             .iter()
                             .find(|(k, _)| {
                                 !k.is_empty()
-                                    && k.split(',')
-                                        .all(|kv| {
-                                            let mut it = kv.split('=');
-                                            let pk = it.next().unwrap_or("");
-                                            let pv = it.next().unwrap_or("");
-                                            props.iter().any(|(k2, v2)| k2 == pk && v2 == pv)
-                                        })
+                                    && k.split(',').all(|kv| {
+                                        let mut it = kv.split('=');
+                                        let pk = it.next().unwrap_or("");
+                                        let pv = it.next().unwrap_or("");
+                                        props.iter().any(|(k2, v2)| k2 == pk && v2 == pv)
+                                    })
                             })
                             .map(|(_, v)| v)
                     }
                 })
-                .ok_or_else(|| {
-                    format!("{bs_path}: no variant for state {state} (key {key:?})")
-})?;
+                .ok_or_else(|| format!("{bs_path}: no variant for state {state} (key {key:?})"))?;
             let mut alts: Vec<AppliedModel> = Vec::new();
             for v in spec_list.list() {
                 let base = get_model(&v.model)?;
@@ -718,7 +682,10 @@ pub fn compile_block_dispatch(
                 } else {
                     base
                 };
-                alts.push(AppliedModel { model: m, weight: v.weight.max(1) as u32 });
+                alts.push(AppliedModel {
+                    model: m,
+                    weight: v.weight.max(1) as u32,
+                });
             }
             choices.push(ModelChoice { alts });
         }
@@ -743,7 +710,10 @@ pub fn compile_block_dispatch(
                     } else {
                         base
                     };
-                    alts.push(AppliedModel { model: m, weight: v.weight.max(1) as u32 });
+                    alts.push(AppliedModel {
+                        model: m,
+                        weight: v.weight.max(1) as u32,
+                    });
                 }
                 if !alts.is_empty() {
                     choices.push(ModelChoice { alts });
@@ -917,8 +887,14 @@ mod tests {
         let m2 = resolve_model("voxelcraft:block/auto", &p2).unwrap();
         let n2 = &m2.elements[0].faces[0];
         // autogen north uv = [x1, 16−y1, x2, 16−y2] = [0,0,16,16] → full tile
-        assert!(n2.uvs.iter().all(|uv| (uv[0] - 0.0).abs() < 0.01 || (uv[0] - 1.0).abs() < 0.01));
-        assert!(n2.uvs.iter().all(|uv| (uv[1] - 0.0).abs() < 0.01 || (uv[1] - 1.0).abs() < 0.01));
+        assert!(n2
+            .uvs
+            .iter()
+            .all(|uv| (uv[0] - 0.0).abs() < 0.01 || (uv[0] - 1.0).abs() < 0.01));
+        assert!(n2
+            .uvs
+            .iter()
+            .all(|uv| (uv[1] - 0.0).abs() < 0.01 || (uv[1] - 1.0).abs() < 0.01));
     }
 
     #[test]
@@ -931,11 +907,19 @@ mod tests {
         let m = resolve_model("voxelcraft:block/oak_slab", &p).unwrap();
         let r = apply_variant_rotation(&m, 0, 90);
         // top face stays a top face
-        let up = r.elements[0].faces.iter().find(|f| f.dir == FaceDir::Up).unwrap();
+        let up = r.elements[0]
+            .faces
+            .iter()
+            .find(|f| f.dir == FaceDir::Up)
+            .unwrap();
         assert!(up.verts.iter().all(|v| (v[1] - 8.0).abs() < 0.001));
         // x=180 (top slab): top face becomes bottom at y=8
         let r2 = apply_variant_rotation(&m, 180, 0);
-        let down = r2.elements[0].faces.iter().find(|f| f.dir == FaceDir::Down).unwrap();
+        let down = r2.elements[0]
+            .faces
+            .iter()
+            .find(|f| f.dir == FaceDir::Down)
+            .unwrap();
         assert!(down.verts.iter().all(|v| (v[1] - 8.0).abs() < 0.001));
         assert!(down.cullface == Some(FaceDir::Down));
     }
@@ -982,7 +966,10 @@ mod tests {
         ]);
         let spec = BlockDispatchSpec {
             name: "testslab",
-            props: &[vc_blocks::blocks::PropDef { name: "half", values: &["bottom", "top"] }],
+            props: &[vc_blocks::blocks::PropDef {
+                name: "half",
+                values: &["bottom", "top"],
+            }],
             base_state: 100,
             state_count: 2,
         };
@@ -994,7 +981,11 @@ mod tests {
         assert_eq!(top.len(), 1);
         // top variant is x=180-rotated: its Down face carries y=8 verts
         let up_m = &top[0].alts[0].model;
-        let down = up_m.elements[0].faces.iter().find(|f| f.dir == FaceDir::Down).unwrap();
+        let down = up_m.elements[0]
+            .faces
+            .iter()
+            .find(|f| f.dir == FaceDir::Down)
+            .unwrap();
         assert!(down.verts.iter().all(|v| (v[1] - 8.0).abs() < 0.001));
     }
 
@@ -1030,8 +1021,14 @@ mod tests {
         let spec = BlockDispatchSpec {
             name: "fence",
             props: &[
-                vc_blocks::blocks::PropDef { name: "east", values: &["false", "true"] },
-                vc_blocks::blocks::PropDef { name: "north", values: &["false", "true"] },
+                vc_blocks::blocks::PropDef {
+                    name: "east",
+                    values: &["false", "true"],
+                },
+                vc_blocks::blocks::PropDef {
+                    name: "north",
+                    values: &["false", "true"],
+                },
             ],
             base_state: 200,
             state_count: 4,
@@ -1040,7 +1037,11 @@ mod tests {
         // idx: east*2 + north (east sorted first = slower, north fastest)
         // idx 3 = east=true, north=true → 3 choices: post + side + OR side
         let both = &by_state[&203];
-        assert_eq!(both.len(), 3, "post + side + rotated side (multipart additive)");
+        assert_eq!(
+            both.len(),
+            3,
+            "post + side + rotated side (multipart additive)"
+        );
         // idx 0 = both false → post choice only
         assert_eq!(by_state[&200].len(), 1);
         // idx 2 = east=true, north=false → post + OR-matched rotated side

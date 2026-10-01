@@ -1491,16 +1491,7 @@ pub fn layout_chat_settings() -> Vec<Widget> {
             "OFF",
             true,
         ),
-        btn_h(
-            ID_CHAT_NARRATOR,
-            r,
-            292,
-            225,
-            30,
-            "NARRATOR",
-            "OFF",
-            false,
-        ),
+        btn_h(ID_CHAT_NARRATOR, r, 292, 225, 30, "NARRATOR", "OFF", false),
         btn_h(
             ID_CHAT_DONE,
             (live_ui_w() as i32 - 300) / 2,
@@ -1756,7 +1747,16 @@ pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) ->
     let four = 150i32; // 4 × 100-wide vanilla buttons at 1.5x
     let gap = 12i32;
     let x0 = (live_ui_w() as i32 - (four * 4 + gap * 3)) / 2;
-    v.push(btn_h(ID_WS_EDIT, x0, anchor_y(480), four, 30, "EDIT", "", can_play));
+    v.push(btn_h(
+        ID_WS_EDIT,
+        x0,
+        anchor_y(480),
+        four,
+        30,
+        "EDIT",
+        "",
+        can_play,
+    ));
     v.push(btn_h(
         ID_WS_DELETE,
         x0 + four + gap,
@@ -1865,7 +1865,16 @@ pub fn layout_world_create(
             "",
             true,
         ));
-        v.push(btn_h(ID_WC_CANCEL, cmode, anchor_y(480), 300, 30, "CANCEL", "", true));
+        v.push(btn_h(
+            ID_WC_CANCEL,
+            cmode,
+            anchor_y(480),
+            300,
+            30,
+            "CANCEL",
+            "",
+            true,
+        ));
     } else {
         v.push(text_field_h(
             ID_WC_SEED,
@@ -1908,8 +1917,26 @@ pub fn layout_world_create(
             true,
         ));
         // vanilla page 2: [Done...] returns to page 1
-        v.push(btn_h(ID_WC_MORE, r2, anchor_y(440), 225, 30, "DONE...", "", true));
-        v.push(btn_h(ID_WC_CANCEL, cmode, anchor_y(480), 300, 30, "CANCEL", "", true));
+        v.push(btn_h(
+            ID_WC_MORE,
+            r2,
+            anchor_y(440),
+            225,
+            30,
+            "DONE...",
+            "",
+            true,
+        ));
+        v.push(btn_h(
+            ID_WC_CANCEL,
+            cmode,
+            anchor_y(480),
+            300,
+            30,
+            "CANCEL",
+            "",
+            true,
+        ));
     }
     v
 }
@@ -3100,7 +3127,8 @@ impl UiCanvas {
         // every menu sub-screen (the iconic vanilla look; the translucent
         // modern overlay it replaced is recorded here). The dirt sheet
         // ships the 0.25-brightness tile; canvas fallback paints flat.
-        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        self.gui_frame
+            .dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
             // canvas fallback: real darkened-dirt TILES (the GPU path
             // draws the sprite quads; this must match it, not paint a
@@ -3121,7 +3149,8 @@ impl UiCanvas {
     pub fn resource_pack_screen(&mut self, ws: &[Widget], hover: Option<u16>, tooltip: &[String]) {
         // 2026-09-25: vanilla dirt backdrop (direction flip, see
         // settings_screen) + darker sunken LIST panels retained
-        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        self.gui_frame
+            .dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
             // canvas fallback: real darkened-dirt TILES (the GPU path
             // draws the sprite quads; this must match it, not paint a
@@ -3157,7 +3186,8 @@ impl UiCanvas {
     /// found nothing).
     pub fn shader_screen(&mut self, ws: &[Widget], hover: Option<u16>, tooltip: &[String]) {
         // 2026-09-25: vanilla dirt backdrop (see settings_screen)
-        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        self.gui_frame
+            .dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
             // canvas fallback: real darkened-dirt TILES (the GPU path
             // draws the sprite quads; this must match it, not paint a
@@ -3199,7 +3229,8 @@ impl UiCanvas {
         filtering: bool,
     ) {
         // 2026-09-25: vanilla dirt backdrop (see settings_screen)
-        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        self.gui_frame
+            .dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
             // canvas fallback: real darkened-dirt TILES (the GPU path
             // draws the sprite quads; this must match it, not paint a
@@ -3316,7 +3347,8 @@ impl UiCanvas {
         mode_desc: (&str, &str),
     ) {
         // 2026-09-25: vanilla dirt backdrop (see settings_screen)
-        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        self.gui_frame
+            .dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
             // canvas fallback: real darkened-dirt TILES (the GPU path
             // draws the sprite quads; this must match it, not paint a
@@ -3351,7 +3383,8 @@ impl UiCanvas {
     /// 2026-09-14 parity round: the vanilla Edit World screen.
     pub fn world_edit_screen(&mut self, ws: &[Widget], hover: Option<u16>, time: f32) {
         // 2026-09-25: vanilla dirt backdrop (see settings_screen)
-        self.gui_frame.dirt_background(self.live_w as i32, self.live_h as i32);
+        self.gui_frame
+            .dirt_background(self.live_w as i32, self.live_h as i32);
         if self.chrome_enabled {
             // canvas fallback: real darkened-dirt TILES (the GPU path
             // draws the sprite quads; this must match it, not paint a
@@ -3895,7 +3928,8 @@ impl UiCanvas {
         self.gui_frame.solid_rect(x, y, w, h, ct([10, 10, 10, 150]));
         let fw = ((w - 4) as f32 * p) as i32;
         if fw > 0 {
-            self.gui_frame.solid_rect(x + 2, y + 1, fw, h - 2, ct([238, 238, 238, 230]));
+            self.gui_frame
+                .solid_rect(x + 2, y + 1, fw, h - 2, ct([238, 238, 238, 230]));
         }
         if self.chrome_enabled {
             self.rect(x, y, w, h, [10, 10, 10, 150]);
@@ -7082,7 +7116,10 @@ mod tests {
         assert_eq!(q.dst.w, c.live_w as f32, "covers the live canvas width");
         assert_eq!(q.dst.h, c.live_h as f32, "covers the live canvas height");
         // the blue wash color: B > G > R (a blue-dominant tint)
-        assert!(q.tint[2] > q.tint[1] && q.tint[1] > q.tint[0], "blue-dominant");
+        assert!(
+            q.tint[2] > q.tint[1] && q.tint[1] > q.tint[0],
+            "blue-dominant"
+        );
     }
 
     /// The oxygen bubble row appears only below a full air supply and
@@ -7416,22 +7453,23 @@ mod screen_tests {
             ("access", layout_access()),
             ("chat", layout_chat_settings()),
             ("musicsound", layout_music_sound()),
-            ("skin", layout_skin(true, true, true, true, true, true, true, false)),
             (
-                "worldselect",
-                layout_world_select(2, true, false),
+                "skin",
+                layout_skin(true, true, true, true, true, true, true, false),
             ),
+            ("worldselect", layout_world_select(2, true, false)),
         ];
         for (name, ws) in &cases {
-            let (min_x, max_x) = ws.iter().fold((i32::MAX, i32::MIN), |(a, b), w| {//
+            let (min_x, max_x) = ws.iter().fold((i32::MAX, i32::MIN), |(a, b), w| {
+                //
                 ((a.min(w.x)), (b.max(w.x + w.w)))
             });
             let center = (min_x + max_x) / 2;
-            assert!
-                ((center - 1280).abs() <= 2,
+            assert!(
+                (center - 1280).abs() <= 2,
                 "{name}: block center {center} vs canvas mid 1280 (min {min_x} max {max_x})",
             );
-        }        // and the 960 identity: ref_x(248) == 248 at the reference
+        } // and the 960 identity: ref_x(248) == 248 at the reference
         set_live_ui_size(960, 540);
         let ws = layout_options();
         let music = ws.iter().find(|w| w.id == ID_OPT_MUSIC).unwrap();
@@ -7463,10 +7501,11 @@ mod screen_tests {
             );
         }
         // texture: 32px-apart samples differ somewhere in a 64px span
-        let textured = (0..64)
-            .filter(|o| px(100 + o, 300) != px(100, 300))
-            .count();
-        assert!(textured >= 8, "backdrop is flat, not tiled ({textured}/64 vary)");
+        let textured = (0..64).filter(|o| px(100 + o, 300) != px(100, 300)).count();
+        assert!(
+            textured >= 8,
+            "backdrop is flat, not tiled ({textured}/64 vary)"
+        );
         set_live_ui_size(960, 540);
     }
 

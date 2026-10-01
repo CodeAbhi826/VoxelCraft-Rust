@@ -292,7 +292,7 @@ pub fn torch_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
 /// one lever update: levers only change by interaction (right-click);
 /// this tick exists so a re-scheduled entry no-ops cleanly
 pub fn lever_tick(world: &World, x: i32, y: i32, z: i32) {
-    if state_block(world.get_state(x, y, z)) != LEVER {// stale
+    if state_block(world.get_state(x, y, z)) != LEVER { // stale
     }
 }
 
@@ -460,7 +460,11 @@ pub fn trapped_chest_tick(
     if state_block(s) != TRAPPED_CHEST {
         return;
     }
-    let new = if open { TRAPPED_CHEST_OPEN_STATE } else { TRAPPED_CHEST_STATE };
+    let new = if open {
+        TRAPPED_CHEST_OPEN_STATE
+    } else {
+        TRAPPED_CHEST_STATE
+    };
     if new != s {
         world.set_block_state(x, y, z, new);
         on_block_changed(sched, world, x, y, z);
@@ -474,13 +478,7 @@ pub fn trapped_chest_tick(
 /// layer schedules this at exactly the verified window (8 or 20 gt) when
 /// the projectile hit lands; a stale entry (block gone / already 0) is a
 /// no-op.
-pub fn target_decay_tick(
-    world: &mut World,
-    sched: &mut TickScheduler,
-    x: i32,
-    y: i32,
-    z: i32,
-) {
+pub fn target_decay_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32) {
     let s = world.get_state(x, y, z);
     if state_block(s) != TARGET {
         return; // stale entry: the block changed
@@ -515,7 +513,14 @@ pub fn weighted_plate_signal(block: u16, entities: usize) -> u8 {
 
 /// Phase E3: write a weighted plate's signal into its POWER state (the
 /// game-layer sweep calls this every 10 game ticks).
-pub fn plate_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32, signal: u8) {
+pub fn plate_tick(
+    world: &mut World,
+    sched: &mut TickScheduler,
+    x: i32,
+    y: i32,
+    z: i32,
+    signal: u8,
+) {
     let s = world.get_state(x, y, z);
     let b = state_block(s);
     if b != LIGHT_WEIGHTED_PLATE && b != HEAVY_WEIGHTED_PLATE {
@@ -532,7 +537,14 @@ pub fn plate_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
 /// wires re-propagate through their own tick). Phase E3: kept for the
 /// game-layer fallback path; the state-based sources (sensor/plates/
 /// trapped chest) no longer need it — their POWER states ARE the source.
-fn feed_adjacent_wires(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32, signal: u8) {
+fn feed_adjacent_wires(
+    world: &mut World,
+    sched: &mut TickScheduler,
+    x: i32,
+    y: i32,
+    z: i32,
+    signal: u8,
+) {
     for (dx, dy, dz) in [
         (1i32, 0i32, 0i32),
         (-1, 0, 0),
@@ -974,7 +986,7 @@ pub fn piston_unpushable(b: u16) -> bool {
             | BREWING_STAND
             | WATER
     ) || (REPEATER..=COMPARATOR).contains(&b) // directional plates ride the
-                                            // floor in vanilla; ours stay put (documented simplification)
+                                              // floor in vanilla; ours stay put (documented simplification)
 }
 
 /// blocks that break (pop as drops) when pushed — our cross family
@@ -1660,7 +1672,11 @@ mod e1_lamp_tests {
         assert_eq!(weighted_plate_signal(LIGHT_WEIGHTED_PLATE, 1), 1);
         assert_eq!(weighted_plate_signal(LIGHT_WEIGHTED_PLATE, 7), 7);
         assert_eq!(weighted_plate_signal(LIGHT_WEIGHTED_PLATE, 15), 15);
-        assert_eq!(weighted_plate_signal(LIGHT_WEIGHTED_PLATE, 60), 15, "capped");
+        assert_eq!(
+            weighted_plate_signal(LIGHT_WEIGHTED_PLATE, 60),
+            15,
+            "capped"
+        );
         // heavy: ceil(entities/10), 1..15 (VERIFIED w/Heavy_Weighted_Pressure_Plate
         // "1/10 of the amount of entities (rounded up)")
         assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 0), 0);
@@ -1668,7 +1684,11 @@ mod e1_lamp_tests {
         assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 10), 1);
         assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 11), 2);
         assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 150), 15);
-        assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 500), 15, "capped");
+        assert_eq!(
+            weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 500),
+            15,
+            "capped"
+        );
     }
 
     #[test]
@@ -1742,7 +1762,9 @@ mod e1_lamp_tests {
                 let b = state_block(w.get_state(pos[0], pos[1], pos[2]));
                 match b {
                     LEVER => lever_tick(&w, pos[0], pos[1], pos[2]),
-                    PISTON | STICKY_PISTON => piston_tick(&mut w, &mut sched, pos[0], pos[1], pos[2]),
+                    PISTON | STICKY_PISTON => {
+                        piston_tick(&mut w, &mut sched, pos[0], pos[1], pos[2])
+                    }
                     _ => {}
                 }
             }
@@ -1759,7 +1781,9 @@ mod e1_lamp_tests {
                 let b = state_block(w.get_state(pos[0], pos[1], pos[2]));
                 match b {
                     LEVER => lever_tick(&w, pos[0], pos[1], pos[2]),
-                    PISTON | STICKY_PISTON => piston_tick(&mut w, &mut sched, pos[0], pos[1], pos[2]),
+                    PISTON | STICKY_PISTON => {
+                        piston_tick(&mut w, &mut sched, pos[0], pos[1], pos[2])
+                    }
                     _ => {}
                 }
             }
@@ -1815,11 +1839,19 @@ mod e1_lamp_tests {
         w.set_block_state(1, 65, 0, wire_state(0));
         on_block_changed(&mut sched, &w, 0, 65, 0);
         drain(&mut w, &mut sched, 2);
-        assert_eq!(wire_power(w.get_state(1, 65, 0)), 3, "charge 3 feeds wire at 3");
+        assert_eq!(
+            wire_power(w.get_state(1, 65, 0)),
+            3,
+            "charge 3 feeds wire at 3"
+        );
         // charge 0: no signal
         w.set_block_state(0, 65, 0, vc_blocks::blocks::anchor_state(0));
         on_block_changed(&mut sched, &w, 0, 65, 0);
         drain(&mut w, &mut sched, 4);
-        assert_eq!(wire_power(w.get_state(1, 65, 0)), 0, "uncharged anchor is silent");
+        assert_eq!(
+            wire_power(w.get_state(1, 65, 0)),
+            0,
+            "uncharged anchor is silent"
+        );
     }
 }

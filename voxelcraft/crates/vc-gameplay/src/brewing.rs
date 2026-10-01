@@ -165,7 +165,7 @@ pub fn brew_result(input: u16, ingredient: u16) -> Option<u16> {
 /// applied when the potion is drunk. The instant heal/harm family
 /// rides [`potion_heal`] instead.
 pub fn potion_effects(b: u16) -> &'static [(EffectKind, u8, i32)] {
-    use EffectKind::{JumpBoost, Regeneration, Resistance, Slowness, SlowFalling};
+    use EffectKind::{JumpBoost, Regeneration, Resistance, SlowFalling, Slowness};
     match b {
         // ---- the completeness audit: the leaping + regeneration
         // families (the 1.8 deferral, unblocked) ----
@@ -265,14 +265,17 @@ impl BrewingState {
     pub fn tick(&mut self) -> bool {
         // fuel refill: only when there is work and the pool is dry (the
         // vanilla "blaze powder consumed only when needed" behavior)
-        if self.fuel_charges <= 0 && self.can_brew() && !self.fuel.is_empty()
-            && is_fuel(self.fuel.block) {
-                self.fuel_charges = FUEL_OPERATIONS;
-                self.fuel.count -= 1;
-                if self.fuel.count == 0 {
-                    self.fuel = ItemStack::EMPTY;
-                }
+        if self.fuel_charges <= 0
+            && self.can_brew()
+            && !self.fuel.is_empty()
+            && is_fuel(self.fuel.block)
+        {
+            self.fuel_charges = FUEL_OPERATIONS;
+            self.fuel.count -= 1;
+            if self.fuel.count == 0 {
+                self.fuel = ItemStack::EMPTY;
             }
+        }
 
         // vanilla quirk: pulling the ingredient mid-cycle resets progress
         // (same reset rule as the furnace input)
@@ -614,11 +617,17 @@ mod tests {
         );
         assert_eq!(
             potion_effects(POTION_TURTLE_MASTER),
-            &[(EffectKind::Slowness, 3, 1200), (EffectKind::Resistance, 2, 1200)]
+            &[
+                (EffectKind::Slowness, 3, 1200),
+                (EffectKind::Resistance, 2, 1200)
+            ]
         );
         assert_eq!(
             potion_effects(POTION_TURTLE_MASTER_II),
-            &[(EffectKind::Slowness, 5, 1200), (EffectKind::Resistance, 3, 1200)]
+            &[
+                (EffectKind::Slowness, 5, 1200),
+                (EffectKind::Resistance, 3, 1200)
+            ]
         );
         // the instant family carries no duration rows
         assert!(potion_effects(POTION_HEALING).is_empty());
@@ -631,9 +640,15 @@ mod tests {
     #[test]
     fn audit16_leaping_and_regen_brews() {
         // leaping: awkward + rabbit's foot -> 3:00 Jump Boost I
-        assert_eq!(brew_result(POTION_AWKWARD, RABBIT_FOOT), Some(POTION_LEAPING));
+        assert_eq!(
+            brew_result(POTION_AWKWARD, RABBIT_FOOT),
+            Some(POTION_LEAPING)
+        );
         // glowstone enhances: 1:30 Jump Boost II
-        assert_eq!(brew_result(POTION_LEAPING, GLOWSTONE), Some(POTION_LEAPING_II));
+        assert_eq!(
+            brew_result(POTION_LEAPING, GLOWSTONE),
+            Some(POTION_LEAPING_II)
+        );
         // regeneration: awkward + ghast tear -> 0:45 Regeneration I
         assert_eq!(brew_result(POTION_AWKWARD, GHAST_TEAR), Some(POTION_REGEN));
         // glowstone enhances: 0:22 Regeneration II
@@ -641,20 +656,41 @@ mod tests {
         // the effect rows: durations exact (3:00 = 3600, 1:30 = 1800,
         // 0:45 = 900, 0:22 = 440; the long rows are registry-gated)
         use crate::effects::EffectKind;
-        assert_eq!(potion_effects(POTION_LEAPING), &[(EffectKind::JumpBoost, 0, 3600)]);
-        assert_eq!(potion_effects(POTION_LEAPING_II), &[(EffectKind::JumpBoost, 1, 1800)]);
-        assert_eq!(potion_effects(POTION_LEAPING_LONG), &[(EffectKind::JumpBoost, 0, 9600)]);
-        assert_eq!(potion_effects(POTION_REGEN), &[(EffectKind::Regeneration, 0, 900)]);
-        assert_eq!(potion_effects(POTION_REGEN_II), &[(EffectKind::Regeneration, 1, 440)]);
-        assert_eq!(potion_effects(POTION_REGEN_LONG), &[(EffectKind::Regeneration, 0, 1800)]);
+        assert_eq!(
+            potion_effects(POTION_LEAPING),
+            &[(EffectKind::JumpBoost, 0, 3600)]
+        );
+        assert_eq!(
+            potion_effects(POTION_LEAPING_II),
+            &[(EffectKind::JumpBoost, 1, 1800)]
+        );
+        assert_eq!(
+            potion_effects(POTION_LEAPING_LONG),
+            &[(EffectKind::JumpBoost, 0, 9600)]
+        );
+        assert_eq!(
+            potion_effects(POTION_REGEN),
+            &[(EffectKind::Regeneration, 0, 900)]
+        );
+        assert_eq!(
+            potion_effects(POTION_REGEN_II),
+            &[(EffectKind::Regeneration, 1, 440)]
+        );
+        assert_eq!(
+            potion_effects(POTION_REGEN_LONG),
+            &[(EffectKind::Regeneration, 0, 1800)]
+        );
         // no redstone item: the long rows are registry-only (the
         // SLOW_FALLING_EXT convention — nothing brews them)
         for ing in [GLOWSTONE, RABBIT_FOOT, GHAST_TEAR, MUSHROOM_RED] {
-            assert_eq!(brew_result(POTION_LEAPING, ing), if ing == GLOWSTONE {
-                Some(POTION_LEAPING_II)
-            } else {
-                None
-            });
+            assert_eq!(
+                brew_result(POTION_LEAPING, ing),
+                if ing == GLOWSTONE {
+                    Some(POTION_LEAPING_II)
+                } else {
+                    None
+                }
+            );
         }
     }
 }

@@ -321,7 +321,9 @@ impl<'a> Cur<'a> {
     }
     fn be_i64(&mut self) -> Result<i64, NbtError> {
         let b = self.take(8)?;
-        Ok(i64::from_be_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]]))
+        Ok(i64::from_be_bytes([
+            b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+        ]))
     }
     fn string(&mut self) -> Result<String, NbtError> {
         let len = self.be_i16()? as usize;
@@ -469,9 +471,18 @@ mod tests {
         assert_eq!(
             bytes,
             vec![
-                TAG_COMPOUND, 0, 0, // root name ""
-                TAG_INT, 0, 1, b'x', // key "x"
-                0, 0, 0, 7, TAG_END
+                TAG_COMPOUND,
+                0,
+                0, // root name ""
+                TAG_INT,
+                0,
+                1,
+                b'x', // key "x"
+                0,
+                0,
+                0,
+                7,
+                TAG_END
             ]
         );
     }
@@ -487,10 +498,28 @@ mod tests {
         assert_eq!(
             bytes,
             vec![
-                TAG_COMPOUND, 0, 1, b'r', TAG_LIST, 0, 1, b'L', TAG_INT,
-                0, 0, 0, 2, // list: type Int, 2 entries
-                0, 0, 0, 1, 0, 0, 0, 2, // payloads, no keys
-                TAG_END // closes the root compound — lists carry NO terminator
+                TAG_COMPOUND,
+                0,
+                1,
+                b'r',
+                TAG_LIST,
+                0,
+                1,
+                b'L',
+                TAG_INT,
+                0,
+                0,
+                0,
+                2, // list: type Int, 2 entries
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                2,       // payloads, no keys
+                TAG_END  // closes the root compound — lists carry NO terminator
             ]
         );
     }
@@ -541,7 +570,10 @@ mod tests {
         root.set("a", Nbt::LongArray(vec![-1, 0, u64::MAX as i64]));
         let bytes = write_root("r", &root).unwrap();
         let (_, back) = read_root(&bytes).unwrap();
-        assert_eq!(back.get("a").unwrap().as_i64_slice().unwrap(), &[-1i64, 0, -1i64]);
+        assert_eq!(
+            back.get("a").unwrap().as_i64_slice().unwrap(),
+            &[-1i64, 0, -1i64]
+        );
     }
 
     #[test]

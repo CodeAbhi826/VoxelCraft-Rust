@@ -391,7 +391,14 @@ pub fn concrete_powder_touches_water(world: &World, x: i32, y: i32, z: i32) -> b
 /// convert a concrete-powder block at (x,y,z) into the concrete of the
 /// same color (VERIFIED w/Concrete: "Created when concrete powder comes
 /// into contact with still or flowing water").
-pub fn solidify_powder(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32, b: u16) {
+pub fn solidify_powder(
+    world: &mut World,
+    sched: &mut TickScheduler,
+    x: i32,
+    y: i32,
+    z: i32,
+    b: u16,
+) {
     let color = concrete_powder_color(b);
     if color == 255 {
         return;
@@ -627,7 +634,14 @@ fn grow_crop(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i3
     let mut q = if below_wet { 16 } else { 4 };
     // the 8 surrounding farmland cells (the 3×3 around the below block)
     for (dx, dz) in [
-        (1i32, 0i32), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1),
+        (1i32, 0i32),
+        (-1, 0),
+        (0, 1),
+        (0, -1),
+        (1, 1),
+        (1, -1),
+        (-1, 1),
+        (-1, -1),
     ] {
         let nb = world.get_block(x + dx, y - 1, z + dz);
         if nb == FARMLAND {
@@ -680,9 +694,7 @@ fn spread_mycelium(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32,
         (0, -1, 0),
     ]
     .iter()
-    .any(|&(dx, dy, dz)| {
-        state_block(world.get_state(x + dx, y + dy, z + dz)) == MYCELIUM
-    });
+    .any(|&(dx, dy, dz)| state_block(world.get_state(x + dx, y + dy, z + dz)) == MYCELIUM);
     if has_mycelium_neighbor {
         world.set_block_state(x, y, z, MYCELIUM_STATE);
         on_block_changed(sched, world, x, y, z);
@@ -729,9 +741,7 @@ fn light_ge_9(world: &World, x: i32, y: i32, z: i32) -> bool {
     world
         .light
         .get(&(cx, cz))
-        .and_then(|ld| {
-            ld.sections[sec].as_ref().map(|s| (s.sky[idx], s.blk[idx]))
-        })
+        .and_then(|ld| ld.sections[sec].as_ref().map(|s| (s.sky[idx], s.blk[idx])))
         .map(|(sky, blk)| sky.max(blk) >= 9)
         .unwrap_or(true)
 }
@@ -961,9 +971,9 @@ mod e1_tests {
         w.set_block(8, 66, 8, DIRT); // one above
         w.set_block(8, 62, 8, DIRT); // three below (inside the window)
         w.set_block(12, 61, 8, DIRT); // 4 sideways from every mycelium
-        // (OUTSIDE the 1/1/3 window — note: a dirt straight below a fresh
-        // mycelium WOULD cascade; this cell has none within range)
-        // random tick on the dirt cells
+                                      // (OUTSIDE the 1/1/3 window — note: a dirt straight below a fresh
+                                      // mycelium WOULD cascade; this cell has none within range)
+                                      // random tick on the dirt cells
         random_plant_tick(&mut w, &mut sched, 9, 65, 8);
         random_plant_tick(&mut w, &mut sched, 8, 66, 8);
         random_plant_tick(&mut w, &mut sched, 8, 62, 8);
@@ -976,7 +986,11 @@ mod e1_tests {
         // ITS window (dy=+1) — the spread chains downward over time
         w.set_block(8, 61, 8, DIRT);
         random_plant_tick(&mut w, &mut sched, 8, 61, 8);
-        assert_eq!(w.get_block(8, 61, 8), MYCELIUM, "chains through fresh mycelium");
+        assert_eq!(
+            w.get_block(8, 61, 8),
+            MYCELIUM,
+            "chains through fresh mycelium"
+        );
         // death: opaque cover above the mycelium
         w.set_block(9, 66, 8, STONE);
         random_plant_tick(&mut w, &mut sched, 9, 65, 8);
@@ -1179,7 +1193,11 @@ mod e2_tests {
         w.set_block_state(0, 65, 0, concrete_powder_state(3));
         on_block_changed(&mut sched, &w, 0, 65, 0);
         drain(&mut w, &mut sched, 200);
-        assert_eq!(w.get_block(0, 65, 0), concrete(3), "water neighbor → concrete");
+        assert_eq!(
+            w.get_block(0, 65, 0),
+            concrete(3),
+            "water neighbor → concrete"
+        );
         // powder falling INTO a water column solidifies on landing
         let mut w2 = flat_world(64);
         let mut sched2 = TickScheduler::new();
@@ -1371,7 +1389,6 @@ mod farm_tests {
         w
     }
 
-
     /// the vanilla speed-level denominators, VERIFIED against the
     /// Tutorial:Crop_farming table: solo dry 1/13, solo hydrated 1/7,
     /// fully-hydrated farm 1/3 — the growth roll math itself
@@ -1383,7 +1400,12 @@ mod farm_tests {
         // full farm: 4 + 8×0.75 = 10 → q=40 → floor(100/40)=2 → 3
         // full dry farm: 2 + 8×0.25 = 4 → q=16 → 7 (the 14.29% row)
         for (q, denom) in [(8u32, 13u32), (16, 7), (40, 3)] {
-            assert_eq!(25 * 4 / q + 1, denom, "q={q} (speedLevel={})", q as f32 / 4.0);
+            assert_eq!(
+                25 * 4 / q + 1,
+                denom,
+                "q={q} (speedLevel={})",
+                q as f32 / 4.0
+            );
         }
     }
 

@@ -73,9 +73,8 @@ pub fn load_override(dir: &Path) -> Result<Option<GuiTextureSet>, GuiTextureErro
             "options_background" => "options_background.png",
             _ => "font.png",
         };
-        let (px, w, h) = decode_png(&bytes).map_err(|_| GuiTextureError::Decode {
-            file: file_label,
-        })?;
+        let (px, w, h) =
+            decode_png(&bytes).map_err(|_| GuiTextureError::Decode { file: file_label })?;
         if (w, h) != (ew, eh) {
             return Err(GuiTextureError::WrongDimensions {
                 file: file_label,
@@ -126,7 +125,6 @@ pub fn load_font_png_if_present(set: &mut GuiTextureSet, path: &Path) -> bool {
     true
 }
 
-
 /// Phase 4 (D2): resolve GUI textures through the `vc-pack` stack.
 /// Resolution order per sheet: highest-priority user pack first, then
 /// lower packs, then the builtin set. A pack that provides only
@@ -159,9 +157,8 @@ pub fn load_from_pack(
             "options_background" => "options_background.png",
             _ => "font.png",
         };
-        let (px, w, h) = decode_png(&bytes).map_err(|_| GuiTextureError::Decode {
-            file: file_label,
-        })?;
+        let (px, w, h) =
+            decode_png(&bytes).map_err(|_| GuiTextureError::Decode { file: file_label })?;
         if (w, h) != (*ew, *eh) {
             return Err(GuiTextureError::WrongDimensions {
                 file: file_label,
@@ -274,7 +271,9 @@ mod tests {
         // everything else still builtin: hunger's first pixel is NOT the
         // override red (builtin mask leaves it transparent)
         assert!(
-            !(set.hunger.px[0] == 255 && set.hunger.px[1] == 0 && set.hunger.px[2] == 0
+            !(set.hunger.px[0] == 255
+                && set.hunger.px[1] == 0
+                && set.hunger.px[2] == 0
                 && set.hunger.px[3] == 255),
             "hunger must not be overridden by a hearts-only pack"
         );
@@ -376,7 +375,11 @@ mod tests {
             [1, 2, 3, 255],
         )));
         match load_from_pack(&stack) {
-            Err(GuiTextureError::WrongDimensions { file, expected, got }) => {
+            Err(GuiTextureError::WrongDimensions {
+                file,
+                expected,
+                got,
+            }) => {
                 assert_eq!(file, "armor.png");
                 assert_eq!(expected, (27, 9));
                 assert_eq!(got, (9, 9));
@@ -392,10 +395,16 @@ mod tests {
         let mut stack = vc_pack::pack::PackStack::new();
         // blue first, then red lands AT the front = highest priority
         stack.push_front(std::sync::Arc::new(pack_with_sheet(
-            "hearts", 27, 9, [0, 0, 255, 255],
+            "hearts",
+            27,
+            9,
+            [0, 0, 255, 255],
         )));
         stack.push_front(std::sync::Arc::new(pack_with_sheet(
-            "hearts", 27, 9, [255, 0, 0, 255],
+            "hearts",
+            27,
+            9,
+            [255, 0, 0, 255],
         )));
         let set = load_from_pack(&stack)
             .ok()

@@ -89,12 +89,7 @@ fn texel(atlas: &[u8], tile: u16, x: i32, y: i32) -> [u8; 4] {
     let py = (ty * 16 + y.clamp(0, 15)) as usize;
     let idx = (py * 512 + px) * 4;
     if idx + 3 < atlas.len() {
-        [
-            atlas[idx],
-            atlas[idx + 1],
-            atlas[idx + 2],
-            atlas[idx + 3],
-        ]
+        [atlas[idx], atlas[idx + 1], atlas[idx + 2], atlas[idx + 3]]
     } else {
         [0, 0, 0, 0]
     }
@@ -154,20 +149,22 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8]) -> bool {
     for y in [0usize, 1] {
         for z in [0usize, 1] {
             for x in [0usize, 1] {
-                corners[idx(y, z, x)] = proj(
-                    x as f32 - 0.5,
-                    y as f32 - 0.5,
-                    z as f32 - 0.5,
-                );
+                corners[idx(y, z, x)] = proj(x as f32 - 0.5, y as f32 - 0.5, z as f32 - 0.5);
             }
         }
     }
     // fit into the margin box (56 px), centered, uniform scale
     let box_px = (ICON_CELL_PX - cam.margin_px * 2) as f32;
     let min_x = corners.iter().map(|c| c.0).fold(f32::INFINITY, f32::min);
-    let max_x = corners.iter().map(|c| c.0).fold(f32::NEG_INFINITY, f32::max);
+    let max_x = corners
+        .iter()
+        .map(|c| c.0)
+        .fold(f32::NEG_INFINITY, f32::max);
     let min_y = corners.iter().map(|c| c.1).fold(f32::INFINITY, f32::min);
-    let max_y = corners.iter().map(|c| c.1).fold(f32::NEG_INFINITY, f32::max);
+    let max_y = corners
+        .iter()
+        .map(|c| c.1)
+        .fold(f32::NEG_INFINITY, f32::max);
     let span_x = (max_x - min_x).max(1e-6);
     let span_y = (max_y - min_y).max(1e-6);
     let scale = (box_px / span_x).min(box_px / span_y);
@@ -183,12 +180,27 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8]) -> bool {
     // u,v in 0..1; tile uv maps u -> texel x, v -> texel row (v=0 top)
     let top_tile = d.tiles[0];
     let side_tile = d.tiles[2]; // side art for both visible sides
-    // top (y=+): u along +x, v along +z
-    let top = (s[idx(1, 0, 0)], s[idx(1, 0, 1)], s[idx(1, 1, 1)], s[idx(1, 1, 0)]);
+                                // top (y=+): u along +x, v along +z
+    let top = (
+        s[idx(1, 0, 0)],
+        s[idx(1, 0, 1)],
+        s[idx(1, 1, 1)],
+        s[idx(1, 1, 0)],
+    );
     // left (-x): u along +z, v downward (-y)
-    let left = (s[idx(1, 0, 0)], s[idx(1, 1, 0)], s[idx(0, 1, 0)], s[idx(0, 0, 0)]);
+    let left = (
+        s[idx(1, 0, 0)],
+        s[idx(1, 1, 0)],
+        s[idx(0, 1, 0)],
+        s[idx(0, 0, 0)],
+    );
     // right (+z): u along +x, v downward (-y)
-    let right = (s[idx(1, 1, 0)], s[idx(1, 1, 1)], s[idx(0, 1, 1)], s[idx(0, 1, 0)]);
+    let right = (
+        s[idx(1, 1, 0)],
+        s[idx(1, 1, 1)],
+        s[idx(0, 1, 1)],
+        s[idx(0, 1, 0)],
+    );
 
     let faces = [
         (top, top_tile, FACE_TOP),
@@ -208,21 +220,19 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8]) -> bool {
             continue; // degenerate face (never for a real cube)
         }
         let minx = p0.0.min(p1.0).min(p2.0).min(p3.0).floor().max(0.0) as i32;
-        let maxx = p0
-            .0
-            .max(p1.0)
-            .max(p2.0)
-            .max(p3.0)
-            .ceil()
-            .min(ICON_CELL_PX as f32 - 1.0) as i32;
+        let maxx =
+            p0.0.max(p1.0)
+                .max(p2.0)
+                .max(p3.0)
+                .ceil()
+                .min(ICON_CELL_PX as f32 - 1.0) as i32;
         let miny = p0.1.min(p1.1).min(p2.1).min(p3.1).floor().max(0.0) as i32;
-        let maxy = p0
-            .1
-            .max(p1.1)
-            .max(p2.1)
-            .max(p3.1)
-            .ceil()
-            .min(ICON_CELL_PX as f32 - 1.0) as i32;
+        let maxy =
+            p0.1.max(p1.1)
+                .max(p2.1)
+                .max(p3.1)
+                .ceil()
+                .min(ICON_CELL_PX as f32 - 1.0) as i32;
         for py in miny..=maxy {
             for px in minx..=maxx {
                 let dx = px as f32 + 0.5 - p0.0;
@@ -398,11 +408,7 @@ impl ItemIconCache {
                 wgpu::ImageCopyTexture {
                     texture: &texture,
                     mip_level: 0,
-                    origin: wgpu::Origin3d {
-                        x: 0,
-                        y: row,
-                        z: 0,
-                    },
+                    origin: wgpu::Origin3d { x: 0, y: row, z: 0 },
                     aspect: wgpu::TextureAspect::All,
                 },
                 &zero_row,
@@ -484,10 +490,8 @@ impl ItemIconCache {
         if self.snap_version != self.core.version {
             self.ready_cells.clear();
             for ((block, _, _), (cell, _)) in self.core.entries.iter() {
-                self.ready_cells.insert(
-                    *block,
-                    [(cell % ICON_GRID) as u8, (cell / ICON_GRID) as u8],
-                );
+                self.ready_cells
+                    .insert(*block, [(cell % ICON_GRID) as u8, (cell / ICON_GRID) as u8]);
             }
             self.snap_version = self.core.version;
         }
@@ -583,7 +587,11 @@ mod tests {
             // read back the 64x64 cell
             let dst = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("readback"),
-                size: wgpu::Extent3d { width: 64, height: 64, depth_or_array_layers: 1 },
+                size: wgpu::Extent3d {
+                    width: 64,
+                    height: 64,
+                    depth_or_array_layers: 1,
+                },
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
@@ -596,7 +604,11 @@ mod tests {
                 wgpu::ImageCopyTexture {
                     texture: cache.texture(),
                     mip_level: 0,
-                    origin: wgpu::Origin3d { x: col as u32 * 64, y: row as u32 * 64, z: 0 },
+                    origin: wgpu::Origin3d {
+                        x: col as u32 * 64,
+                        y: row as u32 * 64,
+                        z: 0,
+                    },
                     aspect: wgpu::TextureAspect::All,
                 },
                 wgpu::ImageCopyTexture {
@@ -605,7 +617,11 @@ mod tests {
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                wgpu::Extent3d { width: 64, height: 64, depth_or_array_layers: 1 },
+                wgpu::Extent3d {
+                    width: 64,
+                    height: 64,
+                    depth_or_array_layers: 1,
+                },
             );
             let buf = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("rb-buf"),
@@ -628,12 +644,18 @@ mod tests {
                         rows_per_image: Some(64),
                     },
                 },
-                wgpu::Extent3d { width: 64, height: 64, depth_or_array_layers: 1 },
+                wgpu::Extent3d {
+                    width: 64,
+                    height: 64,
+                    depth_or_array_layers: 1,
+                },
             );
             queue.submit(Some(encoder.finish()));
             let slice = buf.slice(..);
             let (tx, rx) = std::sync::mpsc::channel();
-            slice.map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+            slice.map_async(wgpu::MapMode::Read, move |r| {
+                let _ = tx.send(r);
+            });
             device.poll(wgpu::Maintain::Wait);
             let _ = rx.recv();
             let data = slice.get_mapped_range().to_vec();
@@ -642,7 +664,10 @@ mod tests {
             Some((painted, data.len() / 4))
         });
         if let Some((painted, total)) = r {
-            assert!(painted > 200, "cell nearly empty: {painted}/{total} painted");
+            assert!(
+                painted > 200,
+                "cell nearly empty: {painted}/{total} painted"
+            );
         }
     }
 

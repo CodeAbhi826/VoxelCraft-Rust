@@ -892,19 +892,49 @@ pub const V2_STATE_BASE: u16 = 400;
 pub const V2_COUNT: u16 = 43; // ids 200..=242 [merged renumber past the E-series]
 /// state → block fold table for the V2 window. Index = state − BASE.
 pub const V2_STATE_TO_BLOCK: [u16; V2_COUNT as usize] = [
-    STAINED_GLASS_WHITE, STAINED_GLASS_ORANGE, STAINED_GLASS_MAGENTA,
-    STAINED_GLASS_LIGHT_BLUE, STAINED_GLASS_YELLOW, STAINED_GLASS_LIME,
-    STAINED_GLASS_PINK, STAINED_GLASS_GRAY, STAINED_GLASS_LIGHT_GRAY,
-    STAINED_GLASS_CYAN, STAINED_GLASS_PURPLE, STAINED_GLASS_BLUE,
-    STAINED_GLASS_BROWN, STAINED_GLASS_GREEN, STAINED_GLASS_RED,
+    STAINED_GLASS_WHITE,
+    STAINED_GLASS_ORANGE,
+    STAINED_GLASS_MAGENTA,
+    STAINED_GLASS_LIGHT_BLUE,
+    STAINED_GLASS_YELLOW,
+    STAINED_GLASS_LIME,
+    STAINED_GLASS_PINK,
+    STAINED_GLASS_GRAY,
+    STAINED_GLASS_LIGHT_GRAY,
+    STAINED_GLASS_CYAN,
+    STAINED_GLASS_PURPLE,
+    STAINED_GLASS_BLUE,
+    STAINED_GLASS_BROWN,
+    STAINED_GLASS_GREEN,
+    STAINED_GLASS_RED,
     STAINED_GLASS_BLACK,
-    RED_SAND, PACKED_ICE, PODZOL, ACACIA_LOG, ACACIA_LEAVES, DARK_OAK_LOG,
+    RED_SAND,
+    PACKED_ICE,
+    PODZOL,
+    ACACIA_LOG,
+    ACACIA_LEAVES,
+    DARK_OAK_LOG,
     DARK_OAK_LEAVES,
-    ALLIUM, AZURE_BLUET, BLUE_ORCHID, OXEYE_DAISY, ORANGE_TULIP, RED_TULIP,
-    WHITE_TULIP, PINK_TULIP,
-    SUNFLOWER, SUNFLOWER_TOP, LILAC, LILAC_TOP, PEONY, PEONY_TOP,
-    ROSE_BUSH, ROSE_BUSH_TOP,
-    RAW_FISH, RAW_SALMON, CLOWNFISH, PUFFERFISH,
+    ALLIUM,
+    AZURE_BLUET,
+    BLUE_ORCHID,
+    OXEYE_DAISY,
+    ORANGE_TULIP,
+    RED_TULIP,
+    WHITE_TULIP,
+    PINK_TULIP,
+    SUNFLOWER,
+    SUNFLOWER_TOP,
+    LILAC,
+    LILAC_TOP,
+    PEONY,
+    PEONY_TOP,
+    ROSE_BUSH,
+    ROSE_BUSH_TOP,
+    RAW_FISH,
+    RAW_SALMON,
+    CLOWNFISH,
+    PUFFERFISH,
 ];
 
 /// default (and only) V2 state of a block id — `b − 200 + V2_STATE_BASE`.
@@ -960,10 +990,24 @@ pub const PRISMARINE_CRYSTALS: u16 = 261;
 pub const V3_STATE_BASE: u16 = 447;
 pub const V3_COUNT: u16 = 19; // ids 162..=180
 pub const V3_STATE_TO_BLOCK: [u16; V3_COUNT as usize] = [
-    SLIME_BLOCK, COARSE_DIRT, POLISHED_GRANITE, POLISHED_DIORITE, POLISHED_ANDESITE,
-    RED_SANDSTONE, SMOOTH_RED_SANDSTONE, PRISMARINE, PRISMARINE_BRICKS, DARK_PRISMARINE,
-    SEA_LANTERN, IRON_TRAPDOOR, BARRIER,
-    RAW_RABBIT, COOKED_RABBIT, RABBIT_HIDE, RABBIT_FOOT, PRISMARINE_SHARD,
+    SLIME_BLOCK,
+    COARSE_DIRT,
+    POLISHED_GRANITE,
+    POLISHED_DIORITE,
+    POLISHED_ANDESITE,
+    RED_SANDSTONE,
+    SMOOTH_RED_SANDSTONE,
+    PRISMARINE,
+    PRISMARINE_BRICKS,
+    DARK_PRISMARINE,
+    SEA_LANTERN,
+    IRON_TRAPDOOR,
+    BARRIER,
+    RAW_RABBIT,
+    COOKED_RABBIT,
+    RABBIT_HIDE,
+    RABBIT_FOOT,
+    PRISMARINE_SHARD,
     PRISMARINE_CRYSTALS,
 ];
 
@@ -1014,8 +1058,16 @@ pub const SHIELD: u16 = 271;
 pub const V4_STATE_BASE: u16 = 466;
 pub const V4_COUNT: u16 = 10; // ids 181..=190
 pub const V4_STATE_TO_BLOCK: [u16; V4_COUNT as usize] = [
-    GRASS_PATH, PURPUR_BLOCK, PURPUR_PILLAR, END_STONE_BRICKS, END_ROD,
-    CHORUS_PLANT, CHORUS_FLOWER, CHORUS_FRUIT, ELYTRA, SHIELD,
+    GRASS_PATH,
+    PURPUR_BLOCK,
+    PURPUR_PILLAR,
+    END_STONE_BRICKS,
+    END_ROD,
+    CHORUS_PLANT,
+    CHORUS_FLOWER,
+    CHORUS_FRUIT,
+    ELYTRA,
+    SHIELD,
 ];
 
 #[inline]
@@ -1135,7 +1187,10 @@ pub const SPAWN_EGG_STRAY: u16 = 290;
 pub const V5_STATE_BASE: u16 = 476;
 pub const V5_COUNT: u16 = 4; // ids 191..=194
 pub const V5_STATE_TO_BLOCK: [u16; V5_COUNT as usize] = [
-    MAGMA_BLOCK, NETHER_WART_BLOCK, RED_NETHER_BRICKS, BONE_BLOCK,
+    MAGMA_BLOCK,
+    NETHER_WART_BLOCK,
+    RED_NETHER_BRICKS,
+    BONE_BLOCK,
 ];
 
 #[inline]
@@ -1155,7 +1210,12 @@ pub fn is_v5_state(s: u16) -> bool {
 pub const V6_STATE_BASE: u16 = 480;
 pub const V6_COUNT: u16 = 6; // ids 276..=281 (audit-fix round)
 pub const V6_STATE_TO_BLOCK: [u16; V6_COUNT as usize] = [
-    GOLDEN_CARROT, JUNGLE_LOG, JUNGLE_LEAVES, JUNGLE_PLANKS, VINE, FERN,
+    GOLDEN_CARROT,
+    JUNGLE_LOG,
+    JUNGLE_LEAVES,
+    JUNGLE_PLANKS,
+    VINE,
+    FERN,
 ];
 
 #[inline]
@@ -1187,9 +1247,15 @@ pub const V7_STATE_BASE: u16 = 486;
 // states sit directly above at 495..=496 (STATE_COUNT = 497).
 pub const V7_COUNT: u16 = 9;
 pub const V7_STATE_TO_BLOCK: [u16; V7_COUNT as usize] = [
-    SHULKER_BOX, SHULKER_SHELL, TOTEM_OF_UNDYING, SPAWN_EGG_LLAMA,
-    SPAWN_EGG_CLEAVER, SPAWN_EGG_EVOKER, SPAWN_EGG_VEX,
-    SPAWN_EGG_HUSK, SPAWN_EGG_STRAY,
+    SHULKER_BOX,
+    SHULKER_SHELL,
+    TOTEM_OF_UNDYING,
+    SPAWN_EGG_LLAMA,
+    SPAWN_EGG_CLEAVER,
+    SPAWN_EGG_EVOKER,
+    SPAWN_EGG_VEX,
+    SPAWN_EGG_HUSK,
+    SPAWN_EGG_STRAY,
 ];
 
 #[inline]
@@ -1362,34 +1428,73 @@ pub const V9_COUNT: u16 = 61;
 /// parent — the per-state art rides state_tiles).
 pub const V9_STATE_TO_BLOCK: [u16; V9_COUNT as usize] = [
     // coral blocks (5) + dead (5)
-    CORAL_BLOCK_BASE, CORAL_BLOCK_BASE + 1, CORAL_BLOCK_BASE + 2,
-    CORAL_BLOCK_BASE + 3, CORAL_BLOCK_BASE + 4,
-    DEAD_CORAL_BLOCK_BASE, DEAD_CORAL_BLOCK_BASE + 1, DEAD_CORAL_BLOCK_BASE + 2,
-    DEAD_CORAL_BLOCK_BASE + 3, DEAD_CORAL_BLOCK_BASE + 4,
+    CORAL_BLOCK_BASE,
+    CORAL_BLOCK_BASE + 1,
+    CORAL_BLOCK_BASE + 2,
+    CORAL_BLOCK_BASE + 3,
+    CORAL_BLOCK_BASE + 4,
+    DEAD_CORAL_BLOCK_BASE,
+    DEAD_CORAL_BLOCK_BASE + 1,
+    DEAD_CORAL_BLOCK_BASE + 2,
+    DEAD_CORAL_BLOCK_BASE + 3,
+    DEAD_CORAL_BLOCK_BASE + 4,
     // coral plants (5) + dead (5)
-    CORAL_PLANT_BASE, CORAL_PLANT_BASE + 1, CORAL_PLANT_BASE + 2,
-    CORAL_PLANT_BASE + 3, CORAL_PLANT_BASE + 4,
-    DEAD_CORAL_PLANT_BASE, DEAD_CORAL_PLANT_BASE + 1, DEAD_CORAL_PLANT_BASE + 2,
-    DEAD_CORAL_PLANT_BASE + 3, DEAD_CORAL_PLANT_BASE + 4,
+    CORAL_PLANT_BASE,
+    CORAL_PLANT_BASE + 1,
+    CORAL_PLANT_BASE + 2,
+    CORAL_PLANT_BASE + 3,
+    CORAL_PLANT_BASE + 4,
+    DEAD_CORAL_PLANT_BASE,
+    DEAD_CORAL_PLANT_BASE + 1,
+    DEAD_CORAL_PLANT_BASE + 2,
+    DEAD_CORAL_PLANT_BASE + 3,
+    DEAD_CORAL_PLANT_BASE + 4,
     // coral fans (5) + dead (5)
-    CORAL_FAN_BASE, CORAL_FAN_BASE + 1, CORAL_FAN_BASE + 2,
-    CORAL_FAN_BASE + 3, CORAL_FAN_BASE + 4,
-    DEAD_CORAL_FAN_BASE, DEAD_CORAL_FAN_BASE + 1, DEAD_CORAL_FAN_BASE + 2,
-    DEAD_CORAL_FAN_BASE + 3, DEAD_CORAL_FAN_BASE + 4,
+    CORAL_FAN_BASE,
+    CORAL_FAN_BASE + 1,
+    CORAL_FAN_BASE + 2,
+    CORAL_FAN_BASE + 3,
+    CORAL_FAN_BASE + 4,
+    DEAD_CORAL_FAN_BASE,
+    DEAD_CORAL_FAN_BASE + 1,
+    DEAD_CORAL_FAN_BASE + 2,
+    DEAD_CORAL_FAN_BASE + 3,
+    DEAD_CORAL_FAN_BASE + 4,
     // sea pickle: 4 count states
-    SEA_PICKLE, SEA_PICKLE, SEA_PICKLE, SEA_PICKLE,
+    SEA_PICKLE,
+    SEA_PICKLE,
+    SEA_PICKLE,
+    SEA_PICKLE,
     // blue ice / dried kelp block / kelp / seagrass / conduit
-    BLUE_ICE, DRIED_KELP_BLOCK, KELP, SEAGRASS, CONDUIT,
+    BLUE_ICE,
+    DRIED_KELP_BLOCK,
+    KELP,
+    SEAGRASS,
+    CONDUIT,
     // turtle egg: 3 hatch stages
-    TURTLE_EGG, TURTLE_EGG, TURTLE_EGG,
+    TURTLE_EGG,
+    TURTLE_EGG,
+    TURTLE_EGG,
     // 11 items
-    HEART_OF_THE_SEA, NAUTILUS_SHELL, SCUTE, TRIDENT, PHANTOM_MEMBRANE,
-    DRIED_KELP, TURTLE_SHELL,
-    POTION_SLOW_FALLING, POTION_SLOW_FALLING_EXT,
-    POTION_TURTLE_MASTER, POTION_TURTLE_MASTER_II,
+    HEART_OF_THE_SEA,
+    NAUTILUS_SHELL,
+    SCUTE,
+    TRIDENT,
+    PHANTOM_MEMBRANE,
+    DRIED_KELP,
+    TURTLE_SHELL,
+    POTION_SLOW_FALLING,
+    POTION_SLOW_FALLING_EXT,
+    POTION_TURTLE_MASTER,
+    POTION_TURTLE_MASTER_II,
     // 8 spawn eggs
-    SPAWN_EGG_DROWNED, SPAWN_EGG_PHANTOM, SPAWN_EGG_DOLPHIN, SPAWN_EGG_COD,
-    SPAWN_EGG_SALMON, SPAWN_EGG_PUFFERFISH, SPAWN_EGG_TROPICAL_FISH,
+    SPAWN_EGG_DROWNED,
+    SPAWN_EGG_PHANTOM,
+    SPAWN_EGG_DOLPHIN,
+    SPAWN_EGG_COD,
+    SPAWN_EGG_SALMON,
+    SPAWN_EGG_PUFFERFISH,
+    SPAWN_EGG_TROPICAL_FISH,
     SPAWN_EGG_TURTLE,
 ];
 
@@ -1893,12 +1998,19 @@ pub const V10_STATE_TO_BLOCK: [u16; V10_COUNT as usize] = [
     BAMBOO,
     BAMBOO_SHOOT,
     // sweet berry bush: 4 age states
-    SWEET_BERRY_BUSH, SWEET_BERRY_BUSH, SWEET_BERRY_BUSH, SWEET_BERRY_BUSH,
+    SWEET_BERRY_BUSH,
+    SWEET_BERRY_BUSH,
+    SWEET_BERRY_BUSH,
+    SWEET_BERRY_BUSH,
     // campfire: unlit, lit
-    CAMPFIRE, CAMPFIRE,
+    CAMPFIRE,
+    CAMPFIRE,
     BARREL,
     // item states
-    SWEET_BERRIES, SPAWN_EGG_FOX, STICK, CHARCOAL,
+    SWEET_BERRIES,
+    SPAWN_EGG_FOX,
+    STICK,
+    CHARCOAL,
 ];
 
 #[inline]
@@ -1932,11 +2044,15 @@ pub const V11_COUNT: u16 = 9;
 /// blocks (per-state art rides state_tiles; the lit swap is the
 /// furnace pattern).
 pub const V11_STATE_TO_BLOCK: [u16; V11_COUNT as usize] = [
-    BLAST_FURNACE, BLAST_FURNACE,
-    SMOKER, SMOKER,
-    LANTERN, LANTERN,
+    BLAST_FURNACE,
+    BLAST_FURNACE,
+    SMOKER,
+    SMOKER,
+    LANTERN,
+    LANTERN,
     IRON_NUGGET,
-    CORNFLOWER, LILY_OF_THE_VALLEY,
+    CORNFLOWER,
+    LILY_OF_THE_VALLEY,
 ];
 
 #[inline]
@@ -1969,17 +2085,31 @@ pub const V12_COUNT: u16 = 18;
 /// blocks; level 1..=4 share the level-0 art and only level 5 swaps
 /// to the honey-oozing front tiles (state_tiles arm).
 pub const V12_STATE_TO_BLOCK: [u16; V12_COUNT as usize] = [
-    BEE_NEST, BEE_NEST, BEE_NEST, BEE_NEST, BEE_NEST, BEE_NEST,
-    BEEHIVE, BEEHIVE, BEEHIVE, BEEHIVE, BEEHIVE, BEEHIVE,
-    HONEY_BLOCK, HONEYCOMB_BLOCK,
-    HONEYCOMB, HONEY_BOTTLE, SHEARS, SPAWN_EGG_BEE,
+    BEE_NEST,
+    BEE_NEST,
+    BEE_NEST,
+    BEE_NEST,
+    BEE_NEST,
+    BEE_NEST,
+    BEEHIVE,
+    BEEHIVE,
+    BEEHIVE,
+    BEEHIVE,
+    BEEHIVE,
+    BEEHIVE,
+    HONEY_BLOCK,
+    HONEYCOMB_BLOCK,
+    HONEYCOMB,
+    HONEY_BOTTLE,
+    SHEARS,
+    SPAWN_EGG_BEE,
 ];
 
 #[inline]
 pub fn v12_state(b: u16) -> Option<u16> {
     match b {
-        BEE_NEST => Some(V12_STATE_BASE),          // honey_level 0
-        BEEHIVE => Some(V12_STATE_BASE + 6),       // honey_level 0
+        BEE_NEST => Some(V12_STATE_BASE),    // honey_level 0
+        BEEHIVE => Some(V12_STATE_BASE + 6), // honey_level 0
         HONEY_BLOCK => Some(V12_STATE_BASE + 12),
         HONEYCOMB_BLOCK => Some(V12_STATE_BASE + 13),
         HONEYCOMB => Some(V12_STATE_BASE + 14),
@@ -2046,9 +2176,27 @@ pub const V13_COUNT: u16 = 34;
 /// target power states fold to their parents; the chain's hanging
 /// state folds like the lantern's.
 pub const V13_STATE_TO_BLOCK: [u16; V13_COUNT as usize] = [
-    RESPAWN_ANCHOR, RESPAWN_ANCHOR, RESPAWN_ANCHOR, RESPAWN_ANCHOR, RESPAWN_ANCHOR,
-    TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET,
-    TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET,
+    RESPAWN_ANCHOR,
+    RESPAWN_ANCHOR,
+    RESPAWN_ANCHOR,
+    RESPAWN_ANCHOR,
+    RESPAWN_ANCHOR,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
+    TARGET,
     SOUL_SOIL,
     BASALT,
     BLACKSTONE,
@@ -2067,8 +2215,8 @@ pub const V13_STATE_TO_BLOCK: [u16; V13_COUNT as usize] = [
 #[inline]
 pub fn v13_state(b: u16) -> Option<u16> {
     match b {
-        RESPAWN_ANCHOR => Some(V13_STATE_BASE),          // charge 0
-        TARGET => Some(V13_STATE_BASE + 5),              // power 0
+        RESPAWN_ANCHOR => Some(V13_STATE_BASE), // charge 0
+        TARGET => Some(V13_STATE_BASE + 5),     // power 0
         SOUL_SOIL => Some(V13_STATE_BASE + 21),
         BASALT => Some(V13_STATE_BASE + 22),
         BLACKSTONE => Some(V13_STATE_BASE + 23),
@@ -2077,7 +2225,7 @@ pub fn v13_state(b: u16) -> Option<u16> {
         NETHER_GOLD_ORE => Some(V13_STATE_BASE + 26),
         ANCIENT_DEBRIS => Some(V13_STATE_BASE + 27),
         NETHERITE_BLOCK => Some(V13_STATE_BASE + 28),
-        CHAIN => Some(V13_STATE_BASE + 29),              // sitting
+        CHAIN => Some(V13_STATE_BASE + 29), // sitting
         SOUL_FIRE => Some(V13_STATE_BASE + 31),
         NETHERITE_SCRAP => Some(V13_STATE_BASE + 32),
         NETHERITE_INGOT => Some(V13_STATE_BASE + 33),
@@ -2314,9 +2462,7 @@ pub fn v15_state(b: u16) -> Option<u16> {
         BREAD => Some(V16_STATE_BASE + 38),
         HOE => Some(V16_STATE_BASE + 39),
         // Sub-round 3: the 16 armor items' identity states (V17)
-        b if (LEATHER_CAP..=DIAMOND_BOOTS).contains(&b) => {
-            Some(V17_STATE_BASE + (b - LEATHER_CAP))
-        }
+        b if (LEATHER_CAP..=DIAMOND_BOOTS).contains(&b) => Some(V17_STATE_BASE + (b - LEATHER_CAP)),
         _ => None,
     }
 }
@@ -2335,20 +2481,19 @@ pub const V16_STATE_BASE: u16 = 805;
 pub const V16_COUNT: u16 = 40;
 /// V16 state -> block fold: index = state − V16_STATE_BASE.
 pub const V16_STATE_TO_BLOCK: [u16; V16_COUNT as usize] = [
-    FIRE,       // 805 — the fire block's identity state
-    FARMLAND,   // 806..=813 — moisture 0..7
+    FIRE,     // 805 — the fire block's identity state
+    FARMLAND, // 806..=813 — moisture 0..7
     FARMLAND, FARMLAND, FARMLAND, FARMLAND, FARMLAND, FARMLAND, FARMLAND,
     WHEAT_CROP, // 814..=821 — age 0..7
     WHEAT_CROP, WHEAT_CROP, WHEAT_CROP, WHEAT_CROP, WHEAT_CROP, WHEAT_CROP, WHEAT_CROP,
-    CARROTS,    // 822..=829 — age 0..7
+    CARROTS, // 822..=829 — age 0..7
     CARROTS, CARROTS, CARROTS, CARROTS, CARROTS, CARROTS, CARROTS,
-    POTATOES,   // 830..=837 — age 0..7
+    POTATOES, // 830..=837 — age 0..7
     POTATOES, POTATOES, POTATOES, POTATOES, POTATOES, POTATOES, POTATOES,
-    BEETROOTS,  // 838..=841 — age 0..3
-    BEETROOTS, BEETROOTS, BEETROOTS,
-    WHEAT,      // 842 — the wheat item identity state
-    BREAD,      // 843 — the bread item identity state
-    HOE,        // 844 — the hoe item identity state
+    BEETROOTS, // 838..=841 — age 0..3
+    BEETROOTS, BEETROOTS, BEETROOTS, WHEAT, // 842 — the wheat item identity state
+    BREAD, // 843 — the bread item identity state
+    HOE,   // 844 — the hoe item identity state
 ];
 
 /// farmland state-window offsets (moisture 0..7 — >0 = hydrated,
@@ -2383,12 +2528,8 @@ pub fn crop_age(s: u16) -> u8 {
         return 0;
     }
     match s {
-        s if (V16_WHEAT_BASE..=V16_WHEAT_BASE + 7).contains(&s) => {
-            (s - V16_WHEAT_BASE) as u8
-        }
-        s if (V16_CARROTS_BASE..=V16_CARROTS_BASE + 7).contains(&s) => {
-            (s - V16_CARROTS_BASE) as u8
-        }
+        s if (V16_WHEAT_BASE..=V16_WHEAT_BASE + 7).contains(&s) => (s - V16_WHEAT_BASE) as u8,
+        s if (V16_CARROTS_BASE..=V16_CARROTS_BASE + 7).contains(&s) => (s - V16_CARROTS_BASE) as u8,
         s if (V16_POTATOES_BASE..=V16_POTATOES_BASE + 7).contains(&s) => {
             (s - V16_POTATOES_BASE) as u8
         }
@@ -2435,10 +2576,22 @@ pub const V17_STATE_BASE: u16 = 845;
 pub const V17_COUNT: u16 = 16;
 /// V17 state -> block fold: index = state − V17_STATE_BASE.
 pub const V17_STATE_TO_BLOCK: [u16; V17_COUNT as usize] = [
-    LEATHER_CAP, LEATHER_TUNIC, LEATHER_PANTS, LEATHER_BOOTS,
-    IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS,
-    GOLDEN_HELMET, GOLDEN_CHESTPLATE, GOLDEN_LEGGINGS, GOLDEN_BOOTS,
-    DIAMOND_HELMET, DIAMOND_CHESTPLATE, DIAMOND_LEGGINGS, DIAMOND_BOOTS,
+    LEATHER_CAP,
+    LEATHER_TUNIC,
+    LEATHER_PANTS,
+    LEATHER_BOOTS,
+    IRON_HELMET,
+    IRON_CHESTPLATE,
+    IRON_LEGGINGS,
+    IRON_BOOTS,
+    GOLDEN_HELMET,
+    GOLDEN_CHESTPLATE,
+    GOLDEN_LEGGINGS,
+    GOLDEN_BOOTS,
+    DIAMOND_HELMET,
+    DIAMOND_CHESTPLATE,
+    DIAMOND_LEGGINGS,
+    DIAMOND_BOOTS,
 ];
 
 #[inline]
@@ -2490,15 +2643,17 @@ pub fn is_forest_plant(s: u16) -> bool {
     } else {
         s
     };
-    matches!(b, CRIMSON_FUNGUS | CRIMSON_ROOTS | NETHER_SPROUTS | WARPED_FUNGUS | WARPED_ROOTS)
+    matches!(
+        b,
+        CRIMSON_FUNGUS | CRIMSON_ROOTS | NETHER_SPROUTS | WARPED_FUNGUS | WARPED_ROOTS
+    )
 }
 
 /// 1.14: is this V11 state a LIT smelter (blast furnace / smoker)?
 /// (the lit arm of the block swap — mirrors campfire_lit)
 #[inline]
 pub fn v11_smelter_lit(s: u16) -> bool {
-    is_v11_state(s)
-        && (s == V11_STATE_BASE + 1 || s == V11_STATE_BASE + 3)
+    is_v11_state(s) && (s == V11_STATE_BASE + 1 || s == V11_STATE_BASE + 3)
 }
 
 /// 1.14: is this V11 state the HANGING lantern form?
@@ -2583,51 +2738,128 @@ pub const V8_COUNT: u16 = 118;
 /// reverse mapping is `glazed_terracotta_state`/`glazed_decode`.
 pub const V8_STATE_TO_BLOCK: [u16; V8_COUNT as usize] = [
     // concrete (16)
-    CONCRETE_BASE, CONCRETE_BASE + 1, CONCRETE_BASE + 2, CONCRETE_BASE + 3,
-    CONCRETE_BASE + 4, CONCRETE_BASE + 5, CONCRETE_BASE + 6, CONCRETE_BASE + 7,
-    CONCRETE_BASE + 8, CONCRETE_BASE + 9, CONCRETE_BASE + 10, CONCRETE_BASE + 11,
-    CONCRETE_BASE + 12, CONCRETE_BASE + 13, CONCRETE_BASE + 14, CONCRETE_BASE + 15,
+    CONCRETE_BASE,
+    CONCRETE_BASE + 1,
+    CONCRETE_BASE + 2,
+    CONCRETE_BASE + 3,
+    CONCRETE_BASE + 4,
+    CONCRETE_BASE + 5,
+    CONCRETE_BASE + 6,
+    CONCRETE_BASE + 7,
+    CONCRETE_BASE + 8,
+    CONCRETE_BASE + 9,
+    CONCRETE_BASE + 10,
+    CONCRETE_BASE + 11,
+    CONCRETE_BASE + 12,
+    CONCRETE_BASE + 13,
+    CONCRETE_BASE + 14,
+    CONCRETE_BASE + 15,
     // concrete powder (16)
-    CONCRETE_POWDER_BASE, CONCRETE_POWDER_BASE + 1, CONCRETE_POWDER_BASE + 2,
-    CONCRETE_POWDER_BASE + 3, CONCRETE_POWDER_BASE + 4, CONCRETE_POWDER_BASE + 5,
-    CONCRETE_POWDER_BASE + 6, CONCRETE_POWDER_BASE + 7, CONCRETE_POWDER_BASE + 8,
-    CONCRETE_POWDER_BASE + 9, CONCRETE_POWDER_BASE + 10, CONCRETE_POWDER_BASE + 11,
-    CONCRETE_POWDER_BASE + 12, CONCRETE_POWDER_BASE + 13, CONCRETE_POWDER_BASE + 14,
+    CONCRETE_POWDER_BASE,
+    CONCRETE_POWDER_BASE + 1,
+    CONCRETE_POWDER_BASE + 2,
+    CONCRETE_POWDER_BASE + 3,
+    CONCRETE_POWDER_BASE + 4,
+    CONCRETE_POWDER_BASE + 5,
+    CONCRETE_POWDER_BASE + 6,
+    CONCRETE_POWDER_BASE + 7,
+    CONCRETE_POWDER_BASE + 8,
+    CONCRETE_POWDER_BASE + 9,
+    CONCRETE_POWDER_BASE + 10,
+    CONCRETE_POWDER_BASE + 11,
+    CONCRETE_POWDER_BASE + 12,
+    CONCRETE_POWDER_BASE + 13,
+    CONCRETE_POWDER_BASE + 14,
     CONCRETE_POWDER_BASE + 15,
     // glazed terracotta (64: color 0..15 × facing 0..3)
-    GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_BASE,
-    GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_BASE + 1, GLAZED_TERRACOTTA_BASE + 1,
-    GLAZED_TERRACOTTA_BASE + 1, GLAZED_TERRACOTTA_BASE + 1,
-    GLAZED_TERRACOTTA_BASE + 2, GLAZED_TERRACOTTA_BASE + 2, GLAZED_TERRACOTTA_BASE + 2,
-    GLAZED_TERRACOTTA_BASE + 2, GLAZED_TERRACOTTA_BASE + 3, GLAZED_TERRACOTTA_BASE + 3,
-    GLAZED_TERRACOTTA_BASE + 3, GLAZED_TERRACOTTA_BASE + 3,
-    GLAZED_TERRACOTTA_BASE + 4, GLAZED_TERRACOTTA_BASE + 4, GLAZED_TERRACOTTA_BASE + 4,
-    GLAZED_TERRACOTTA_BASE + 4, GLAZED_TERRACOTTA_BASE + 5, GLAZED_TERRACOTTA_BASE + 5,
-    GLAZED_TERRACOTTA_BASE + 5, GLAZED_TERRACOTTA_BASE + 5,
-    GLAZED_TERRACOTTA_BASE + 6, GLAZED_TERRACOTTA_BASE + 6, GLAZED_TERRACOTTA_BASE + 6,
-    GLAZED_TERRACOTTA_BASE + 6, GLAZED_TERRACOTTA_BASE + 7, GLAZED_TERRACOTTA_BASE + 7,
-    GLAZED_TERRACOTTA_BASE + 7, GLAZED_TERRACOTTA_BASE + 7,
-    GLAZED_TERRACOTTA_BASE + 8, GLAZED_TERRACOTTA_BASE + 8, GLAZED_TERRACOTTA_BASE + 8,
-    GLAZED_TERRACOTTA_BASE + 8, GLAZED_TERRACOTTA_BASE + 9, GLAZED_TERRACOTTA_BASE + 9,
-    GLAZED_TERRACOTTA_BASE + 9, GLAZED_TERRACOTTA_BASE + 9,
-    GLAZED_TERRACOTTA_BASE + 10, GLAZED_TERRACOTTA_BASE + 10, GLAZED_TERRACOTTA_BASE + 10,
-    GLAZED_TERRACOTTA_BASE + 10, GLAZED_TERRACOTTA_BASE + 11, GLAZED_TERRACOTTA_BASE + 11,
-    GLAZED_TERRACOTTA_BASE + 11, GLAZED_TERRACOTTA_BASE + 11,
-    GLAZED_TERRACOTTA_BASE + 12, GLAZED_TERRACOTTA_BASE + 12, GLAZED_TERRACOTTA_BASE + 12,
-    GLAZED_TERRACOTTA_BASE + 12, GLAZED_TERRACOTTA_BASE + 13, GLAZED_TERRACOTTA_BASE + 13,
-    GLAZED_TERRACOTTA_BASE + 13, GLAZED_TERRACOTTA_BASE + 13,
-    GLAZED_TERRACOTTA_BASE + 14, GLAZED_TERRACOTTA_BASE + 14, GLAZED_TERRACOTTA_BASE + 14,
-    GLAZED_TERRACOTTA_BASE + 14, GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_BASE + 15,
-    GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_BASE + 15,
+    GLAZED_TERRACOTTA_BASE,
+    GLAZED_TERRACOTTA_BASE,
+    GLAZED_TERRACOTTA_BASE,
+    GLAZED_TERRACOTTA_BASE,
+    GLAZED_TERRACOTTA_BASE + 1,
+    GLAZED_TERRACOTTA_BASE + 1,
+    GLAZED_TERRACOTTA_BASE + 1,
+    GLAZED_TERRACOTTA_BASE + 1,
+    GLAZED_TERRACOTTA_BASE + 2,
+    GLAZED_TERRACOTTA_BASE + 2,
+    GLAZED_TERRACOTTA_BASE + 2,
+    GLAZED_TERRACOTTA_BASE + 2,
+    GLAZED_TERRACOTTA_BASE + 3,
+    GLAZED_TERRACOTTA_BASE + 3,
+    GLAZED_TERRACOTTA_BASE + 3,
+    GLAZED_TERRACOTTA_BASE + 3,
+    GLAZED_TERRACOTTA_BASE + 4,
+    GLAZED_TERRACOTTA_BASE + 4,
+    GLAZED_TERRACOTTA_BASE + 4,
+    GLAZED_TERRACOTTA_BASE + 4,
+    GLAZED_TERRACOTTA_BASE + 5,
+    GLAZED_TERRACOTTA_BASE + 5,
+    GLAZED_TERRACOTTA_BASE + 5,
+    GLAZED_TERRACOTTA_BASE + 5,
+    GLAZED_TERRACOTTA_BASE + 6,
+    GLAZED_TERRACOTTA_BASE + 6,
+    GLAZED_TERRACOTTA_BASE + 6,
+    GLAZED_TERRACOTTA_BASE + 6,
+    GLAZED_TERRACOTTA_BASE + 7,
+    GLAZED_TERRACOTTA_BASE + 7,
+    GLAZED_TERRACOTTA_BASE + 7,
+    GLAZED_TERRACOTTA_BASE + 7,
+    GLAZED_TERRACOTTA_BASE + 8,
+    GLAZED_TERRACOTTA_BASE + 8,
+    GLAZED_TERRACOTTA_BASE + 8,
+    GLAZED_TERRACOTTA_BASE + 8,
+    GLAZED_TERRACOTTA_BASE + 9,
+    GLAZED_TERRACOTTA_BASE + 9,
+    GLAZED_TERRACOTTA_BASE + 9,
+    GLAZED_TERRACOTTA_BASE + 9,
+    GLAZED_TERRACOTTA_BASE + 10,
+    GLAZED_TERRACOTTA_BASE + 10,
+    GLAZED_TERRACOTTA_BASE + 10,
+    GLAZED_TERRACOTTA_BASE + 10,
+    GLAZED_TERRACOTTA_BASE + 11,
+    GLAZED_TERRACOTTA_BASE + 11,
+    GLAZED_TERRACOTTA_BASE + 11,
+    GLAZED_TERRACOTTA_BASE + 11,
+    GLAZED_TERRACOTTA_BASE + 12,
+    GLAZED_TERRACOTTA_BASE + 12,
+    GLAZED_TERRACOTTA_BASE + 12,
+    GLAZED_TERRACOTTA_BASE + 12,
+    GLAZED_TERRACOTTA_BASE + 13,
+    GLAZED_TERRACOTTA_BASE + 13,
+    GLAZED_TERRACOTTA_BASE + 13,
+    GLAZED_TERRACOTTA_BASE + 13,
+    GLAZED_TERRACOTTA_BASE + 14,
+    GLAZED_TERRACOTTA_BASE + 14,
+    GLAZED_TERRACOTTA_BASE + 14,
+    GLAZED_TERRACOTTA_BASE + 14,
+    GLAZED_TERRACOTTA_BASE + 15,
+    GLAZED_TERRACOTTA_BASE + 15,
+    GLAZED_TERRACOTTA_BASE + 15,
+    GLAZED_TERRACOTTA_BASE + 15,
     // parrot egg (1)
     SPAWN_EGG_PARROT,
     // dyes (16)
-    DYE_BASE, DYE_BASE + 1, DYE_BASE + 2, DYE_BASE + 3, DYE_BASE + 4,
-    DYE_BASE + 5, DYE_BASE + 6, DYE_BASE + 7, DYE_BASE + 8, DYE_BASE + 9,
-    DYE_BASE + 10, DYE_BASE + 11, DYE_BASE + 12, DYE_BASE + 13, DYE_BASE + 14,
+    DYE_BASE,
+    DYE_BASE + 1,
+    DYE_BASE + 2,
+    DYE_BASE + 3,
+    DYE_BASE + 4,
+    DYE_BASE + 5,
+    DYE_BASE + 6,
+    DYE_BASE + 7,
+    DYE_BASE + 8,
+    DYE_BASE + 9,
+    DYE_BASE + 10,
+    DYE_BASE + 11,
+    DYE_BASE + 12,
+    DYE_BASE + 13,
+    DYE_BASE + 14,
     DYE_BASE + 15,
     // seeds (4)
-    WHEAT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS, BEETROOT_SEEDS,
+    WHEAT_SEEDS,
+    MELON_SEEDS,
+    PUMPKIN_SEEDS,
+    BEETROOT_SEEDS,
     // cookie (1)
     COOKIE,
 ];
@@ -2639,7 +2871,10 @@ pub const V8_STATE_TO_BLOCK: [u16; V8_COUNT as usize] = [
 #[inline]
 pub fn v8_state(b: u16) -> Option<u16> {
     if (GLAZED_TERRACOTTA_BASE..=GLAZED_TERRACOTTA_END).contains(&b) {
-        Some(glazed_terracotta_state((b - GLAZED_TERRACOTTA_BASE) as u8, 0))
+        Some(glazed_terracotta_state(
+            (b - GLAZED_TERRACOTTA_BASE) as u8,
+            0,
+        ))
     } else if (CONCRETE_BASE..=CONCRETE_POWDER_END).contains(&b) {
         Some(V8_STATE_BASE + (b - CONCRETE_BASE))
     } else if (SPAWN_EGG_PARROT..=COOKIE).contains(&b) {
@@ -3155,8 +3390,8 @@ pub fn item_state_block(s: u16) -> Option<u16> {
 }
 
 pub const BLOCK_COUNT: usize = 533; // + the backlog fire (506) + the farming set (507-514: farmland, 4
-                                      // crops, wheat, bread, hoe) + the 16 armor items (515-530,
-                                      // sub-round 3)
+                                    // crops, wheat, bread, hoe) + the 16 armor items (515-530,
+                                    // sub-round 3)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -3165,9 +3400,6 @@ pub const ACACIA_LOG_X: u16 = 443;
 pub const ACACIA_LOG_Z: u16 = 444;
 pub const DARK_OAK_LOG_X: u16 = 445;
 pub const DARK_OAK_LOG_Z: u16 = 446;
-
-
-
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -3291,8 +3523,7 @@ pub fn repeater_decode(s: u16) -> (usize, u8, bool) {
 /// comparator state: facing(4) × subtract_mode × powered
 #[inline]
 pub fn comparator_state(facing: usize, subtract: bool, powered: bool) -> u16 {
-    COMPARATOR_STATE_BASE + (facing.min(3)) as u16 * 4
-        + (subtract as u16) * 2 + (powered as u16)
+    COMPARATOR_STATE_BASE + (facing.min(3)) as u16 * 4 + (subtract as u16) * 2 + (powered as u16)
 }
 
 #[inline]
@@ -3434,7 +3665,11 @@ pub fn wire_state(power: u8) -> u16 {
 
 #[inline]
 pub fn lever_state(on: bool) -> u16 {
-    if on { LEVER_ON } else { LEVER_OFF }
+    if on {
+        LEVER_ON
+    } else {
+        LEVER_OFF
+    }
 }
 
 #[inline]
@@ -3444,7 +3679,11 @@ pub fn lever_is_on(s: u16) -> bool {
 
 #[inline]
 pub fn torch_state(lit: bool) -> u16 {
-    if lit { TORCH_LIT } else { TORCH_OFF }
+    if lit {
+        TORCH_LIT
+    } else {
+        TORCH_OFF
+    }
 }
 
 #[inline]
@@ -3555,18 +3794,10 @@ pub fn default_state(b: u16) -> u16 {
         HEAVY_WEIGHTED_PLATE => HEAVY_PLATE_STATE,
         REDSTONE_BLOCK => REDSTONE_BLOCK_STATE,
         // ---- F-series defaults (V2..V5 windows, merge-renumbered 2026-09-06) ----
-        b if (200..200 + V2_COUNT).contains(&b) => {
-            V2_STATE_BASE + (b - 200)
-        }
-        b if (243..243 + V3_COUNT).contains(&b) => {
-            V3_STATE_BASE + (b - 243)
-        }
-        b if (276..276 + V6_COUNT).contains(&b) => {
-            V6_STATE_BASE + (b - 276)
-        }
-        b if (282..282 + V7_COUNT).contains(&b) => {
-            V7_STATE_BASE + (b - 282)
-        }
+        b if (200..200 + V2_COUNT).contains(&b) => V2_STATE_BASE + (b - 200),
+        b if (243..243 + V3_COUNT).contains(&b) => V3_STATE_BASE + (b - 243),
+        b if (276..276 + V6_COUNT).contains(&b) => V6_STATE_BASE + (b - 276),
+        b if (282..282 + V7_COUNT).contains(&b) => V7_STATE_BASE + (b - 282),
         // 1.12 (World of Color Update): concrete/powder/egg/dyes/seeds/
         // cookie are 1:1; glazed terracotta defaults to facing 0
         // (north — the placement path writes the player-facing state)
@@ -3599,15 +3830,11 @@ pub fn default_state(b: u16) -> u16 {
         b if v14_state(b).is_some() => v14_state(b).unwrap(),
         // the completeness audit: V15 identity item states
         b if v15_state(b).is_some() => v15_state(b).unwrap(),
-        b if (262..262 + V4_COUNT).contains(&b) => {
-            V4_STATE_BASE + (b - 262)
-        }
-        b if (272..272 + V5_COUNT).contains(&b) => {
-            V5_STATE_BASE + (b - 272)
-        }
-        OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
+        b if (262..262 + V4_COUNT).contains(&b) => V4_STATE_BASE + (b - 262),
+        b if (272..272 + V5_COUNT).contains(&b) => V5_STATE_BASE + (b - 272),
+        OAK_SLAB => 63,      // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
-        OAK_FENCE => 73,    // base_state (no connections)
+        OAK_FENCE => 73,     // base_state (no connections)
         // Phase E1 item-blocks: dedicated states ≥ 256 (never world-stored)
         // Phase E2 item-blocks: dedicated states 301..=306 (never world-stored)
         // Phase E3 item-blocks (quartz/lead/saddle) + eggs 20..=22
@@ -3699,13 +3926,30 @@ pub const OAK_SLAB: u16 = 57;
 pub const COBBLE_STAIRS: u16 = 58;
 pub const OAK_FENCE: u16 = 59;
 
-pub const HALF: PropDef = PropDef { name: "half", values: &["bottom", "top"] };
-pub const FACING: PropDef =
-    PropDef { name: "facing", values: &["north", "east", "south", "west"] };
-pub const EAST_B: PropDef = PropDef { name: "east", values: &["false", "true"] };
-pub const NORTH_B: PropDef = PropDef { name: "north", values: &["false", "true"] };
-pub const SOUTH_B: PropDef = PropDef { name: "south", values: &["false", "true"] };
-pub const WEST_B: PropDef = PropDef { name: "west", values: &["false", "true"] };
+pub const HALF: PropDef = PropDef {
+    name: "half",
+    values: &["bottom", "top"],
+};
+pub const FACING: PropDef = PropDef {
+    name: "facing",
+    values: &["north", "east", "south", "west"],
+};
+pub const EAST_B: PropDef = PropDef {
+    name: "east",
+    values: &["false", "true"],
+};
+pub const NORTH_B: PropDef = PropDef {
+    name: "north",
+    values: &["false", "true"],
+};
+pub const SOUTH_B: PropDef = PropDef {
+    name: "south",
+    values: &["false", "true"],
+};
+pub const WEST_B: PropDef = PropDef {
+    name: "west",
+    values: &["false", "true"],
+};
 
 /// property-driven blocks, states starting at MODEL_STATE_BASE
 pub const MODEL_STATE_BASE: u16 = 63;
@@ -3907,7 +4151,9 @@ pub fn state_block(s: u16) -> u16 {
         s if (REPEATER_STATE_BASE..=REPEATER_STATE_END).contains(&s) => return REPEATER,
         s if (COMPARATOR_STATE_BASE..=COMPARATOR_STATE_END).contains(&s) => return COMPARATOR,
         s if (PISTON_STATE_BASE..=PISTON_STATE_END).contains(&s) => return PISTON,
-        s if (STICKY_PISTON_STATE_BASE..=STICKY_PISTON_STATE_END).contains(&s) => return STICKY_PISTON,
+        s if (STICKY_PISTON_STATE_BASE..=STICKY_PISTON_STATE_END).contains(&s) => {
+            return STICKY_PISTON
+        }
         s if (DISPENSER_STATE_BASE..=DISPENSER_STATE_END).contains(&s) => return DISPENSER,
         s if (DROPPER_STATE_BASE..=DROPPER_STATE_END).contains(&s) => return DROPPER,
         s if (OBSERVER_STATE_BASE..=OBSERVER_STATE_END).contains(&s) => return OBSERVER,
@@ -4246,9 +4492,8 @@ pub fn break_time_secs(block: u16) -> f32 {
         // unbreakable
         BEDROCK => return f32::INFINITY,
         // instant (hardness 0)
-        TALL_GRASS | FERN | DEAD_BUSH | FLOWER_RED | FLOWER_YELLOW
-        | WHEAT_CROP | WHEAT | REDSTONE_WIRE | REDSTONE_TORCH
-        | LEVER | VINE => 0.0,
+        TALL_GRASS | FERN | DEAD_BUSH | FLOWER_RED | FLOWER_YELLOW | WHEAT_CROP | WHEAT
+        | REDSTONE_WIRE | REDSTONE_TORCH | LEVER | VINE => 0.0,
         // soft ground (0.5–0.6)
         DIRT | COARSE_DIRT | PODZOL => 0.5,
         GRASS => 0.6,
@@ -4261,16 +4506,16 @@ pub fn break_time_secs(block: u16) -> f32 {
         SOUL_SAND => 0.5,
         NETHERRACK => 0.4,
         // woods (2.0)
-        OAK_LOG | BIRCH_LOG | SPRUCE_LOG | JUNGLE_LOG | ACACIA_LOG
-        | DARK_OAK_LOG => 2.0,
+        OAK_LOG | BIRCH_LOG | SPRUCE_LOG | JUNGLE_LOG | ACACIA_LOG | DARK_OAK_LOG => 2.0,
         PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS => 2.0,
         CRAFTING_TABLE => 2.5,
         BOOKSHELF => 1.5,
         CHEST => 2.5,
         OAK_FENCE => 2.0,
         // leaves + plants-ish
-        LEAVES | BIRCH_LEAVES | SPRUCE_LEAVES | JUNGLE_LEAVES
-        | ACACIA_LEAVES | DARK_OAK_LEAVES => 0.2,
+        LEAVES | BIRCH_LEAVES | SPRUCE_LEAVES | JUNGLE_LEAVES | ACACIA_LEAVES | DARK_OAK_LEAVES => {
+            0.2
+        }
         CACTUS => 0.4,
         PUMPKIN | MELON => 1.0,
         // stone-class (1.5–2)
@@ -4279,14 +4524,14 @@ pub fn break_time_secs(block: u16) -> f32 {
         SMOOTH_STONE => 2.0,
         COBBLE | MOSSY_COBBLE => 2.0,
         BRICKS => 2.0,
-        CHISELED_SANDSTONE | CUT_SANDSTONE | SMOOTH_SANDSTONE
-        | RED_SANDSTONE | SMOOTH_RED_SANDSTONE => 0.8,
+        CHISELED_SANDSTONE | CUT_SANDSTONE | SMOOTH_SANDSTONE | RED_SANDSTONE
+        | SMOOTH_RED_SANDSTONE => 0.8,
         QUARTZ_BLOCK | CHISELED_QUARTZ => 0.8,
         NETHER_BRICKS => 2.0,
         END_STONE => 3.0,
         // ores + mineral blocks (3)
-        COAL_ORE | IRON_ORE | GOLD_ORE | DIAMOND_ORE | REDSTONE_ORE
-        | LAPIS_ORE | EMERALD_ORE | NETHER_QUARTZ_ORE => 3.0,
+        COAL_ORE | IRON_ORE | GOLD_ORE | DIAMOND_ORE | REDSTONE_ORE | LAPIS_ORE | EMERALD_ORE
+        | NETHER_QUARTZ_ORE => 3.0,
         IRON_BLOCK | GOLD_BLOCK | DIAMOND_BLOCK => 5.0,
         COAL_BLOCK => 5.0,
         // utility
@@ -4311,14 +4556,54 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
     match s {
         OAK_LOG_X => [TILE_LOG_SIDE, TILE_LOG_SIDE, TILE_LOG_TOP, TILE_LOG_SIDE],
         OAK_LOG_Z => [TILE_LOG_SIDE, TILE_LOG_SIDE, TILE_LOG_SIDE, TILE_LOG_TOP],
-        BIRCH_LOG_X => [TILE_BIRCH_LOG_SIDE, TILE_BIRCH_LOG_SIDE, TILE_LOG_TOP, TILE_BIRCH_LOG_SIDE],
-        BIRCH_LOG_Z => [TILE_BIRCH_LOG_SIDE, TILE_BIRCH_LOG_SIDE, TILE_BIRCH_LOG_SIDE, TILE_LOG_TOP],
-        SPRUCE_LOG_X => [TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_LOG_TOP, TILE_SPRUCE_LOG_SIDE],
-        SPRUCE_LOG_Z => [TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_LOG_TOP],
-        ACACIA_LOG_X => [TILE_ACACIA_LOG_SIDE, TILE_ACACIA_LOG_SIDE, TILE_ACACIA_LOG_TOP, TILE_ACACIA_LOG_SIDE],
-        ACACIA_LOG_Z => [TILE_ACACIA_LOG_SIDE, TILE_ACACIA_LOG_SIDE, TILE_ACACIA_LOG_SIDE, TILE_ACACIA_LOG_TOP],
-        DARK_OAK_LOG_X => [TILE_DARK_OAK_LOG_SIDE, TILE_DARK_OAK_LOG_SIDE, TILE_DARK_OAK_LOG_TOP, TILE_DARK_OAK_LOG_SIDE],
-        DARK_OAK_LOG_Z => [TILE_DARK_OAK_LOG_SIDE, TILE_DARK_OAK_LOG_SIDE, TILE_DARK_OAK_LOG_SIDE, TILE_DARK_OAK_LOG_TOP],
+        BIRCH_LOG_X => [
+            TILE_BIRCH_LOG_SIDE,
+            TILE_BIRCH_LOG_SIDE,
+            TILE_LOG_TOP,
+            TILE_BIRCH_LOG_SIDE,
+        ],
+        BIRCH_LOG_Z => [
+            TILE_BIRCH_LOG_SIDE,
+            TILE_BIRCH_LOG_SIDE,
+            TILE_BIRCH_LOG_SIDE,
+            TILE_LOG_TOP,
+        ],
+        SPRUCE_LOG_X => [
+            TILE_SPRUCE_LOG_SIDE,
+            TILE_SPRUCE_LOG_SIDE,
+            TILE_LOG_TOP,
+            TILE_SPRUCE_LOG_SIDE,
+        ],
+        SPRUCE_LOG_Z => [
+            TILE_SPRUCE_LOG_SIDE,
+            TILE_SPRUCE_LOG_SIDE,
+            TILE_SPRUCE_LOG_SIDE,
+            TILE_LOG_TOP,
+        ],
+        ACACIA_LOG_X => [
+            TILE_ACACIA_LOG_SIDE,
+            TILE_ACACIA_LOG_SIDE,
+            TILE_ACACIA_LOG_TOP,
+            TILE_ACACIA_LOG_SIDE,
+        ],
+        ACACIA_LOG_Z => [
+            TILE_ACACIA_LOG_SIDE,
+            TILE_ACACIA_LOG_SIDE,
+            TILE_ACACIA_LOG_SIDE,
+            TILE_ACACIA_LOG_TOP,
+        ],
+        DARK_OAK_LOG_X => [
+            TILE_DARK_OAK_LOG_SIDE,
+            TILE_DARK_OAK_LOG_SIDE,
+            TILE_DARK_OAK_LOG_TOP,
+            TILE_DARK_OAK_LOG_SIDE,
+        ],
+        DARK_OAK_LOG_Z => [
+            TILE_DARK_OAK_LOG_SIDE,
+            TILE_DARK_OAK_LOG_SIDE,
+            TILE_DARK_OAK_LOG_SIDE,
+            TILE_DARK_OAK_LOG_TOP,
+        ],
         // §27: lit furnace swaps the SIDE tiles to the glowing variant
         FURNACE_LIT => [
             TILE_FURNACE_TOP,
@@ -4348,21 +4633,36 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
         END_PORTAL_FRAME_EYE => {
             // same tile for now — the eye state is functional (activation),
             // the art carries the inset; hotbar shows the frame face
-            [TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME]
+            [
+                TILE_END_PORTAL_FRAME,
+                TILE_END_PORTAL_FRAME,
+                TILE_END_PORTAL_FRAME,
+                TILE_END_PORTAL_FRAME,
+            ]
         }
         // Phase E2: anvil damage stages swap the face tile (chipped shows a
         // cracked face; damaged shows a broken face — VERIFIED w/Anvil
         // "gradually becomes chipped, then damaged, then breaks")
-        CHIPPED_ANVIL_STATE => {
-            [TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED]
-        }
-        DAMAGED_ANVIL_STATE => {
-            [TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED]
-        }
+        CHIPPED_ANVIL_STATE => [
+            TILE_ANVIL_CHIPPED,
+            TILE_ANVIL_CHIPPED,
+            TILE_ANVIL_CHIPPED,
+            TILE_ANVIL_CHIPPED,
+        ],
+        DAMAGED_ANVIL_STATE => [
+            TILE_ANVIL_DAMAGED,
+            TILE_ANVIL_DAMAGED,
+            TILE_ANVIL_DAMAGED,
+            TILE_ANVIL_DAMAGED,
+        ],
         // Phase E2: powered tripwire hook glows red (hook + trip state)
         s if (TRIPWIRE_HOOK_STATE_BASE..=TRIPWIRE_HOOK_STATE_END).contains(&s) => {
             let (_, powered) = tripwire_hook_decode(s);
-            let t = if powered { TILE_TRIPWIRE_HOOK_ON } else { TILE_TRIPWIRE_HOOK };
+            let t = if powered {
+                TILE_TRIPWIRE_HOOK_ON
+            } else {
+                TILE_TRIPWIRE_HOOK
+            };
             [t, t, t, t]
         }
         // ---- 1.12: glazed terracotta — the facing selects the tile
@@ -4396,7 +4696,11 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
         // ---- 1.14: campfire — lit shows the glowing-coal tile, the
         // extinguished one the ash tile ----
         s if (V10_STATE_BASE + 6..=V10_STATE_BASE + 7).contains(&s) => {
-            let t = if campfire_lit(s) { TILE_CAMPFIRE } else { TILE_CAMPFIRE_UNLIT };
+            let t = if campfire_lit(s) {
+                TILE_CAMPFIRE
+            } else {
+                TILE_CAMPFIRE_UNLIT
+            };
             [t, t, t, t]
         }
         // ---- 1.14 (part 2): the smelters — lit swaps the side tiles
@@ -4448,9 +4752,7 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
             [TILE_BEE_NEST_TOP, TILE_BEE_NEST_TOP, t, t]
         }
         // ---- 1.15: the beehive — the same level-5 side swap ----
-        s if is_v12_state(s)
-            && (V12_STATE_BASE + 6..=V12_STATE_BASE + 11).contains(&s) =>
-        {
+        s if is_v12_state(s) && (V12_STATE_BASE + 6..=V12_STATE_BASE + 11).contains(&s) => {
             let t = if honey_level(s) == 5 {
                 TILE_BEEHIVE_FRONT_HONEY
             } else {
@@ -4463,9 +4765,12 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
         s if is_v12_state(s) && s == V12_STATE_BASE + 12 => {
             [TILE_HONEY, TILE_HONEY, TILE_HONEY, TILE_HONEY]
         }
-        s if is_v12_state(s) && s == V12_STATE_BASE + 13 => {
-            [TILE_HONEYCOMB_BLOCK, TILE_HONEYCOMB_BLOCK, TILE_HONEYCOMB_BLOCK, TILE_HONEYCOMB_BLOCK]
-        }
+        s if is_v12_state(s) && s == V12_STATE_BASE + 13 => [
+            TILE_HONEYCOMB_BLOCK,
+            TILE_HONEYCOMB_BLOCK,
+            TILE_HONEYCOMB_BLOCK,
+            TILE_HONEYCOMB_BLOCK,
+        ],
         // ---- 1.15: the item states — one sprite each ----
         s if is_v12_state(s) && (V12_STATE_BASE + 14..=V12_STATE_BASE + 17).contains(&s) => {
             let t = match s {
@@ -5211,12 +5516,9 @@ pub const GRINDSTONE: u16 = 532;
 #[inline]
 pub fn armor_piece(b: u16) -> Option<u8> {
     match b {
-        LEATHER_CAP | IRON_HELMET | GOLDEN_HELMET | DIAMOND_HELMET
-        | TURTLE_SHELL => Some(0),
-        LEATHER_TUNIC | IRON_CHESTPLATE | GOLDEN_CHESTPLATE
-        | DIAMOND_CHESTPLATE => Some(1),
-        LEATHER_PANTS | IRON_LEGGINGS | GOLDEN_LEGGINGS
-        | DIAMOND_LEGGINGS => Some(2),
+        LEATHER_CAP | IRON_HELMET | GOLDEN_HELMET | DIAMOND_HELMET | TURTLE_SHELL => Some(0),
+        LEATHER_TUNIC | IRON_CHESTPLATE | GOLDEN_CHESTPLATE | DIAMOND_CHESTPLATE => Some(1),
+        LEATHER_PANTS | IRON_LEGGINGS | GOLDEN_LEGGINGS | DIAMOND_LEGGINGS => Some(2),
         LEATHER_BOOTS | IRON_BOOTS | GOLDEN_BOOTS | DIAMOND_BOOTS => Some(3),
         _ => None,
     }
@@ -5535,547 +5837,4981 @@ const fn d(
     emissive: u8,
     sound: SoundFamily,
 ) -> BlockDef {
-    BlockDef { name, tiles, solid, opaque, cross, fluid, emissive, sound }
+    BlockDef {
+        name,
+        tiles,
+        solid,
+        opaque,
+        cross,
+        fluid,
+        emissive,
+        sound,
+    }
 }
 
 pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
-    d("Air", [0, 0, 0], false, false, false, false, 0, SoundFamily::None),
-    d("Grass Block", [TILE_GRASS_TOP, TILE_DIRT, TILE_GRASS_SIDE], true, true, false, false, 0, SoundFamily::Grass),
-    d("Dirt", [TILE_DIRT, TILE_DIRT, TILE_DIRT], true, true, false, false, 0, SoundFamily::Dirt),
-    d("Stone", [TILE_STONE, TILE_STONE, TILE_STONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Cobblestone", [TILE_COBBLE, TILE_COBBLE, TILE_COBBLE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Sand", [TILE_SAND, TILE_SAND, TILE_SAND], true, true, false, false, 0, SoundFamily::Sand),
-    d("Oak Log", [TILE_LOG_TOP, TILE_LOG_TOP, TILE_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Oak Planks", [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], true, true, false, false, 0, SoundFamily::Wood),
-    d("Oak Leaves", [TILE_LEAVES, TILE_LEAVES, TILE_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
-    d("Water", [TILE_WATER, TILE_WATER, TILE_WATER], false, false, false, true, 0, SoundFamily::Water),
-    d("Glass", [TILE_GLASS, TILE_GLASS, TILE_GLASS], true, false, false, false, 0, SoundFamily::Glass),
-    d("Bedrock", [TILE_BEDROCK, TILE_BEDROCK, TILE_BEDROCK], true, true, false, false, 0, SoundFamily::Stone),
-    d("Gravel", [TILE_GRAVEL, TILE_GRAVEL, TILE_GRAVEL], true, true, false, false, 0, SoundFamily::Gravel),
-    d("Snow Block", [TILE_SNOW, TILE_SNOW, TILE_SNOW], true, true, false, false, 0, SoundFamily::Sand),
-    d("Snowy Grass", [TILE_SNOW, TILE_DIRT, TILE_SNOW_SIDE], true, true, false, false, 0, SoundFamily::Grass),
-    d("Grass", [TILE_TALL_GRASS, TILE_TALL_GRASS, TILE_TALL_GRASS], false, false, true, false, 0, SoundFamily::Grass),
-    d("Poppy", [TILE_FLOWER_RED, TILE_FLOWER_RED, TILE_FLOWER_RED], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dandelion", [TILE_FLOWER_YELLOW, TILE_FLOWER_YELLOW, TILE_FLOWER_YELLOW], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Air",
+        [0, 0, 0],
+        false,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::None,
+    ),
+    d(
+        "Grass Block",
+        [TILE_GRASS_TOP, TILE_DIRT, TILE_GRASS_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dirt",
+        [TILE_DIRT, TILE_DIRT, TILE_DIRT],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Dirt,
+    ),
+    d(
+        "Stone",
+        [TILE_STONE, TILE_STONE, TILE_STONE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Cobblestone",
+        [TILE_COBBLE, TILE_COBBLE, TILE_COBBLE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Sand",
+        [TILE_SAND, TILE_SAND, TILE_SAND],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Oak Log",
+        [TILE_LOG_TOP, TILE_LOG_TOP, TILE_LOG_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Oak Planks",
+        [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Oak Leaves",
+        [TILE_LEAVES, TILE_LEAVES, TILE_LEAVES],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Leaves,
+    ),
+    d(
+        "Water",
+        [TILE_WATER, TILE_WATER, TILE_WATER],
+        false,
+        false,
+        false,
+        true,
+        0,
+        SoundFamily::Water,
+    ),
+    d(
+        "Glass",
+        [TILE_GLASS, TILE_GLASS, TILE_GLASS],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Bedrock",
+        [TILE_BEDROCK, TILE_BEDROCK, TILE_BEDROCK],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Gravel",
+        [TILE_GRAVEL, TILE_GRAVEL, TILE_GRAVEL],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Gravel,
+    ),
+    d(
+        "Snow Block",
+        [TILE_SNOW, TILE_SNOW, TILE_SNOW],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Snowy Grass",
+        [TILE_SNOW, TILE_DIRT, TILE_SNOW_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Grass",
+        [TILE_TALL_GRASS, TILE_TALL_GRASS, TILE_TALL_GRASS],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Poppy",
+        [TILE_FLOWER_RED, TILE_FLOWER_RED, TILE_FLOWER_RED],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dandelion",
+        [TILE_FLOWER_YELLOW, TILE_FLOWER_YELLOW, TILE_FLOWER_YELLOW],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // stone family
-    d("Granite", [TILE_GRANITE, TILE_GRANITE, TILE_GRANITE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Diorite", [TILE_DIORITE, TILE_DIORITE, TILE_DIORITE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Andesite", [TILE_ANDESITE, TILE_ANDESITE, TILE_ANDESITE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Stone Bricks", [TILE_STONE_BRICKS, TILE_STONE_BRICKS, TILE_STONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
-    d("Bricks", [TILE_BRICKS, TILE_BRICKS, TILE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
-    d("Mossy Cobblestone", [TILE_MOSSY_COBBLE, TILE_MOSSY_COBBLE, TILE_MOSSY_COBBLE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Smooth Stone", [TILE_SMOOTH_STONE, TILE_SMOOTH_STONE, TILE_SMOOTH_STONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Obsidian", [TILE_OBSIDIAN, TILE_OBSIDIAN, TILE_OBSIDIAN], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Granite",
+        [TILE_GRANITE, TILE_GRANITE, TILE_GRANITE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Diorite",
+        [TILE_DIORITE, TILE_DIORITE, TILE_DIORITE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Andesite",
+        [TILE_ANDESITE, TILE_ANDESITE, TILE_ANDESITE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Stone Bricks",
+        [TILE_STONE_BRICKS, TILE_STONE_BRICKS, TILE_STONE_BRICKS],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Bricks",
+        [TILE_BRICKS, TILE_BRICKS, TILE_BRICKS],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Mossy Cobblestone",
+        [TILE_MOSSY_COBBLE, TILE_MOSSY_COBBLE, TILE_MOSSY_COBBLE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Smooth Stone",
+        [TILE_SMOOTH_STONE, TILE_SMOOTH_STONE, TILE_SMOOTH_STONE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Obsidian",
+        [TILE_OBSIDIAN, TILE_OBSIDIAN, TILE_OBSIDIAN],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ores
-    d("Coal Ore", [TILE_COAL_ORE, TILE_COAL_ORE, TILE_COAL_ORE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Iron Ore", [TILE_IRON_ORE, TILE_IRON_ORE, TILE_IRON_ORE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Gold Ore", [TILE_GOLD_ORE, TILE_GOLD_ORE, TILE_GOLD_ORE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Diamond Ore", [TILE_DIAMOND_ORE, TILE_DIAMOND_ORE, TILE_DIAMOND_ORE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Redstone Ore", [TILE_REDSTONE_ORE, TILE_REDSTONE_ORE, TILE_REDSTONE_ORE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Lapis Ore", [TILE_LAPIS_ORE, TILE_LAPIS_ORE, TILE_LAPIS_ORE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Emerald Ore", [TILE_EMERALD_ORE, TILE_EMERALD_ORE, TILE_EMERALD_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Coal Ore",
+        [TILE_COAL_ORE, TILE_COAL_ORE, TILE_COAL_ORE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Iron Ore",
+        [TILE_IRON_ORE, TILE_IRON_ORE, TILE_IRON_ORE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Gold Ore",
+        [TILE_GOLD_ORE, TILE_GOLD_ORE, TILE_GOLD_ORE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Diamond Ore",
+        [TILE_DIAMOND_ORE, TILE_DIAMOND_ORE, TILE_DIAMOND_ORE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Redstone Ore",
+        [TILE_REDSTONE_ORE, TILE_REDSTONE_ORE, TILE_REDSTONE_ORE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Lapis Ore",
+        [TILE_LAPIS_ORE, TILE_LAPIS_ORE, TILE_LAPIS_ORE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Emerald Ore",
+        [TILE_EMERALD_ORE, TILE_EMERALD_ORE, TILE_EMERALD_ORE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // mineral blocks
-    d("Block of Iron", [TILE_IRON_BLOCK, TILE_IRON_BLOCK, TILE_IRON_BLOCK], true, true, false, false, 0, SoundFamily::Metal),
-    d("Block of Gold", [TILE_GOLD_BLOCK, TILE_GOLD_BLOCK, TILE_GOLD_BLOCK], true, true, false, false, 0, SoundFamily::Metal),
-    d("Block of Diamond", [TILE_DIAMOND_BLOCK, TILE_DIAMOND_BLOCK, TILE_DIAMOND_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Block of Iron",
+        [TILE_IRON_BLOCK, TILE_IRON_BLOCK, TILE_IRON_BLOCK],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Metal,
+    ),
+    d(
+        "Block of Gold",
+        [TILE_GOLD_BLOCK, TILE_GOLD_BLOCK, TILE_GOLD_BLOCK],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Metal,
+    ),
+    d(
+        "Block of Diamond",
+        [TILE_DIAMOND_BLOCK, TILE_DIAMOND_BLOCK, TILE_DIAMOND_BLOCK],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // misc
-    d("Glowstone", [TILE_GLOWSTONE, TILE_GLOWSTONE, TILE_GLOWSTONE], true, true, false, false, 15, SoundFamily::Glass),
-    d("Bookshelf", [TILE_BOOKSHELF_TOP, TILE_BOOKSHELF_TOP, TILE_BOOKSHELF_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Crafting Table", [TILE_CRAFT_TOP, TILE_PLANKS, TILE_CRAFT_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Clay", [TILE_CLAY, TILE_CLAY, TILE_CLAY], true, true, false, false, 0, SoundFamily::Dirt),
-    d("Terracotta", [TILE_TERRACOTTA, TILE_TERRACOTTA, TILE_TERRACOTTA], true, true, false, false, 0, SoundFamily::Stone),
-    d("Pumpkin", [TILE_PUMPKIN_TOP, TILE_PUMPKIN_TOP, TILE_PUMPKIN_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Melon", [TILE_MELON_TOP, TILE_MELON_TOP, TILE_MELON_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Ice", [TILE_ICE, TILE_ICE, TILE_ICE], true, false, false, false, 0, SoundFamily::Glass),
-    d("Cactus", [TILE_CACTUS_TOP, TILE_CACTUS_TOP, TILE_CACTUS_SIDE], true, true, false, false, 0, SoundFamily::Wool),
+    d(
+        "Glowstone",
+        [TILE_GLOWSTONE, TILE_GLOWSTONE, TILE_GLOWSTONE],
+        true,
+        true,
+        false,
+        false,
+        15,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Bookshelf",
+        [TILE_BOOKSHELF_TOP, TILE_BOOKSHELF_TOP, TILE_BOOKSHELF_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Crafting Table",
+        [TILE_CRAFT_TOP, TILE_PLANKS, TILE_CRAFT_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Clay",
+        [TILE_CLAY, TILE_CLAY, TILE_CLAY],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Dirt,
+    ),
+    d(
+        "Terracotta",
+        [TILE_TERRACOTTA, TILE_TERRACOTTA, TILE_TERRACOTTA],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Pumpkin",
+        [TILE_PUMPKIN_TOP, TILE_PUMPKIN_TOP, TILE_PUMPKIN_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Melon",
+        [TILE_MELON_TOP, TILE_MELON_TOP, TILE_MELON_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Ice",
+        [TILE_ICE, TILE_ICE, TILE_ICE],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Cactus",
+        [TILE_CACTUS_TOP, TILE_CACTUS_TOP, TILE_CACTUS_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
     // wool
-    d("White Wool", [TILE_WOOL_WHITE, TILE_WOOL_WHITE, TILE_WOOL_WHITE], true, true, false, false, 0, SoundFamily::Wool),
-    d("Red Wool", [TILE_WOOL_RED, TILE_WOOL_RED, TILE_WOOL_RED], true, true, false, false, 0, SoundFamily::Wool),
-    d("Blue Wool", [TILE_WOOL_BLUE, TILE_WOOL_BLUE, TILE_WOOL_BLUE], true, true, false, false, 0, SoundFamily::Wool),
-    d("Yellow Wool", [TILE_WOOL_YELLOW, TILE_WOOL_YELLOW, TILE_WOOL_YELLOW], true, true, false, false, 0, SoundFamily::Wool),
-    d("Black Wool", [TILE_WOOL_BLACK, TILE_WOOL_BLACK, TILE_WOOL_BLACK], true, true, false, false, 0, SoundFamily::Wool),
+    d(
+        "White Wool",
+        [TILE_WOOL_WHITE, TILE_WOOL_WHITE, TILE_WOOL_WHITE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Red Wool",
+        [TILE_WOOL_RED, TILE_WOOL_RED, TILE_WOOL_RED],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Blue Wool",
+        [TILE_WOOL_BLUE, TILE_WOOL_BLUE, TILE_WOOL_BLUE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Yellow Wool",
+        [TILE_WOOL_YELLOW, TILE_WOOL_YELLOW, TILE_WOOL_YELLOW],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Black Wool",
+        [TILE_WOOL_BLACK, TILE_WOOL_BLACK, TILE_WOOL_BLACK],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
     // wood variants
-    d("Birch Log", [TILE_LOG_TOP, TILE_LOG_TOP, TILE_BIRCH_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Birch Leaves", [TILE_BIRCH_LEAVES, TILE_BIRCH_LEAVES, TILE_BIRCH_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
-    d("Spruce Log", [TILE_LOG_TOP, TILE_LOG_TOP, TILE_SPRUCE_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Spruce Leaves", [TILE_SPRUCE_LEAVES, TILE_SPRUCE_LEAVES, TILE_SPRUCE_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
+    d(
+        "Birch Log",
+        [TILE_LOG_TOP, TILE_LOG_TOP, TILE_BIRCH_LOG_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Birch Leaves",
+        [TILE_BIRCH_LEAVES, TILE_BIRCH_LEAVES, TILE_BIRCH_LEAVES],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Leaves,
+    ),
+    d(
+        "Spruce Log",
+        [TILE_LOG_TOP, TILE_LOG_TOP, TILE_SPRUCE_LOG_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Spruce Leaves",
+        [TILE_SPRUCE_LEAVES, TILE_SPRUCE_LEAVES, TILE_SPRUCE_LEAVES],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Leaves,
+    ),
     // plants
-    d("Red Mushroom", [TILE_MUSHROOM_RED, TILE_MUSHROOM_RED, TILE_MUSHROOM_RED], false, false, true, false, 0, SoundFamily::Grass),
-    d("Brown Mushroom", [TILE_MUSHROOM_BROWN, TILE_MUSHROOM_BROWN, TILE_MUSHROOM_BROWN], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Bush", [TILE_DEAD_BUSH, TILE_DEAD_BUSH, TILE_DEAD_BUSH], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Red Mushroom",
+        [TILE_MUSHROOM_RED, TILE_MUSHROOM_RED, TILE_MUSHROOM_RED],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Brown Mushroom",
+        [
+            TILE_MUSHROOM_BROWN,
+            TILE_MUSHROOM_BROWN,
+            TILE_MUSHROOM_BROWN,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Bush",
+        [TILE_DEAD_BUSH, TILE_DEAD_BUSH, TILE_DEAD_BUSH],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // Phase-1 model blocks: rendered through the blockstate/model JSON path
     // (partial geometry — not opaque, not greedy-meshed). Collision uses the
     // full-cube approximation until per-shape collision lands (Phase 6 TODO).
-    d("Oak Slab", [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], true, false, false, false, 0, SoundFamily::Wood),
-    d("Cobblestone Stairs", [TILE_COBBLE, TILE_COBBLE, TILE_COBBLE], true, false, false, false, 0, SoundFamily::Stone),
-    d("Oak Fence", [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], true, false, false, false, 0, SoundFamily::Wood),
+    d(
+        "Oak Slab",
+        [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Cobblestone Stairs",
+        [TILE_COBBLE, TILE_COBBLE, TILE_COBBLE],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Oak Fence",
+        [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
     // redstone core (Phase 6 §25): cross-rendered components; power lives
     // in the sim states (wire 113..128, lever 129/130, torch 131/132)
-    d("Redstone Wire", [TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Redstone Torch", [TILE_REDSTONE_TORCH, TILE_REDSTONE_TORCH, TILE_REDSTONE_TORCH], false, false, true, false, 7, SoundFamily::Wood),
-    d("Lever", [TILE_LEVER, TILE_LEVER, TILE_LEVER], false, false, true, false, 0, SoundFamily::Wood),
+    d(
+        "Redstone Wire",
+        [TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Redstone Torch",
+        [
+            TILE_REDSTONE_TORCH,
+            TILE_REDSTONE_TORCH,
+            TILE_REDSTONE_TORCH,
+        ],
+        false,
+        false,
+        true,
+        false,
+        7,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Lever",
+        [TILE_LEVER, TILE_LEVER, TILE_LEVER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
     // gameplay (Phase 7): full-cube greedy-meshed, lit variant glows
-    d("Furnace", [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_FURNACE_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Furnace",
+        [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_FURNACE_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // nether blocks (Phase 7 §28): full-cube greedy-meshed; quartz ore in
     // netherrack; soul sand slows (§23 hook later) and sinks slightly
-    d("Netherrack", [TILE_NETHERRACK, TILE_NETHERRACK, TILE_NETHERRACK], true, true, false, false, 0, SoundFamily::Stone),
-    d("Nether Quartz Ore", [TILE_QUARTZ_ORE, TILE_QUARTZ_ORE, TILE_QUARTZ_ORE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Soul Sand", [TILE_SOUL_SAND, TILE_SOUL_SAND, TILE_SOUL_SAND], true, true, false, false, 0, SoundFamily::Sand),
+    d(
+        "Netherrack",
+        [TILE_NETHERRACK, TILE_NETHERRACK, TILE_NETHERRACK],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Nether Quartz Ore",
+        [TILE_QUARTZ_ORE, TILE_QUARTZ_ORE, TILE_QUARTZ_ORE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Soul Sand",
+        [TILE_SOUL_SAND, TILE_SOUL_SAND, TILE_SOUL_SAND],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
     // brewing (Phase 7 §29): cross-rendered stand (vanilla stand is a small
     // rod — not a full cube, not solid); potion bottles are ITEM-only ids
     // that exist in inventories — is_item_block() guards placement
-    d("Brewing Stand", [TILE_BREWING_STAND, TILE_BREWING_STAND, TILE_BREWING_STAND], false, false, true, false, 1, SoundFamily::Wood),
-    d("Glass Bottle", [TILE_BOTTLE_EMPTY, TILE_BOTTLE_EMPTY, TILE_BOTTLE_EMPTY], false, false, true, false, 0, SoundFamily::Glass),
-    d("Water Bottle", [TILE_POTION_WATER, TILE_POTION_WATER, TILE_POTION_WATER], false, false, true, false, 0, SoundFamily::Water),
-    d("Awkward Potion", [TILE_POTION_AWKWARD, TILE_POTION_AWKWARD, TILE_POTION_AWKWARD], false, false, true, false, 0, SoundFamily::Water),
-    d("Mundane Potion", [TILE_POTION_MUNDANE, TILE_POTION_MUNDANE, TILE_POTION_MUNDANE], false, false, true, false, 0, SoundFamily::Water),
-    d("Potion of Healing", [TILE_POTION_HEALING, TILE_POTION_HEALING, TILE_POTION_HEALING], false, false, true, false, 0, SoundFamily::Water),
-    d("Potion of Healing II", [TILE_POTION_HEALING_II, TILE_POTION_HEALING_II, TILE_POTION_HEALING_II], false, false, true, false, 0, SoundFamily::Water),
+    d(
+        "Brewing Stand",
+        [TILE_BREWING_STAND, TILE_BREWING_STAND, TILE_BREWING_STAND],
+        false,
+        false,
+        true,
+        false,
+        1,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Glass Bottle",
+        [TILE_BOTTLE_EMPTY, TILE_BOTTLE_EMPTY, TILE_BOTTLE_EMPTY],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Water Bottle",
+        [TILE_POTION_WATER, TILE_POTION_WATER, TILE_POTION_WATER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Water,
+    ),
+    d(
+        "Awkward Potion",
+        [
+            TILE_POTION_AWKWARD,
+            TILE_POTION_AWKWARD,
+            TILE_POTION_AWKWARD,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Water,
+    ),
+    d(
+        "Mundane Potion",
+        [
+            TILE_POTION_MUNDANE,
+            TILE_POTION_MUNDANE,
+            TILE_POTION_MUNDANE,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Water,
+    ),
+    d(
+        "Potion of Healing",
+        [
+            TILE_POTION_HEALING,
+            TILE_POTION_HEALING,
+            TILE_POTION_HEALING,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Water,
+    ),
+    d(
+        "Potion of Healing II",
+        [
+            TILE_POTION_HEALING_II,
+            TILE_POTION_HEALING_II,
+            TILE_POTION_HEALING_II,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Water,
+    ),
     // enchanting (§29): cross-rendered table slab (vanilla table is a small
     // block with runes); the book is an ITEM block that carries enchants
-    d("Enchanting Table", [TILE_ENCHANT_TABLE, TILE_ENCHANT_TABLE, TILE_ENCHANT_TABLE], false, false, true, false, 4, SoundFamily::Stone),
-    d("Enchanted Book", [TILE_ENCHANTED_BOOK, TILE_ENCHANTED_BOOK, TILE_ENCHANTED_BOOK], false, false, true, false, 0, SoundFamily::Wood),
+    d(
+        "Enchanting Table",
+        [TILE_ENCHANT_TABLE, TILE_ENCHANT_TABLE, TILE_ENCHANT_TABLE],
+        false,
+        false,
+        true,
+        false,
+        4,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Enchanted Book",
+        [
+            TILE_ENCHANTED_BOOK,
+            TILE_ENCHANTED_BOOK,
+            TILE_ENCHANTED_BOOK,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
     // mob drops (Phase 2) — item-only, cross-rendered icons
-    d("Raw Beef", [TILE_BEEF, TILE_BEEF, TILE_BEEF], false, false, true, false, 0, SoundFamily::Grass),
-    d("Raw Porkchop", [TILE_PORKCHOP, TILE_PORKCHOP, TILE_PORKCHOP], false, false, true, false, 0, SoundFamily::Grass),
-    d("Raw Mutton", [TILE_MUTTON, TILE_MUTTON, TILE_MUTTON], false, false, true, false, 0, SoundFamily::Grass),
-    d("Raw Chicken", [TILE_CHICKEN_RAW, TILE_CHICKEN_RAW, TILE_CHICKEN_RAW], false, false, true, false, 0, SoundFamily::Grass),
-    d("Feather", [TILE_FEATHER, TILE_FEATHER, TILE_FEATHER], false, false, true, false, 0, SoundFamily::Grass),
-    d("Leather", [TILE_LEATHER, TILE_LEATHER, TILE_LEATHER], false, false, true, false, 0, SoundFamily::Grass),
-    d("Bone", [TILE_BONE, TILE_BONE, TILE_BONE], false, false, true, false, 0, SoundFamily::Stone),
-    d("String", [TILE_STRING, TILE_STRING, TILE_STRING], false, false, true, false, 0, SoundFamily::Grass),
-    d("Gunpowder", [TILE_GUNPOWDER, TILE_GUNPOWDER, TILE_GUNPOWDER], false, false, true, false, 0, SoundFamily::Sand),
-    d("Ender Pearl", [TILE_ENDER_PEARL, TILE_ENDER_PEARL, TILE_ENDER_PEARL], false, false, true, false, 0, SoundFamily::Glass),
-    d("Rotten Flesh", [TILE_ROTTEN_FLESH, TILE_ROTTEN_FLESH, TILE_ROTTEN_FLESH], false, false, true, false, 0, SoundFamily::Grass),
-    d("Arrow", [TILE_ARROW_ITEM, TILE_ARROW_ITEM, TILE_ARROW_ITEM], false, false, true, false, 0, SoundFamily::Stone),
+    d(
+        "Raw Beef",
+        [TILE_BEEF, TILE_BEEF, TILE_BEEF],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Raw Porkchop",
+        [TILE_PORKCHOP, TILE_PORKCHOP, TILE_PORKCHOP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Raw Mutton",
+        [TILE_MUTTON, TILE_MUTTON, TILE_MUTTON],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Raw Chicken",
+        [TILE_CHICKEN_RAW, TILE_CHICKEN_RAW, TILE_CHICKEN_RAW],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Feather",
+        [TILE_FEATHER, TILE_FEATHER, TILE_FEATHER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Leather",
+        [TILE_LEATHER, TILE_LEATHER, TILE_LEATHER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Bone",
+        [TILE_BONE, TILE_BONE, TILE_BONE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "String",
+        [TILE_STRING, TILE_STRING, TILE_STRING],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Gunpowder",
+        [TILE_GUNPOWDER, TILE_GUNPOWDER, TILE_GUNPOWDER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Ender Pearl",
+        [TILE_ENDER_PEARL, TILE_ENDER_PEARL, TILE_ENDER_PEARL],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Rotten Flesh",
+        [TILE_ROTTEN_FLESH, TILE_ROTTEN_FLESH, TILE_ROTTEN_FLESH],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Arrow",
+        [TILE_ARROW_ITEM, TILE_ARROW_ITEM, TILE_ARROW_ITEM],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // redstone components (Phase 3) — cross-rendered sprites (visual
     // simplification: vanilla repeaters/comparators are flat plates;
     // mechanics are fully directional via the state props)
-    d("Redstone Repeater", [TILE_REPEATER, TILE_REPEATER, TILE_REPEATER], false, false, true, false, 0, SoundFamily::Wood),
-    d("Redstone Comparator", [TILE_COMPARATOR, TILE_COMPARATOR, TILE_COMPARATOR], false, false, true, false, 0, SoundFamily::Wood),
-    d("Piston", [TILE_PISTON, TILE_PISTON, TILE_PISTON], true, false, true, false, 0, SoundFamily::Wood),
-    d("Sticky Piston", [TILE_STICKY_PISTON, TILE_STICKY_PISTON, TILE_STICKY_PISTON], true, false, true, false, 0, SoundFamily::Wood),
-    d("Dispenser", [TILE_DISPENSER, TILE_DISPENSER, TILE_DISPENSER], true, false, true, false, 0, SoundFamily::Wood),
-    d("Dropper", [TILE_DROPPER, TILE_DROPPER, TILE_DROPPER], true, false, true, false, 0, SoundFamily::Wood),
-    d("Observer", [TILE_OBSERVER, TILE_OBSERVER, TILE_OBSERVER], true, false, true, false, 0, SoundFamily::Wood),
-    d("Hopper", [TILE_HOPPER, TILE_HOPPER, TILE_HOPPER], true, false, true, false, 0, SoundFamily::Wood),
-    d("Chest", [TILE_CHEST, TILE_CHEST, TILE_CHEST], true, false, true, false, 0, SoundFamily::Wood),
+    d(
+        "Redstone Repeater",
+        [TILE_REPEATER, TILE_REPEATER, TILE_REPEATER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Redstone Comparator",
+        [TILE_COMPARATOR, TILE_COMPARATOR, TILE_COMPARATOR],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Piston",
+        [TILE_PISTON, TILE_PISTON, TILE_PISTON],
+        true,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Sticky Piston",
+        [TILE_STICKY_PISTON, TILE_STICKY_PISTON, TILE_STICKY_PISTON],
+        true,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Dispenser",
+        [TILE_DISPENSER, TILE_DISPENSER, TILE_DISPENSER],
+        true,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Dropper",
+        [TILE_DROPPER, TILE_DROPPER, TILE_DROPPER],
+        true,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Observer",
+        [TILE_OBSERVER, TILE_OBSERVER, TILE_OBSERVER],
+        true,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Hopper",
+        [TILE_HOPPER, TILE_HOPPER, TILE_HOPPER],
+        true,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Chest",
+        [TILE_CHEST, TILE_CHEST, TILE_CHEST],
+        true,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
     // Phase 4 §26/§30: corruption-chain potions + items (item-only,
     // cross-rendered icons; potions drink, eyes are ingredients)
-    d("Potion of Harming", [TILE_POTION_HARMING, TILE_POTION_HARMING, TILE_POTION_HARMING], false, false, true, false, 0, SoundFamily::Water),
-    d("Potion of Harming II", [TILE_POTION_HARMING_II, TILE_POTION_HARMING_II, TILE_POTION_HARMING_II], false, false, true, false, 0, SoundFamily::Water),
-    d("Spider Eye", [TILE_SPIDER_EYE, TILE_SPIDER_EYE, TILE_SPIDER_EYE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Fermented Spider Eye", [TILE_FERMENTED_EYE, TILE_FERMENTED_EYE, TILE_FERMENTED_EYE], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Potion of Harming",
+        [
+            TILE_POTION_HARMING,
+            TILE_POTION_HARMING,
+            TILE_POTION_HARMING,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Water,
+    ),
+    d(
+        "Potion of Harming II",
+        [
+            TILE_POTION_HARMING_II,
+            TILE_POTION_HARMING_II,
+            TILE_POTION_HARMING_II,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Water,
+    ),
+    d(
+        "Spider Eye",
+        [TILE_SPIDER_EYE, TILE_SPIDER_EYE, TILE_SPIDER_EYE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Fermented Spider Eye",
+        [TILE_FERMENTED_EYE, TILE_FERMENTED_EYE, TILE_FERMENTED_EYE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // Phase 5 §27: solid cage block, NOT opaque (vanilla's spawner shows
     // the mob inside; ours is a full lattice cube — see-through faces on
     // all sides like glass)
-    d("Monster Spawner", [TILE_SPAWNER, TILE_SPAWNER, TILE_SPAWNER], true, false, false, false, 0, SoundFamily::Stone),
+    d(
+        "Monster Spawner",
+        [TILE_SPAWNER, TILE_SPAWNER, TILE_SPAWNER],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // Phase 10: end-portal frame (stronghold portal room) — solid cube
     // with the frame inset face; eye insertion + activation out of scope
-    d("End Portal Frame", [TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME], true, false, false, false, 0, SoundFamily::Stone),
+    d(
+        "End Portal Frame",
+        [
+            TILE_END_PORTAL_FRAME,
+            TILE_END_PORTAL_FRAME,
+            TILE_END_PORTAL_FRAME,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- Phase E1 rows (ids 103..=139; evolution 1.0–1.2 bracket) ----
-    d("Mycelium", [TILE_MYCELIUM_TOP, TILE_DIRT, TILE_MYCELIUM_SIDE], true, true, false, false, 0, SoundFamily::Grass),
-    d("End Stone", [TILE_END_STONE, TILE_END_STONE, TILE_END_STONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Nether Bricks", [TILE_NETHER_BRICKS, TILE_NETHER_BRICKS, TILE_NETHER_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Mycelium",
+        [TILE_MYCELIUM_TOP, TILE_DIRT, TILE_MYCELIUM_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "End Stone",
+        [TILE_END_STONE, TILE_END_STONE, TILE_END_STONE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Nether Bricks",
+        [TILE_NETHER_BRICKS, TILE_NETHER_BRICKS, TILE_NETHER_BRICKS],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // VERIFIED w/Redstone_Lamp: off = no light; lit state emits 15; opaque
-    d("Redstone Lamp", [TILE_REDSTONE_LAMP, TILE_REDSTONE_LAMP, TILE_REDSTONE_LAMP], true, true, false, false, 0, SoundFamily::Glass),
-    d("Chiseled Stone Bricks", [TILE_CHISELED_STONE_BRICKS, TILE_CHISELED_STONE_BRICKS, TILE_CHISELED_STONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
-    d("Chiseled Sandstone", [TILE_CHISELED_SANDSTONE, TILE_CHISELED_SANDSTONE, TILE_CHISELED_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Cut Sandstone", [TILE_CUT_SANDSTONE, TILE_CUT_SANDSTONE, TILE_CUT_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Smooth Sandstone", [TILE_SMOOTH_SANDSTONE, TILE_SMOOTH_SANDSTONE, TILE_SMOOTH_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Red Mushroom Block", [TILE_MUSHROOM_RED_BLOCK, TILE_MUSHROOM_RED_BLOCK, TILE_MUSHROOM_RED_BLOCK], true, true, false, false, 0, SoundFamily::Wood),
-    d("Brown Mushroom Block", [TILE_MUSHROOM_BROWN_BLOCK, TILE_MUSHROOM_BROWN_BLOCK, TILE_MUSHROOM_BROWN_BLOCK], true, true, false, false, 0, SoundFamily::Wood),
-    d("Mushroom Stem", [TILE_MUSHROOM_STEM, TILE_MUSHROOM_STEM, TILE_MUSHROOM_STEM], true, true, false, false, 0, SoundFamily::Wood),
-    d("Nether Wart", [TILE_NETHER_WART_0, TILE_NETHER_WART_0, TILE_NETHER_WART_0], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dragon Egg", [TILE_DRAGON_EGG, TILE_DRAGON_EGG, TILE_DRAGON_EGG], true, true, false, false, 1, SoundFamily::Stone),
+    d(
+        "Redstone Lamp",
+        [TILE_REDSTONE_LAMP, TILE_REDSTONE_LAMP, TILE_REDSTONE_LAMP],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Chiseled Stone Bricks",
+        [
+            TILE_CHISELED_STONE_BRICKS,
+            TILE_CHISELED_STONE_BRICKS,
+            TILE_CHISELED_STONE_BRICKS,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Chiseled Sandstone",
+        [
+            TILE_CHISELED_SANDSTONE,
+            TILE_CHISELED_SANDSTONE,
+            TILE_CHISELED_SANDSTONE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Cut Sandstone",
+        [TILE_CUT_SANDSTONE, TILE_CUT_SANDSTONE, TILE_CUT_SANDSTONE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Smooth Sandstone",
+        [
+            TILE_SMOOTH_SANDSTONE,
+            TILE_SMOOTH_SANDSTONE,
+            TILE_SMOOTH_SANDSTONE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Red Mushroom Block",
+        [
+            TILE_MUSHROOM_RED_BLOCK,
+            TILE_MUSHROOM_RED_BLOCK,
+            TILE_MUSHROOM_RED_BLOCK,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Brown Mushroom Block",
+        [
+            TILE_MUSHROOM_BROWN_BLOCK,
+            TILE_MUSHROOM_BROWN_BLOCK,
+            TILE_MUSHROOM_BROWN_BLOCK,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Mushroom Stem",
+        [TILE_MUSHROOM_STEM, TILE_MUSHROOM_STEM, TILE_MUSHROOM_STEM],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Nether Wart",
+        [TILE_NETHER_WART_0, TILE_NETHER_WART_0, TILE_NETHER_WART_0],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dragon Egg",
+        [TILE_DRAGON_EGG, TILE_DRAGON_EGG, TILE_DRAGON_EGG],
+        true,
+        true,
+        false,
+        false,
+        1,
+        SoundFamily::Stone,
+    ),
     // the portal itself: walk-in block, no skylight-blocking opacity,
     // full block light (vanilla star-field face)
-    d("End Portal", [TILE_END_PORTAL, TILE_END_PORTAL, TILE_END_PORTAL], true, false, false, false, 15, SoundFamily::Stone),
+    d(
+        "End Portal",
+        [TILE_END_PORTAL, TILE_END_PORTAL, TILE_END_PORTAL],
+        true,
+        false,
+        false,
+        false,
+        15,
+        SoundFamily::Stone,
+    ),
     // ---- item-blocks (117..=139) — inventory-only, the potion pattern ----
-    d("End Crystal", [TILE_END_CRYSTAL, TILE_END_CRYSTAL, TILE_END_CRYSTAL], false, false, true, false, 0, SoundFamily::Glass),
-    d("Eye of End", [TILE_EYE_OF_ENDER, TILE_EYE_OF_ENDER, TILE_EYE_OF_ENDER], false, false, true, false, 0, SoundFamily::Glass),
-    d("Blaze Rod", [TILE_BLAZE_ROD, TILE_BLAZE_ROD, TILE_BLAZE_ROD], false, false, true, false, 0, SoundFamily::Wood),
-    d("Blaze Powder", [TILE_BLAZE_POWDER, TILE_BLAZE_POWDER, TILE_BLAZE_POWDER], false, false, true, false, 0, SoundFamily::Sand),
-    d("Golden Apple", [TILE_GOLDEN_APPLE, TILE_GOLDEN_APPLE, TILE_GOLDEN_APPLE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Snowball", [TILE_SNOWBALL, TILE_SNOWBALL, TILE_SNOWBALL], false, false, true, false, 0, SoundFamily::Sand),
-    d("Nether Brick", [TILE_NETHER_BRICK, TILE_NETHER_BRICK, TILE_NETHER_BRICK], false, false, true, false, 0, SoundFamily::Stone),
-    d("Snow Golem Spawn Egg", [TILE_EGG_BASE, TILE_EGG_BASE, TILE_EGG_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Magma Cube Spawn Egg", [TILE_EGG_BASE + 1, TILE_EGG_BASE + 1, TILE_EGG_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
-    d("Blaze Spawn Egg", [TILE_EGG_BASE + 2, TILE_EGG_BASE + 2, TILE_EGG_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
-    d("Ocelot Spawn Egg", [TILE_EGG_BASE + 3, TILE_EGG_BASE + 3, TILE_EGG_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
-    d("Iron Golem Spawn Egg", [TILE_EGG_BASE + 4, TILE_EGG_BASE + 4, TILE_EGG_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
-    d("Zombie Villager Spawn Egg", [TILE_EGG_BASE + 5, TILE_EGG_BASE + 5, TILE_EGG_BASE + 5], false, false, true, false, 0, SoundFamily::Grass),
-    d("Mooshroom Spawn Egg", [TILE_EGG_BASE + 6, TILE_EGG_BASE + 6, TILE_EGG_BASE + 6], false, false, true, false, 0, SoundFamily::Grass),
-    d("Zombie Spawn Egg", [TILE_EGG_BASE + 7, TILE_EGG_BASE + 7, TILE_EGG_BASE + 7], false, false, true, false, 0, SoundFamily::Grass),
-    d("Skeleton Spawn Egg", [TILE_EGG_BASE + 8, TILE_EGG_BASE + 8, TILE_EGG_BASE + 8], false, false, true, false, 0, SoundFamily::Grass),
-    d("Creeper Spawn Egg", [TILE_EGG_BASE + 9, TILE_EGG_BASE + 9, TILE_EGG_BASE + 9], false, false, true, false, 0, SoundFamily::Grass),
-    d("Spider Spawn Egg", [TILE_EGG_BASE + 10, TILE_EGG_BASE + 10, TILE_EGG_BASE + 10], false, false, true, false, 0, SoundFamily::Grass),
-    d("Enderman Spawn Egg", [TILE_EGG_BASE + 11, TILE_EGG_BASE + 11, TILE_EGG_BASE + 11], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cow Spawn Egg", [TILE_EGG_BASE + 12, TILE_EGG_BASE + 12, TILE_EGG_BASE + 12], false, false, true, false, 0, SoundFamily::Grass),
-    d("Pig Spawn Egg", [TILE_EGG_BASE + 13, TILE_EGG_BASE + 13, TILE_EGG_BASE + 13], false, false, true, false, 0, SoundFamily::Grass),
-    d("Sheep Spawn Egg", [TILE_EGG_BASE + 14, TILE_EGG_BASE + 14, TILE_EGG_BASE + 14], false, false, true, false, 0, SoundFamily::Grass),
-    d("Chicken Spawn Egg", [TILE_EGG_BASE + 15, TILE_EGG_BASE + 15, TILE_EGG_BASE + 15], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "End Crystal",
+        [TILE_END_CRYSTAL, TILE_END_CRYSTAL, TILE_END_CRYSTAL],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Eye of End",
+        [TILE_EYE_OF_ENDER, TILE_EYE_OF_ENDER, TILE_EYE_OF_ENDER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Blaze Rod",
+        [TILE_BLAZE_ROD, TILE_BLAZE_ROD, TILE_BLAZE_ROD],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Blaze Powder",
+        [TILE_BLAZE_POWDER, TILE_BLAZE_POWDER, TILE_BLAZE_POWDER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Golden Apple",
+        [TILE_GOLDEN_APPLE, TILE_GOLDEN_APPLE, TILE_GOLDEN_APPLE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Snowball",
+        [TILE_SNOWBALL, TILE_SNOWBALL, TILE_SNOWBALL],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Nether Brick",
+        [TILE_NETHER_BRICK, TILE_NETHER_BRICK, TILE_NETHER_BRICK],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Snow Golem Spawn Egg",
+        [TILE_EGG_BASE, TILE_EGG_BASE, TILE_EGG_BASE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Magma Cube Spawn Egg",
+        [TILE_EGG_BASE + 1, TILE_EGG_BASE + 1, TILE_EGG_BASE + 1],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Blaze Spawn Egg",
+        [TILE_EGG_BASE + 2, TILE_EGG_BASE + 2, TILE_EGG_BASE + 2],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Ocelot Spawn Egg",
+        [TILE_EGG_BASE + 3, TILE_EGG_BASE + 3, TILE_EGG_BASE + 3],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Iron Golem Spawn Egg",
+        [TILE_EGG_BASE + 4, TILE_EGG_BASE + 4, TILE_EGG_BASE + 4],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Zombie Villager Spawn Egg",
+        [TILE_EGG_BASE + 5, TILE_EGG_BASE + 5, TILE_EGG_BASE + 5],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Mooshroom Spawn Egg",
+        [TILE_EGG_BASE + 6, TILE_EGG_BASE + 6, TILE_EGG_BASE + 6],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Zombie Spawn Egg",
+        [TILE_EGG_BASE + 7, TILE_EGG_BASE + 7, TILE_EGG_BASE + 7],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Skeleton Spawn Egg",
+        [TILE_EGG_BASE + 8, TILE_EGG_BASE + 8, TILE_EGG_BASE + 8],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Creeper Spawn Egg",
+        [TILE_EGG_BASE + 9, TILE_EGG_BASE + 9, TILE_EGG_BASE + 9],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Spider Spawn Egg",
+        [TILE_EGG_BASE + 10, TILE_EGG_BASE + 10, TILE_EGG_BASE + 10],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Enderman Spawn Egg",
+        [TILE_EGG_BASE + 11, TILE_EGG_BASE + 11, TILE_EGG_BASE + 11],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cow Spawn Egg",
+        [TILE_EGG_BASE + 12, TILE_EGG_BASE + 12, TILE_EGG_BASE + 12],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Pig Spawn Egg",
+        [TILE_EGG_BASE + 13, TILE_EGG_BASE + 13, TILE_EGG_BASE + 13],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Sheep Spawn Egg",
+        [TILE_EGG_BASE + 14, TILE_EGG_BASE + 14, TILE_EGG_BASE + 14],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Chicken Spawn Egg",
+        [TILE_EGG_BASE + 15, TILE_EGG_BASE + 15, TILE_EGG_BASE + 15],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- Phase E2 eggs (mob kinds 17..=20: wither skeleton, witch, bat,
     // wither — VERIFIED spawn-egg usage rule) ----
-    d("Wither Skeleton Spawn Egg", [TILE_EGG_BASE + 16, TILE_EGG_BASE + 16, TILE_EGG_BASE + 16], false, false, true, false, 0, SoundFamily::Grass),
-    d("Witch Spawn Egg", [TILE_EGG_BASE + 17, TILE_EGG_BASE + 17, TILE_EGG_BASE + 17], false, false, true, false, 0, SoundFamily::Grass),
-    d("Bat Spawn Egg", [TILE_EGG_BASE + 18, TILE_EGG_BASE + 18, TILE_EGG_BASE + 18], false, false, true, false, 0, SoundFamily::Grass),
-    d("Wither Spawn Egg", [TILE_EGG_BASE + 19, TILE_EGG_BASE + 19, TILE_EGG_BASE + 19], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Wither Skeleton Spawn Egg",
+        [TILE_EGG_BASE + 16, TILE_EGG_BASE + 16, TILE_EGG_BASE + 16],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Witch Spawn Egg",
+        [TILE_EGG_BASE + 17, TILE_EGG_BASE + 17, TILE_EGG_BASE + 17],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Bat Spawn Egg",
+        [TILE_EGG_BASE + 18, TILE_EGG_BASE + 18, TILE_EGG_BASE + 18],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Wither Spawn Egg",
+        [TILE_EGG_BASE + 19, TILE_EGG_BASE + 19, TILE_EGG_BASE + 19],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- Phase E2 world blocks (evolution 1.3–1.4 bracket) ----
     // anvil family: solid, opaque; damage tiles come from state_tiles
-    d("Anvil", [TILE_ANVIL, TILE_ANVIL, TILE_ANVIL], true, true, false, false, 0, SoundFamily::Metal),
-    d("Chipped Anvil", [TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED], true, true, false, false, 0, SoundFamily::Stone),
-    d("Damaged Anvil", [TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Anvil",
+        [TILE_ANVIL, TILE_ANVIL, TILE_ANVIL],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Metal,
+    ),
+    d(
+        "Chipped Anvil",
+        [TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Damaged Anvil",
+        [TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // beacon: solid, NOT opaque (vanilla glass-like core; the beam rides
     // the billboard pipeline) — self-lit 15 (VERIFIED w/Beacon)
-    d("Beacon", [TILE_BEACON, TILE_BEACON, TILE_BEACON], true, false, false, false, 15, SoundFamily::Glass),
+    d(
+        "Beacon",
+        [TILE_BEACON, TILE_BEACON, TILE_BEACON],
+        true,
+        false,
+        false,
+        false,
+        15,
+        SoundFamily::Glass,
+    ),
     // wall: solid, not opaque (fence-class boundary block — 1.5-tall
     // collision; connections at mesh time)
-    d("Cobblestone Wall", [TILE_COBBLE_WALL, TILE_COBBLE_WALL, TILE_COBBLE_WALL], true, false, false, false, 0, SoundFamily::Stone),
+    d(
+        "Cobblestone Wall",
+        [TILE_COBBLE_WALL, TILE_COBBLE_WALL, TILE_COBBLE_WALL],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ender chest: solid, opaque, light 7 (VERIFIED w/Ender_Chest)
-    d("Ender Chest", [TILE_ENDER_CHEST, TILE_ENDER_CHEST, TILE_ENDER_CHEST], true, true, false, false, 7, SoundFamily::Stone),
+    d(
+        "Ender Chest",
+        [TILE_ENDER_CHEST, TILE_ENDER_CHEST, TILE_ENDER_CHEST],
+        true,
+        true,
+        false,
+        false,
+        7,
+        SoundFamily::Stone,
+    ),
     // flower pot: cross-rendered, instant break (hardness 0)
-    d("Flower Pot", [TILE_FLOWER_POT, TILE_FLOWER_POT, TILE_FLOWER_POT], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Flower Pot",
+        [TILE_FLOWER_POT, TILE_FLOWER_POT, TILE_FLOWER_POT],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // item frame: cross-rendered sprite of the frame; contents ride the
     // container system (1-slot, position-keyed)
-    d("Item Frame", [TILE_ITEM_FRAME, TILE_ITEM_FRAME, TILE_ITEM_FRAME], false, false, true, false, 0, SoundFamily::Wood),
+    d(
+        "Item Frame",
+        [TILE_ITEM_FRAME, TILE_ITEM_FRAME, TILE_ITEM_FRAME],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
     // tripwire hook: cross-rendered; facing × powered in the state
-    d("Tripwire Hook", [TILE_TRIPWIRE_HOOK, TILE_TRIPWIRE_HOOK, TILE_TRIPWIRE_HOOK], false, false, true, false, 0, SoundFamily::Wood),
+    d(
+        "Tripwire Hook",
+        [TILE_TRIPWIRE_HOOK, TILE_TRIPWIRE_HOOK, TILE_TRIPWIRE_HOOK],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
     // wither skeleton skull: cross-rendered head on the ground
-    d("Wither Skeleton Skull", [TILE_WITHER_SKULL, TILE_WITHER_SKULL, TILE_WITHER_SKULL], false, false, true, false, 0, SoundFamily::Stone),
+    d(
+        "Wither Skeleton Skull",
+        [TILE_WITHER_SKULL, TILE_WITHER_SKULL, TILE_WITHER_SKULL],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // command block: solid opaque cube; the ON face tile glows (lit state
     // = last-fired pulse, functional only)
-    d("Command Block", [TILE_COMMAND_BLOCK, TILE_COMMAND_BLOCK, TILE_COMMAND_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Command Block",
+        [TILE_COMMAND_BLOCK, TILE_COMMAND_BLOCK, TILE_COMMAND_BLOCK],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- Phase E2 item-blocks (155..=160) — inventory-only ----
-    d("Emerald", [TILE_EMERALD, TILE_EMERALD, TILE_EMERALD], false, false, true, false, 0, SoundFamily::Grass),
-    d("Nether Star", [TILE_NETHER_STAR, TILE_NETHER_STAR, TILE_NETHER_STAR], false, false, true, false, 0, SoundFamily::Glass),
-    d("Potato", [TILE_POTATO, TILE_POTATO, TILE_POTATO], false, false, true, false, 0, SoundFamily::Grass),
-    d("Baked Potato", [TILE_BAKED_POTATO, TILE_BAKED_POTATO, TILE_BAKED_POTATO], false, false, true, false, 0, SoundFamily::Grass),
-    d("Carrot", [TILE_CARROT, TILE_CARROT, TILE_CARROT], false, false, true, false, 0, SoundFamily::Grass),
-    d("Pumpkin Pie", [TILE_PUMPKIN_PIE, TILE_PUMPKIN_PIE, TILE_PUMPKIN_PIE], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Emerald",
+        [TILE_EMERALD, TILE_EMERALD, TILE_EMERALD],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Nether Star",
+        [TILE_NETHER_STAR, TILE_NETHER_STAR, TILE_NETHER_STAR],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Potato",
+        [TILE_POTATO, TILE_POTATO, TILE_POTATO],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Baked Potato",
+        [TILE_BAKED_POTATO, TILE_BAKED_POTATO, TILE_BAKED_POTATO],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Carrot",
+        [TILE_CARROT, TILE_CARROT, TILE_CARROT],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Pumpkin Pie",
+        [TILE_PUMPKIN_PIE, TILE_PUMPKIN_PIE, TILE_PUMPKIN_PIE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // lava: fluid, emissive 15 (VERIFIED w/Lava luminance), not solid —
     // meshes through the fluid-quad path with the fixed lava tint
-    d("Lava", [TILE_LAVA, TILE_LAVA, TILE_LAVA], false, false, false, true, 15, SoundFamily::Water),
+    d(
+        "Lava",
+        [TILE_LAVA, TILE_LAVA, TILE_LAVA],
+        false,
+        false,
+        false,
+        true,
+        15,
+        SoundFamily::Water,
+    ),
     // coal item (VERIFICATION-REPORT fix #4): inventory-only fuel item,
     // 1600 ticks / 8 items per piece (VERIFIED live w/Furnace + w/Smelting)
-    d("Coal", [TILE_COAL, TILE_COAL, TILE_COAL], false, false, true, false, 0, SoundFamily::Stone),
+    d(
+        "Coal",
+        [TILE_COAL, TILE_COAL, TILE_COAL],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- Phase E3 (1.5–1.6 bracket) ----
     // block of coal: 16000 ticks / 80 items (VERIFIED w/Block_of_Coal)
-    d("Block of Coal", [TILE_COAL_BLOCK, TILE_COAL_BLOCK, TILE_COAL_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
-    d("Block of Quartz", [TILE_QUARTZ_BLOCK, TILE_QUARTZ_BLOCK, TILE_QUARTZ_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
-    d("Chiseled Quartz Block", [TILE_CHISELED_QUARTZ, TILE_CHISELED_QUARTZ, TILE_CHISELED_QUARTZ], true, true, false, false, 0, SoundFamily::Stone),
-    d("Quartz Pillar", [TILE_QUARTZ_PILLAR_TOP, TILE_QUARTZ_PILLAR_TOP, TILE_QUARTZ_PILLAR_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Block of Coal",
+        [TILE_COAL_BLOCK, TILE_COAL_BLOCK, TILE_COAL_BLOCK],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Block of Quartz",
+        [TILE_QUARTZ_BLOCK, TILE_QUARTZ_BLOCK, TILE_QUARTZ_BLOCK],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Chiseled Quartz Block",
+        [
+            TILE_CHISELED_QUARTZ,
+            TILE_CHISELED_QUARTZ,
+            TILE_CHISELED_QUARTZ,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Quartz Pillar",
+        [
+            TILE_QUARTZ_PILLAR_TOP,
+            TILE_QUARTZ_PILLAR_TOP,
+            TILE_QUARTZ_PILLAR_SIDE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // 16 stained terracotta (vanilla dye-color order; Badlands banding)
-    d("White Terracotta", [TILE_TERRACOTTA_STAINED_BASE, TILE_TERRACOTTA_STAINED_BASE, TILE_TERRACOTTA_STAINED_BASE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Orange Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 1, TILE_TERRACOTTA_STAINED_BASE + 1, TILE_TERRACOTTA_STAINED_BASE + 1], true, true, false, false, 0, SoundFamily::Stone),
-    d("Magenta Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 2, TILE_TERRACOTTA_STAINED_BASE + 2, TILE_TERRACOTTA_STAINED_BASE + 2], true, true, false, false, 0, SoundFamily::Stone),
-    d("Light Blue Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 3, TILE_TERRACOTTA_STAINED_BASE + 3, TILE_TERRACOTTA_STAINED_BASE + 3], true, true, false, false, 0, SoundFamily::Stone),
-    d("Yellow Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 4, TILE_TERRACOTTA_STAINED_BASE + 4, TILE_TERRACOTTA_STAINED_BASE + 4], true, true, false, false, 0, SoundFamily::Stone),
-    d("Lime Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 5, TILE_TERRACOTTA_STAINED_BASE + 5, TILE_TERRACOTTA_STAINED_BASE + 5], true, true, false, false, 0, SoundFamily::Stone),
-    d("Pink Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 6, TILE_TERRACOTTA_STAINED_BASE + 6, TILE_TERRACOTTA_STAINED_BASE + 6], true, true, false, false, 0, SoundFamily::Stone),
-    d("Gray Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 7, TILE_TERRACOTTA_STAINED_BASE + 7, TILE_TERRACOTTA_STAINED_BASE + 7], true, true, false, false, 0, SoundFamily::Stone),
-    d("Light Gray Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 8, TILE_TERRACOTTA_STAINED_BASE + 8, TILE_TERRACOTTA_STAINED_BASE + 8], true, true, false, false, 0, SoundFamily::Stone),
-    d("Cyan Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 9, TILE_TERRACOTTA_STAINED_BASE + 9, TILE_TERRACOTTA_STAINED_BASE + 9], true, true, false, false, 0, SoundFamily::Stone),
-    d("Purple Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 10, TILE_TERRACOTTA_STAINED_BASE + 10, TILE_TERRACOTTA_STAINED_BASE + 10], true, true, false, false, 0, SoundFamily::Stone),
-    d("Blue Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 11, TILE_TERRACOTTA_STAINED_BASE + 11, TILE_TERRACOTTA_STAINED_BASE + 11], true, true, false, false, 0, SoundFamily::Stone),
-    d("Brown Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 12, TILE_TERRACOTTA_STAINED_BASE + 12, TILE_TERRACOTTA_STAINED_BASE + 12], true, true, false, false, 0, SoundFamily::Stone),
-    d("Green Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 13, TILE_TERRACOTTA_STAINED_BASE + 13, TILE_TERRACOTTA_STAINED_BASE + 13], true, true, false, false, 0, SoundFamily::Stone),
-    d("Red Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 14, TILE_TERRACOTTA_STAINED_BASE + 14, TILE_TERRACOTTA_STAINED_BASE + 14], true, true, false, false, 0, SoundFamily::Stone),
-    d("Black Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 15, TILE_TERRACOTTA_STAINED_BASE + 15, TILE_TERRACOTTA_STAINED_BASE + 15], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "White Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE,
+            TILE_TERRACOTTA_STAINED_BASE,
+            TILE_TERRACOTTA_STAINED_BASE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Orange Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 1,
+            TILE_TERRACOTTA_STAINED_BASE + 1,
+            TILE_TERRACOTTA_STAINED_BASE + 1,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Magenta Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 2,
+            TILE_TERRACOTTA_STAINED_BASE + 2,
+            TILE_TERRACOTTA_STAINED_BASE + 2,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Light Blue Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 3,
+            TILE_TERRACOTTA_STAINED_BASE + 3,
+            TILE_TERRACOTTA_STAINED_BASE + 3,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Yellow Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 4,
+            TILE_TERRACOTTA_STAINED_BASE + 4,
+            TILE_TERRACOTTA_STAINED_BASE + 4,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Lime Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 5,
+            TILE_TERRACOTTA_STAINED_BASE + 5,
+            TILE_TERRACOTTA_STAINED_BASE + 5,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Pink Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 6,
+            TILE_TERRACOTTA_STAINED_BASE + 6,
+            TILE_TERRACOTTA_STAINED_BASE + 6,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Gray Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 7,
+            TILE_TERRACOTTA_STAINED_BASE + 7,
+            TILE_TERRACOTTA_STAINED_BASE + 7,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Light Gray Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 8,
+            TILE_TERRACOTTA_STAINED_BASE + 8,
+            TILE_TERRACOTTA_STAINED_BASE + 8,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Cyan Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 9,
+            TILE_TERRACOTTA_STAINED_BASE + 9,
+            TILE_TERRACOTTA_STAINED_BASE + 9,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Purple Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 10,
+            TILE_TERRACOTTA_STAINED_BASE + 10,
+            TILE_TERRACOTTA_STAINED_BASE + 10,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Blue Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 11,
+            TILE_TERRACOTTA_STAINED_BASE + 11,
+            TILE_TERRACOTTA_STAINED_BASE + 11,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Brown Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 12,
+            TILE_TERRACOTTA_STAINED_BASE + 12,
+            TILE_TERRACOTTA_STAINED_BASE + 12,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Green Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 13,
+            TILE_TERRACOTTA_STAINED_BASE + 13,
+            TILE_TERRACOTTA_STAINED_BASE + 13,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Red Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 14,
+            TILE_TERRACOTTA_STAINED_BASE + 14,
+            TILE_TERRACOTTA_STAINED_BASE + 14,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Black Terracotta",
+        [
+            TILE_TERRACOTTA_STAINED_BASE + 15,
+            TILE_TERRACOTTA_STAINED_BASE + 15,
+            TILE_TERRACOTTA_STAINED_BASE + 15,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // carpets: 1/16-block visual (VERIFIED w/Carpet 14w29a) — non-solid
     // floor overlay, the engine's full-cube adaptation (disclosed)
-    d("White Carpet", [TILE_WOOL_WHITE, TILE_WOOL_WHITE, TILE_WOOL_WHITE], false, false, false, false, 0, SoundFamily::Wool),
-    d("Red Carpet", [TILE_WOOL_RED, TILE_WOOL_RED, TILE_WOOL_RED], false, false, false, false, 0, SoundFamily::Wool),
-    d("Yellow Carpet", [TILE_WOOL_YELLOW, TILE_WOOL_YELLOW, TILE_WOOL_YELLOW], false, false, false, false, 0, SoundFamily::Wool),
-    d("Blue Carpet", [TILE_WOOL_BLUE, TILE_WOOL_BLUE, TILE_WOOL_BLUE], false, false, false, false, 0, SoundFamily::Wool),
-    d("Black Carpet", [TILE_WOOL_BLACK, TILE_WOOL_BLACK, TILE_WOOL_BLACK], false, false, false, false, 0, SoundFamily::Wool),
-    d("Hay Bale", [TILE_HAY_TOP, TILE_HAY_TOP, TILE_HAY_SIDE], true, true, false, false, 0, SoundFamily::Grass),
-    d("Daylight Sensor", [TILE_DAYLIGHT_TOP, TILE_DAYLIGHT_TOP, TILE_DAYLIGHT_SIDE], false, false, false, false, 0, SoundFamily::Wood),
-    d("Trapped Chest", [TILE_CHEST, TILE_CHEST, TILE_CHEST], true, true, false, false, 0, SoundFamily::Wood),
-    d("Light Weighted Pressure Plate", [TILE_PLATE_LIGHT, TILE_PLATE_LIGHT, TILE_PLATE_LIGHT], false, false, false, false, 0, SoundFamily::Stone),
-    d("Heavy Weighted Pressure Plate", [TILE_PLATE_HEAVY, TILE_PLATE_HEAVY, TILE_PLATE_HEAVY], false, false, false, false, 0, SoundFamily::Stone),
-    d("Block of Redstone", [TILE_REDSTONE_BLOCK, TILE_REDSTONE_BLOCK, TILE_REDSTONE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "White Carpet",
+        [TILE_WOOL_WHITE, TILE_WOOL_WHITE, TILE_WOOL_WHITE],
+        false,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Red Carpet",
+        [TILE_WOOL_RED, TILE_WOOL_RED, TILE_WOOL_RED],
+        false,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Yellow Carpet",
+        [TILE_WOOL_YELLOW, TILE_WOOL_YELLOW, TILE_WOOL_YELLOW],
+        false,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Blue Carpet",
+        [TILE_WOOL_BLUE, TILE_WOOL_BLUE, TILE_WOOL_BLUE],
+        false,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Black Carpet",
+        [TILE_WOOL_BLACK, TILE_WOOL_BLACK, TILE_WOOL_BLACK],
+        false,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Hay Bale",
+        [TILE_HAY_TOP, TILE_HAY_TOP, TILE_HAY_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Daylight Sensor",
+        [TILE_DAYLIGHT_TOP, TILE_DAYLIGHT_TOP, TILE_DAYLIGHT_SIDE],
+        false,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Trapped Chest",
+        [TILE_CHEST, TILE_CHEST, TILE_CHEST],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Light Weighted Pressure Plate",
+        [TILE_PLATE_LIGHT, TILE_PLATE_LIGHT, TILE_PLATE_LIGHT],
+        false,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Heavy Weighted Pressure Plate",
+        [TILE_PLATE_HEAVY, TILE_PLATE_HEAVY, TILE_PLATE_HEAVY],
+        false,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Block of Redstone",
+        [
+            TILE_REDSTONE_BLOCK,
+            TILE_REDSTONE_BLOCK,
+            TILE_REDSTONE_BLOCK,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // items: nether quartz / lead / saddle (inventory-only)
-    d("Nether Quartz", [TILE_NETHER_QUARTZ, TILE_NETHER_QUARTZ, TILE_NETHER_QUARTZ], false, false, true, false, 0, SoundFamily::Stone),
-    d("Lead", [TILE_LEAD, TILE_LEAD, TILE_LEAD], false, false, true, false, 0, SoundFamily::Grass),
-    d("Saddle", [TILE_SADDLE, TILE_SADDLE, TILE_SADDLE], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Nether Quartz",
+        [TILE_NETHER_QUARTZ, TILE_NETHER_QUARTZ, TILE_NETHER_QUARTZ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Lead",
+        [TILE_LEAD, TILE_LEAD, TILE_LEAD],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Saddle",
+        [TILE_SADDLE, TILE_SADDLE, TILE_SADDLE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // E3 spawn eggs (kinds 20..=22)
-    d("Horse Spawn Egg", [TILE_E3_EGG_HORSE, TILE_E3_EGG_HORSE, TILE_E3_EGG_HORSE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Donkey Spawn Egg", [TILE_E3_EGG_DONKEY, TILE_E3_EGG_DONKEY, TILE_E3_EGG_DONKEY], false, false, true, false, 0, SoundFamily::Grass),
-    d("Mule Spawn Egg", [TILE_E3_EGG_MULE, TILE_E3_EGG_MULE, TILE_E3_EGG_MULE], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Horse Spawn Egg",
+        [TILE_E3_EGG_HORSE, TILE_E3_EGG_HORSE, TILE_E3_EGG_HORSE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Donkey Spawn Egg",
+        [TILE_E3_EGG_DONKEY, TILE_E3_EGG_DONKEY, TILE_E3_EGG_DONKEY],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Mule Spawn Egg",
+        [TILE_E3_EGG_MULE, TILE_E3_EGG_MULE, TILE_E3_EGG_MULE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- 1.7.2 bracket (V2 window) — reference wiki /Java_Edition_1.7.2,
     // live round 2026-09-06. [merge] rows moved to ids 200.. (past the
     // E-series); the 16 stained-clay rows DROPPED (E3 covers them). ----
     // stained glass: solid, NOT opaque (translucent), glass sounds
-    d("White Stained Glass", [TILE_STAINED_GLASS_WHITE, TILE_STAINED_GLASS_WHITE, TILE_STAINED_GLASS_WHITE], true, false, false, false, 0, SoundFamily::Glass),
-    d("Orange Stained Glass", [TILE_STAINED_GLASS_ORANGE, TILE_STAINED_GLASS_ORANGE, TILE_STAINED_GLASS_ORANGE], true, false, false, false, 0, SoundFamily::Glass),
-    d("Magenta Stained Glass", [TILE_STAINED_GLASS_MAGENTA, TILE_STAINED_GLASS_MAGENTA, TILE_STAINED_GLASS_MAGENTA], true, false, false, false, 0, SoundFamily::Glass),
-    d("Light Blue Stained Glass", [TILE_STAINED_GLASS_LIGHT_BLUE, TILE_STAINED_GLASS_LIGHT_BLUE, TILE_STAINED_GLASS_LIGHT_BLUE], true, false, false, false, 0, SoundFamily::Glass),
-    d("Yellow Stained Glass", [TILE_STAINED_GLASS_YELLOW, TILE_STAINED_GLASS_YELLOW, TILE_STAINED_GLASS_YELLOW], true, false, false, false, 0, SoundFamily::Glass),
-    d("Lime Stained Glass", [TILE_STAINED_GLASS_LIME, TILE_STAINED_GLASS_LIME, TILE_STAINED_GLASS_LIME], true, false, false, false, 0, SoundFamily::Glass),
-    d("Pink Stained Glass", [TILE_STAINED_GLASS_PINK, TILE_STAINED_GLASS_PINK, TILE_STAINED_GLASS_PINK], true, false, false, false, 0, SoundFamily::Glass),
-    d("Gray Stained Glass", [TILE_STAINED_GLASS_GRAY, TILE_STAINED_GLASS_GRAY, TILE_STAINED_GLASS_GRAY], true, false, false, false, 0, SoundFamily::Glass),
-    d("Light Gray Stained Glass", [TILE_STAINED_GLASS_LIGHT_GRAY, TILE_STAINED_GLASS_LIGHT_GRAY, TILE_STAINED_GLASS_LIGHT_GRAY], true, false, false, false, 0, SoundFamily::Glass),
-    d("Cyan Stained Glass", [TILE_STAINED_GLASS_CYAN, TILE_STAINED_GLASS_CYAN, TILE_STAINED_GLASS_CYAN], true, false, false, false, 0, SoundFamily::Glass),
-    d("Purple Stained Glass", [TILE_STAINED_GLASS_PURPLE, TILE_STAINED_GLASS_PURPLE, TILE_STAINED_GLASS_PURPLE], true, false, false, false, 0, SoundFamily::Glass),
-    d("Blue Stained Glass", [TILE_STAINED_GLASS_BLUE, TILE_STAINED_GLASS_BLUE, TILE_STAINED_GLASS_BLUE], true, false, false, false, 0, SoundFamily::Glass),
-    d("Brown Stained Glass", [TILE_STAINED_GLASS_BROWN, TILE_STAINED_GLASS_BROWN, TILE_STAINED_GLASS_BROWN], true, false, false, false, 0, SoundFamily::Glass),
-    d("Green Stained Glass", [TILE_STAINED_GLASS_GREEN, TILE_STAINED_GLASS_GREEN, TILE_STAINED_GLASS_GREEN], true, false, false, false, 0, SoundFamily::Glass),
-    d("Red Stained Glass", [TILE_STAINED_GLASS_RED, TILE_STAINED_GLASS_RED, TILE_STAINED_GLASS_RED], true, false, false, false, 0, SoundFamily::Glass),
-    d("Black Stained Glass", [TILE_STAINED_GLASS_BLACK, TILE_STAINED_GLASS_BLACK, TILE_STAINED_GLASS_BLACK], true, false, false, false, 0, SoundFamily::Glass),
+    d(
+        "White Stained Glass",
+        [
+            TILE_STAINED_GLASS_WHITE,
+            TILE_STAINED_GLASS_WHITE,
+            TILE_STAINED_GLASS_WHITE,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Orange Stained Glass",
+        [
+            TILE_STAINED_GLASS_ORANGE,
+            TILE_STAINED_GLASS_ORANGE,
+            TILE_STAINED_GLASS_ORANGE,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Magenta Stained Glass",
+        [
+            TILE_STAINED_GLASS_MAGENTA,
+            TILE_STAINED_GLASS_MAGENTA,
+            TILE_STAINED_GLASS_MAGENTA,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Light Blue Stained Glass",
+        [
+            TILE_STAINED_GLASS_LIGHT_BLUE,
+            TILE_STAINED_GLASS_LIGHT_BLUE,
+            TILE_STAINED_GLASS_LIGHT_BLUE,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Yellow Stained Glass",
+        [
+            TILE_STAINED_GLASS_YELLOW,
+            TILE_STAINED_GLASS_YELLOW,
+            TILE_STAINED_GLASS_YELLOW,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Lime Stained Glass",
+        [
+            TILE_STAINED_GLASS_LIME,
+            TILE_STAINED_GLASS_LIME,
+            TILE_STAINED_GLASS_LIME,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Pink Stained Glass",
+        [
+            TILE_STAINED_GLASS_PINK,
+            TILE_STAINED_GLASS_PINK,
+            TILE_STAINED_GLASS_PINK,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Gray Stained Glass",
+        [
+            TILE_STAINED_GLASS_GRAY,
+            TILE_STAINED_GLASS_GRAY,
+            TILE_STAINED_GLASS_GRAY,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Light Gray Stained Glass",
+        [
+            TILE_STAINED_GLASS_LIGHT_GRAY,
+            TILE_STAINED_GLASS_LIGHT_GRAY,
+            TILE_STAINED_GLASS_LIGHT_GRAY,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Cyan Stained Glass",
+        [
+            TILE_STAINED_GLASS_CYAN,
+            TILE_STAINED_GLASS_CYAN,
+            TILE_STAINED_GLASS_CYAN,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Purple Stained Glass",
+        [
+            TILE_STAINED_GLASS_PURPLE,
+            TILE_STAINED_GLASS_PURPLE,
+            TILE_STAINED_GLASS_PURPLE,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Blue Stained Glass",
+        [
+            TILE_STAINED_GLASS_BLUE,
+            TILE_STAINED_GLASS_BLUE,
+            TILE_STAINED_GLASS_BLUE,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Brown Stained Glass",
+        [
+            TILE_STAINED_GLASS_BROWN,
+            TILE_STAINED_GLASS_BROWN,
+            TILE_STAINED_GLASS_BROWN,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Green Stained Glass",
+        [
+            TILE_STAINED_GLASS_GREEN,
+            TILE_STAINED_GLASS_GREEN,
+            TILE_STAINED_GLASS_GREEN,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Red Stained Glass",
+        [
+            TILE_STAINED_GLASS_RED,
+            TILE_STAINED_GLASS_RED,
+            TILE_STAINED_GLASS_RED,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Black Stained Glass",
+        [
+            TILE_STAINED_GLASS_BLACK,
+            TILE_STAINED_GLASS_BLACK,
+            TILE_STAINED_GLASS_BLACK,
+        ],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
     // stained terracotta ("stained clay"): full opaque cubes, stone sounds
     // red sand: mesa floor — falls like sand, smelts to glass
-    d("Red Sand", [TILE_RED_SAND, TILE_RED_SAND, TILE_RED_SAND], true, true, false, false, 0, SoundFamily::Sand),
+    d(
+        "Red Sand",
+        [TILE_RED_SAND, TILE_RED_SAND, TILE_RED_SAND],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
     // packed ice: OPAQUE (1.7.2 changelog), does not melt
-    d("Packed Ice", [TILE_PACKED_ICE, TILE_PACKED_ICE, TILE_PACKED_ICE], true, true, false, false, 0, SoundFamily::Glass),
+    d(
+        "Packed Ice",
+        [TILE_PACKED_ICE, TILE_PACKED_ICE, TILE_PACKED_ICE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
     // podzol: mega-taiga dirt variant (top + side + dirt bottom)
-    d("Podzol", [TILE_PODZOL_TOP, TILE_DIRT, TILE_PODZOL_SIDE], true, true, false, false, 0, SoundFamily::Dirt),
+    d(
+        "Podzol",
+        [TILE_PODZOL_TOP, TILE_DIRT, TILE_PODZOL_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Dirt,
+    ),
     // acacia / dark oak
-    d("Acacia Log", [TILE_ACACIA_LOG_TOP, TILE_ACACIA_LOG_TOP, TILE_ACACIA_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Acacia Leaves", [TILE_LEAVES, TILE_LEAVES, TILE_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
-    d("Dark Oak Log", [TILE_DARK_OAK_LOG_TOP, TILE_DARK_OAK_LOG_TOP, TILE_DARK_OAK_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Dark Oak Leaves", [TILE_LEAVES, TILE_LEAVES, TILE_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
+    d(
+        "Acacia Log",
+        [
+            TILE_ACACIA_LOG_TOP,
+            TILE_ACACIA_LOG_TOP,
+            TILE_ACACIA_LOG_SIDE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Acacia Leaves",
+        [TILE_LEAVES, TILE_LEAVES, TILE_LEAVES],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Leaves,
+    ),
+    d(
+        "Dark Oak Log",
+        [
+            TILE_DARK_OAK_LOG_TOP,
+            TILE_DARK_OAK_LOG_TOP,
+            TILE_DARK_OAK_LOG_SIDE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Dark Oak Leaves",
+        [TILE_LEAVES, TILE_LEAVES, TILE_LEAVES],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Leaves,
+    ),
     // 8 new small flowers (cross plants)
-    d("Allium", [TILE_ALLIUM, TILE_ALLIUM, TILE_ALLIUM], false, false, true, false, 0, SoundFamily::Grass),
-    d("Azure Bluet", [TILE_AZURE_BLUET, TILE_AZURE_BLUET, TILE_AZURE_BLUET], false, false, true, false, 0, SoundFamily::Grass),
-    d("Blue Orchid", [TILE_BLUE_ORCHID, TILE_BLUE_ORCHID, TILE_BLUE_ORCHID], false, false, true, false, 0, SoundFamily::Grass),
-    d("Oxeye Daisy", [TILE_OXEYE_DAISY, TILE_OXEYE_DAISY, TILE_OXEYE_DAISY], false, false, true, false, 0, SoundFamily::Grass),
-    d("Orange Tulip", [TILE_ORANGE_TULIP, TILE_ORANGE_TULIP, TILE_ORANGE_TULIP], false, false, true, false, 0, SoundFamily::Grass),
-    d("Red Tulip", [TILE_RED_TULIP, TILE_RED_TULIP, TILE_RED_TULIP], false, false, true, false, 0, SoundFamily::Grass),
-    d("White Tulip", [TILE_WHITE_TULIP, TILE_WHITE_TULIP, TILE_WHITE_TULIP], false, false, true, false, 0, SoundFamily::Grass),
-    d("Pink Tulip", [TILE_PINK_TULIP, TILE_PINK_TULIP, TILE_PINK_TULIP], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Allium",
+        [TILE_ALLIUM, TILE_ALLIUM, TILE_ALLIUM],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Azure Bluet",
+        [TILE_AZURE_BLUET, TILE_AZURE_BLUET, TILE_AZURE_BLUET],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Blue Orchid",
+        [TILE_BLUE_ORCHID, TILE_BLUE_ORCHID, TILE_BLUE_ORCHID],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Oxeye Daisy",
+        [TILE_OXEYE_DAISY, TILE_OXEYE_DAISY, TILE_OXEYE_DAISY],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Orange Tulip",
+        [TILE_ORANGE_TULIP, TILE_ORANGE_TULIP, TILE_ORANGE_TULIP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Red Tulip",
+        [TILE_RED_TULIP, TILE_RED_TULIP, TILE_RED_TULIP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "White Tulip",
+        [TILE_WHITE_TULIP, TILE_WHITE_TULIP, TILE_WHITE_TULIP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Pink Tulip",
+        [TILE_PINK_TULIP, TILE_PINK_TULIP, TILE_PINK_TULIP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // 2-block-tall flowers, lower + upper halves
-    d("Sunflower", [TILE_SUNFLOWER_LOWER, TILE_SUNFLOWER_LOWER, TILE_SUNFLOWER_LOWER], false, false, true, false, 0, SoundFamily::Grass),
-    d("Sunflower", [TILE_SUNFLOWER_TOP, TILE_SUNFLOWER_TOP, TILE_SUNFLOWER_TOP], false, false, true, false, 0, SoundFamily::Grass),
-    d("Lilac", [TILE_LILAC_LOWER, TILE_LILAC_LOWER, TILE_LILAC_LOWER], false, false, true, false, 0, SoundFamily::Grass),
-    d("Lilac", [TILE_LILAC_TOP, TILE_LILAC_TOP, TILE_LILAC_TOP], false, false, true, false, 0, SoundFamily::Grass),
-    d("Peony", [TILE_PEONY_LOWER, TILE_PEONY_LOWER, TILE_PEONY_LOWER], false, false, true, false, 0, SoundFamily::Grass),
-    d("Peony", [TILE_PEONY_TOP, TILE_PEONY_TOP, TILE_PEONY_TOP], false, false, true, false, 0, SoundFamily::Grass),
-    d("Rose Bush", [TILE_ROSE_BUSH_LOWER, TILE_ROSE_BUSH_LOWER, TILE_ROSE_BUSH_LOWER], false, false, true, false, 0, SoundFamily::Grass),
-    d("Rose Bush", [TILE_ROSE_BUSH_TOP, TILE_ROSE_BUSH_TOP, TILE_ROSE_BUSH_TOP], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Sunflower",
+        [
+            TILE_SUNFLOWER_LOWER,
+            TILE_SUNFLOWER_LOWER,
+            TILE_SUNFLOWER_LOWER,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Sunflower",
+        [TILE_SUNFLOWER_TOP, TILE_SUNFLOWER_TOP, TILE_SUNFLOWER_TOP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Lilac",
+        [TILE_LILAC_LOWER, TILE_LILAC_LOWER, TILE_LILAC_LOWER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Lilac",
+        [TILE_LILAC_TOP, TILE_LILAC_TOP, TILE_LILAC_TOP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Peony",
+        [TILE_PEONY_LOWER, TILE_PEONY_LOWER, TILE_PEONY_LOWER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Peony",
+        [TILE_PEONY_TOP, TILE_PEONY_TOP, TILE_PEONY_TOP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Rose Bush",
+        [
+            TILE_ROSE_BUSH_LOWER,
+            TILE_ROSE_BUSH_LOWER,
+            TILE_ROSE_BUSH_LOWER,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Rose Bush",
+        [TILE_ROSE_BUSH_TOP, TILE_ROSE_BUSH_TOP, TILE_ROSE_BUSH_TOP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // 1.7.2 fish items — inventory-only, cross-rendered icons
-    d("Raw Fish", [TILE_RAW_FISH, TILE_RAW_FISH, TILE_RAW_FISH], false, false, true, false, 0, SoundFamily::Grass),
-    d("Raw Salmon", [TILE_RAW_SALMON, TILE_RAW_SALMON, TILE_RAW_SALMON], false, false, true, false, 0, SoundFamily::Grass),
-    d("Clownfish", [TILE_CLOWNFISH, TILE_CLOWNFISH, TILE_CLOWNFISH], false, false, true, false, 0, SoundFamily::Grass),
-    d("Pufferfish", [TILE_PUFFERFISH, TILE_PUFFERFISH, TILE_PUFFERFISH], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Raw Fish",
+        [TILE_RAW_FISH, TILE_RAW_FISH, TILE_RAW_FISH],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Raw Salmon",
+        [TILE_RAW_SALMON, TILE_RAW_SALMON, TILE_RAW_SALMON],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Clownfish",
+        [TILE_CLOWNFISH, TILE_CLOWNFISH, TILE_CLOWNFISH],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Pufferfish",
+        [TILE_PUFFERFISH, TILE_PUFFERFISH, TILE_PUFFERFISH],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- 1.8 bracket (V3 window) — reference wiki /Java_Edition_1.8,
     // live round 2026-09-06 ----
     // slime block: solid, translucent, bounces (the trampoline block)
-    d("Slime Block", [TILE_SLIME, TILE_SLIME, TILE_SLIME], true, false, false, false, 0, SoundFamily::Grass),
-    d("Coarse Dirt", [TILE_COARSE_DIRT, TILE_COARSE_DIRT, TILE_COARSE_DIRT], true, true, false, false, 0, SoundFamily::Dirt),
-    d("Polished Granite", [TILE_POLISHED_GRANITE, TILE_POLISHED_GRANITE, TILE_POLISHED_GRANITE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Polished Diorite", [TILE_POLISHED_DIORITE, TILE_POLISHED_DIORITE, TILE_POLISHED_DIORITE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Polished Andesite", [TILE_POLISHED_ANDESITE, TILE_POLISHED_ANDESITE, TILE_POLISHED_ANDESITE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Red Sandstone", [TILE_RED_SANDSTONE, TILE_RED_SANDSTONE, TILE_RED_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Smooth Red Sandstone", [TILE_SMOOTH_RED_SANDSTONE, TILE_SMOOTH_RED_SANDSTONE, TILE_SMOOTH_RED_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Prismarine", [TILE_PRISMARINE, TILE_PRISMARINE, TILE_PRISMARINE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Prismarine Bricks", [TILE_PRISMARINE_BRICKS, TILE_PRISMARINE_BRICKS, TILE_PRISMARINE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
-    d("Dark Prismarine", [TILE_DARK_PRISMARINE, TILE_DARK_PRISMARINE, TILE_DARK_PRISMARINE], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Slime Block",
+        [TILE_SLIME, TILE_SLIME, TILE_SLIME],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Coarse Dirt",
+        [TILE_COARSE_DIRT, TILE_COARSE_DIRT, TILE_COARSE_DIRT],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Dirt,
+    ),
+    d(
+        "Polished Granite",
+        [
+            TILE_POLISHED_GRANITE,
+            TILE_POLISHED_GRANITE,
+            TILE_POLISHED_GRANITE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Polished Diorite",
+        [
+            TILE_POLISHED_DIORITE,
+            TILE_POLISHED_DIORITE,
+            TILE_POLISHED_DIORITE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Polished Andesite",
+        [
+            TILE_POLISHED_ANDESITE,
+            TILE_POLISHED_ANDESITE,
+            TILE_POLISHED_ANDESITE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Red Sandstone",
+        [TILE_RED_SANDSTONE, TILE_RED_SANDSTONE, TILE_RED_SANDSTONE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Smooth Red Sandstone",
+        [
+            TILE_SMOOTH_RED_SANDSTONE,
+            TILE_SMOOTH_RED_SANDSTONE,
+            TILE_SMOOTH_RED_SANDSTONE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Prismarine",
+        [TILE_PRISMARINE, TILE_PRISMARINE, TILE_PRISMARINE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Prismarine Bricks",
+        [
+            TILE_PRISMARINE_BRICKS,
+            TILE_PRISMARINE_BRICKS,
+            TILE_PRISMARINE_BRICKS,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Dark Prismarine",
+        [
+            TILE_DARK_PRISMARINE,
+            TILE_DARK_PRISMARINE,
+            TILE_DARK_PRISMARINE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // wiki: "Emit light at a light level of 15"
-    d("Sea Lantern", [TILE_SEA_LANTERN, TILE_SEA_LANTERN, TILE_SEA_LANTERN], true, true, false, false, 15, SoundFamily::Glass),
-    d("Iron Trapdoor", [TILE_IRON_TRAPDOOR, TILE_IRON_TRAPDOOR, TILE_IRON_TRAPDOOR], true, false, false, false, 0, SoundFamily::Wood),
+    d(
+        "Sea Lantern",
+        [TILE_SEA_LANTERN, TILE_SEA_LANTERN, TILE_SEA_LANTERN],
+        true,
+        true,
+        false,
+        false,
+        15,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Iron Trapdoor",
+        [TILE_IRON_TRAPDOOR, TILE_IRON_TRAPDOOR, TILE_IRON_TRAPDOOR],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
     // barrier: wiki "acts like bedrock, but is completely transparent" —
     // near-invisible tile + solid collision
-    d("Barrier", [TILE_BARRIER, TILE_BARRIER, TILE_BARRIER], true, false, false, false, 0, SoundFamily::Glass),
+    d(
+        "Barrier",
+        [TILE_BARRIER, TILE_BARRIER, TILE_BARRIER],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
     // 1.8 rabbit + prismarine items
-    d("Raw Rabbit", [TILE_RAW_RABBIT, TILE_RAW_RABBIT, TILE_RAW_RABBIT], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cooked Rabbit", [TILE_COOKED_RABBIT, TILE_COOKED_RABBIT, TILE_COOKED_RABBIT], false, false, true, false, 0, SoundFamily::Grass),
-    d("Rabbit Hide", [TILE_RABBIT_HIDE, TILE_RABBIT_HIDE, TILE_RABBIT_HIDE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Rabbit's Foot", [TILE_RABBIT_FOOT, TILE_RABBIT_FOOT, TILE_RABBIT_FOOT], false, false, true, false, 0, SoundFamily::Grass),
-    d("Prismarine Shard", [TILE_PRISMARINE_SHARD, TILE_PRISMARINE_SHARD, TILE_PRISMARINE_SHARD], false, false, true, false, 0, SoundFamily::Stone),
-    d("Prismarine Crystals", [TILE_PRISMARINE_CRYSTALS, TILE_PRISMARINE_CRYSTALS, TILE_PRISMARINE_CRYSTALS], false, false, true, false, 0, SoundFamily::Stone),
+    d(
+        "Raw Rabbit",
+        [TILE_RAW_RABBIT, TILE_RAW_RABBIT, TILE_RAW_RABBIT],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cooked Rabbit",
+        [TILE_COOKED_RABBIT, TILE_COOKED_RABBIT, TILE_COOKED_RABBIT],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Rabbit Hide",
+        [TILE_RABBIT_HIDE, TILE_RABBIT_HIDE, TILE_RABBIT_HIDE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Rabbit's Foot",
+        [TILE_RABBIT_FOOT, TILE_RABBIT_FOOT, TILE_RABBIT_FOOT],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Prismarine Shard",
+        [
+            TILE_PRISMARINE_SHARD,
+            TILE_PRISMARINE_SHARD,
+            TILE_PRISMARINE_SHARD,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Prismarine Crystals",
+        [
+            TILE_PRISMARINE_CRYSTALS,
+            TILE_PRISMARINE_CRYSTALS,
+            TILE_PRISMARINE_CRYSTALS,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- 1.9 bracket (V4 window) — reference wiki /Java_Edition_1.9,
     // live round 2026-09-06 ----
-    d("Grass Path", [TILE_GRASS_PATH, TILE_DIRT, TILE_GRASS_PATH_SIDE], true, true, false, false, 0, SoundFamily::Grass),
-    d("Purpur Block", [TILE_PURPUR, TILE_PURPUR, TILE_PURPUR], true, true, false, false, 0, SoundFamily::Stone),
-    d("Purpur Pillar", [TILE_PURPUR, TILE_PURPUR, TILE_PURPUR_PILLAR_SIDE], true, true, false, false, 0, SoundFamily::Stone),
-    d("End Stone Bricks", [TILE_END_STONE_BRICKS, TILE_END_STONE_BRICKS, TILE_END_STONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Grass Path",
+        [TILE_GRASS_PATH, TILE_DIRT, TILE_GRASS_PATH_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Purpur Block",
+        [TILE_PURPUR, TILE_PURPUR, TILE_PURPUR],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Purpur Pillar",
+        [TILE_PURPUR, TILE_PURPUR, TILE_PURPUR_PILLAR_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "End Stone Bricks",
+        [
+            TILE_END_STONE_BRICKS,
+            TILE_END_STONE_BRICKS,
+            TILE_END_STONE_BRICKS,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // wiki: "same brightness as torches" (14)
-    d("End Rod", [TILE_END_ROD, TILE_END_ROD, TILE_END_ROD], false, false, true, false, 14, SoundFamily::Wood),
-    d("Chorus Plant", [TILE_CHORUS_PLANT, TILE_CHORUS_PLANT, TILE_CHORUS_PLANT], true, false, true, false, 0, SoundFamily::Wood),
-    d("Chorus Flower", [TILE_CHORUS_FLOWER, TILE_CHORUS_FLOWER, TILE_CHORUS_FLOWER], true, false, true, false, 0, SoundFamily::Wood),
+    d(
+        "End Rod",
+        [TILE_END_ROD, TILE_END_ROD, TILE_END_ROD],
+        false,
+        false,
+        true,
+        false,
+        14,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Chorus Plant",
+        [TILE_CHORUS_PLANT, TILE_CHORUS_PLANT, TILE_CHORUS_PLANT],
+        true,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Chorus Flower",
+        [TILE_CHORUS_FLOWER, TILE_CHORUS_FLOWER, TILE_CHORUS_FLOWER],
+        true,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
     // 1.9 items
-    d("Chorus Fruit", [TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT], false, false, true, false, 0, SoundFamily::Grass),
-    d("Elytra", [TILE_ELYTRA, TILE_ELYTRA, TILE_ELYTRA], false, false, true, false, 0, SoundFamily::Grass),
-    d("Shield", [TILE_SHIELD, TILE_SHIELD, TILE_SHIELD], false, false, true, false, 0, SoundFamily::Wood),
+    d(
+        "Chorus Fruit",
+        [TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Elytra",
+        [TILE_ELYTRA, TILE_ELYTRA, TILE_ELYTRA],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Shield",
+        [TILE_SHIELD, TILE_SHIELD, TILE_SHIELD],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
     // ---- 1.10 bracket (V5 window) — reference wiki /Java_Edition_1.10,
     // live round 2026-09-06 ----
     // magma: light level 3 (wiki /w/Magma_Block, live round)
-    d("Magma Block", [TILE_MAGMA, TILE_MAGMA, TILE_MAGMA], true, true, false, false, 3, SoundFamily::Stone),
-    d("Nether Wart Block", [TILE_NETHER_WART_BLOCK, TILE_NETHER_WART_BLOCK, TILE_NETHER_WART_BLOCK], true, true, false, false, 0, SoundFamily::Wool),
-    d("Red Nether Bricks", [TILE_RED_NETHER_BRICKS, TILE_RED_NETHER_BRICKS, TILE_RED_NETHER_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
-    d("Bone Block", [TILE_BONE_BLOCK, TILE_BONE_BLOCK, TILE_BONE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Magma Block",
+        [TILE_MAGMA, TILE_MAGMA, TILE_MAGMA],
+        true,
+        true,
+        false,
+        false,
+        3,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Nether Wart Block",
+        [
+            TILE_NETHER_WART_BLOCK,
+            TILE_NETHER_WART_BLOCK,
+            TILE_NETHER_WART_BLOCK,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Red Nether Bricks",
+        [
+            TILE_RED_NETHER_BRICKS,
+            TILE_RED_NETHER_BRICKS,
+            TILE_RED_NETHER_BRICKS,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Bone Block",
+        [TILE_BONE_BLOCK, TILE_BONE_BLOCK, TILE_BONE_BLOCK],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- audit-fix round (1.2 jungle family + 1.4 golden carrot) ----
-    d("Golden Carrot", [TILE_GOLDEN_CARROT, TILE_GOLDEN_CARROT, TILE_GOLDEN_CARROT], false, false, true, false, 0, SoundFamily::Grass),
-    d("Jungle Log", [TILE_JUNGLE_LOG_TOP, TILE_JUNGLE_LOG_TOP, TILE_JUNGLE_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Jungle Leaves", [TILE_JUNGLE_LEAVES, TILE_JUNGLE_LEAVES, TILE_JUNGLE_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
-    d("Jungle Planks", [TILE_JUNGLE_PLANKS, TILE_JUNGLE_PLANKS, TILE_JUNGLE_PLANKS], true, true, false, false, 0, SoundFamily::Wood),
-    d("Vine", [TILE_VINE, TILE_VINE, TILE_VINE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Fern", [TILE_FERN, TILE_FERN, TILE_FERN], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Golden Carrot",
+        [TILE_GOLDEN_CARROT, TILE_GOLDEN_CARROT, TILE_GOLDEN_CARROT],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Jungle Log",
+        [
+            TILE_JUNGLE_LOG_TOP,
+            TILE_JUNGLE_LOG_TOP,
+            TILE_JUNGLE_LOG_SIDE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Jungle Leaves",
+        [TILE_JUNGLE_LEAVES, TILE_JUNGLE_LEAVES, TILE_JUNGLE_LEAVES],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Leaves,
+    ),
+    d(
+        "Jungle Planks",
+        [TILE_JUNGLE_PLANKS, TILE_JUNGLE_PLANKS, TILE_JUNGLE_PLANKS],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Vine",
+        [TILE_VINE, TILE_VINE, TILE_VINE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Fern",
+        [TILE_FERN, TILE_FERN, TILE_FERN],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- 1.11 bracket (Exploration-era update) ----
-    d("Shulker Box", [TILE_SHULKER_BOX, TILE_SHULKER_BOX, TILE_SHULKER_BOX], true, true, false, false, 0, SoundFamily::Stone),
-    d("Shulker Shell", [TILE_SHULKER_SHELL, TILE_SHULKER_SHELL, TILE_SHULKER_SHELL], false, false, true, false, 0, SoundFamily::Stone),
-    d("Totem of Revival", [TILE_TOTEM, TILE_TOTEM, TILE_TOTEM], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Shulker Box",
+        [TILE_SHULKER_BOX, TILE_SHULKER_BOX, TILE_SHULKER_BOX],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Shulker Shell",
+        [TILE_SHULKER_SHELL, TILE_SHULKER_SHELL, TILE_SHULKER_SHELL],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Totem of Revival",
+        [TILE_TOTEM, TILE_TOTEM, TILE_TOTEM],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // 1.11 egg items: egg-shaped tiles (TILE_V7_EGG_BASE order = the
     // egg_mob kind order 23..=29), NOT the mob billboard sprites — the
     // E1/E2/E3 egg convention
-    d("Llama Spawn Egg", [TILE_V7_EGG_BASE, TILE_V7_EGG_BASE, TILE_V7_EGG_BASE], false, false, true, false, 0, SoundFamily::Stone),
-    d("Vindicator Spawn Egg", [TILE_V7_EGG_BASE + 1, TILE_V7_EGG_BASE + 1, TILE_V7_EGG_BASE + 1], false, false, true, false, 0, SoundFamily::Stone),
-    d("Evoker Spawn Egg", [TILE_V7_EGG_BASE + 2, TILE_V7_EGG_BASE + 2, TILE_V7_EGG_BASE + 2], false, false, true, false, 0, SoundFamily::Stone),
-    d("Vex Spawn Egg", [TILE_V7_EGG_BASE + 3, TILE_V7_EGG_BASE + 3, TILE_V7_EGG_BASE + 3], false, false, true, false, 0, SoundFamily::Stone),
-    d("Husk Spawn Egg", [TILE_V7_EGG_BASE + 4, TILE_V7_EGG_BASE + 4, TILE_V7_EGG_BASE + 4], false, false, true, false, 0, SoundFamily::Stone),
-    d("Stray Spawn Egg", [TILE_V7_EGG_BASE + 5, TILE_V7_EGG_BASE + 5, TILE_V7_EGG_BASE + 5], false, false, true, false, 0, SoundFamily::Stone),
+    d(
+        "Llama Spawn Egg",
+        [TILE_V7_EGG_BASE, TILE_V7_EGG_BASE, TILE_V7_EGG_BASE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Vindicator Spawn Egg",
+        [
+            TILE_V7_EGG_BASE + 1,
+            TILE_V7_EGG_BASE + 1,
+            TILE_V7_EGG_BASE + 1,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Evoker Spawn Egg",
+        [
+            TILE_V7_EGG_BASE + 2,
+            TILE_V7_EGG_BASE + 2,
+            TILE_V7_EGG_BASE + 2,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Vex Spawn Egg",
+        [
+            TILE_V7_EGG_BASE + 3,
+            TILE_V7_EGG_BASE + 3,
+            TILE_V7_EGG_BASE + 3,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Husk Spawn Egg",
+        [
+            TILE_V7_EGG_BASE + 4,
+            TILE_V7_EGG_BASE + 4,
+            TILE_V7_EGG_BASE + 4,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Stray Spawn Egg",
+        [
+            TILE_V7_EGG_BASE + 5,
+            TILE_V7_EGG_BASE + 5,
+            TILE_V7_EGG_BASE + 5,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- 1.12 bracket (World of Color Update, live-verified 2026-09-07;
     // concrete hardness 1.8 w/Concrete, powder 0.5 sand-sound family
     // w/Concrete_Powder §Sounds "block.sand.*", glazed 1.4 stone family
     // w/Glazed_Terracotta §Sounds "block.stone.*") ----
     // concrete, 16 colors (solid, opaque, stone family)
-    d("White Concrete", [TILE_CONCRETE_BASE, TILE_CONCRETE_BASE, TILE_CONCRETE_BASE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Orange Concrete", [TILE_CONCRETE_BASE + 1, TILE_CONCRETE_BASE + 1, TILE_CONCRETE_BASE + 1], true, true, false, false, 0, SoundFamily::Stone),
-    d("Magenta Concrete", [TILE_CONCRETE_BASE + 2, TILE_CONCRETE_BASE + 2, TILE_CONCRETE_BASE + 2], true, true, false, false, 0, SoundFamily::Stone),
-    d("Light Blue Concrete", [TILE_CONCRETE_BASE + 3, TILE_CONCRETE_BASE + 3, TILE_CONCRETE_BASE + 3], true, true, false, false, 0, SoundFamily::Stone),
-    d("Yellow Concrete", [TILE_CONCRETE_BASE + 4, TILE_CONCRETE_BASE + 4, TILE_CONCRETE_BASE + 4], true, true, false, false, 0, SoundFamily::Stone),
-    d("Lime Concrete", [TILE_CONCRETE_BASE + 5, TILE_CONCRETE_BASE + 5, TILE_CONCRETE_BASE + 5], true, true, false, false, 0, SoundFamily::Stone),
-    d("Pink Concrete", [TILE_CONCRETE_BASE + 6, TILE_CONCRETE_BASE + 6, TILE_CONCRETE_BASE + 6], true, true, false, false, 0, SoundFamily::Stone),
-    d("Gray Concrete", [TILE_CONCRETE_BASE + 7, TILE_CONCRETE_BASE + 7, TILE_CONCRETE_BASE + 7], true, true, false, false, 0, SoundFamily::Stone),
-    d("Light Gray Concrete", [TILE_CONCRETE_BASE + 8, TILE_CONCRETE_BASE + 8, TILE_CONCRETE_BASE + 8], true, true, false, false, 0, SoundFamily::Stone),
-    d("Cyan Concrete", [TILE_CONCRETE_BASE + 9, TILE_CONCRETE_BASE + 9, TILE_CONCRETE_BASE + 9], true, true, false, false, 0, SoundFamily::Stone),
-    d("Purple Concrete", [TILE_CONCRETE_BASE + 10, TILE_CONCRETE_BASE + 10, TILE_CONCRETE_BASE + 10], true, true, false, false, 0, SoundFamily::Stone),
-    d("Blue Concrete", [TILE_CONCRETE_BASE + 11, TILE_CONCRETE_BASE + 11, TILE_CONCRETE_BASE + 11], true, true, false, false, 0, SoundFamily::Stone),
-    d("Brown Concrete", [TILE_CONCRETE_BASE + 12, TILE_CONCRETE_BASE + 12, TILE_CONCRETE_BASE + 12], true, true, false, false, 0, SoundFamily::Stone),
-    d("Green Concrete", [TILE_CONCRETE_BASE + 13, TILE_CONCRETE_BASE + 13, TILE_CONCRETE_BASE + 13], true, true, false, false, 0, SoundFamily::Stone),
-    d("Red Concrete", [TILE_CONCRETE_BASE + 14, TILE_CONCRETE_BASE + 14, TILE_CONCRETE_BASE + 14], true, true, false, false, 0, SoundFamily::Stone),
-    d("Black Concrete", [TILE_CONCRETE_BASE + 15, TILE_CONCRETE_BASE + 15, TILE_CONCRETE_BASE + 15], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "White Concrete",
+        [TILE_CONCRETE_BASE, TILE_CONCRETE_BASE, TILE_CONCRETE_BASE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Orange Concrete",
+        [
+            TILE_CONCRETE_BASE + 1,
+            TILE_CONCRETE_BASE + 1,
+            TILE_CONCRETE_BASE + 1,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Magenta Concrete",
+        [
+            TILE_CONCRETE_BASE + 2,
+            TILE_CONCRETE_BASE + 2,
+            TILE_CONCRETE_BASE + 2,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Light Blue Concrete",
+        [
+            TILE_CONCRETE_BASE + 3,
+            TILE_CONCRETE_BASE + 3,
+            TILE_CONCRETE_BASE + 3,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Yellow Concrete",
+        [
+            TILE_CONCRETE_BASE + 4,
+            TILE_CONCRETE_BASE + 4,
+            TILE_CONCRETE_BASE + 4,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Lime Concrete",
+        [
+            TILE_CONCRETE_BASE + 5,
+            TILE_CONCRETE_BASE + 5,
+            TILE_CONCRETE_BASE + 5,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Pink Concrete",
+        [
+            TILE_CONCRETE_BASE + 6,
+            TILE_CONCRETE_BASE + 6,
+            TILE_CONCRETE_BASE + 6,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Gray Concrete",
+        [
+            TILE_CONCRETE_BASE + 7,
+            TILE_CONCRETE_BASE + 7,
+            TILE_CONCRETE_BASE + 7,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Light Gray Concrete",
+        [
+            TILE_CONCRETE_BASE + 8,
+            TILE_CONCRETE_BASE + 8,
+            TILE_CONCRETE_BASE + 8,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Cyan Concrete",
+        [
+            TILE_CONCRETE_BASE + 9,
+            TILE_CONCRETE_BASE + 9,
+            TILE_CONCRETE_BASE + 9,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Purple Concrete",
+        [
+            TILE_CONCRETE_BASE + 10,
+            TILE_CONCRETE_BASE + 10,
+            TILE_CONCRETE_BASE + 10,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Blue Concrete",
+        [
+            TILE_CONCRETE_BASE + 11,
+            TILE_CONCRETE_BASE + 11,
+            TILE_CONCRETE_BASE + 11,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Brown Concrete",
+        [
+            TILE_CONCRETE_BASE + 12,
+            TILE_CONCRETE_BASE + 12,
+            TILE_CONCRETE_BASE + 12,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Green Concrete",
+        [
+            TILE_CONCRETE_BASE + 13,
+            TILE_CONCRETE_BASE + 13,
+            TILE_CONCRETE_BASE + 13,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Red Concrete",
+        [
+            TILE_CONCRETE_BASE + 14,
+            TILE_CONCRETE_BASE + 14,
+            TILE_CONCRETE_BASE + 14,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Black Concrete",
+        [
+            TILE_CONCRETE_BASE + 15,
+            TILE_CONCRETE_BASE + 15,
+            TILE_CONCRETE_BASE + 15,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // concrete powder, 16 colors (solid, opaque, SAND family — VERIFIED
     // w/Concrete_Powder §Sounds: "block.sand.*")
-    d("White Concrete Powder", [TILE_CONCRETE_POWDER_BASE, TILE_CONCRETE_POWDER_BASE, TILE_CONCRETE_POWDER_BASE], true, true, false, false, 0, SoundFamily::Sand),
-    d("Orange Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 1, TILE_CONCRETE_POWDER_BASE + 1, TILE_CONCRETE_POWDER_BASE + 1], true, true, false, false, 0, SoundFamily::Sand),
-    d("Magenta Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 2, TILE_CONCRETE_POWDER_BASE + 2, TILE_CONCRETE_POWDER_BASE + 2], true, true, false, false, 0, SoundFamily::Sand),
-    d("Light Blue Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 3, TILE_CONCRETE_POWDER_BASE + 3, TILE_CONCRETE_POWDER_BASE + 3], true, true, false, false, 0, SoundFamily::Sand),
-    d("Yellow Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 4, TILE_CONCRETE_POWDER_BASE + 4, TILE_CONCRETE_POWDER_BASE + 4], true, true, false, false, 0, SoundFamily::Sand),
-    d("Lime Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 5, TILE_CONCRETE_POWDER_BASE + 5, TILE_CONCRETE_POWDER_BASE + 5], true, true, false, false, 0, SoundFamily::Sand),
-    d("Pink Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 6, TILE_CONCRETE_POWDER_BASE + 6, TILE_CONCRETE_POWDER_BASE + 6], true, true, false, false, 0, SoundFamily::Sand),
-    d("Gray Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 7, TILE_CONCRETE_POWDER_BASE + 7, TILE_CONCRETE_POWDER_BASE + 7], true, true, false, false, 0, SoundFamily::Sand),
-    d("Light Gray Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 8, TILE_CONCRETE_POWDER_BASE + 8, TILE_CONCRETE_POWDER_BASE + 8], true, true, false, false, 0, SoundFamily::Sand),
-    d("Cyan Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 9, TILE_CONCRETE_POWDER_BASE + 9, TILE_CONCRETE_POWDER_BASE + 9], true, true, false, false, 0, SoundFamily::Sand),
-    d("Purple Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 10, TILE_CONCRETE_POWDER_BASE + 10, TILE_CONCRETE_POWDER_BASE + 10], true, true, false, false, 0, SoundFamily::Sand),
-    d("Blue Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 11, TILE_CONCRETE_POWDER_BASE + 11, TILE_CONCRETE_POWDER_BASE + 11], true, true, false, false, 0, SoundFamily::Sand),
-    d("Brown Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 12, TILE_CONCRETE_POWDER_BASE + 12, TILE_CONCRETE_POWDER_BASE + 12], true, true, false, false, 0, SoundFamily::Sand),
-    d("Green Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 13, TILE_CONCRETE_POWDER_BASE + 13, TILE_CONCRETE_POWDER_BASE + 13], true, true, false, false, 0, SoundFamily::Sand),
-    d("Red Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 14, TILE_CONCRETE_POWDER_BASE + 14, TILE_CONCRETE_POWDER_BASE + 14], true, true, false, false, 0, SoundFamily::Sand),
-    d("Black Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 15, TILE_CONCRETE_POWDER_BASE + 15, TILE_CONCRETE_POWDER_BASE + 15], true, true, false, false, 0, SoundFamily::Sand),
+    d(
+        "White Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE,
+            TILE_CONCRETE_POWDER_BASE,
+            TILE_CONCRETE_POWDER_BASE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Orange Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 1,
+            TILE_CONCRETE_POWDER_BASE + 1,
+            TILE_CONCRETE_POWDER_BASE + 1,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Magenta Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 2,
+            TILE_CONCRETE_POWDER_BASE + 2,
+            TILE_CONCRETE_POWDER_BASE + 2,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Light Blue Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 3,
+            TILE_CONCRETE_POWDER_BASE + 3,
+            TILE_CONCRETE_POWDER_BASE + 3,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Yellow Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 4,
+            TILE_CONCRETE_POWDER_BASE + 4,
+            TILE_CONCRETE_POWDER_BASE + 4,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Lime Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 5,
+            TILE_CONCRETE_POWDER_BASE + 5,
+            TILE_CONCRETE_POWDER_BASE + 5,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Pink Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 6,
+            TILE_CONCRETE_POWDER_BASE + 6,
+            TILE_CONCRETE_POWDER_BASE + 6,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Gray Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 7,
+            TILE_CONCRETE_POWDER_BASE + 7,
+            TILE_CONCRETE_POWDER_BASE + 7,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Light Gray Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 8,
+            TILE_CONCRETE_POWDER_BASE + 8,
+            TILE_CONCRETE_POWDER_BASE + 8,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Cyan Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 9,
+            TILE_CONCRETE_POWDER_BASE + 9,
+            TILE_CONCRETE_POWDER_BASE + 9,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Purple Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 10,
+            TILE_CONCRETE_POWDER_BASE + 10,
+            TILE_CONCRETE_POWDER_BASE + 10,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Blue Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 11,
+            TILE_CONCRETE_POWDER_BASE + 11,
+            TILE_CONCRETE_POWDER_BASE + 11,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Brown Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 12,
+            TILE_CONCRETE_POWDER_BASE + 12,
+            TILE_CONCRETE_POWDER_BASE + 12,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Green Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 13,
+            TILE_CONCRETE_POWDER_BASE + 13,
+            TILE_CONCRETE_POWDER_BASE + 13,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Red Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 14,
+            TILE_CONCRETE_POWDER_BASE + 14,
+            TILE_CONCRETE_POWDER_BASE + 14,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Black Concrete Powder",
+        [
+            TILE_CONCRETE_POWDER_BASE + 15,
+            TILE_CONCRETE_POWDER_BASE + 15,
+            TILE_CONCRETE_POWDER_BASE + 15,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
     // glazed terracotta, 16 colors (def tiles = facing-0 rotations; the
     // per-state tiles in state_tiles carry the full facing selection)
-    d("White Glazed Terracotta", [TILE_GLAZED_TOP_BASE, TILE_GLAZED_BOTTOM_BASE, TILE_GLAZED_SIDE_BASE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Orange Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 4, TILE_GLAZED_BOTTOM_BASE + 4, TILE_GLAZED_SIDE_BASE + 1], true, true, false, false, 0, SoundFamily::Stone),
-    d("Magenta Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 8, TILE_GLAZED_BOTTOM_BASE + 8, TILE_GLAZED_SIDE_BASE + 2], true, true, false, false, 0, SoundFamily::Stone),
-    d("Light Blue Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 12, TILE_GLAZED_BOTTOM_BASE + 12, TILE_GLAZED_SIDE_BASE + 3], true, true, false, false, 0, SoundFamily::Stone),
-    d("Yellow Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 16, TILE_GLAZED_BOTTOM_BASE + 16, TILE_GLAZED_SIDE_BASE + 4], true, true, false, false, 0, SoundFamily::Stone),
-    d("Lime Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 20, TILE_GLAZED_BOTTOM_BASE + 20, TILE_GLAZED_SIDE_BASE + 5], true, true, false, false, 0, SoundFamily::Stone),
-    d("Pink Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 24, TILE_GLAZED_BOTTOM_BASE + 24, TILE_GLAZED_SIDE_BASE + 6], true, true, false, false, 0, SoundFamily::Stone),
-    d("Gray Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 28, TILE_GLAZED_BOTTOM_BASE + 28, TILE_GLAZED_SIDE_BASE + 7], true, true, false, false, 0, SoundFamily::Stone),
-    d("Light Gray Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 32, TILE_GLAZED_BOTTOM_BASE + 32, TILE_GLAZED_SIDE_BASE + 8], true, true, false, false, 0, SoundFamily::Stone),
-    d("Cyan Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 36, TILE_GLAZED_BOTTOM_BASE + 36, TILE_GLAZED_SIDE_BASE + 9], true, true, false, false, 0, SoundFamily::Stone),
-    d("Purple Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 40, TILE_GLAZED_BOTTOM_BASE + 40, TILE_GLAZED_SIDE_BASE + 10], true, true, false, false, 0, SoundFamily::Stone),
-    d("Blue Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 44, TILE_GLAZED_BOTTOM_BASE + 44, TILE_GLAZED_SIDE_BASE + 11], true, true, false, false, 0, SoundFamily::Stone),
-    d("Brown Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 48, TILE_GLAZED_BOTTOM_BASE + 48, TILE_GLAZED_SIDE_BASE + 12], true, true, false, false, 0, SoundFamily::Stone),
-    d("Green Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 52, TILE_GLAZED_BOTTOM_BASE + 52, TILE_GLAZED_SIDE_BASE + 13], true, true, false, false, 0, SoundFamily::Stone),
-    d("Red Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 56, TILE_GLAZED_BOTTOM_BASE + 56, TILE_GLAZED_SIDE_BASE + 14], true, true, false, false, 0, SoundFamily::Stone),
-    d("Black Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 60, TILE_GLAZED_BOTTOM_BASE + 60, TILE_GLAZED_SIDE_BASE + 15], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "White Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE,
+            TILE_GLAZED_BOTTOM_BASE,
+            TILE_GLAZED_SIDE_BASE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Orange Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 4,
+            TILE_GLAZED_BOTTOM_BASE + 4,
+            TILE_GLAZED_SIDE_BASE + 1,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Magenta Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 8,
+            TILE_GLAZED_BOTTOM_BASE + 8,
+            TILE_GLAZED_SIDE_BASE + 2,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Light Blue Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 12,
+            TILE_GLAZED_BOTTOM_BASE + 12,
+            TILE_GLAZED_SIDE_BASE + 3,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Yellow Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 16,
+            TILE_GLAZED_BOTTOM_BASE + 16,
+            TILE_GLAZED_SIDE_BASE + 4,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Lime Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 20,
+            TILE_GLAZED_BOTTOM_BASE + 20,
+            TILE_GLAZED_SIDE_BASE + 5,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Pink Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 24,
+            TILE_GLAZED_BOTTOM_BASE + 24,
+            TILE_GLAZED_SIDE_BASE + 6,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Gray Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 28,
+            TILE_GLAZED_BOTTOM_BASE + 28,
+            TILE_GLAZED_SIDE_BASE + 7,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Light Gray Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 32,
+            TILE_GLAZED_BOTTOM_BASE + 32,
+            TILE_GLAZED_SIDE_BASE + 8,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Cyan Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 36,
+            TILE_GLAZED_BOTTOM_BASE + 36,
+            TILE_GLAZED_SIDE_BASE + 9,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Purple Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 40,
+            TILE_GLAZED_BOTTOM_BASE + 40,
+            TILE_GLAZED_SIDE_BASE + 10,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Blue Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 44,
+            TILE_GLAZED_BOTTOM_BASE + 44,
+            TILE_GLAZED_SIDE_BASE + 11,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Brown Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 48,
+            TILE_GLAZED_BOTTOM_BASE + 48,
+            TILE_GLAZED_SIDE_BASE + 12,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Green Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 52,
+            TILE_GLAZED_BOTTOM_BASE + 52,
+            TILE_GLAZED_SIDE_BASE + 13,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Red Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 56,
+            TILE_GLAZED_BOTTOM_BASE + 56,
+            TILE_GLAZED_SIDE_BASE + 14,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Black Glazed Terracotta",
+        [
+            TILE_GLAZED_TOP_BASE + 60,
+            TILE_GLAZED_BOTTOM_BASE + 60,
+            TILE_GLAZED_SIDE_BASE + 15,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // 1.12 parrot spawn egg (kind 30)
-    d("Parrot Spawn Egg", [TILE_PARROT_EGG, TILE_PARROT_EGG, TILE_PARROT_EGG], false, false, true, false, 0, SoundFamily::Stone),
+    d(
+        "Parrot Spawn Egg",
+        [TILE_PARROT_EGG, TILE_PARROT_EGG, TILE_PARROT_EGG],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // 1.12-era dye items — the names are the pre-1.14 forms (the
     // "White Dye"/"Black Dye" renames are 1.14 17w45a — version-scoped
     // OUT of this bracket; VERIFIED w/Dye §History)
-    d("Bone Meal", [TILE_DYE_BASE, TILE_DYE_BASE, TILE_DYE_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Orange Dye", [TILE_DYE_BASE + 1, TILE_DYE_BASE + 1, TILE_DYE_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
-    d("Magenta Dye", [TILE_DYE_BASE + 2, TILE_DYE_BASE + 2, TILE_DYE_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
-    d("Light Blue Dye", [TILE_DYE_BASE + 3, TILE_DYE_BASE + 3, TILE_DYE_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dandelion Yellow", [TILE_DYE_BASE + 4, TILE_DYE_BASE + 4, TILE_DYE_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
-    d("Lime Dye", [TILE_DYE_BASE + 5, TILE_DYE_BASE + 5, TILE_DYE_BASE + 5], false, false, true, false, 0, SoundFamily::Grass),
-    d("Pink Dye", [TILE_DYE_BASE + 6, TILE_DYE_BASE + 6, TILE_DYE_BASE + 6], false, false, true, false, 0, SoundFamily::Grass),
-    d("Gray Dye", [TILE_DYE_BASE + 7, TILE_DYE_BASE + 7, TILE_DYE_BASE + 7], false, false, true, false, 0, SoundFamily::Grass),
-    d("Light Gray Dye", [TILE_DYE_BASE + 8, TILE_DYE_BASE + 8, TILE_DYE_BASE + 8], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cyan Dye", [TILE_DYE_BASE + 9, TILE_DYE_BASE + 9, TILE_DYE_BASE + 9], false, false, true, false, 0, SoundFamily::Grass),
-    d("Purple Dye", [TILE_DYE_BASE + 10, TILE_DYE_BASE + 10, TILE_DYE_BASE + 10], false, false, true, false, 0, SoundFamily::Grass),
-    d("Lapis Lazuli", [TILE_DYE_BASE + 11, TILE_DYE_BASE + 11, TILE_DYE_BASE + 11], false, false, true, false, 0, SoundFamily::Stone),
-    d("Cocoa Beans", [TILE_DYE_BASE + 12, TILE_DYE_BASE + 12, TILE_DYE_BASE + 12], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cactus Green", [TILE_DYE_BASE + 13, TILE_DYE_BASE + 13, TILE_DYE_BASE + 13], false, false, true, false, 0, SoundFamily::Grass),
-    d("Rose Red", [TILE_DYE_BASE + 14, TILE_DYE_BASE + 14, TILE_DYE_BASE + 14], false, false, true, false, 0, SoundFamily::Grass),
-    d("Ink Sac", [TILE_DYE_BASE + 15, TILE_DYE_BASE + 15, TILE_DYE_BASE + 15], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Bone Meal",
+        [TILE_DYE_BASE, TILE_DYE_BASE, TILE_DYE_BASE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Orange Dye",
+        [TILE_DYE_BASE + 1, TILE_DYE_BASE + 1, TILE_DYE_BASE + 1],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Magenta Dye",
+        [TILE_DYE_BASE + 2, TILE_DYE_BASE + 2, TILE_DYE_BASE + 2],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Light Blue Dye",
+        [TILE_DYE_BASE + 3, TILE_DYE_BASE + 3, TILE_DYE_BASE + 3],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dandelion Yellow",
+        [TILE_DYE_BASE + 4, TILE_DYE_BASE + 4, TILE_DYE_BASE + 4],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Lime Dye",
+        [TILE_DYE_BASE + 5, TILE_DYE_BASE + 5, TILE_DYE_BASE + 5],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Pink Dye",
+        [TILE_DYE_BASE + 6, TILE_DYE_BASE + 6, TILE_DYE_BASE + 6],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Gray Dye",
+        [TILE_DYE_BASE + 7, TILE_DYE_BASE + 7, TILE_DYE_BASE + 7],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Light Gray Dye",
+        [TILE_DYE_BASE + 8, TILE_DYE_BASE + 8, TILE_DYE_BASE + 8],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cyan Dye",
+        [TILE_DYE_BASE + 9, TILE_DYE_BASE + 9, TILE_DYE_BASE + 9],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Purple Dye",
+        [TILE_DYE_BASE + 10, TILE_DYE_BASE + 10, TILE_DYE_BASE + 10],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Lapis Lazuli",
+        [TILE_DYE_BASE + 11, TILE_DYE_BASE + 11, TILE_DYE_BASE + 11],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Cocoa Beans",
+        [TILE_DYE_BASE + 12, TILE_DYE_BASE + 12, TILE_DYE_BASE + 12],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cactus Green",
+        [TILE_DYE_BASE + 13, TILE_DYE_BASE + 13, TILE_DYE_BASE + 13],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Rose Red",
+        [TILE_DYE_BASE + 14, TILE_DYE_BASE + 14, TILE_DYE_BASE + 14],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Ink Sac",
+        [TILE_DYE_BASE + 15, TILE_DYE_BASE + 15, TILE_DYE_BASE + 15],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // the 4 parrot-taming seeds + the cookie
-    d("Wheat Seeds", [TILE_SEEDS_BASE, TILE_SEEDS_BASE, TILE_SEEDS_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Melon Seeds", [TILE_SEEDS_BASE + 1, TILE_SEEDS_BASE + 1, TILE_SEEDS_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
-    d("Pumpkin Seeds", [TILE_SEEDS_BASE + 2, TILE_SEEDS_BASE + 2, TILE_SEEDS_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
-    d("Beetroot Seeds", [TILE_SEEDS_BASE + 3, TILE_SEEDS_BASE + 3, TILE_SEEDS_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cookie", [TILE_COOKIE, TILE_COOKIE, TILE_COOKIE], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Wheat Seeds",
+        [TILE_SEEDS_BASE, TILE_SEEDS_BASE, TILE_SEEDS_BASE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Melon Seeds",
+        [
+            TILE_SEEDS_BASE + 1,
+            TILE_SEEDS_BASE + 1,
+            TILE_SEEDS_BASE + 1,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Pumpkin Seeds",
+        [
+            TILE_SEEDS_BASE + 2,
+            TILE_SEEDS_BASE + 2,
+            TILE_SEEDS_BASE + 2,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Beetroot Seeds",
+        [
+            TILE_SEEDS_BASE + 3,
+            TILE_SEEDS_BASE + 3,
+            TILE_SEEDS_BASE + 3,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cookie",
+        [TILE_COOKIE, TILE_COOKIE, TILE_COOKIE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- 1.13 (Aquatic-era update): the V9 window ----
     // coral blocks: full cubes, hardness 1.5, stone-family sound
-    d("Tube Coral Block", [TILE_CORAL_BLOCK_BASE, TILE_CORAL_BLOCK_BASE, TILE_CORAL_BLOCK_BASE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Brain Coral Block", [TILE_CORAL_BLOCK_BASE + 1, TILE_CORAL_BLOCK_BASE + 1, TILE_CORAL_BLOCK_BASE + 1], true, true, false, false, 0, SoundFamily::Stone),
-    d("Bubble Coral Block", [TILE_CORAL_BLOCK_BASE + 2, TILE_CORAL_BLOCK_BASE + 2, TILE_CORAL_BLOCK_BASE + 2], true, true, false, false, 0, SoundFamily::Stone),
-    d("Fire Coral Block", [TILE_CORAL_BLOCK_BASE + 3, TILE_CORAL_BLOCK_BASE + 3, TILE_CORAL_BLOCK_BASE + 3], true, true, false, false, 0, SoundFamily::Stone),
-    d("Horn Coral Block", [TILE_CORAL_BLOCK_BASE + 4, TILE_CORAL_BLOCK_BASE + 4, TILE_CORAL_BLOCK_BASE + 4], true, true, false, false, 0, SoundFamily::Stone),
-    d("Dead Tube Coral Block", [TILE_DEAD_CORAL_BLOCK_BASE, TILE_DEAD_CORAL_BLOCK_BASE, TILE_DEAD_CORAL_BLOCK_BASE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Dead Brain Coral Block", [TILE_DEAD_CORAL_BLOCK_BASE + 1, TILE_DEAD_CORAL_BLOCK_BASE + 1, TILE_DEAD_CORAL_BLOCK_BASE + 1], true, true, false, false, 0, SoundFamily::Stone),
-    d("Dead Bubble Coral Block", [TILE_DEAD_CORAL_BLOCK_BASE + 2, TILE_DEAD_CORAL_BLOCK_BASE + 2, TILE_DEAD_CORAL_BLOCK_BASE + 2], true, true, false, false, 0, SoundFamily::Stone),
-    d("Dead Fire Coral Block", [TILE_DEAD_CORAL_BLOCK_BASE + 3, TILE_DEAD_CORAL_BLOCK_BASE + 3, TILE_DEAD_CORAL_BLOCK_BASE + 3], true, true, false, false, 0, SoundFamily::Stone),
-    d("Dead Horn Coral Block", [TILE_DEAD_CORAL_BLOCK_BASE + 4, TILE_DEAD_CORAL_BLOCK_BASE + 4, TILE_DEAD_CORAL_BLOCK_BASE + 4], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Tube Coral Block",
+        [
+            TILE_CORAL_BLOCK_BASE,
+            TILE_CORAL_BLOCK_BASE,
+            TILE_CORAL_BLOCK_BASE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Brain Coral Block",
+        [
+            TILE_CORAL_BLOCK_BASE + 1,
+            TILE_CORAL_BLOCK_BASE + 1,
+            TILE_CORAL_BLOCK_BASE + 1,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Bubble Coral Block",
+        [
+            TILE_CORAL_BLOCK_BASE + 2,
+            TILE_CORAL_BLOCK_BASE + 2,
+            TILE_CORAL_BLOCK_BASE + 2,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Fire Coral Block",
+        [
+            TILE_CORAL_BLOCK_BASE + 3,
+            TILE_CORAL_BLOCK_BASE + 3,
+            TILE_CORAL_BLOCK_BASE + 3,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Horn Coral Block",
+        [
+            TILE_CORAL_BLOCK_BASE + 4,
+            TILE_CORAL_BLOCK_BASE + 4,
+            TILE_CORAL_BLOCK_BASE + 4,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Dead Tube Coral Block",
+        [
+            TILE_DEAD_CORAL_BLOCK_BASE,
+            TILE_DEAD_CORAL_BLOCK_BASE,
+            TILE_DEAD_CORAL_BLOCK_BASE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Dead Brain Coral Block",
+        [
+            TILE_DEAD_CORAL_BLOCK_BASE + 1,
+            TILE_DEAD_CORAL_BLOCK_BASE + 1,
+            TILE_DEAD_CORAL_BLOCK_BASE + 1,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Dead Bubble Coral Block",
+        [
+            TILE_DEAD_CORAL_BLOCK_BASE + 2,
+            TILE_DEAD_CORAL_BLOCK_BASE + 2,
+            TILE_DEAD_CORAL_BLOCK_BASE + 2,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Dead Fire Coral Block",
+        [
+            TILE_DEAD_CORAL_BLOCK_BASE + 3,
+            TILE_DEAD_CORAL_BLOCK_BASE + 3,
+            TILE_DEAD_CORAL_BLOCK_BASE + 3,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Dead Horn Coral Block",
+        [
+            TILE_DEAD_CORAL_BLOCK_BASE + 4,
+            TILE_DEAD_CORAL_BLOCK_BASE + 4,
+            TILE_DEAD_CORAL_BLOCK_BASE + 4,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // coral plants + fans: cross-rendered underwater plants
-    d("Tube Coral", [TILE_CORAL_PLANT_BASE, TILE_CORAL_PLANT_BASE, TILE_CORAL_PLANT_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Brain Coral", [TILE_CORAL_PLANT_BASE + 1, TILE_CORAL_PLANT_BASE + 1, TILE_CORAL_PLANT_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
-    d("Bubble Coral", [TILE_CORAL_PLANT_BASE + 2, TILE_CORAL_PLANT_BASE + 2, TILE_CORAL_PLANT_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
-    d("Fire Coral", [TILE_CORAL_PLANT_BASE + 3, TILE_CORAL_PLANT_BASE + 3, TILE_CORAL_PLANT_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
-    d("Horn Coral", [TILE_CORAL_PLANT_BASE + 4, TILE_CORAL_PLANT_BASE + 4, TILE_CORAL_PLANT_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Tube Coral", [TILE_DEAD_CORAL_PLANT_BASE, TILE_DEAD_CORAL_PLANT_BASE, TILE_DEAD_CORAL_PLANT_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Brain Coral", [TILE_DEAD_CORAL_PLANT_BASE + 1, TILE_DEAD_CORAL_PLANT_BASE + 1, TILE_DEAD_CORAL_PLANT_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Bubble Coral", [TILE_DEAD_CORAL_PLANT_BASE + 2, TILE_DEAD_CORAL_PLANT_BASE + 2, TILE_DEAD_CORAL_PLANT_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Fire Coral", [TILE_DEAD_CORAL_PLANT_BASE + 3, TILE_DEAD_CORAL_PLANT_BASE + 3, TILE_DEAD_CORAL_PLANT_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Horn Coral", [TILE_DEAD_CORAL_PLANT_BASE + 4, TILE_DEAD_CORAL_PLANT_BASE + 4, TILE_DEAD_CORAL_PLANT_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
-    d("Tube Coral Fan", [TILE_CORAL_FAN_BASE, TILE_CORAL_FAN_BASE, TILE_CORAL_FAN_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Brain Coral Fan", [TILE_CORAL_FAN_BASE + 1, TILE_CORAL_FAN_BASE + 1, TILE_CORAL_FAN_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
-    d("Bubble Coral Fan", [TILE_CORAL_FAN_BASE + 2, TILE_CORAL_FAN_BASE + 2, TILE_CORAL_FAN_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
-    d("Fire Coral Fan", [TILE_CORAL_FAN_BASE + 3, TILE_CORAL_FAN_BASE + 3, TILE_CORAL_FAN_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
-    d("Horn Coral Fan", [TILE_CORAL_FAN_BASE + 4, TILE_CORAL_FAN_BASE + 4, TILE_CORAL_FAN_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Tube Coral Fan", [TILE_DEAD_CORAL_FAN_BASE, TILE_DEAD_CORAL_FAN_BASE, TILE_DEAD_CORAL_FAN_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Brain Coral Fan", [TILE_DEAD_CORAL_FAN_BASE + 1, TILE_DEAD_CORAL_FAN_BASE + 1, TILE_DEAD_CORAL_FAN_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Bubble Coral Fan", [TILE_DEAD_CORAL_FAN_BASE + 2, TILE_DEAD_CORAL_FAN_BASE + 2, TILE_DEAD_CORAL_FAN_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Fire Coral Fan", [TILE_DEAD_CORAL_FAN_BASE + 3, TILE_DEAD_CORAL_FAN_BASE + 3, TILE_DEAD_CORAL_FAN_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dead Horn Coral Fan", [TILE_DEAD_CORAL_FAN_BASE + 4, TILE_DEAD_CORAL_FAN_BASE + 4, TILE_DEAD_CORAL_FAN_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Tube Coral",
+        [
+            TILE_CORAL_PLANT_BASE,
+            TILE_CORAL_PLANT_BASE,
+            TILE_CORAL_PLANT_BASE,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Brain Coral",
+        [
+            TILE_CORAL_PLANT_BASE + 1,
+            TILE_CORAL_PLANT_BASE + 1,
+            TILE_CORAL_PLANT_BASE + 1,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Bubble Coral",
+        [
+            TILE_CORAL_PLANT_BASE + 2,
+            TILE_CORAL_PLANT_BASE + 2,
+            TILE_CORAL_PLANT_BASE + 2,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Fire Coral",
+        [
+            TILE_CORAL_PLANT_BASE + 3,
+            TILE_CORAL_PLANT_BASE + 3,
+            TILE_CORAL_PLANT_BASE + 3,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Horn Coral",
+        [
+            TILE_CORAL_PLANT_BASE + 4,
+            TILE_CORAL_PLANT_BASE + 4,
+            TILE_CORAL_PLANT_BASE + 4,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Tube Coral",
+        [
+            TILE_DEAD_CORAL_PLANT_BASE,
+            TILE_DEAD_CORAL_PLANT_BASE,
+            TILE_DEAD_CORAL_PLANT_BASE,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Brain Coral",
+        [
+            TILE_DEAD_CORAL_PLANT_BASE + 1,
+            TILE_DEAD_CORAL_PLANT_BASE + 1,
+            TILE_DEAD_CORAL_PLANT_BASE + 1,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Bubble Coral",
+        [
+            TILE_DEAD_CORAL_PLANT_BASE + 2,
+            TILE_DEAD_CORAL_PLANT_BASE + 2,
+            TILE_DEAD_CORAL_PLANT_BASE + 2,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Fire Coral",
+        [
+            TILE_DEAD_CORAL_PLANT_BASE + 3,
+            TILE_DEAD_CORAL_PLANT_BASE + 3,
+            TILE_DEAD_CORAL_PLANT_BASE + 3,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Horn Coral",
+        [
+            TILE_DEAD_CORAL_PLANT_BASE + 4,
+            TILE_DEAD_CORAL_PLANT_BASE + 4,
+            TILE_DEAD_CORAL_PLANT_BASE + 4,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Tube Coral Fan",
+        [
+            TILE_CORAL_FAN_BASE,
+            TILE_CORAL_FAN_BASE,
+            TILE_CORAL_FAN_BASE,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Brain Coral Fan",
+        [
+            TILE_CORAL_FAN_BASE + 1,
+            TILE_CORAL_FAN_BASE + 1,
+            TILE_CORAL_FAN_BASE + 1,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Bubble Coral Fan",
+        [
+            TILE_CORAL_FAN_BASE + 2,
+            TILE_CORAL_FAN_BASE + 2,
+            TILE_CORAL_FAN_BASE + 2,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Fire Coral Fan",
+        [
+            TILE_CORAL_FAN_BASE + 3,
+            TILE_CORAL_FAN_BASE + 3,
+            TILE_CORAL_FAN_BASE + 3,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Horn Coral Fan",
+        [
+            TILE_CORAL_FAN_BASE + 4,
+            TILE_CORAL_FAN_BASE + 4,
+            TILE_CORAL_FAN_BASE + 4,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Tube Coral Fan",
+        [
+            TILE_DEAD_CORAL_FAN_BASE,
+            TILE_DEAD_CORAL_FAN_BASE,
+            TILE_DEAD_CORAL_FAN_BASE,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Brain Coral Fan",
+        [
+            TILE_DEAD_CORAL_FAN_BASE + 1,
+            TILE_DEAD_CORAL_FAN_BASE + 1,
+            TILE_DEAD_CORAL_FAN_BASE + 1,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Bubble Coral Fan",
+        [
+            TILE_DEAD_CORAL_FAN_BASE + 2,
+            TILE_DEAD_CORAL_FAN_BASE + 2,
+            TILE_DEAD_CORAL_FAN_BASE + 2,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Fire Coral Fan",
+        [
+            TILE_DEAD_CORAL_FAN_BASE + 3,
+            TILE_DEAD_CORAL_FAN_BASE + 3,
+            TILE_DEAD_CORAL_FAN_BASE + 3,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dead Horn Coral Fan",
+        [
+            TILE_DEAD_CORAL_FAN_BASE + 4,
+            TILE_DEAD_CORAL_FAN_BASE + 4,
+            TILE_DEAD_CORAL_FAN_BASE + 4,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // sea pickle: cross-rendered (its 1-4 count states carry the art)
-    d("Sea Pickle", [TILE_SEA_PICKLE_BASE, TILE_SEA_PICKLE_BASE, TILE_SEA_PICKLE_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Sea Pickle",
+        [
+            TILE_SEA_PICKLE_BASE,
+            TILE_SEA_PICKLE_BASE,
+            TILE_SEA_PICKLE_BASE,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // blue ice: the slipperiest block (slipperiness 0.989)
-    d("Blue Ice", [TILE_BLUE_ICE, TILE_BLUE_ICE, TILE_BLUE_ICE], true, true, false, false, 0, SoundFamily::Glass),
+    d(
+        "Blue Ice",
+        [TILE_BLUE_ICE, TILE_BLUE_ICE, TILE_BLUE_ICE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
     // dried kelp block: fuel (4000 ticks / 20 items)
-    d("Dried Kelp Block", [TILE_DRIED_KELP_BLOCK, TILE_DRIED_KELP_BLOCK, TILE_DRIED_KELP_BLOCK], true, true, false, false, 0, SoundFamily::Grass),
+    d(
+        "Dried Kelp Block",
+        [
+            TILE_DRIED_KELP_BLOCK,
+            TILE_DRIED_KELP_BLOCK,
+            TILE_DRIED_KELP_BLOCK,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // kelp + seagrass: underwater cross plants
-    d("Kelp", [TILE_KELP, TILE_KELP, TILE_KELP], false, false, true, false, 0, SoundFamily::Grass),
-    d("Seagrass", [TILE_SEAGRASS, TILE_SEAGRASS, TILE_SEAGRASS], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Kelp",
+        [TILE_KELP, TILE_KELP, TILE_KELP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Seagrass",
+        [TILE_SEAGRASS, TILE_SEAGRASS, TILE_SEAGRASS],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // conduit: light-15 beacon block (the frame powers it)
-    d("Conduit", [TILE_CONDUIT, TILE_CONDUIT, TILE_CONDUIT], true, true, false, false, 15, SoundFamily::Stone),
+    d(
+        "Conduit",
+        [TILE_CONDUIT, TILE_CONDUIT, TILE_CONDUIT],
+        true,
+        true,
+        false,
+        false,
+        15,
+        SoundFamily::Stone,
+    ),
     // turtle egg: solid-ish (renders as a small-block-adapted cube)
-    d("Turtle Egg", [TILE_TURTLE_EGG_BASE, TILE_TURTLE_EGG_BASE, TILE_TURTLE_EGG_BASE], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Turtle Egg",
+        [
+            TILE_TURTLE_EGG_BASE,
+            TILE_TURTLE_EGG_BASE,
+            TILE_TURTLE_EGG_BASE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- the 1.13 items (cross-rendered item icons, never placeable) ----
-    d("Heart of the Sea", [TILE_HEART_OF_THE_SEA, TILE_HEART_OF_THE_SEA, TILE_HEART_OF_THE_SEA], false, false, true, false, 0, SoundFamily::Stone),
-    d("Nautilus Shell", [TILE_NAUTILUS_SHELL, TILE_NAUTILUS_SHELL, TILE_NAUTILUS_SHELL], false, false, true, false, 0, SoundFamily::Stone),
-    d("Scute", [TILE_SCUTE, TILE_SCUTE, TILE_SCUTE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Trident", [TILE_TRIDENT, TILE_TRIDENT, TILE_TRIDENT], false, false, true, false, 0, SoundFamily::Stone),
-    d("Phantom Membrane", [TILE_PHANTOM_MEMBRANE, TILE_PHANTOM_MEMBRANE, TILE_PHANTOM_MEMBRANE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dried Kelp", [TILE_DRIED_KELP, TILE_DRIED_KELP, TILE_DRIED_KELP], false, false, true, false, 0, SoundFamily::Grass),
-    d("Turtle Shell", [TILE_TURTLE_SHELL, TILE_TURTLE_SHELL, TILE_TURTLE_SHELL], false, false, true, false, 0, SoundFamily::Stone),
-    d("Potion of Slow Falling", [TILE_POTION_SLOW_FALLING, TILE_POTION_SLOW_FALLING, TILE_POTION_SLOW_FALLING], false, false, true, false, 0, SoundFamily::None),
-    d("Potion of Slow Falling (extended)", [TILE_POTION_SLOW_FALLING_EXT, TILE_POTION_SLOW_FALLING_EXT, TILE_POTION_SLOW_FALLING_EXT], false, false, true, false, 0, SoundFamily::None),
-    d("Potion of the Turtle Master", [TILE_POTION_TURTLE_MASTER, TILE_POTION_TURTLE_MASTER, TILE_POTION_TURTLE_MASTER], false, false, true, false, 0, SoundFamily::None),
-    d("Potion of the Turtle Master (enhanced)", [TILE_POTION_TURTLE_MASTER_II, TILE_POTION_TURTLE_MASTER_II, TILE_POTION_TURTLE_MASTER_II], false, false, true, false, 0, SoundFamily::None),
+    d(
+        "Heart of the Sea",
+        [
+            TILE_HEART_OF_THE_SEA,
+            TILE_HEART_OF_THE_SEA,
+            TILE_HEART_OF_THE_SEA,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Nautilus Shell",
+        [
+            TILE_NAUTILUS_SHELL,
+            TILE_NAUTILUS_SHELL,
+            TILE_NAUTILUS_SHELL,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Scute",
+        [TILE_SCUTE, TILE_SCUTE, TILE_SCUTE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Trident",
+        [TILE_TRIDENT, TILE_TRIDENT, TILE_TRIDENT],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Phantom Membrane",
+        [
+            TILE_PHANTOM_MEMBRANE,
+            TILE_PHANTOM_MEMBRANE,
+            TILE_PHANTOM_MEMBRANE,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dried Kelp",
+        [TILE_DRIED_KELP, TILE_DRIED_KELP, TILE_DRIED_KELP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Turtle Shell",
+        [TILE_TURTLE_SHELL, TILE_TURTLE_SHELL, TILE_TURTLE_SHELL],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Potion of Slow Falling",
+        [
+            TILE_POTION_SLOW_FALLING,
+            TILE_POTION_SLOW_FALLING,
+            TILE_POTION_SLOW_FALLING,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::None,
+    ),
+    d(
+        "Potion of Slow Falling (extended)",
+        [
+            TILE_POTION_SLOW_FALLING_EXT,
+            TILE_POTION_SLOW_FALLING_EXT,
+            TILE_POTION_SLOW_FALLING_EXT,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::None,
+    ),
+    d(
+        "Potion of the Turtle Master",
+        [
+            TILE_POTION_TURTLE_MASTER,
+            TILE_POTION_TURTLE_MASTER,
+            TILE_POTION_TURTLE_MASTER,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::None,
+    ),
+    d(
+        "Potion of the Turtle Master (enhanced)",
+        [
+            TILE_POTION_TURTLE_MASTER_II,
+            TILE_POTION_TURTLE_MASTER_II,
+            TILE_POTION_TURTLE_MASTER_II,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::None,
+    ),
     // ---- the 1.13 spawn eggs (kinds 32..=39) ----
-    d("Drowned Spawn Egg", [TILE_EGG_V113_BASE, TILE_EGG_V113_BASE, TILE_EGG_V113_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Phantom Spawn Egg", [TILE_EGG_V113_BASE + 1, TILE_EGG_V113_BASE + 1, TILE_EGG_V113_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
-    d("Dolphin Spawn Egg", [TILE_EGG_V113_BASE + 2, TILE_EGG_V113_BASE + 2, TILE_EGG_V113_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cod Spawn Egg", [TILE_EGG_V113_BASE + 3, TILE_EGG_V113_BASE + 3, TILE_EGG_V113_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
-    d("Salmon Spawn Egg", [TILE_EGG_V113_BASE + 4, TILE_EGG_V113_BASE + 4, TILE_EGG_V113_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
-    d("Pufferfish Spawn Egg", [TILE_EGG_V113_BASE + 5, TILE_EGG_V113_BASE + 5, TILE_EGG_V113_BASE + 5], false, false, true, false, 0, SoundFamily::Grass),
-    d("Tropical Fish Spawn Egg", [TILE_EGG_V113_BASE + 6, TILE_EGG_V113_BASE + 6, TILE_EGG_V113_BASE + 6], false, false, true, false, 0, SoundFamily::Grass),
-    d("Turtle Spawn Egg", [TILE_EGG_V113_BASE + 7, TILE_EGG_V113_BASE + 7, TILE_EGG_V113_BASE + 7], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Drowned Spawn Egg",
+        [TILE_EGG_V113_BASE, TILE_EGG_V113_BASE, TILE_EGG_V113_BASE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Phantom Spawn Egg",
+        [
+            TILE_EGG_V113_BASE + 1,
+            TILE_EGG_V113_BASE + 1,
+            TILE_EGG_V113_BASE + 1,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Dolphin Spawn Egg",
+        [
+            TILE_EGG_V113_BASE + 2,
+            TILE_EGG_V113_BASE + 2,
+            TILE_EGG_V113_BASE + 2,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cod Spawn Egg",
+        [
+            TILE_EGG_V113_BASE + 3,
+            TILE_EGG_V113_BASE + 3,
+            TILE_EGG_V113_BASE + 3,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Salmon Spawn Egg",
+        [
+            TILE_EGG_V113_BASE + 4,
+            TILE_EGG_V113_BASE + 4,
+            TILE_EGG_V113_BASE + 4,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Pufferfish Spawn Egg",
+        [
+            TILE_EGG_V113_BASE + 5,
+            TILE_EGG_V113_BASE + 5,
+            TILE_EGG_V113_BASE + 5,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Tropical Fish Spawn Egg",
+        [
+            TILE_EGG_V113_BASE + 6,
+            TILE_EGG_V113_BASE + 6,
+            TILE_EGG_V113_BASE + 6,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Turtle Spawn Egg",
+        [
+            TILE_EGG_V113_BASE + 7,
+            TILE_EGG_V113_BASE + 7,
+            TILE_EGG_V113_BASE + 7,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- 1.14 bracket (Village & Pillage — nature half): ids 417..=425,
     // the V10 window. Campfire: solid, NOT opaque (a ~7/16-high partial
     // block — full-cube collision is the engine's standing partial-
@@ -6085,65 +10821,438 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // vanilla's 2-px stalk collision can't be expressed yet — disclosed).
     // Berry bush: cross, non-solid (walk-through — the slow/damage hook
     // lives in the movement paths) ----
-    d("Bamboo", [TILE_BAMBOO, TILE_BAMBOO, TILE_BAMBOO], false, false, true, false, 0, SoundFamily::Plant),
-    d("Bamboo Shoot", [TILE_BAMBOO_SHOOT, TILE_BAMBOO_SHOOT, TILE_BAMBOO_SHOOT], false, false, true, false, 0, SoundFamily::Grass),
-    d("Sweet Berry Bush", [TILE_BERRY_BUSH_BASE, TILE_BERRY_BUSH_BASE, TILE_BERRY_BUSH_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Campfire", [TILE_CAMPFIRE, TILE_CAMPFIRE, TILE_CAMPFIRE], true, false, false, false, 0, SoundFamily::Wood),
-    d("Barrel", [TILE_BARREL_TOP, TILE_BARREL_TOP, TILE_BARREL_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Sweet Berries", [TILE_SWEET_BERRIES, TILE_SWEET_BERRIES, TILE_SWEET_BERRIES], false, false, true, false, 0, SoundFamily::Grass),
-    d("Fox Spawn Egg", [TILE_EGG_FOX, TILE_EGG_FOX, TILE_EGG_FOX], false, false, true, false, 0, SoundFamily::Grass),
-    d("Stick", [TILE_STICK, TILE_STICK, TILE_STICK], false, false, true, false, 0, SoundFamily::Wood),
-    d("Charcoal", [TILE_CHARCOAL, TILE_CHARCOAL, TILE_CHARCOAL], false, false, true, false, 0, SoundFamily::Stone),
+    d(
+        "Bamboo",
+        [TILE_BAMBOO, TILE_BAMBOO, TILE_BAMBOO],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Plant,
+    ),
+    d(
+        "Bamboo Shoot",
+        [TILE_BAMBOO_SHOOT, TILE_BAMBOO_SHOOT, TILE_BAMBOO_SHOOT],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Sweet Berry Bush",
+        [
+            TILE_BERRY_BUSH_BASE,
+            TILE_BERRY_BUSH_BASE,
+            TILE_BERRY_BUSH_BASE,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Campfire",
+        [TILE_CAMPFIRE, TILE_CAMPFIRE, TILE_CAMPFIRE],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Barrel",
+        [TILE_BARREL_TOP, TILE_BARREL_TOP, TILE_BARREL_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Sweet Berries",
+        [TILE_SWEET_BERRIES, TILE_SWEET_BERRIES, TILE_SWEET_BERRIES],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Fox Spawn Egg",
+        [TILE_EGG_FOX, TILE_EGG_FOX, TILE_EGG_FOX],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Stick",
+        [TILE_STICK, TILE_STICK, TILE_STICK],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Charcoal",
+        [TILE_CHARCOAL, TILE_CHARCOAL, TILE_CHARCOAL],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- 1.14 (Village & Pillage — nature half, part 2): the V11
     // window. VERIFIED w/Blast_Furnace + w/Smoker + w/Lantern
     // infoboxes (all "tool: wooden pickaxe" — the engine has no tool
     // tiers, the standing disclosed deferral; lantern light 15 = the
     // infobox "light: Yes (15)", brighter than the torch's 14). ----
-    d("Blast Furnace", [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_BLAST_FURNACE_SIDE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Smoker", [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_SMOKER_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Lantern", [TILE_LANTERN, TILE_LANTERN, TILE_LANTERN], false, false, true, false, 15, SoundFamily::Wood),
-    d("Iron Nugget", [TILE_IRON_NUGGET, TILE_IRON_NUGGET, TILE_IRON_NUGGET], false, false, true, false, 0, SoundFamily::Stone),
+    d(
+        "Blast Furnace",
+        [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_BLAST_FURNACE_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Smoker",
+        [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_SMOKER_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Lantern",
+        [TILE_LANTERN, TILE_LANTERN, TILE_LANTERN],
+        false,
+        false,
+        true,
+        false,
+        15,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Iron Nugget",
+        [TILE_IRON_NUGGET, TILE_IRON_NUGGET, TILE_IRON_NUGGET],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- 1.14 (part 3): the two new small flowers — the allium
     // pattern (cross plant, non-solid, instant-break, drops itself;
     // VERIFIED w/Cornflower + w/Lily_of_the_Valley) ----
-    d("Cornflower", [TILE_CORNFLOWER, TILE_CORNFLOWER, TILE_CORNFLOWER], false, false, true, false, 0, SoundFamily::Grass),
-    d("Lily of the Valley", [TILE_LILY_OF_THE_VALLEY, TILE_LILY_OF_THE_VALLEY, TILE_LILY_OF_THE_VALLEY], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Cornflower",
+        [TILE_CORNFLOWER, TILE_CORNFLOWER, TILE_CORNFLOWER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Lily of the Valley",
+        [
+            TILE_LILY_OF_THE_VALLEY,
+            TILE_LILY_OF_THE_VALLEY,
+            TILE_LILY_OF_THE_VALLEY,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- 1.15 (Buzzy Bees) — VERIFIED w/Beehive + w/Bee_nest +
     // w/Honey_Block + w/Honeycomb_Block: the nest/hive are full solid
     // wood-sound blocks with the entrance on the side tiles (the
     // furnace pattern); honey is solid but translucent (opaque false —
     // the JE "partial (diffuses sky light)" row); honeycomb block is
     // an opaque decorative. ----
-    d("Bee Nest", [TILE_BEE_NEST_TOP, TILE_BEE_NEST_TOP, TILE_BEE_NEST_FRONT], true, true, false, false, 0, SoundFamily::Wood),
-    d("Beehive", [TILE_BEEHIVE_TOP, TILE_BEEHIVE_TOP, TILE_BEEHIVE_FRONT], true, true, false, false, 0, SoundFamily::Wood),
-    d("Honey Block", [TILE_HONEY, TILE_HONEY, TILE_HONEY], true, false, false, false, 0, SoundFamily::Grass),
-    d("Honeycomb Block", [TILE_HONEYCOMB_BLOCK, TILE_HONEYCOMB_BLOCK, TILE_HONEYCOMB_BLOCK], true, true, false, false, 0, SoundFamily::Grass),
+    d(
+        "Bee Nest",
+        [TILE_BEE_NEST_TOP, TILE_BEE_NEST_TOP, TILE_BEE_NEST_FRONT],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Beehive",
+        [TILE_BEEHIVE_TOP, TILE_BEEHIVE_TOP, TILE_BEEHIVE_FRONT],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Honey Block",
+        [TILE_HONEY, TILE_HONEY, TILE_HONEY],
+        true,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Honeycomb Block",
+        [
+            TILE_HONEYCOMB_BLOCK,
+            TILE_HONEYCOMB_BLOCK,
+            TILE_HONEYCOMB_BLOCK,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // 1.15 items — the item-row pattern (non-placeable, cross-sprited)
-    d("Honeycomb", [TILE_HONEYCOMB, TILE_HONEYCOMB, TILE_HONEYCOMB], false, false, true, false, 0, SoundFamily::Grass),
-    d("Honey Bottle", [TILE_HONEY_BOTTLE, TILE_HONEY_BOTTLE, TILE_HONEY_BOTTLE], false, false, true, false, 0, SoundFamily::Glass),
-    d("Shears", [TILE_SHEARS, TILE_SHEARS, TILE_SHEARS], false, false, true, false, 0, SoundFamily::Wood),
-    d("Bee Spawn Egg", [TILE_SPAWN_EGG_BEE, TILE_SPAWN_EGG_BEE, TILE_SPAWN_EGG_BEE], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Honeycomb",
+        [TILE_HONEYCOMB, TILE_HONEYCOMB, TILE_HONEYCOMB],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Honey Bottle",
+        [TILE_HONEY_BOTTLE, TILE_HONEY_BOTTLE, TILE_HONEY_BOTTLE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Glass,
+    ),
+    d(
+        "Shears",
+        [TILE_SHEARS, TILE_SHEARS, TILE_SHEARS],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Bee Spawn Egg",
+        [TILE_SPAWN_EGG_BEE, TILE_SPAWN_EGG_BEE, TILE_SPAWN_EGG_BEE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- 1.16 (Nether Update, part 1 — the V13 window): all VERIFIED
     // against the v116 captures. soul soil is the soul-sand-textured
     // fire host; basalt carries the pillar top/side pair; the anchor is
     // an opaque cube (charge art through state_tiles); the target a
     // full cube; chain + soul fire are non-solid decorations (chain
     // offsets like the lantern, soul fire is the cross-sprite) ----
-    d("Soul Soil", [TILE_SOUL_SOIL, TILE_SOUL_SOIL, TILE_SOUL_SOIL], true, true, false, false, 0, SoundFamily::Sand),
-    d("Basalt", [TILE_BASALT_TOP, TILE_BASALT_TOP, TILE_BASALT_SIDE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Blackstone", [TILE_BLACKSTONE, TILE_BLACKSTONE, TILE_BLACKSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Gilded Blackstone", [TILE_GILDED_BLACKSTONE, TILE_GILDED_BLACKSTONE, TILE_GILDED_BLACKSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Crying Obsidian", [TILE_CRYING_OBSIDIAN, TILE_CRYING_OBSIDIAN, TILE_CRYING_OBSIDIAN], true, true, false, false, 10, SoundFamily::Stone),
-    d("Respawn Anchor", [TILE_ANCHOR_TOP, TILE_ANCHOR_TOP, TILE_ANCHOR_SIDE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Target", [TILE_TARGET, TILE_TARGET, TILE_TARGET], true, true, false, false, 0, SoundFamily::Grass),
-    d("Nether Gold Ore", [TILE_NETHER_GOLD_ORE, TILE_NETHER_GOLD_ORE, TILE_NETHER_GOLD_ORE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Ancient Debris", [TILE_ANCIENT_DEBRIS_TOP, TILE_ANCIENT_DEBRIS_TOP, TILE_ANCIENT_DEBRIS_SIDE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Block of Netherite", [TILE_NETHERITE_BLOCK, TILE_NETHERITE_BLOCK, TILE_NETHERITE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
-    d("Chain", [TILE_CHAIN, TILE_CHAIN, TILE_CHAIN], false, false, true, false, 0, SoundFamily::Chain),
-    d("Soul Fire", [TILE_SOUL_FIRE, TILE_SOUL_FIRE, TILE_SOUL_FIRE], false, false, true, false, 10, SoundFamily::Grass),
+    d(
+        "Soul Soil",
+        [TILE_SOUL_SOIL, TILE_SOUL_SOIL, TILE_SOUL_SOIL],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Sand,
+    ),
+    d(
+        "Basalt",
+        [TILE_BASALT_TOP, TILE_BASALT_TOP, TILE_BASALT_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Blackstone",
+        [TILE_BLACKSTONE, TILE_BLACKSTONE, TILE_BLACKSTONE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Gilded Blackstone",
+        [
+            TILE_GILDED_BLACKSTONE,
+            TILE_GILDED_BLACKSTONE,
+            TILE_GILDED_BLACKSTONE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Crying Obsidian",
+        [
+            TILE_CRYING_OBSIDIAN,
+            TILE_CRYING_OBSIDIAN,
+            TILE_CRYING_OBSIDIAN,
+        ],
+        true,
+        true,
+        false,
+        false,
+        10,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Respawn Anchor",
+        [TILE_ANCHOR_TOP, TILE_ANCHOR_TOP, TILE_ANCHOR_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Target",
+        [TILE_TARGET, TILE_TARGET, TILE_TARGET],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Nether Gold Ore",
+        [
+            TILE_NETHER_GOLD_ORE,
+            TILE_NETHER_GOLD_ORE,
+            TILE_NETHER_GOLD_ORE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Ancient Debris",
+        [
+            TILE_ANCIENT_DEBRIS_TOP,
+            TILE_ANCIENT_DEBRIS_TOP,
+            TILE_ANCIENT_DEBRIS_SIDE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Block of Netherite",
+        [
+            TILE_NETHERITE_BLOCK,
+            TILE_NETHERITE_BLOCK,
+            TILE_NETHERITE_BLOCK,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Chain",
+        [TILE_CHAIN, TILE_CHAIN, TILE_CHAIN],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Chain,
+    ),
+    d(
+        "Soul Fire",
+        [TILE_SOUL_FIRE, TILE_SOUL_FIRE, TILE_SOUL_FIRE],
+        false,
+        false,
+        true,
+        false,
+        10,
+        SoundFamily::Grass,
+    ),
     // 1.16 items — the item-row pattern (non-placeable, cross-sprited)
-    d("Netherite Scrap", [TILE_NETHERITE_SCRAP, TILE_NETHERITE_SCRAP, TILE_NETHERITE_SCRAP], false, false, true, false, 0, SoundFamily::Stone),
-    d("Netherite Ingot", [TILE_NETHERITE_INGOT, TILE_NETHERITE_INGOT, TILE_NETHERITE_INGOT], false, false, true, false, 0, SoundFamily::Stone),
+    d(
+        "Netherite Scrap",
+        [
+            TILE_NETHERITE_SCRAP,
+            TILE_NETHERITE_SCRAP,
+            TILE_NETHERITE_SCRAP,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Netherite Ingot",
+        [
+            TILE_NETHERITE_INGOT,
+            TILE_NETHERITE_INGOT,
+            TILE_NETHERITE_INGOT,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- 1.16 (Nether Update, part 2 — the crimson/warped families):
     // the V14 window. All VERIFIED against the v116b captures: the
     // stems/hyphae are log-class wood-sound cubes (top/side pairs);
@@ -6151,65 +11260,641 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // sprouts/vines are non-solid cross plants; shroomlight is the
     // light-15 lamp; the polished stones are stone cubes; the soul
     // torch + soul lantern are the light-10 soul-lit pair ----
-    d("Crimson Stem", [TILE_CRIMSON_STEM_TOP, TILE_CRIMSON_STEM_TOP, TILE_CRIMSON_STEM_SIDE], true, true, false, false, 0, SoundFamily::NetherWood),
-    d("Crimson Hyphae", [TILE_CRIMSON_HYPHAE, TILE_CRIMSON_HYPHAE, TILE_CRIMSON_HYPHAE], true, true, false, false, 0, SoundFamily::NetherWood),
-    d("Crimson Planks", [TILE_CRIMSON_PLANKS, TILE_CRIMSON_PLANKS, TILE_CRIMSON_PLANKS], true, true, false, false, 0, SoundFamily::NetherWood),
-    d("Crimson Nylium", [TILE_CRIMSON_NYLIUM_TOP, TILE_NETHERRACK, TILE_CRIMSON_NYLIUM_SIDE], true, true, false, false, 0, SoundFamily::Dirt),
-    d("Crimson Fungus", [TILE_CRIMSON_FUNGUS, TILE_CRIMSON_FUNGUS, TILE_CRIMSON_FUNGUS], false, false, true, false, 0, SoundFamily::Grass),
-    d("Crimson Roots", [TILE_CRIMSON_ROOTS, TILE_CRIMSON_ROOTS, TILE_CRIMSON_ROOTS], false, false, true, false, 0, SoundFamily::Grass),
-    d("Weeping Vines", [TILE_WEEPING_VINES, TILE_WEEPING_VINES, TILE_WEEPING_VINES], false, false, true, false, 0, SoundFamily::Grass),
-    d("Warped Stem", [TILE_WARPED_STEM_TOP, TILE_WARPED_STEM_TOP, TILE_WARPED_STEM_SIDE], true, true, false, false, 0, SoundFamily::NetherWood),
-    d("Warped Hyphae", [TILE_WARPED_HYPHAE, TILE_WARPED_HYPHAE, TILE_WARPED_HYPHAE], true, true, false, false, 0, SoundFamily::NetherWood),
-    d("Warped Planks", [TILE_WARPED_PLANKS, TILE_WARPED_PLANKS, TILE_WARPED_PLANKS], true, true, false, false, 0, SoundFamily::NetherWood),
-    d("Warped Nylium", [TILE_WARPED_NYLIUM_TOP, TILE_NETHERRACK, TILE_WARPED_NYLIUM_SIDE], true, true, false, false, 0, SoundFamily::Dirt),
-    d("Warped Fungus", [TILE_WARPED_FUNGUS, TILE_WARPED_FUNGUS, TILE_WARPED_FUNGUS], false, false, true, false, 0, SoundFamily::Grass),
-    d("Warped Roots", [TILE_WARPED_ROOTS, TILE_WARPED_ROOTS, TILE_WARPED_ROOTS], false, false, true, false, 0, SoundFamily::Grass),
-    d("Twisting Vines", [TILE_TWISTING_VINES, TILE_TWISTING_VINES, TILE_TWISTING_VINES], false, false, true, false, 0, SoundFamily::Grass),
-    d("Warped Wart Block", [TILE_WARPED_WART_BLOCK, TILE_WARPED_WART_BLOCK, TILE_WARPED_WART_BLOCK], true, true, false, false, 0, SoundFamily::Wool),
-    d("Shroomlight", [TILE_SHROOMLIGHT, TILE_SHROOMLIGHT, TILE_SHROOMLIGHT], true, true, false, false, 15, SoundFamily::Wool),
-    d("Nether Sprouts", [TILE_NETHER_SPROUTS, TILE_NETHER_SPROUTS, TILE_NETHER_SPROUTS], false, false, true, false, 0, SoundFamily::Grass),
-    d("Polished Basalt", [TILE_POLISHED_BASALT_TOP, TILE_POLISHED_BASALT_TOP, TILE_POLISHED_BASALT_SIDE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Polished Blackstone", [TILE_POLISHED_BLACKSTONE, TILE_POLISHED_BLACKSTONE, TILE_POLISHED_BLACKSTONE], true, true, false, false, 0, SoundFamily::Stone),
-    d("Polished Blackstone Bricks", [TILE_POLISHED_BLACKSTONE_BRICKS, TILE_POLISHED_BLACKSTONE_BRICKS, TILE_POLISHED_BLACKSTONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
-    d("Soul Torch", [TILE_SOUL_TORCH, TILE_SOUL_TORCH, TILE_SOUL_TORCH], false, false, true, false, 10, SoundFamily::Wood),
-    d("Soul Lantern", [TILE_SOUL_LANTERN, TILE_SOUL_LANTERN, TILE_SOUL_LANTERN], false, false, true, false, 10, SoundFamily::Wood),
+    d(
+        "Crimson Stem",
+        [
+            TILE_CRIMSON_STEM_TOP,
+            TILE_CRIMSON_STEM_TOP,
+            TILE_CRIMSON_STEM_SIDE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::NetherWood,
+    ),
+    d(
+        "Crimson Hyphae",
+        [
+            TILE_CRIMSON_HYPHAE,
+            TILE_CRIMSON_HYPHAE,
+            TILE_CRIMSON_HYPHAE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::NetherWood,
+    ),
+    d(
+        "Crimson Planks",
+        [
+            TILE_CRIMSON_PLANKS,
+            TILE_CRIMSON_PLANKS,
+            TILE_CRIMSON_PLANKS,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::NetherWood,
+    ),
+    d(
+        "Crimson Nylium",
+        [
+            TILE_CRIMSON_NYLIUM_TOP,
+            TILE_NETHERRACK,
+            TILE_CRIMSON_NYLIUM_SIDE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Dirt,
+    ),
+    d(
+        "Crimson Fungus",
+        [
+            TILE_CRIMSON_FUNGUS,
+            TILE_CRIMSON_FUNGUS,
+            TILE_CRIMSON_FUNGUS,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Crimson Roots",
+        [TILE_CRIMSON_ROOTS, TILE_CRIMSON_ROOTS, TILE_CRIMSON_ROOTS],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Weeping Vines",
+        [TILE_WEEPING_VINES, TILE_WEEPING_VINES, TILE_WEEPING_VINES],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Warped Stem",
+        [
+            TILE_WARPED_STEM_TOP,
+            TILE_WARPED_STEM_TOP,
+            TILE_WARPED_STEM_SIDE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::NetherWood,
+    ),
+    d(
+        "Warped Hyphae",
+        [TILE_WARPED_HYPHAE, TILE_WARPED_HYPHAE, TILE_WARPED_HYPHAE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::NetherWood,
+    ),
+    d(
+        "Warped Planks",
+        [TILE_WARPED_PLANKS, TILE_WARPED_PLANKS, TILE_WARPED_PLANKS],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::NetherWood,
+    ),
+    d(
+        "Warped Nylium",
+        [
+            TILE_WARPED_NYLIUM_TOP,
+            TILE_NETHERRACK,
+            TILE_WARPED_NYLIUM_SIDE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Dirt,
+    ),
+    d(
+        "Warped Fungus",
+        [TILE_WARPED_FUNGUS, TILE_WARPED_FUNGUS, TILE_WARPED_FUNGUS],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Warped Roots",
+        [TILE_WARPED_ROOTS, TILE_WARPED_ROOTS, TILE_WARPED_ROOTS],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Twisting Vines",
+        [
+            TILE_TWISTING_VINES,
+            TILE_TWISTING_VINES,
+            TILE_TWISTING_VINES,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Warped Wart Block",
+        [
+            TILE_WARPED_WART_BLOCK,
+            TILE_WARPED_WART_BLOCK,
+            TILE_WARPED_WART_BLOCK,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Shroomlight",
+        [TILE_SHROOMLIGHT, TILE_SHROOMLIGHT, TILE_SHROOMLIGHT],
+        true,
+        true,
+        false,
+        false,
+        15,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Nether Sprouts",
+        [
+            TILE_NETHER_SPROUTS,
+            TILE_NETHER_SPROUTS,
+            TILE_NETHER_SPROUTS,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Polished Basalt",
+        [
+            TILE_POLISHED_BASALT_TOP,
+            TILE_POLISHED_BASALT_TOP,
+            TILE_POLISHED_BASALT_SIDE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Polished Blackstone",
+        [
+            TILE_POLISHED_BLACKSTONE,
+            TILE_POLISHED_BLACKSTONE,
+            TILE_POLISHED_BLACKSTONE,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Polished Blackstone Bricks",
+        [
+            TILE_POLISHED_BLACKSTONE_BRICKS,
+            TILE_POLISHED_BLACKSTONE_BRICKS,
+            TILE_POLISHED_BLACKSTONE_BRICKS,
+        ],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Soul Torch",
+        [TILE_SOUL_TORCH, TILE_SOUL_TORCH, TILE_SOUL_TORCH],
+        false,
+        false,
+        true,
+        false,
+        10,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Soul Lantern",
+        [TILE_SOUL_LANTERN, TILE_SOUL_LANTERN, TILE_SOUL_LANTERN],
+        false,
+        false,
+        true,
+        false,
+        10,
+        SoundFamily::Wood,
+    ),
     // 1.16 part-2 eggs — the item-row pattern (non-placeable,
     // cross-sprited, creative picker + right-click spawn)
-    d("Strider Spawn Egg", [TILE_SPAWN_EGG_STRIDER, TILE_SPAWN_EGG_STRIDER, TILE_SPAWN_EGG_STRIDER], false, false, true, false, 0, SoundFamily::Grass),
-    d("Piglin Spawn Egg", [TILE_SPAWN_EGG_PIGLIN, TILE_SPAWN_EGG_PIGLIN, TILE_SPAWN_EGG_PIGLIN], false, false, true, false, 0, SoundFamily::Grass),
-    d("Hoglin Spawn Egg", [TILE_SPAWN_EGG_HOGLIN, TILE_SPAWN_EGG_HOGLIN, TILE_SPAWN_EGG_HOGLIN], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Strider Spawn Egg",
+        [
+            TILE_SPAWN_EGG_STRIDER,
+            TILE_SPAWN_EGG_STRIDER,
+            TILE_SPAWN_EGG_STRIDER,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Piglin Spawn Egg",
+        [
+            TILE_SPAWN_EGG_PIGLIN,
+            TILE_SPAWN_EGG_PIGLIN,
+            TILE_SPAWN_EGG_PIGLIN,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Hoglin Spawn Egg",
+        [
+            TILE_SPAWN_EGG_HOGLIN,
+            TILE_SPAWN_EGG_HOGLIN,
+            TILE_SPAWN_EGG_HOGLIN,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- the 1.0-1.16.5 completeness audit: the V15 item rows ----
     // the cooked-meat family (the standing campfire.rs deferral, closed)
-    d("Steak", [TILE_STEAK, TILE_STEAK, TILE_STEAK], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cooked Porkchop", [TILE_COOKED_PORKCHOP, TILE_COOKED_PORKCHOP, TILE_COOKED_PORKCHOP], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cooked Chicken", [TILE_COOKED_CHICKEN, TILE_COOKED_CHICKEN, TILE_COOKED_CHICKEN], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cooked Mutton", [TILE_COOKED_MUTTON, TILE_COOKED_MUTTON, TILE_COOKED_MUTTON], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cooked Cod", [TILE_COOKED_COD, TILE_COOKED_COD, TILE_COOKED_COD], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cooked Salmon", [TILE_COOKED_SALMON, TILE_COOKED_SALMON, TILE_COOKED_SALMON], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Steak",
+        [TILE_STEAK, TILE_STEAK, TILE_STEAK],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cooked Porkchop",
+        [
+            TILE_COOKED_PORKCHOP,
+            TILE_COOKED_PORKCHOP,
+            TILE_COOKED_PORKCHOP,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cooked Chicken",
+        [
+            TILE_COOKED_CHICKEN,
+            TILE_COOKED_CHICKEN,
+            TILE_COOKED_CHICKEN,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cooked Mutton",
+        [TILE_COOKED_MUTTON, TILE_COOKED_MUTTON, TILE_COOKED_MUTTON],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cooked Cod",
+        [TILE_COOKED_COD, TILE_COOKED_COD, TILE_COOKED_COD],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cooked Salmon",
+        [TILE_COOKED_SALMON, TILE_COOKED_SALMON, TILE_COOKED_SALMON],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // the kitchen chain
-    d("Apple", [TILE_APPLE, TILE_APPLE, TILE_APPLE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Bowl", [TILE_BOWL, TILE_BOWL, TILE_BOWL], false, false, true, false, 0, SoundFamily::Wood),
-    d("Mushroom Stew", [TILE_MUSHROOM_STEW, TILE_MUSHROOM_STEW, TILE_MUSHROOM_STEW], false, false, true, false, 0, SoundFamily::Grass),
-    d("Rabbit Stew", [TILE_RABBIT_STEW, TILE_RABBIT_STEW, TILE_RABBIT_STEW], false, false, true, false, 0, SoundFamily::Grass),
-    d("Beetroot", [TILE_BEETROOT, TILE_BEETROOT, TILE_BEETROOT], false, false, true, false, 0, SoundFamily::Grass),
-    d("Beetroot Soup", [TILE_BEETROOT_SOUP, TILE_BEETROOT_SOUP, TILE_BEETROOT_SOUP], false, false, true, false, 0, SoundFamily::Grass),
-    d("Sugar", [TILE_SUGAR, TILE_SUGAR, TILE_SUGAR], false, false, true, false, 0, SoundFamily::Grass),
-    d("Egg", [TILE_EGG, TILE_EGG, TILE_EGG], false, false, true, false, 0, SoundFamily::Grass),
-    d("Poisonous Potato", [TILE_POISONOUS_POTATO, TILE_POISONOUS_POTATO, TILE_POISONOUS_POTATO], false, false, true, false, 0, SoundFamily::Grass),
-    d("Popped Chorus Fruit", [TILE_POPPED_CHORUS, TILE_POPPED_CHORUS, TILE_POPPED_CHORUS], false, false, true, false, 0, SoundFamily::Grass),
-    d("Ghast Tear", [TILE_GHAST_TEAR, TILE_GHAST_TEAR, TILE_GHAST_TEAR], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Apple",
+        [TILE_APPLE, TILE_APPLE, TILE_APPLE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Bowl",
+        [TILE_BOWL, TILE_BOWL, TILE_BOWL],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
+    d(
+        "Mushroom Stew",
+        [TILE_MUSHROOM_STEW, TILE_MUSHROOM_STEW, TILE_MUSHROOM_STEW],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Rabbit Stew",
+        [TILE_RABBIT_STEW, TILE_RABBIT_STEW, TILE_RABBIT_STEW],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Beetroot",
+        [TILE_BEETROOT, TILE_BEETROOT, TILE_BEETROOT],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Beetroot Soup",
+        [TILE_BEETROOT_SOUP, TILE_BEETROOT_SOUP, TILE_BEETROOT_SOUP],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Sugar",
+        [TILE_SUGAR, TILE_SUGAR, TILE_SUGAR],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Egg",
+        [TILE_EGG, TILE_EGG, TILE_EGG],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Poisonous Potato",
+        [
+            TILE_POISONOUS_POTATO,
+            TILE_POISONOUS_POTATO,
+            TILE_POISONOUS_POTATO,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Popped Chorus Fruit",
+        [TILE_POPPED_CHORUS, TILE_POPPED_CHORUS, TILE_POPPED_CHORUS],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Ghast Tear",
+        [TILE_GHAST_TEAR, TILE_GHAST_TEAR, TILE_GHAST_TEAR],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // the leaping + regeneration potion rows
-    d("Potion of Leaping", [TILE_POTION_LEAPING, TILE_POTION_LEAPING, TILE_POTION_LEAPING], false, false, true, false, 0, SoundFamily::Grass),
-    d("Potion of Leaping II", [TILE_POTION_LEAPING_II, TILE_POTION_LEAPING_II, TILE_POTION_LEAPING_II], false, false, true, false, 0, SoundFamily::Grass),
-    d("Potion of Leaping (extended)", [TILE_POTION_LEAPING_LONG, TILE_POTION_LEAPING_LONG, TILE_POTION_LEAPING_LONG], false, false, true, false, 0, SoundFamily::Grass),
-    d("Potion of Regeneration", [TILE_POTION_REGEN, TILE_POTION_REGEN, TILE_POTION_REGEN], false, false, true, false, 0, SoundFamily::Grass),
-    d("Potion of Regeneration II", [TILE_POTION_REGEN_II, TILE_POTION_REGEN_II, TILE_POTION_REGEN_II], false, false, true, false, 0, SoundFamily::Grass),
-    d("Potion of Regeneration (extended)", [TILE_POTION_REGEN_LONG, TILE_POTION_REGEN_LONG, TILE_POTION_REGEN_LONG], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Potion of Leaping",
+        [
+            TILE_POTION_LEAPING,
+            TILE_POTION_LEAPING,
+            TILE_POTION_LEAPING,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Potion of Leaping II",
+        [
+            TILE_POTION_LEAPING_II,
+            TILE_POTION_LEAPING_II,
+            TILE_POTION_LEAPING_II,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Potion of Leaping (extended)",
+        [
+            TILE_POTION_LEAPING_LONG,
+            TILE_POTION_LEAPING_LONG,
+            TILE_POTION_LEAPING_LONG,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Potion of Regeneration",
+        [TILE_POTION_REGEN, TILE_POTION_REGEN, TILE_POTION_REGEN],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Potion of Regeneration II",
+        [
+            TILE_POTION_REGEN_II,
+            TILE_POTION_REGEN_II,
+            TILE_POTION_REGEN_II,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Potion of Regeneration (extended)",
+        [
+            TILE_POTION_REGEN_LONG,
+            TILE_POTION_REGEN_LONG,
+            TILE_POTION_REGEN_LONG,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // the three classic mobs' eggs
-    d("Ghast Spawn Egg", [TILE_SPAWN_EGG_GHAST, TILE_SPAWN_EGG_GHAST, TILE_SPAWN_EGG_GHAST], false, false, true, false, 0, SoundFamily::Grass),
-    d("Cave Spider Spawn Egg", [TILE_SPAWN_EGG_CAVESPIDER, TILE_SPAWN_EGG_CAVESPIDER, TILE_SPAWN_EGG_CAVESPIDER], false, false, true, false, 0, SoundFamily::Grass),
-    d("Silverfish Spawn Egg", [TILE_SPAWN_EGG_SILVERFISH, TILE_SPAWN_EGG_SILVERFISH, TILE_SPAWN_EGG_SILVERFISH], false, false, true, false, 0, SoundFamily::Grass),
-    d("Melon Slice", [TILE_MELON_SLICE, TILE_MELON_SLICE, TILE_MELON_SLICE], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Ghast Spawn Egg",
+        [
+            TILE_SPAWN_EGG_GHAST,
+            TILE_SPAWN_EGG_GHAST,
+            TILE_SPAWN_EGG_GHAST,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Cave Spider Spawn Egg",
+        [
+            TILE_SPAWN_EGG_CAVESPIDER,
+            TILE_SPAWN_EGG_CAVESPIDER,
+            TILE_SPAWN_EGG_CAVESPIDER,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Silverfish Spawn Egg",
+        [
+            TILE_SPAWN_EGG_SILVERFISH,
+            TILE_SPAWN_EGG_SILVERFISH,
+            TILE_SPAWN_EGG_SILVERFISH,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Melon Slice",
+        [TILE_MELON_SLICE, TILE_MELON_SLICE, TILE_MELON_SLICE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // ---- backlog round (weather, 2026-09-09): the fire block ----
     // VERIFIED w/Weather §Lightning: lightning "creating fires where it
     // strikes, igniting any nearby flammable materials, but the rain
@@ -6217,45 +11902,352 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // like soul fire, emissive 15 (vanilla fire light level), burns out
     // on random ticks — the burnout timer lives in the game layer's
     // random-tick hook (rain-accelerated).
-    d("Fire", [TILE_FIRE, TILE_FIRE, TILE_FIRE], false, false, true, false, 15, SoundFamily::Grass),
+    d(
+        "Fire",
+        [TILE_FIRE, TILE_FIRE, TILE_FIRE],
+        false,
+        false,
+        true,
+        false,
+        15,
+        SoundFamily::Grass,
+    ),
     // ---- backlog round (farming, 2026-09-09): the farming set ----
     // farmland: solid but NOT full-height (vanilla 15/16 — the crop
     // support + the hydration/decay/ladder states live in the sim's
     // random-tick hook; VERIFIED w/Farmland: hardness 0.6, shovel).
     // Modeled full-height solid (the engine's no-partial-height
     // convention, disclosed).
-    d("Farmland", [TILE_FARMLAND_DRY, TILE_FARMLAND_DRY, TILE_FARMLAND_DRY], true, true, false, false, 0, SoundFamily::Dirt),
+    d(
+        "Farmland",
+        [TILE_FARMLAND_DRY, TILE_FARMLAND_DRY, TILE_FARMLAND_DRY],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Dirt,
+    ),
     // the four crops: non-solid cross plants like the berry bush
-    d("Wheat Crop", [TILE_WHEAT_BASE, TILE_WHEAT_BASE, TILE_WHEAT_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Carrots", [TILE_CARROTS_BASE, TILE_CARROTS_BASE, TILE_CARROTS_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Potatoes", [TILE_POTATOES_BASE, TILE_POTATOES_BASE, TILE_POTATOES_BASE], false, false, true, false, 0, SoundFamily::Grass),
-    d("Beetroots", [TILE_BEETROOTS_BASE, TILE_BEETROOTS_BASE, TILE_BEETROOTS_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d(
+        "Wheat Crop",
+        [TILE_WHEAT_BASE, TILE_WHEAT_BASE, TILE_WHEAT_BASE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Carrots",
+        [TILE_CARROTS_BASE, TILE_CARROTS_BASE, TILE_CARROTS_BASE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Potatoes",
+        [TILE_POTATOES_BASE, TILE_POTATOES_BASE, TILE_POTATOES_BASE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Beetroots",
+        [
+            TILE_BEETROOTS_BASE,
+            TILE_BEETROOTS_BASE,
+            TILE_BEETROOTS_BASE,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
     // the items: wheat (crafting/breeding), bread (hunger-5 food), the
     // hoe (tilling tool) — cross-rendered item sprites
-    d("Wheat", [TILE_WHEAT_ITEM, TILE_WHEAT_ITEM, TILE_WHEAT_ITEM], false, false, true, false, 0, SoundFamily::Grass),
-    d("Bread", [TILE_BREAD, TILE_BREAD, TILE_BREAD], false, false, true, false, 0, SoundFamily::Grass),
-    d("Hoe", [TILE_HOE, TILE_HOE, TILE_HOE], false, false, true, false, 0, SoundFamily::Wood),
+    d(
+        "Wheat",
+        [TILE_WHEAT_ITEM, TILE_WHEAT_ITEM, TILE_WHEAT_ITEM],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Bread",
+        [TILE_BREAD, TILE_BREAD, TILE_BREAD],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Hoe",
+        [TILE_HOE, TILE_HOE, TILE_HOE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wood,
+    ),
     // ---- Sub-round 3: the 16 armor items (cross-rendered item sprites;
     // wool-ish worn sound for leather, metal for the rest) ----
-    d("Leather Cap", [TILE_ARMOR_BASE, TILE_ARMOR_BASE, TILE_ARMOR_BASE], false, false, true, false, 0, SoundFamily::Wool),
-    d("Leather Tunic", [TILE_ARMOR_BASE + 1, TILE_ARMOR_BASE + 1, TILE_ARMOR_BASE + 1], false, false, true, false, 0, SoundFamily::Wool),
-    d("Leather Pants", [TILE_ARMOR_BASE + 2, TILE_ARMOR_BASE + 2, TILE_ARMOR_BASE + 2], false, false, true, false, 0, SoundFamily::Wool),
-    d("Leather Boots", [TILE_ARMOR_BASE + 3, TILE_ARMOR_BASE + 3, TILE_ARMOR_BASE + 3], false, false, true, false, 0, SoundFamily::Wool),
-    d("Iron Helmet", [TILE_ARMOR_BASE + 4, TILE_ARMOR_BASE + 4, TILE_ARMOR_BASE + 4], false, false, true, false, 0, SoundFamily::Stone),
-    d("Iron Chestplate", [TILE_ARMOR_BASE + 5, TILE_ARMOR_BASE + 5, TILE_ARMOR_BASE + 5], false, false, true, false, 0, SoundFamily::Stone),
-    d("Iron Leggings", [TILE_ARMOR_BASE + 6, TILE_ARMOR_BASE + 6, TILE_ARMOR_BASE + 6], false, false, true, false, 0, SoundFamily::Stone),
-    d("Iron Boots", [TILE_ARMOR_BASE + 7, TILE_ARMOR_BASE + 7, TILE_ARMOR_BASE + 7], false, false, true, false, 0, SoundFamily::Stone),
-    d("Golden Helmet", [TILE_ARMOR_BASE + 8, TILE_ARMOR_BASE + 8, TILE_ARMOR_BASE + 8], false, false, true, false, 0, SoundFamily::Stone),
-    d("Golden Chestplate", [TILE_ARMOR_BASE + 9, TILE_ARMOR_BASE + 9, TILE_ARMOR_BASE + 9], false, false, true, false, 0, SoundFamily::Stone),
-    d("Golden Leggings", [TILE_ARMOR_BASE + 10, TILE_ARMOR_BASE + 10, TILE_ARMOR_BASE + 10], false, false, true, false, 0, SoundFamily::Stone),
-    d("Golden Boots", [TILE_ARMOR_BASE + 11, TILE_ARMOR_BASE + 11, TILE_ARMOR_BASE + 11], false, false, true, false, 0, SoundFamily::Stone),
-    d("Diamond Helmet", [TILE_ARMOR_BASE + 12, TILE_ARMOR_BASE + 12, TILE_ARMOR_BASE + 12], false, false, true, false, 0, SoundFamily::Stone),
-    d("Diamond Chestplate", [TILE_ARMOR_BASE + 13, TILE_ARMOR_BASE + 13, TILE_ARMOR_BASE + 13], false, false, true, false, 0, SoundFamily::Stone),
-    d("Diamond Leggings", [TILE_ARMOR_BASE + 14, TILE_ARMOR_BASE + 14, TILE_ARMOR_BASE + 14], false, false, true, false, 0, SoundFamily::Stone),
-    d("Diamond Boots", [TILE_ARMOR_BASE + 15, TILE_ARMOR_BASE + 15, TILE_ARMOR_BASE + 15], false, false, true, false, 0, SoundFamily::Stone),
+    d(
+        "Leather Cap",
+        [TILE_ARMOR_BASE, TILE_ARMOR_BASE, TILE_ARMOR_BASE],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Leather Tunic",
+        [
+            TILE_ARMOR_BASE + 1,
+            TILE_ARMOR_BASE + 1,
+            TILE_ARMOR_BASE + 1,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Leather Pants",
+        [
+            TILE_ARMOR_BASE + 2,
+            TILE_ARMOR_BASE + 2,
+            TILE_ARMOR_BASE + 2,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Leather Boots",
+        [
+            TILE_ARMOR_BASE + 3,
+            TILE_ARMOR_BASE + 3,
+            TILE_ARMOR_BASE + 3,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Wool,
+    ),
+    d(
+        "Iron Helmet",
+        [
+            TILE_ARMOR_BASE + 4,
+            TILE_ARMOR_BASE + 4,
+            TILE_ARMOR_BASE + 4,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Iron Chestplate",
+        [
+            TILE_ARMOR_BASE + 5,
+            TILE_ARMOR_BASE + 5,
+            TILE_ARMOR_BASE + 5,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Iron Leggings",
+        [
+            TILE_ARMOR_BASE + 6,
+            TILE_ARMOR_BASE + 6,
+            TILE_ARMOR_BASE + 6,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Iron Boots",
+        [
+            TILE_ARMOR_BASE + 7,
+            TILE_ARMOR_BASE + 7,
+            TILE_ARMOR_BASE + 7,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Golden Helmet",
+        [
+            TILE_ARMOR_BASE + 8,
+            TILE_ARMOR_BASE + 8,
+            TILE_ARMOR_BASE + 8,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Golden Chestplate",
+        [
+            TILE_ARMOR_BASE + 9,
+            TILE_ARMOR_BASE + 9,
+            TILE_ARMOR_BASE + 9,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Golden Leggings",
+        [
+            TILE_ARMOR_BASE + 10,
+            TILE_ARMOR_BASE + 10,
+            TILE_ARMOR_BASE + 10,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Golden Boots",
+        [
+            TILE_ARMOR_BASE + 11,
+            TILE_ARMOR_BASE + 11,
+            TILE_ARMOR_BASE + 11,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Diamond Helmet",
+        [
+            TILE_ARMOR_BASE + 12,
+            TILE_ARMOR_BASE + 12,
+            TILE_ARMOR_BASE + 12,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Diamond Chestplate",
+        [
+            TILE_ARMOR_BASE + 13,
+            TILE_ARMOR_BASE + 13,
+            TILE_ARMOR_BASE + 13,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Diamond Leggings",
+        [
+            TILE_ARMOR_BASE + 14,
+            TILE_ARMOR_BASE + 14,
+            TILE_ARMOR_BASE + 14,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
+    d(
+        "Diamond Boots",
+        [
+            TILE_ARMOR_BASE + 15,
+            TILE_ARMOR_BASE + 15,
+            TILE_ARMOR_BASE + 15,
+        ],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
     // ---- Round 13 (station GUIs): book (531) + grindstone (532) ----
-    d("Book", [TILE_BOOK, TILE_BOOK, TILE_BOOK], false, false, true, false, 0, SoundFamily::Grass),
-    d("Grindstone", [TILE_GRINDSTONE, TILE_GRINDSTONE, TILE_GRINDSTONE], true, true, false, false, 0, SoundFamily::Stone),
+    d(
+        "Book",
+        [TILE_BOOK, TILE_BOOK, TILE_BOOK],
+        false,
+        false,
+        true,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
+    d(
+        "Grindstone",
+        [TILE_GRINDSTONE, TILE_GRINDSTONE, TILE_GRINDSTONE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Stone,
+    ),
 ];
 
 #[inline]
@@ -6326,187 +12318,497 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
 pub const PICKER_BLOCKS: [u16; 467] = [
-    GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
-    GRANITE, DIORITE, ANDESITE, OBSIDIAN,
-    SAND, GRAVEL, CLAY, TERRACOTTA,
-    RED_SAND, PACKED_ICE, PODZOL,
-    OAK_LOG, LEAVES, PLANKS, BIRCH_LOG, BIRCH_LEAVES, SPRUCE_LOG, SPRUCE_LEAVES,
-    ACACIA_LOG, ACACIA_LEAVES, DARK_OAK_LOG, DARK_OAK_LEAVES,
-    COAL_ORE, IRON_ORE, GOLD_ORE, REDSTONE_ORE, LAPIS_ORE, EMERALD_ORE, DIAMOND_ORE,
-    IRON_BLOCK, GOLD_BLOCK, DIAMOND_BLOCK, GLOWSTONE,
-    BOOKSHELF, CRAFTING_TABLE, FURNACE, GLASS, ICE, SNOW,
-    PUMPKIN, MELON, CACTUS,
-    WOOL_WHITE, WOOL_RED, WOOL_YELLOW, WOOL_BLUE, WOOL_BLACK,
-
-    STAINED_GLASS_WHITE, STAINED_GLASS_ORANGE, STAINED_GLASS_MAGENTA,
-    STAINED_GLASS_LIGHT_BLUE, STAINED_GLASS_YELLOW, STAINED_GLASS_LIME,
-    STAINED_GLASS_PINK, STAINED_GLASS_GRAY, STAINED_GLASS_LIGHT_GRAY,
-    STAINED_GLASS_CYAN, STAINED_GLASS_PURPLE, STAINED_GLASS_BLUE,
-    STAINED_GLASS_BROWN, STAINED_GLASS_GREEN, STAINED_GLASS_RED,
+    GRASS,
+    DIRT,
+    STONE,
+    COBBLE,
+    SMOOTH_STONE,
+    STONE_BRICKS,
+    BRICKS,
+    MOSSY_COBBLE,
+    GRANITE,
+    DIORITE,
+    ANDESITE,
+    OBSIDIAN,
+    SAND,
+    GRAVEL,
+    CLAY,
+    TERRACOTTA,
+    RED_SAND,
+    PACKED_ICE,
+    PODZOL,
+    OAK_LOG,
+    LEAVES,
+    PLANKS,
+    BIRCH_LOG,
+    BIRCH_LEAVES,
+    SPRUCE_LOG,
+    SPRUCE_LEAVES,
+    ACACIA_LOG,
+    ACACIA_LEAVES,
+    DARK_OAK_LOG,
+    DARK_OAK_LEAVES,
+    COAL_ORE,
+    IRON_ORE,
+    GOLD_ORE,
+    REDSTONE_ORE,
+    LAPIS_ORE,
+    EMERALD_ORE,
+    DIAMOND_ORE,
+    IRON_BLOCK,
+    GOLD_BLOCK,
+    DIAMOND_BLOCK,
+    GLOWSTONE,
+    BOOKSHELF,
+    CRAFTING_TABLE,
+    FURNACE,
+    GLASS,
+    ICE,
+    SNOW,
+    PUMPKIN,
+    MELON,
+    CACTUS,
+    WOOL_WHITE,
+    WOOL_RED,
+    WOOL_YELLOW,
+    WOOL_BLUE,
+    WOOL_BLACK,
+    STAINED_GLASS_WHITE,
+    STAINED_GLASS_ORANGE,
+    STAINED_GLASS_MAGENTA,
+    STAINED_GLASS_LIGHT_BLUE,
+    STAINED_GLASS_YELLOW,
+    STAINED_GLASS_LIME,
+    STAINED_GLASS_PINK,
+    STAINED_GLASS_GRAY,
+    STAINED_GLASS_LIGHT_GRAY,
+    STAINED_GLASS_CYAN,
+    STAINED_GLASS_PURPLE,
+    STAINED_GLASS_BLUE,
+    STAINED_GLASS_BROWN,
+    STAINED_GLASS_GREEN,
+    STAINED_GLASS_RED,
     STAINED_GLASS_BLACK,
-
-    TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, MUSHROOM_RED, MUSHROOM_BROWN,
-
-    ALLIUM, AZURE_BLUET, BLUE_ORCHID, OXEYE_DAISY,
-    ORANGE_TULIP, RED_TULIP, WHITE_TULIP, PINK_TULIP,
-    SUNFLOWER, LILAC, PEONY, ROSE_BUSH,
-
-    RAW_FISH, RAW_SALMON, CLOWNFISH, PUFFERFISH,
-
-    MAGMA_BLOCK, NETHER_WART_BLOCK, RED_NETHER_BRICKS, BONE_BLOCK,
-
-    GRASS_PATH, PURPUR_BLOCK, PURPUR_PILLAR, END_STONE_BRICKS, END_ROD,
-    CHORUS_PLANT, CHORUS_FLOWER, CHORUS_FRUIT, ELYTRA, SHIELD,
-
-    SLIME_BLOCK, COARSE_DIRT,
-    POLISHED_GRANITE, POLISHED_DIORITE, POLISHED_ANDESITE,
-    RED_SANDSTONE, SMOOTH_RED_SANDSTONE,
-    PRISMARINE, PRISMARINE_BRICKS, DARK_PRISMARINE, SEA_LANTERN,
-    IRON_TRAPDOOR, BARRIER,
-    RAW_RABBIT, COOKED_RABBIT, RABBIT_HIDE, RABBIT_FOOT,
-    PRISMARINE_SHARD, PRISMARINE_CRYSTALS,
-    OAK_SLAB, COBBLE_STAIRS, OAK_FENCE,
-    NETHERRACK, NETHER_QUARTZ_ORE, SOUL_SAND,
+    TALL_GRASS,
+    FLOWER_RED,
+    FLOWER_YELLOW,
+    MUSHROOM_RED,
+    MUSHROOM_BROWN,
+    ALLIUM,
+    AZURE_BLUET,
+    BLUE_ORCHID,
+    OXEYE_DAISY,
+    ORANGE_TULIP,
+    RED_TULIP,
+    WHITE_TULIP,
+    PINK_TULIP,
+    SUNFLOWER,
+    LILAC,
+    PEONY,
+    ROSE_BUSH,
+    RAW_FISH,
+    RAW_SALMON,
+    CLOWNFISH,
+    PUFFERFISH,
+    MAGMA_BLOCK,
+    NETHER_WART_BLOCK,
+    RED_NETHER_BRICKS,
+    BONE_BLOCK,
+    GRASS_PATH,
+    PURPUR_BLOCK,
+    PURPUR_PILLAR,
+    END_STONE_BRICKS,
+    END_ROD,
+    CHORUS_PLANT,
+    CHORUS_FLOWER,
+    CHORUS_FRUIT,
+    ELYTRA,
+    SHIELD,
+    SLIME_BLOCK,
+    COARSE_DIRT,
+    POLISHED_GRANITE,
+    POLISHED_DIORITE,
+    POLISHED_ANDESITE,
+    RED_SANDSTONE,
+    SMOOTH_RED_SANDSTONE,
+    PRISMARINE,
+    PRISMARINE_BRICKS,
+    DARK_PRISMARINE,
+    SEA_LANTERN,
+    IRON_TRAPDOOR,
+    BARRIER,
+    RAW_RABBIT,
+    COOKED_RABBIT,
+    RABBIT_HIDE,
+    RABBIT_FOOT,
+    PRISMARINE_SHARD,
+    PRISMARINE_CRYSTALS,
+    OAK_SLAB,
+    COBBLE_STAIRS,
+    OAK_FENCE,
+    NETHERRACK,
+    NETHER_QUARTZ_ORE,
+    SOUL_SAND,
     BREWING_STAND,
-    POTION_EMPTY, POTION_WATER, POTION_AWKWARD, POTION_MUNDANE, POTION_HEALING, POTION_HEALING_II,
-    ENCHANT_TABLE, ENCHANTED_BOOK,
-
-    MYCELIUM, END_STONE, NETHER_BRICKS, NETHER_BRICK,
+    POTION_EMPTY,
+    POTION_WATER,
+    POTION_AWKWARD,
+    POTION_MUNDANE,
+    POTION_HEALING,
+    POTION_HEALING_II,
+    ENCHANT_TABLE,
+    ENCHANTED_BOOK,
+    MYCELIUM,
+    END_STONE,
+    NETHER_BRICKS,
+    NETHER_BRICK,
     REDSTONE_LAMP,
-    CHISELED_STONE_BRICKS, CHISELED_SANDSTONE, CUT_SANDSTONE, SMOOTH_SANDSTONE,
-    MUSHROOM_RED_BLOCK, MUSHROOM_BROWN_BLOCK, MUSHROOM_STEM,
-    NETHER_WART, DRAGON_EGG, END_CRYSTAL,
-    EYE_OF_ENDER, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL,
-
-    SPAWN_EGG_BASE, SPAWN_EGG_BASE + 1, SPAWN_EGG_BASE + 2, SPAWN_EGG_BASE + 3,
-    SPAWN_EGG_BASE + 4, SPAWN_EGG_BASE + 5, SPAWN_EGG_BASE + 6, SPAWN_EGG_BASE + 7,
-    SPAWN_EGG_BASE + 8, SPAWN_EGG_BASE + 9, SPAWN_EGG_BASE + 10, SPAWN_EGG_BASE + 11,
-    SPAWN_EGG_BASE + 12, SPAWN_EGG_BASE + 13, SPAWN_EGG_BASE + 14, SPAWN_EGG_BASE + 15,
-
-    ANVIL, CHIPPED_ANVIL, DAMAGED_ANVIL, BEACON, COBBLE_WALL,
-    ENDER_CHEST, FLOWER_POT, ITEM_FRAME, TRIPWIRE_HOOK,
-    WITHER_SKELETON_SKULL, COMMAND_BLOCK,
-    EMERALD, NETHER_STAR, POTATO, BAKED_POTATO, CARROT, PUMPKIN_PIE,
-    GOLDEN_CARROT, JUNGLE_LOG, JUNGLE_LEAVES, JUNGLE_PLANKS, VINE, FERN,
-
-    SHULKER_BOX, SHULKER_SHELL, TOTEM_OF_UNDYING,
-    SPAWN_EGG_LLAMA, SPAWN_EGG_CLEAVER, SPAWN_EGG_EVOKER, SPAWN_EGG_VEX,
-    SPAWN_EGG_HUSK, SPAWN_EGG_STRAY,
+    CHISELED_STONE_BRICKS,
+    CHISELED_SANDSTONE,
+    CUT_SANDSTONE,
+    SMOOTH_SANDSTONE,
+    MUSHROOM_RED_BLOCK,
+    MUSHROOM_BROWN_BLOCK,
+    MUSHROOM_STEM,
+    NETHER_WART,
+    DRAGON_EGG,
+    END_CRYSTAL,
+    EYE_OF_ENDER,
+    BLAZE_ROD,
+    BLAZE_POWDER,
+    GOLDEN_APPLE,
+    SNOWBALL,
+    SPAWN_EGG_BASE,
+    SPAWN_EGG_BASE + 1,
+    SPAWN_EGG_BASE + 2,
+    SPAWN_EGG_BASE + 3,
+    SPAWN_EGG_BASE + 4,
+    SPAWN_EGG_BASE + 5,
+    SPAWN_EGG_BASE + 6,
+    SPAWN_EGG_BASE + 7,
+    SPAWN_EGG_BASE + 8,
+    SPAWN_EGG_BASE + 9,
+    SPAWN_EGG_BASE + 10,
+    SPAWN_EGG_BASE + 11,
+    SPAWN_EGG_BASE + 12,
+    SPAWN_EGG_BASE + 13,
+    SPAWN_EGG_BASE + 14,
+    SPAWN_EGG_BASE + 15,
+    ANVIL,
+    CHIPPED_ANVIL,
+    DAMAGED_ANVIL,
+    BEACON,
+    COBBLE_WALL,
+    ENDER_CHEST,
+    FLOWER_POT,
+    ITEM_FRAME,
+    TRIPWIRE_HOOK,
+    WITHER_SKELETON_SKULL,
+    COMMAND_BLOCK,
+    EMERALD,
+    NETHER_STAR,
+    POTATO,
+    BAKED_POTATO,
+    CARROT,
+    PUMPKIN_PIE,
+    GOLDEN_CARROT,
+    JUNGLE_LOG,
+    JUNGLE_LEAVES,
+    JUNGLE_PLANKS,
+    VINE,
+    FERN,
+    SHULKER_BOX,
+    SHULKER_SHELL,
+    TOTEM_OF_UNDYING,
+    SPAWN_EGG_LLAMA,
+    SPAWN_EGG_CLEAVER,
+    SPAWN_EGG_EVOKER,
+    SPAWN_EGG_VEX,
+    SPAWN_EGG_HUSK,
+    SPAWN_EGG_STRAY,
     LAVA,
-
-
     COAL,
-
-    SPAWN_EGG_BASE + 16, SPAWN_EGG_BASE + 17, SPAWN_EGG_BASE + 18, SPAWN_EGG_BASE + 19,
-
+    SPAWN_EGG_BASE + 16,
+    SPAWN_EGG_BASE + 17,
+    SPAWN_EGG_BASE + 18,
+    SPAWN_EGG_BASE + 19,
     COAL_BLOCK,
-    QUARTZ_BLOCK, CHISELED_QUARTZ, QUARTZ_PILLAR, NETHER_QUARTZ,
-    STAINED_TERRACOTTA_BASE, STAINED_TERRACOTTA_BASE + 1, STAINED_TERRACOTTA_BASE + 2,
-    STAINED_TERRACOTTA_BASE + 3, STAINED_TERRACOTTA_BASE + 4, STAINED_TERRACOTTA_BASE + 5,
-    STAINED_TERRACOTTA_BASE + 6, STAINED_TERRACOTTA_BASE + 7, STAINED_TERRACOTTA_BASE + 8,
-    STAINED_TERRACOTTA_BASE + 9, STAINED_TERRACOTTA_BASE + 10, STAINED_TERRACOTTA_BASE + 11,
-    STAINED_TERRACOTTA_BASE + 12, STAINED_TERRACOTTA_BASE + 13, STAINED_TERRACOTTA_BASE + 14,
+    QUARTZ_BLOCK,
+    CHISELED_QUARTZ,
+    QUARTZ_PILLAR,
+    NETHER_QUARTZ,
+    STAINED_TERRACOTTA_BASE,
+    STAINED_TERRACOTTA_BASE + 1,
+    STAINED_TERRACOTTA_BASE + 2,
+    STAINED_TERRACOTTA_BASE + 3,
+    STAINED_TERRACOTTA_BASE + 4,
+    STAINED_TERRACOTTA_BASE + 5,
+    STAINED_TERRACOTTA_BASE + 6,
+    STAINED_TERRACOTTA_BASE + 7,
+    STAINED_TERRACOTTA_BASE + 8,
+    STAINED_TERRACOTTA_BASE + 9,
+    STAINED_TERRACOTTA_BASE + 10,
+    STAINED_TERRACOTTA_BASE + 11,
+    STAINED_TERRACOTTA_BASE + 12,
+    STAINED_TERRACOTTA_BASE + 13,
+    STAINED_TERRACOTTA_BASE + 14,
     STAINED_TERRACOTTA_BASE + 15,
-    CARPET_WHITE, CARPET_RED, CARPET_YELLOW, CARPET_BLUE, CARPET_BLACK,
-    HAY_BALE, DAYLIGHT_SENSOR, TRAPPED_CHEST,
-    LIGHT_WEIGHTED_PLATE, HEAVY_WEIGHTED_PLATE, REDSTONE_BLOCK,
-    LEAD, SADDLE,
-
-    E3_SPAWN_EGG_BASE, E3_SPAWN_EGG_BASE + 1, E3_SPAWN_EGG_BASE + 2,
-
+    CARPET_WHITE,
+    CARPET_RED,
+    CARPET_YELLOW,
+    CARPET_BLUE,
+    CARPET_BLACK,
+    HAY_BALE,
+    DAYLIGHT_SENSOR,
+    TRAPPED_CHEST,
+    LIGHT_WEIGHTED_PLATE,
+    HEAVY_WEIGHTED_PLATE,
+    REDSTONE_BLOCK,
+    LEAD,
+    SADDLE,
+    E3_SPAWN_EGG_BASE,
+    E3_SPAWN_EGG_BASE + 1,
+    E3_SPAWN_EGG_BASE + 2,
     // ---- 1.12 (World of Color Update): concrete 16 + powder 16 +
     // glazed terracotta 16 + the parrot egg + the 16 dyes + 4 seeds +
     // cookie (the engine's single creative palette — vanilla's
     // "Materials merged with miscellaneous" tab-change is N/A) ----
-    CONCRETE_BASE, CONCRETE_BASE + 1, CONCRETE_BASE + 2, CONCRETE_BASE + 3,
-    CONCRETE_BASE + 4, CONCRETE_BASE + 5, CONCRETE_BASE + 6, CONCRETE_BASE + 7,
-    CONCRETE_BASE + 8, CONCRETE_BASE + 9, CONCRETE_BASE + 10, CONCRETE_BASE + 11,
-    CONCRETE_BASE + 12, CONCRETE_BASE + 13, CONCRETE_BASE + 14, CONCRETE_BASE + 15,
-    CONCRETE_POWDER_BASE, CONCRETE_POWDER_BASE + 1, CONCRETE_POWDER_BASE + 2,
-    CONCRETE_POWDER_BASE + 3, CONCRETE_POWDER_BASE + 4, CONCRETE_POWDER_BASE + 5,
-    CONCRETE_POWDER_BASE + 6, CONCRETE_POWDER_BASE + 7, CONCRETE_POWDER_BASE + 8,
-    CONCRETE_POWDER_BASE + 9, CONCRETE_POWDER_BASE + 10, CONCRETE_POWDER_BASE + 11,
-    CONCRETE_POWDER_BASE + 12, CONCRETE_POWDER_BASE + 13, CONCRETE_POWDER_BASE + 14,
+    CONCRETE_BASE,
+    CONCRETE_BASE + 1,
+    CONCRETE_BASE + 2,
+    CONCRETE_BASE + 3,
+    CONCRETE_BASE + 4,
+    CONCRETE_BASE + 5,
+    CONCRETE_BASE + 6,
+    CONCRETE_BASE + 7,
+    CONCRETE_BASE + 8,
+    CONCRETE_BASE + 9,
+    CONCRETE_BASE + 10,
+    CONCRETE_BASE + 11,
+    CONCRETE_BASE + 12,
+    CONCRETE_BASE + 13,
+    CONCRETE_BASE + 14,
+    CONCRETE_BASE + 15,
+    CONCRETE_POWDER_BASE,
+    CONCRETE_POWDER_BASE + 1,
+    CONCRETE_POWDER_BASE + 2,
+    CONCRETE_POWDER_BASE + 3,
+    CONCRETE_POWDER_BASE + 4,
+    CONCRETE_POWDER_BASE + 5,
+    CONCRETE_POWDER_BASE + 6,
+    CONCRETE_POWDER_BASE + 7,
+    CONCRETE_POWDER_BASE + 8,
+    CONCRETE_POWDER_BASE + 9,
+    CONCRETE_POWDER_BASE + 10,
+    CONCRETE_POWDER_BASE + 11,
+    CONCRETE_POWDER_BASE + 12,
+    CONCRETE_POWDER_BASE + 13,
+    CONCRETE_POWDER_BASE + 14,
     CONCRETE_POWDER_BASE + 15,
-    GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_BASE + 1, GLAZED_TERRACOTTA_BASE + 2,
-    GLAZED_TERRACOTTA_BASE + 3, GLAZED_TERRACOTTA_BASE + 4, GLAZED_TERRACOTTA_BASE + 5,
-    GLAZED_TERRACOTTA_BASE + 6, GLAZED_TERRACOTTA_BASE + 7, GLAZED_TERRACOTTA_BASE + 8,
-    GLAZED_TERRACOTTA_BASE + 9, GLAZED_TERRACOTTA_BASE + 10, GLAZED_TERRACOTTA_BASE + 11,
-    GLAZED_TERRACOTTA_BASE + 12, GLAZED_TERRACOTTA_BASE + 13, GLAZED_TERRACOTTA_BASE + 14,
+    GLAZED_TERRACOTTA_BASE,
+    GLAZED_TERRACOTTA_BASE + 1,
+    GLAZED_TERRACOTTA_BASE + 2,
+    GLAZED_TERRACOTTA_BASE + 3,
+    GLAZED_TERRACOTTA_BASE + 4,
+    GLAZED_TERRACOTTA_BASE + 5,
+    GLAZED_TERRACOTTA_BASE + 6,
+    GLAZED_TERRACOTTA_BASE + 7,
+    GLAZED_TERRACOTTA_BASE + 8,
+    GLAZED_TERRACOTTA_BASE + 9,
+    GLAZED_TERRACOTTA_BASE + 10,
+    GLAZED_TERRACOTTA_BASE + 11,
+    GLAZED_TERRACOTTA_BASE + 12,
+    GLAZED_TERRACOTTA_BASE + 13,
+    GLAZED_TERRACOTTA_BASE + 14,
     GLAZED_TERRACOTTA_BASE + 15,
     SPAWN_EGG_PARROT,
-    DYE_BASE, DYE_BASE + 1, DYE_BASE + 2, DYE_BASE + 3, DYE_BASE + 4,
-    DYE_BASE + 5, DYE_BASE + 6, DYE_BASE + 7, DYE_BASE + 8, DYE_BASE + 9,
-    DYE_BASE + 10, DYE_BASE + 11, DYE_BASE + 12, DYE_BASE + 13, DYE_BASE + 14,
+    DYE_BASE,
+    DYE_BASE + 1,
+    DYE_BASE + 2,
+    DYE_BASE + 3,
+    DYE_BASE + 4,
+    DYE_BASE + 5,
+    DYE_BASE + 6,
+    DYE_BASE + 7,
+    DYE_BASE + 8,
+    DYE_BASE + 9,
+    DYE_BASE + 10,
+    DYE_BASE + 11,
+    DYE_BASE + 12,
+    DYE_BASE + 13,
+    DYE_BASE + 14,
     DYE_BASE + 15,
-    WHEAT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS, BEETROOT_SEEDS,
+    WHEAT_SEEDS,
+    MELON_SEEDS,
+    PUMPKIN_SEEDS,
+    BEETROOT_SEEDS,
     COOKIE,
     // ---- 1.13 (Aquatic-era update): the V9 window — coral families 30 +
     // the sea blocks + the craft items + potions + 8 spawn eggs (the
     // picker-gap fix that rode along with the 1.14 window: the 1.13
     // rounds shipped the blocks but never the picker rows) ----
-    CORAL_BLOCK_BASE, CORAL_BLOCK_BASE + 1, CORAL_BLOCK_BASE + 2,
-    CORAL_BLOCK_BASE + 3, CORAL_BLOCK_BASE + 4,
-    DEAD_CORAL_BLOCK_BASE, DEAD_CORAL_BLOCK_BASE + 1, DEAD_CORAL_BLOCK_BASE + 2,
-    DEAD_CORAL_BLOCK_BASE + 3, DEAD_CORAL_BLOCK_BASE + 4,
-    CORAL_PLANT_BASE, CORAL_PLANT_BASE + 1, CORAL_PLANT_BASE + 2,
-    CORAL_PLANT_BASE + 3, CORAL_PLANT_BASE + 4,
-    DEAD_CORAL_PLANT_BASE, DEAD_CORAL_PLANT_BASE + 1, DEAD_CORAL_PLANT_BASE + 2,
-    DEAD_CORAL_PLANT_BASE + 3, DEAD_CORAL_PLANT_BASE + 4,
-    CORAL_FAN_BASE, CORAL_FAN_BASE + 1, CORAL_FAN_BASE + 2,
-    CORAL_FAN_BASE + 3, CORAL_FAN_BASE + 4,
-    DEAD_CORAL_FAN_BASE, DEAD_CORAL_FAN_BASE + 1, DEAD_CORAL_FAN_BASE + 2,
-    DEAD_CORAL_FAN_BASE + 3, DEAD_CORAL_FAN_BASE + 4,
-    SEA_PICKLE, BLUE_ICE, DRIED_KELP_BLOCK, KELP, SEAGRASS, CONDUIT, TURTLE_EGG,
-    HEART_OF_THE_SEA, NAUTILUS_SHELL, SCUTE, TRIDENT, PHANTOM_MEMBRANE,
-    DRIED_KELP, TURTLE_SHELL,
-    POTION_SLOW_FALLING, POTION_SLOW_FALLING_EXT,
-    POTION_TURTLE_MASTER, POTION_TURTLE_MASTER_II,
-    SPAWN_EGG_DROWNED, SPAWN_EGG_PHANTOM, SPAWN_EGG_DOLPHIN, SPAWN_EGG_COD,
-    SPAWN_EGG_SALMON, SPAWN_EGG_PUFFERFISH, SPAWN_EGG_TROPICAL_FISH,
+    CORAL_BLOCK_BASE,
+    CORAL_BLOCK_BASE + 1,
+    CORAL_BLOCK_BASE + 2,
+    CORAL_BLOCK_BASE + 3,
+    CORAL_BLOCK_BASE + 4,
+    DEAD_CORAL_BLOCK_BASE,
+    DEAD_CORAL_BLOCK_BASE + 1,
+    DEAD_CORAL_BLOCK_BASE + 2,
+    DEAD_CORAL_BLOCK_BASE + 3,
+    DEAD_CORAL_BLOCK_BASE + 4,
+    CORAL_PLANT_BASE,
+    CORAL_PLANT_BASE + 1,
+    CORAL_PLANT_BASE + 2,
+    CORAL_PLANT_BASE + 3,
+    CORAL_PLANT_BASE + 4,
+    DEAD_CORAL_PLANT_BASE,
+    DEAD_CORAL_PLANT_BASE + 1,
+    DEAD_CORAL_PLANT_BASE + 2,
+    DEAD_CORAL_PLANT_BASE + 3,
+    DEAD_CORAL_PLANT_BASE + 4,
+    CORAL_FAN_BASE,
+    CORAL_FAN_BASE + 1,
+    CORAL_FAN_BASE + 2,
+    CORAL_FAN_BASE + 3,
+    CORAL_FAN_BASE + 4,
+    DEAD_CORAL_FAN_BASE,
+    DEAD_CORAL_FAN_BASE + 1,
+    DEAD_CORAL_FAN_BASE + 2,
+    DEAD_CORAL_FAN_BASE + 3,
+    DEAD_CORAL_FAN_BASE + 4,
+    SEA_PICKLE,
+    BLUE_ICE,
+    DRIED_KELP_BLOCK,
+    KELP,
+    SEAGRASS,
+    CONDUIT,
+    TURTLE_EGG,
+    HEART_OF_THE_SEA,
+    NAUTILUS_SHELL,
+    SCUTE,
+    TRIDENT,
+    PHANTOM_MEMBRANE,
+    DRIED_KELP,
+    TURTLE_SHELL,
+    POTION_SLOW_FALLING,
+    POTION_SLOW_FALLING_EXT,
+    POTION_TURTLE_MASTER,
+    POTION_TURTLE_MASTER_II,
+    SPAWN_EGG_DROWNED,
+    SPAWN_EGG_PHANTOM,
+    SPAWN_EGG_DOLPHIN,
+    SPAWN_EGG_COD,
+    SPAWN_EGG_SALMON,
+    SPAWN_EGG_PUFFERFISH,
+    SPAWN_EGG_TROPICAL_FISH,
     SPAWN_EGG_TURTLE,
     // ---- 1.14 (Village & Pillage — nature half): the V10 window ----
-    BAMBOO, BAMBOO_SHOOT, SWEET_BERRY_BUSH, CAMPFIRE, BARREL,
-    SWEET_BERRIES, SPAWN_EGG_FOX, STICK, CHARCOAL,
+    BAMBOO,
+    BAMBOO_SHOOT,
+    SWEET_BERRY_BUSH,
+    CAMPFIRE,
+    BARREL,
+    SWEET_BERRIES,
+    SPAWN_EGG_FOX,
+    STICK,
+    CHARCOAL,
     // ---- 1.14 (part 2): the V11 window — the smelters + lantern ----
-    BLAST_FURNACE, SMOKER, LANTERN,
+    BLAST_FURNACE,
+    SMOKER,
+    LANTERN,
     // ---- 1.14 (part 3): the two new small flowers ----
-    CORNFLOWER, LILY_OF_THE_VALLEY,
+    CORNFLOWER,
+    LILY_OF_THE_VALLEY,
     // 1.15 (Buzzy Bees): the nest/hive/honey/honeycomb blocks (the
     // comb/bottle/shears/egg items are item-blocks, never placeable)
-    BEE_NEST, BEEHIVE, HONEY_BLOCK, HONEYCOMB_BLOCK,
+    BEE_NEST,
+    BEEHIVE,
+    HONEY_BLOCK,
+    HONEYCOMB_BLOCK,
     // ---- 1.16 (Nether Update, part 1 — the anchor family): the V13
     // window's 12 placeable blocks (the scrap/ingot material items
     // are item-blocks, never placeable — the standing convention;
     // soul fire is the engine's only fire block, so the picker is the
     // one manual placement path — the disclosed no-flint adaptation) ----
-    SOUL_SOIL, BASALT, BLACKSTONE, GILDED_BLACKSTONE, CRYING_OBSIDIAN,
-    RESPAWN_ANCHOR, TARGET, NETHER_GOLD_ORE, ANCIENT_DEBRIS,
-    NETHERITE_BLOCK, CHAIN, SOUL_FIRE,
+    SOUL_SOIL,
+    BASALT,
+    BLACKSTONE,
+    GILDED_BLACKSTONE,
+    CRYING_OBSIDIAN,
+    RESPAWN_ANCHOR,
+    TARGET,
+    NETHER_GOLD_ORE,
+    ANCIENT_DEBRIS,
+    NETHERITE_BLOCK,
+    CHAIN,
+    SOUL_FIRE,
     // ---- 1.16 (Nether Update, part 2 — the crimson/warped families):
     // the V14 window's 22 placeable blocks + the 3 spawn eggs (the
     // standing egg-picker convention since the E1 window) ----
-    CRIMSON_STEM, CRIMSON_HYPHAE, CRIMSON_PLANKS, CRIMSON_NYLIUM,
-    CRIMSON_FUNGUS, CRIMSON_ROOTS, WEEPING_VINES,
-    WARPED_STEM, WARPED_HYPHAE, WARPED_PLANKS, WARPED_NYLIUM,
-    WARPED_FUNGUS, WARPED_ROOTS, TWISTING_VINES, WARPED_WART_BLOCK,
-    SHROOMLIGHT, NETHER_SPROUTS,
-    POLISHED_BASALT, POLISHED_BLACKSTONE, POLISHED_BLACKSTONE_BRICKS,
-    SOUL_TORCH, SOUL_LANTERN,
-    SPAWN_EGG_STRIDER, SPAWN_EGG_PIGLIN, SPAWN_EGG_HOGLIN,
+    CRIMSON_STEM,
+    CRIMSON_HYPHAE,
+    CRIMSON_PLANKS,
+    CRIMSON_NYLIUM,
+    CRIMSON_FUNGUS,
+    CRIMSON_ROOTS,
+    WEEPING_VINES,
+    WARPED_STEM,
+    WARPED_HYPHAE,
+    WARPED_PLANKS,
+    WARPED_NYLIUM,
+    WARPED_FUNGUS,
+    WARPED_ROOTS,
+    TWISTING_VINES,
+    WARPED_WART_BLOCK,
+    SHROOMLIGHT,
+    NETHER_SPROUTS,
+    POLISHED_BASALT,
+    POLISHED_BLACKSTONE,
+    POLISHED_BLACKSTONE_BRICKS,
+    SOUL_TORCH,
+    SOUL_LANTERN,
+    SPAWN_EGG_STRIDER,
+    SPAWN_EGG_PIGLIN,
+    SPAWN_EGG_HOGLIN,
     // ---- the 1.0-1.16.5 completeness audit: the V15 items ----
-    STEAK, COOKED_PORKCHOP, COOKED_CHICKEN, COOKED_MUTTON, COOKED_COD, COOKED_SALMON,
-    APPLE, BOWL, MUSHROOM_STEW, RABBIT_STEW, BEETROOT, BEETROOT_SOUP, SUGAR, EGG,
+    STEAK,
+    COOKED_PORKCHOP,
+    COOKED_CHICKEN,
+    COOKED_MUTTON,
+    COOKED_COD,
+    COOKED_SALMON,
+    APPLE,
+    BOWL,
+    MUSHROOM_STEW,
+    RABBIT_STEW,
+    BEETROOT,
+    BEETROOT_SOUP,
+    SUGAR,
+    EGG,
     MELON_SLICE,
-    POISONOUS_POTATO, POPPED_CHORUS_FRUIT, GHAST_TEAR,
-    POTION_LEAPING, POTION_LEAPING_II, POTION_LEAPING_LONG,
-    POTION_REGEN, POTION_REGEN_II, POTION_REGEN_LONG,
-    SPAWN_EGG_GHAST, SPAWN_EGG_CAVE_SPIDER, SPAWN_EGG_SILVERFISH,
+    POISONOUS_POTATO,
+    POPPED_CHORUS_FRUIT,
+    GHAST_TEAR,
+    POTION_LEAPING,
+    POTION_LEAPING_II,
+    POTION_LEAPING_LONG,
+    POTION_REGEN,
+    POTION_REGEN_II,
+    POTION_REGEN_LONG,
+    SPAWN_EGG_GHAST,
+    SPAWN_EGG_CAVE_SPIDER,
+    SPAWN_EGG_SILVERFISH,
     // ---- backlog round (farming, 2026-09-09) ----
-    FARMLAND, WHEAT_CROP, CARROTS, POTATOES, BEETROOTS,
-    WHEAT, BREAD, HOE,
+    FARMLAND,
+    WHEAT_CROP,
+    CARROTS,
+    POTATOES,
+    BEETROOTS,
+    WHEAT,
+    BREAD,
+    HOE,
 ];
-
 
 // ---------------------------------------------------------------------------
 // Sub-round 2 (2026-09-15) — the vanilla 1.16.5 creative inventory tabs.
@@ -6726,8 +13028,16 @@ pub fn creative_tab(b: u16) -> CreativeTab {
 /// joined PICKER_BLOCKS — the Redstone tab's core (wire, torch, lever,
 /// repeater, comparator, piston, hopper, dispenser, dropper, observer).
 pub const CREATIVE_REDSTONE_EXTRA: [u16; 10] = [
-    REDSTONE_WIRE, REDSTONE_TORCH, LEVER, REPEATER, COMPARATOR,
-    PISTON, DISPENSER, DROPPER, OBSERVER, HOPPER,
+    REDSTONE_WIRE,
+    REDSTONE_TORCH,
+    LEVER,
+    REPEATER,
+    COMPARATOR,
+    PISTON,
+    DISPENSER,
+    DROPPER,
+    OBSERVER,
+    HOPPER,
 ];
 
 /// The tab's items in display order: PICKER_BLOCKS order (the engine's
@@ -6830,7 +13140,11 @@ mod creative_tab_tests {
         // every tab icon resolves to a live registry block
         for &t in CREATIVE_TABS.iter() {
             let icon = t.icon_block();
-            assert!(icon != AIR && (icon as usize) < BLOCK_COUNT, "{} icon", t.label());
+            assert!(
+                icon != AIR && (icon as usize) < BLOCK_COUNT,
+                "{} icon",
+                t.label()
+            );
         }
     }
 
@@ -6865,29 +13179,71 @@ mod creative_tab_tests {
         // the vanilla defense table: leather 1/3/2/1, golden 2/5/3/1,
         // iron 2/6/5/2, diamond 3/8/6/3
         assert_eq!(
-            (armor_points(LEATHER_CAP), armor_points(LEATHER_TUNIC), armor_points(LEATHER_PANTS), armor_points(LEATHER_BOOTS)),
+            (
+                armor_points(LEATHER_CAP),
+                armor_points(LEATHER_TUNIC),
+                armor_points(LEATHER_PANTS),
+                armor_points(LEATHER_BOOTS)
+            ),
             (1, 3, 2, 1)
         );
         assert_eq!(
-            (armor_points(GOLDEN_HELMET), armor_points(GOLDEN_CHESTPLATE), armor_points(GOLDEN_LEGGINGS), armor_points(GOLDEN_BOOTS)),
+            (
+                armor_points(GOLDEN_HELMET),
+                armor_points(GOLDEN_CHESTPLATE),
+                armor_points(GOLDEN_LEGGINGS),
+                armor_points(GOLDEN_BOOTS)
+            ),
             (2, 5, 3, 1)
         );
         assert_eq!(
-            (armor_points(IRON_HELMET), armor_points(IRON_CHESTPLATE), armor_points(IRON_LEGGINGS), armor_points(IRON_BOOTS)),
+            (
+                armor_points(IRON_HELMET),
+                armor_points(IRON_CHESTPLATE),
+                armor_points(IRON_LEGGINGS),
+                armor_points(IRON_BOOTS)
+            ),
             (2, 6, 5, 2)
         );
         assert_eq!(
-            (armor_points(DIAMOND_HELMET), armor_points(DIAMOND_CHESTPLATE), armor_points(DIAMOND_LEGGINGS), armor_points(DIAMOND_BOOTS)),
+            (
+                armor_points(DIAMOND_HELMET),
+                armor_points(DIAMOND_CHESTPLATE),
+                armor_points(DIAMOND_LEGGINGS),
+                armor_points(DIAMOND_BOOTS)
+            ),
             (3, 8, 6, 3)
         );
         // full sets: leather 7, golden 11, iron 15, diamond 20
         let set = |helmet: u16, chest: u16, legs: u16, boots: u16| {
             armor_points(helmet) + armor_points(chest) + armor_points(legs) + armor_points(boots)
         };
-        assert_eq!(set(LEATHER_CAP, LEATHER_TUNIC, LEATHER_PANTS, LEATHER_BOOTS), 7);
-        assert_eq!(set(GOLDEN_HELMET, GOLDEN_CHESTPLATE, GOLDEN_LEGGINGS, GOLDEN_BOOTS), 11);
-        assert_eq!(set(IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS), 15);
-        assert_eq!(set(DIAMOND_HELMET, DIAMOND_CHESTPLATE, DIAMOND_LEGGINGS, DIAMOND_BOOTS), 20);
+        assert_eq!(
+            set(LEATHER_CAP, LEATHER_TUNIC, LEATHER_PANTS, LEATHER_BOOTS),
+            7
+        );
+        assert_eq!(
+            set(
+                GOLDEN_HELMET,
+                GOLDEN_CHESTPLATE,
+                GOLDEN_LEGGINGS,
+                GOLDEN_BOOTS
+            ),
+            11
+        );
+        assert_eq!(
+            set(IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS),
+            15
+        );
+        assert_eq!(
+            set(
+                DIAMOND_HELMET,
+                DIAMOND_CHESTPLATE,
+                DIAMOND_LEGGINGS,
+                DIAMOND_BOOTS
+            ),
+            20
+        );
         // piece-kind order: helmet 0, chest 1, legs 2, boots 3
         assert_eq!(armor_piece(DIAMOND_HELMET), Some(0));
         assert_eq!(armor_piece(DIAMOND_CHESTPLATE), Some(1));
@@ -6922,7 +13278,9 @@ mod creative_tab_tests {
 }
 
 /// default hotbar palette
-pub const PALETTE: [u16; 9] = [GRASS, DIRT, STONE, COBBLE, PLANKS, OAK_LOG, LEAVES, GLOWSTONE, GLASS];
+pub const PALETTE: [u16; 9] = [
+    GRASS, DIRT, STONE, COBBLE, PLANKS, OAK_LOG, LEAVES, GLOWSTONE, GLASS,
+];
 
 #[cfg(test)]
 mod state_tests {
@@ -6975,7 +13333,10 @@ mod state_tests {
         assert_eq!(z[3], TILE_LOG_TOP);
         // every non-variant state mirrors its block def
         let g = state_tiles(GRASS);
-        assert_eq!(g, [TILE_GRASS_TOP, TILE_DIRT, TILE_GRASS_SIDE, TILE_GRASS_SIDE]);
+        assert_eq!(
+            g,
+            [TILE_GRASS_TOP, TILE_DIRT, TILE_GRASS_SIDE, TILE_GRASS_SIDE]
+        );
     }
 
     #[test]
@@ -7024,7 +13385,9 @@ mod state_tests {
             assert_eq!(state_block(WART_STATE_BASE + a), NETHER_WART);
             assert_eq!(wart_age(WART_STATE_BASE + a), a);
             let t = state_tiles(WART_STATE_BASE + a);
-            assert!(t.iter().all(|&x| (TILE_NETHER_WART_0..=TILE_NETHER_WART_3).contains(&x)));
+            assert!(t
+                .iter()
+                .all(|&x| (TILE_NETHER_WART_0..=TILE_NETHER_WART_3).contains(&x)));
         }
         assert_eq!(default_state(NETHER_WART), WART_STATE_BASE);
         // frame-with-eye folds to the frame
@@ -7033,9 +13396,20 @@ mod state_tests {
         assert_eq!(state_block(SPAWNER_BLAZE), SPAWNER);
         // every new world block's default state folds back to it
         for b in [
-            MYCELIUM, END_STONE, NETHER_BRICKS, REDSTONE_LAMP, CHISELED_STONE_BRICKS,
-            CHISELED_SANDSTONE, CUT_SANDSTONE, SMOOTH_SANDSTONE, MUSHROOM_RED_BLOCK,
-            MUSHROOM_BROWN_BLOCK, MUSHROOM_STEM, NETHER_WART, DRAGON_EGG, END_PORTAL,
+            MYCELIUM,
+            END_STONE,
+            NETHER_BRICKS,
+            REDSTONE_LAMP,
+            CHISELED_STONE_BRICKS,
+            CHISELED_SANDSTONE,
+            CUT_SANDSTONE,
+            SMOOTH_SANDSTONE,
+            MUSHROOM_RED_BLOCK,
+            MUSHROOM_BROWN_BLOCK,
+            MUSHROOM_STEM,
+            NETHER_WART,
+            DRAGON_EGG,
+            END_PORTAL,
         ] {
             assert_eq!(
                 state_block(default_state(b)),
@@ -7045,12 +13419,25 @@ mod state_tests {
             );
         }
         // item states (≥ 256, never world-stored) fold back to their items
-        for b in [END_CRYSTAL, EYE_OF_ENDER, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL, NETHER_BRICK, SPAWN_EGG_BASE, SPAWN_EGG_MAX] {
+        for b in [
+            END_CRYSTAL,
+            EYE_OF_ENDER,
+            BLAZE_ROD,
+            BLAZE_POWDER,
+            GOLDEN_APPLE,
+            SNOWBALL,
+            NETHER_BRICK,
+            SPAWN_EGG_BASE,
+            SPAWN_EGG_MAX,
+        ] {
             let s = item_block_state(b).unwrap();
             assert!(s >= 256, "item states must live above the u8 window");
             assert_eq!(state_block(s), b);
             assert_eq!(default_state(b), s);
-            assert!(!is_model_state(s), "item state {s} must not hit the model path");
+            assert!(
+                !is_model_state(s),
+                "item state {s} must not hit the model path"
+            );
         }
         // the end portal emits full block light through its stored state
         assert_eq!(state_emissive(END_PORTAL_STATE), 15);
@@ -7059,7 +13446,9 @@ mod state_tests {
         // the full 236..=255 window is allocated — no spares, no overlaps
         // with the legacy ranges (this catches the MYCELIUM_STATE=140 / 140 =
         // ROTTEN_FLESH_STATE class of collision for good)
-        let legacy_top = FERMENTED_EYE_STATE.max(SPAWNER_STATE_END).max(END_PORTAL_FRAME_STATE);
+        let legacy_top = FERMENTED_EYE_STATE
+            .max(SPAWNER_STATE_END)
+            .max(END_PORTAL_FRAME_STATE);
         assert!(legacy_top < 236, "legacy ranges must stay below 236");
         for b in [MYCELIUM, END_STONE, NETHER_WART, DRAGON_EGG, END_PORTAL] {
             assert!(default_state(b) >= 236);
@@ -7076,7 +13465,10 @@ mod state_tests {
             assert_eq!(egg_mob(b), Some(i));
             assert!(is_item_block(b), "egg {b} must be an item block");
             let t = def(b).tiles[0];
-            assert!((TILE_EGG_BASE..=TILE_EGG_MAX).contains(&t), "egg {b} tile {t}");
+            assert!(
+                (TILE_EGG_BASE..=TILE_EGG_MAX).contains(&t),
+                "egg {b} tile {t}"
+            );
         }
         assert_eq!(egg_mob(SPAWN_EGG_BASE - 1), None);
         assert!(!is_spawn_egg(BLAZE_ROD));
@@ -7087,10 +13479,24 @@ mod state_tests {
     /// New item-blocks are recognized; placeables are not.
     #[test]
     fn phase_e1_item_blocks() {
-        for b in [END_CRYSTAL, EYE_OF_ENDER, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL, NETHER_BRICK] {
+        for b in [
+            END_CRYSTAL,
+            EYE_OF_ENDER,
+            BLAZE_ROD,
+            BLAZE_POWDER,
+            GOLDEN_APPLE,
+            SNOWBALL,
+            NETHER_BRICK,
+        ] {
             assert!(is_item_block(b), "{b} must be an item block");
         }
-        for b in [MYCELIUM, END_STONE, NETHER_BRICKS, REDSTONE_LAMP, DRAGON_EGG] {
+        for b in [
+            MYCELIUM,
+            END_STONE,
+            NETHER_BRICKS,
+            REDSTONE_LAMP,
+            DRAGON_EGG,
+        ] {
             assert!(!is_item_block(b), "{b} must be placeable");
         }
     }
@@ -7101,7 +13507,13 @@ mod state_tests {
         for &b in PICKER_BLOCKS.iter() {
             assert!((b as usize) < BLOCK_COUNT, "picker id {b} out of range");
         }
-        for want in [MYCELIUM, END_STONE, REDSTONE_LAMP, SPAWN_EGG_BASE, SPAWN_EGG_BASE + 15] {
+        for want in [
+            MYCELIUM,
+            END_STONE,
+            REDSTONE_LAMP,
+            SPAWN_EGG_BASE,
+            SPAWN_EGG_BASE + 15,
+        ] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
         }
         // [merge scroll] the grid is a fixed 11-row window (514px) that
@@ -7136,8 +13548,14 @@ mod state_tests {
     #[test]
     fn prop_states_roundtrip() {
         // slab: half=bottom at base, half=top next
-        assert_eq!(prop_state_decode(63), Some((OAK_SLAB, vec![("half", "bottom")])));
-        assert_eq!(prop_state_decode(64), Some((OAK_SLAB, vec![("half", "top")])));
+        assert_eq!(
+            prop_state_decode(63),
+            Some((OAK_SLAB, vec![("half", "bottom")]))
+        );
+        assert_eq!(
+            prop_state_decode(64),
+            Some((OAK_SLAB, vec![("half", "top")]))
+        );
         assert_eq!(prop_state_encode(OAK_SLAB, &[("half", "top")]), Some(64));
         assert_eq!(
             prop_state_encode(OAK_SLAB, &[]),
@@ -7164,11 +13582,27 @@ mod state_tests {
         // fence: east×north×south×west, west fastest
         assert_eq!(
             prop_state_decode(73),
-            Some((OAK_FENCE, vec![("east", "false"), ("north", "false"), ("south", "false"), ("west", "false")]))
+            Some((
+                OAK_FENCE,
+                vec![
+                    ("east", "false"),
+                    ("north", "false"),
+                    ("south", "false"),
+                    ("west", "false")
+                ]
+            ))
         );
         assert_eq!(
             prop_state_decode(88),
-            Some((OAK_FENCE, vec![("east", "true"), ("north", "true"), ("south", "true"), ("west", "true")]))
+            Some((
+                OAK_FENCE,
+                vec![
+                    ("east", "true"),
+                    ("north", "true"),
+                    ("south", "true"),
+                    ("west", "true")
+                ]
+            ))
         );
         assert_eq!(
             prop_state_encode(OAK_FENCE, &[("north", "true")]),
@@ -7206,7 +13640,10 @@ mod state_tests {
             }
             // nether blocks (§28): full-cube greedy-meshed, dedicated states
             if matches!(s, NETHERRACK_STATE | QUARTZ_ORE_STATE | SOUL_SAND_STATE) {
-                assert!(!is_model_state(s), "nether state {s} never routes to models");
+                assert!(
+                    !is_model_state(s),
+                    "nether state {s} never routes to models"
+                );
                 assert!(s > FURNACE_LIT, "nether states live above the sim range");
                 continue;
             }
@@ -7223,8 +13660,14 @@ mod state_tests {
                     | ENCHANT_TABLE_STATE
                     | ENCHANTED_BOOK_STATE
             ) {
-                assert!(!is_model_state(s), "brewing/enchant state {s} never routes to models");
-                assert!(s > SOUL_SAND_STATE, "brewing states live above the sim range");
+                assert!(
+                    !is_model_state(s),
+                    "brewing/enchant state {s} never routes to models"
+                );
+                assert!(
+                    s > SOUL_SAND_STATE,
+                    "brewing states live above the sim range"
+                );
                 // every dedicated state folds back to its own block id
                 // (BREWING_STAND_STATE..ENCHANTED_BOOK_STATE == blocks 67..75)
                 assert_eq!(state_block(s), s - BREWING_STAND_STATE + BREWING_STAND);
@@ -7286,7 +13729,10 @@ mod state_tests {
                 || is_r13_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
-                assert!(!is_model_state(s), "component/item state {s} never routes to models");
+                assert!(
+                    !is_model_state(s),
+                    "component/item state {s} never routes to models"
+                );
                 // identity: the state folds to the block whose def table
                 // lists it (verified per-block in the dedicated ranges'
                 // own tests)
@@ -7379,7 +13825,10 @@ mod state_tests {
                 // its parent; the defaults roundtrip (smelters UNLIT,
                 // lantern SITTING, nugget item state)
                 if is_v11_state(s) {
-                    assert_eq!(state_block(s), V11_STATE_TO_BLOCK[(s - V11_STATE_BASE) as usize]);
+                    assert_eq!(
+                        state_block(s),
+                        V11_STATE_TO_BLOCK[(s - V11_STATE_BASE) as usize]
+                    );
                     if let Some(db) = v11_state(b) {
                         assert_eq!(default_state(b), db, "v11 default for {b}");
                     }
@@ -7389,7 +13838,10 @@ mod state_tests {
                 // (level 0 default roundtrip); the identity + item
                 // states 1:1
                 if is_v12_state(s) {
-                    assert_eq!(state_block(s), V12_STATE_TO_BLOCK[(s - V12_STATE_BASE) as usize]);
+                    assert_eq!(
+                        state_block(s),
+                        V12_STATE_TO_BLOCK[(s - V12_STATE_BASE) as usize]
+                    );
                     if s < V12_STATE_BASE + 12 {
                         let want = hive_state(state_block(s), honey_level(s));
                         assert_eq!(s, want, "hive state {s} re-encodes");
@@ -7402,7 +13854,10 @@ mod state_tests {
                 // re-encode; the defaults roundtrip (charge 0, power 0,
                 // chain SITTING, identities + items 1:1)
                 if is_v13_state(s) {
-                    assert_eq!(state_block(s), V13_STATE_TO_BLOCK[(s - V13_STATE_BASE) as usize]);
+                    assert_eq!(
+                        state_block(s),
+                        V13_STATE_TO_BLOCK[(s - V13_STATE_BASE) as usize]
+                    );
                     if s < V13_STATE_BASE + 5 {
                         let want = anchor_state(anchor_charge(s));
                         assert_eq!(s, want, "anchor state {s} re-encodes");
@@ -7418,7 +13873,10 @@ mod state_tests {
                 // 3 egg rows); the defaults roundtrip (lantern SITTING,
                 // the rest 1:1)
                 if is_v14_state(s) {
-                    assert_eq!(state_block(s), V14_STATE_TO_BLOCK[(s - V14_STATE_BASE) as usize]);
+                    assert_eq!(
+                        state_block(s),
+                        V14_STATE_TO_BLOCK[(s - V14_STATE_BASE) as usize]
+                    );
                     if let Some(db) = v14_state(b) {
                         assert_eq!(default_state(b), db, "v14 default for {b}");
                     }
@@ -7427,7 +13885,10 @@ mod state_tests {
                 // the two spawner states folding to the Monster
                 // Spawner block; the defaults roundtrip 1:1
                 if is_v15_state(s) {
-                    assert_eq!(state_block(s), V15_STATE_TO_BLOCK[(s - V15_STATE_BASE) as usize]);
+                    assert_eq!(
+                        state_block(s),
+                        V15_STATE_TO_BLOCK[(s - V15_STATE_BASE) as usize]
+                    );
                     if let Some(db) = v15_state(b) {
                         assert_eq!(default_state(b), db, "v15 default for {b}");
                     }
@@ -7435,7 +13896,10 @@ mod state_tests {
                 // Sub-round 3 V17: the 16 armor identity states fold 1:1
                 // and default_state inverts the fold exactly
                 if is_v17_state(s) {
-                    assert_eq!(state_block(s), V17_STATE_TO_BLOCK[(s - V17_STATE_BASE) as usize]);
+                    assert_eq!(
+                        state_block(s),
+                        V17_STATE_TO_BLOCK[(s - V17_STATE_BASE) as usize]
+                    );
                     assert_eq!(default_state(b), s, "v17 state {s} roundtrip");
                 }
                 // Round 13: the station identity states (BOOK/GRINDSTONE)
@@ -7444,7 +13908,10 @@ mod state_tests {
                 // interrupted round-13 commit shipped these states without
                 // the decode-side window, so prop_states_roundtrip panicked)
                 if is_r13_state(s) {
-                    assert_eq!(state_block(s), R13_STATE_TO_BLOCK[(s - R13_STATE_BASE) as usize]);
+                    assert_eq!(
+                        state_block(s),
+                        R13_STATE_TO_BLOCK[(s - R13_STATE_BASE) as usize]
+                    );
                     assert_eq!(default_state(b), s, "r13 state {s} roundtrip");
                 }
                 continue;
@@ -7491,7 +13958,10 @@ mod state_tests {
     #[test]
     fn state_descriptions_vanilla_style() {
         assert_eq!(state_description(64), "Oak Slab[half=top]");
-        assert_eq!(state_description(65), "Cobblestone Stairs[facing=north,half=bottom]");
+        assert_eq!(
+            state_description(65),
+            "Cobblestone Stairs[facing=north,half=bottom]"
+        );
         assert_eq!(state_description(OAK_LOG_X), "Oak Log[axis=x]");
         assert_eq!(state_description(STONE), "Stone");
     }
@@ -7517,8 +13987,16 @@ mod state_tests {
             );
         }
         // the previously-colliding placements, pinned:
-        assert_eq!(default_state(OAK_SLAB), 63, "slab → half=bottom model state");
-        assert_eq!(default_state(COBBLE_STAIRS), 65, "stairs → facing=north, half=bottom");
+        assert_eq!(
+            default_state(OAK_SLAB),
+            63,
+            "slab → half=bottom model state"
+        );
+        assert_eq!(
+            default_state(COBBLE_STAIRS),
+            65,
+            "stairs → facing=north, half=bottom"
+        );
         assert_eq!(default_state(OAK_FENCE), 73, "fence → no connections");
         assert_eq!(default_state(FURNACE), FURNACE_STATE);
         assert_eq!(default_state(NETHERRACK), NETHERRACK_STATE);
@@ -7579,9 +14057,15 @@ mod state_tests {
             assert_eq!(stained_terracotta_color(s), c as u16);
         }
         // 5 carpets (the engine wool palette)
-        for (i, b) in [CARPET_WHITE, CARPET_RED, CARPET_YELLOW, CARPET_BLUE, CARPET_BLACK]
-            .iter()
-            .enumerate()
+        for (i, b) in [
+            CARPET_WHITE,
+            CARPET_RED,
+            CARPET_YELLOW,
+            CARPET_BLUE,
+            CARPET_BLACK,
+        ]
+        .iter()
+        .enumerate()
         {
             let s = CARPET_STATE_BASE + i as u16;
             assert_eq!(default_state(*b), s, "carpet {b}");
@@ -7692,15 +14176,18 @@ mod auditfix_tests {
         ] {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
-            assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
+            assert!(
+                !is_model_state(s),
+                "V6 states are cube/cross defs, not model states"
+            );
         }
         assert_eq!(V6_COUNT, 6);
         assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
         assert_eq!(STATE_COUNT, 863); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
-        // solidity classes: log/planks solid-opaque (hardness family 2
-        // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
-        // cross plants (w/Vines: "climbable non-solid"; w/Fern:
-        // "non-solid plant blocks"), golden carrot an item-block
+                                      // solidity classes: log/planks solid-opaque (hardness family 2
+                                      // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
+                                      // cross plants (w/Vines: "climbable non-solid"; w/Fern:
+                                      // "non-solid plant blocks"), golden carrot an item-block
         assert!(is_solid(JUNGLE_LOG) && is_opaque(JUNGLE_LOG));
         assert!(is_solid(JUNGLE_PLANKS) && is_opaque(JUNGLE_PLANKS));
         assert!(is_solid(JUNGLE_LEAVES) && !is_opaque(JUNGLE_LEAVES));
@@ -7709,9 +14196,18 @@ mod auditfix_tests {
         assert!(is_item_block(GOLDEN_CARROT) && is_cross(GOLDEN_CARROT));
         // every new tile is within the atlas guard (the Phase-4
         // blank-tile regression)
-        const _: () = assert!(TILE_GOLDEN_CARROT <= TILE_MAX && TILE_VINE <= TILE_MAX && TILE_FERN <= TILE_MAX);
+        const _: () = assert!(
+            TILE_GOLDEN_CARROT <= TILE_MAX && TILE_VINE <= TILE_MAX && TILE_FERN <= TILE_MAX
+        );
         // the picker carries the family
-        for b in [GOLDEN_CARROT, JUNGLE_LOG, JUNGLE_LEAVES, JUNGLE_PLANKS, VINE, FERN] {
+        for b in [
+            GOLDEN_CARROT,
+            JUNGLE_LOG,
+            JUNGLE_LEAVES,
+            JUNGLE_PLANKS,
+            VINE,
+            FERN,
+        ] {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
     }
@@ -7747,7 +14243,7 @@ mod v111_tests {
         }
         assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
         assert_eq!(STATE_COUNT, 863); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
-        // mansion spawner states fold to SPAWNER + decode their kinds
+                                      // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_CLEAVER), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
         assert_eq!(spawner_mob(SPAWNER_CLEAVER), 5);
@@ -7755,7 +14251,11 @@ mod v111_tests {
         // THE LATENT-BUG FIX: the fortress spawner states decode to their
         // kinds (they previously fell through to the zombie code!)
         assert_eq!(spawner_mob(SPAWNER_BLAZE), 3, "fortress blaze decodes");
-        assert_eq!(spawner_mob(SPAWNER_WITHER_SKELETON), 4, "fortress wither-skeleton decodes");
+        assert_eq!(
+            spawner_mob(SPAWNER_WITHER_SKELETON),
+            4,
+            "fortress wither-skeleton decodes"
+        );
         // eggs decode to the 1.11 kinds (new five + re-added two)
         assert_eq!(egg_mob(SPAWN_EGG_LLAMA), Some(23));
         assert_eq!(egg_mob(SPAWN_EGG_CLEAVER), Some(24));
@@ -7768,24 +14268,45 @@ mod v111_tests {
         assert_eq!(egg_mob(SPAWN_EGG_BASE + 5), Some(5));
         // all six V7 eggs are usable eggs (the use-path gate)
         for b in [
-            SPAWN_EGG_LLAMA, SPAWN_EGG_CLEAVER, SPAWN_EGG_EVOKER,
-            SPAWN_EGG_VEX, SPAWN_EGG_HUSK, SPAWN_EGG_STRAY,
+            SPAWN_EGG_LLAMA,
+            SPAWN_EGG_CLEAVER,
+            SPAWN_EGG_EVOKER,
+            SPAWN_EGG_VEX,
+            SPAWN_EGG_HUSK,
+            SPAWN_EGG_STRAY,
         ] {
             assert!(is_spawn_egg(b), "egg {b} must pass the use gate");
         }
         // item-blocks + picker
         assert!(is_item_block(SHULKER_SHELL));
         assert!(is_item_block(TOTEM_OF_UNDYING));
-        for b in [SHULKER_BOX, SHULKER_SHELL, TOTEM_OF_UNDYING,
-                  SPAWN_EGG_LLAMA, SPAWN_EGG_CLEAVER, SPAWN_EGG_EVOKER, SPAWN_EGG_VEX,
-                  SPAWN_EGG_HUSK, SPAWN_EGG_STRAY] {
+        for b in [
+            SHULKER_BOX,
+            SHULKER_SHELL,
+            TOTEM_OF_UNDYING,
+            SPAWN_EGG_LLAMA,
+            SPAWN_EGG_CLEAVER,
+            SPAWN_EGG_EVOKER,
+            SPAWN_EGG_VEX,
+            SPAWN_EGG_HUSK,
+            SPAWN_EGG_STRAY,
+        ] {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
         // egg items render the EGG tiles (the E1/E2/E3 convention), not
         // the mob billboard sprites
-        assert_eq!(BLOCK_TABLE[SPAWN_EGG_LLAMA as usize].tiles[0], TILE_V7_EGG_BASE);
-        assert_eq!(BLOCK_TABLE[SPAWN_EGG_STRAY as usize].tiles[0], TILE_V7_EGG_BASE + 5);
-        const _: () = assert!(TILE_V7_EGG_END <= TILE_MAX, "egg tiles within the atlas guard");
+        assert_eq!(
+            BLOCK_TABLE[SPAWN_EGG_LLAMA as usize].tiles[0],
+            TILE_V7_EGG_BASE
+        );
+        assert_eq!(
+            BLOCK_TABLE[SPAWN_EGG_STRAY as usize].tiles[0],
+            TILE_V7_EGG_BASE + 5
+        );
+        const _: () = assert!(
+            TILE_V7_EGG_END <= TILE_MAX,
+            "egg tiles within the atlas guard"
+        );
         // shulker box is a solid placeable container
         assert!(is_solid(SHULKER_BOX) && is_opaque(SHULKER_BOX));
     }
@@ -7917,16 +14438,38 @@ mod v112_tests {
         }
         // every 1.12 id is in the creative picker
         for b in [
-            CONCRETE_BASE, CONCRETE_END, CONCRETE_POWDER_BASE, CONCRETE_POWDER_END,
-            GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_END, SPAWN_EGG_PARROT,
-            DYE_BASE, DYE_END, WHEAT_SEEDS, BEETROOT_SEEDS, COOKIE,
+            CONCRETE_BASE,
+            CONCRETE_END,
+            CONCRETE_POWDER_BASE,
+            CONCRETE_POWDER_END,
+            GLAZED_TERRACOTTA_BASE,
+            GLAZED_TERRACOTTA_END,
+            SPAWN_EGG_PARROT,
+            DYE_BASE,
+            DYE_END,
+            WHEAT_SEEDS,
+            BEETROOT_SEEDS,
+            COOKIE,
         ] {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
-        const _: () = assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
+        const _: () = assert!(
+            TILE_MAX >= TILE_ILLUSIONER,
+            "1.12 tiles within the atlas guard"
+        );
         assert_eq!(PICKER_BLOCKS.len(), 467);
         // the V9 + V10 windows are all present (the picker-gap fix)
-        for want in [SEA_PICKLE, CONDUIT, SPAWN_EGG_TURTLE, BAMBOO, CAMPFIRE, BARREL, SPAWN_EGG_FOX, STICK, CHARCOAL] {
+        for want in [
+            SEA_PICKLE,
+            CONDUIT,
+            SPAWN_EGG_TURTLE,
+            BAMBOO,
+            CAMPFIRE,
+            BARREL,
+            SPAWN_EGG_FOX,
+            STICK,
+            CHARCOAL,
+        ] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
         }
     }
@@ -7963,7 +14506,11 @@ mod v114_tests {
             let s = berry_bush_state(age);
             assert_eq!(berry_bush_age(s), age, "age {age} roundtrip");
             assert_eq!(state_block(s), SWEET_BERRY_BUSH, "bush state {s} folds");
-            assert_eq!(state_tiles(s)[0], TILE_BERRY_BUSH_BASE + age as u16, "per-age art");
+            assert_eq!(
+                state_tiles(s)[0],
+                TILE_BERRY_BUSH_BASE + age as u16,
+                "per-age art"
+            );
         }
         assert_eq!(default_state(SWEET_BERRY_BUSH), berry_bush_state(0));
         // clamped encode
@@ -8026,9 +14573,15 @@ mod v114_tests {
             state_description(berry_bush_state(2)),
             "Sweet Berry Bush[age=2]"
         );
-        assert_eq!(state_description(campfire_state(false)), "Campfire[lit=false]");
+        assert_eq!(
+            state_description(campfire_state(false)),
+            "Campfire[lit=false]"
+        );
         // tiles within the atlas guard (the Phase-4 blank-tile regression)
-        const _: () = assert!(TILE_MAX >= TILE_CHARCOAL, "1.14 tiles within the atlas guard");
+        const _: () = assert!(
+            TILE_MAX >= TILE_CHARCOAL,
+            "1.14 tiles within the atlas guard"
+        );
         assert_eq!(TILE_BERRY_BUSH_BASE + 3, 624);
         assert_eq!(TILE_MOB_FOX, 631);
     }
@@ -8070,26 +14623,53 @@ mod v114_tests {
         assert_eq!(state_emissive(V11_STATE_BASE + 5), 15, "hanging lantern");
         assert_eq!(emissive(LANTERN), 15, "lantern block row");
         // the F3 targeted-block property lines
-        assert_eq!(state_description(V11_STATE_BASE + 1), "Blast Furnace[lit=true]");
-        assert_eq!(state_description(V11_STATE_BASE), "Blast Furnace[lit=false]");
+        assert_eq!(
+            state_description(V11_STATE_BASE + 1),
+            "Blast Furnace[lit=true]"
+        );
+        assert_eq!(
+            state_description(V11_STATE_BASE),
+            "Blast Furnace[lit=false]"
+        );
         assert_eq!(state_description(V11_STATE_BASE + 3), "Smoker[lit=true]");
-        assert_eq!(state_description(V11_STATE_BASE + 5), "Lantern[hanging=true]");
+        assert_eq!(
+            state_description(V11_STATE_BASE + 5),
+            "Lantern[hanging=true]"
+        );
         // the flowers carry no properties — plain names in the F3 line
         assert_eq!(state_description(V11_STATE_BASE + 7), "Cornflower");
         assert_eq!(state_description(V11_STATE_BASE + 8), "Lily of the Valley");
-        assert_eq!(state_description(V11_STATE_BASE + 4), "Lantern[hanging=false]");
+        assert_eq!(
+            state_description(V11_STATE_BASE + 4),
+            "Lantern[hanging=false]"
+        );
         // the window is in the picker; the nugget is an item-block;
         // the flowers are placeable picker blocks (not items)
-        for want in [BLAST_FURNACE, SMOKER, LANTERN, CORNFLOWER, LILY_OF_THE_VALLEY] {
+        for want in [
+            BLAST_FURNACE,
+            SMOKER,
+            LANTERN,
+            CORNFLOWER,
+            LILY_OF_THE_VALLEY,
+        ] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
         }
-        assert!(!PICKER_BLOCKS.contains(&IRON_NUGGET), "the nugget is an item, not a picker block");
+        assert!(
+            !PICKER_BLOCKS.contains(&IRON_NUGGET),
+            "the nugget is an item, not a picker block"
+        );
         assert!(is_item_block(IRON_NUGGET), "nugget is an item-block");
         assert!(!is_item_block(CORNFLOWER), "cornflower is placeable");
-        assert!(!is_item_block(LILY_OF_THE_VALLEY), "lily of the valley is placeable");
+        assert!(
+            !is_item_block(LILY_OF_THE_VALLEY),
+            "lily of the valley is placeable"
+        );
         // tiles within the atlas guard
         const _: () = assert!(TILE_MAX >= TILE_IRON_NUGGET);
-        const _: () = assert!(TILE_MAX >= TILE_LILY_OF_THE_VALLEY, "flower tiles within the atlas guard");
+        const _: () = assert!(
+            TILE_MAX >= TILE_LILY_OF_THE_VALLEY,
+            "flower tiles within the atlas guard"
+        );
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
         assert_eq!(BLOCK_COUNT, 533);
@@ -8142,8 +14722,14 @@ mod v115_tests {
         assert!(!hive_full(hive_state(BEE_NEST, 4)));
         assert!(!hive_full(V12_STATE_BASE + 12), "honey block is not a hive");
         // the F3 targeted-block property lines
-        assert_eq!(state_description(hive_state(BEE_NEST, 3)), "Bee Nest[honey_level=3]");
-        assert_eq!(state_description(hive_state(BEEHIVE, 5)), "Beehive[honey_level=5]");
+        assert_eq!(
+            state_description(hive_state(BEE_NEST, 3)),
+            "Bee Nest[honey_level=3]"
+        );
+        assert_eq!(
+            state_description(hive_state(BEEHIVE, 5)),
+            "Beehive[honey_level=5]"
+        );
         // solidity classes: nest/hive/honeycomb-block solid-opaque;
         // honey solid but translucent (the JE partial row); the four
         // items are cross-sprited item-blocks
@@ -8163,7 +14749,10 @@ mod v115_tests {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
         }
         for no in [HONEYCOMB, HONEY_BOTTLE, SHEARS, SPAWN_EGG_BEE] {
-            assert!(!PICKER_BLOCKS.contains(&no), "item {no} is not a picker block");
+            assert!(
+                !PICKER_BLOCKS.contains(&no),
+                "item {no} is not a picker block"
+            );
         }
         // names (the F3 plain-name lines + the item hotbar)
         assert_eq!(name(BEE_NEST), "Bee Nest");
@@ -8174,8 +14763,14 @@ mod v115_tests {
         assert_eq!(name(HONEY_BOTTLE), "Honey Bottle");
         assert_eq!(name(SHEARS), "Shears");
         // tiles within the atlas guard
-        const _: () = assert!(TILE_MAX >= TILE_MOB_BEE, "bee sprite within the atlas guard");
-        const _: () = assert!(TILE_MAX >= TILE_BEEHIVE_FRONT_HONEY, "honey front within the atlas guard");
+        const _: () = assert!(
+            TILE_MAX >= TILE_MOB_BEE,
+            "bee sprite within the atlas guard"
+        );
+        const _: () = assert!(
+            TILE_MAX >= TILE_BEEHIVE_FRONT_HONEY,
+            "honey front within the atlas guard"
+        );
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
         assert_eq!(BLOCK_COUNT, 533);
@@ -8253,9 +14848,15 @@ mod v116_tests {
         assert_eq!(state_emissive(anchor_state(4)), 15);
         assert_eq!(state_emissive(anchor_state(0)), 0);
         // the F3 targeted-block property lines
-        assert_eq!(state_description(anchor_state(3)), "Respawn Anchor[charge=3]");
+        assert_eq!(
+            state_description(anchor_state(3)),
+            "Respawn Anchor[charge=3]"
+        );
         assert_eq!(state_description(target_state(12)), "Target[power=12]");
-        assert_eq!(state_description(V13_STATE_BASE + 30), "Chain[hanging=true]");
+        assert_eq!(
+            state_description(V13_STATE_BASE + 30),
+            "Chain[hanging=true]"
+        );
         assert_eq!(state_description(default_state(SOUL_SOIL)), "Soul Soil");
         // solidity classes: the stone-family blocks solid-opaque; the
         // chain + soul fire are non-solid cross-sprite decorations
@@ -8280,7 +14881,10 @@ mod v116_tests {
         for it in [NETHERITE_SCRAP, NETHERITE_INGOT] {
             assert!(is_item_block(it), "item {it}");
             assert!(is_cross(it), "item {it} cross sprite");
-            assert!(!PICKER_BLOCKS.contains(&it), "item {it} is not a picker block");
+            assert!(
+                !PICKER_BLOCKS.contains(&it),
+                "item {it} is not a picker block"
+            );
         }
         // the 12 placeables are picker blocks
         for want in [
@@ -8320,9 +14924,18 @@ mod v116_tests {
         assert_eq!(name(NETHERITE_SCRAP), "Netherite Scrap");
         assert_eq!(name(NETHERITE_INGOT), "Netherite Ingot");
         // tiles within the atlas guard
-        const _: () = assert!(TILE_MAX >= TILE_SOUL_FIRE, "soul fire within the atlas guard");
-        const _: () = assert!(TILE_MAX >= TILE_ANCHOR_SIDE_CHARGED, "anchor glow within the atlas guard");
-        const _: () = assert!(TILE_MAX >= TILE_NETHERITE_INGOT, "ingot within the atlas guard");
+        const _: () = assert!(
+            TILE_MAX >= TILE_SOUL_FIRE,
+            "soul fire within the atlas guard"
+        );
+        const _: () = assert!(
+            TILE_MAX >= TILE_ANCHOR_SIDE_CHARGED,
+            "anchor glow within the atlas guard"
+        );
+        const _: () = assert!(
+            TILE_MAX >= TILE_NETHERITE_INGOT,
+            "ingot within the atlas guard"
+        );
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
@@ -8495,13 +15108,25 @@ mod v116_tests {
         assert_eq!(name(NETHER_SPROUTS), "Nether Sprouts");
         assert_eq!(name(POLISHED_BASALT), "Polished Basalt");
         assert_eq!(name(POLISHED_BLACKSTONE), "Polished Blackstone");
-        assert_eq!(name(POLISHED_BLACKSTONE_BRICKS), "Polished Blackstone Bricks");
+        assert_eq!(
+            name(POLISHED_BLACKSTONE_BRICKS),
+            "Polished Blackstone Bricks"
+        );
         assert_eq!(name(SOUL_TORCH), "Soul Torch");
         assert_eq!(name(SOUL_LANTERN), "Soul Lantern");
         // tiles within the atlas guard
-        const _: () = assert!(TILE_MAX >= TILE_SOUL_LANTERN, "soul lantern within the atlas guard");
-        const _: () = assert!(TILE_MAX >= TILE_SHROOMLIGHT, "shroomlight within the atlas guard");
-        const _: () = assert!(TILE_MAX >= TILE_MOB_HOGLIN, "hoglin sprite within the atlas guard");
+        const _: () = assert!(
+            TILE_MAX >= TILE_SOUL_LANTERN,
+            "soul lantern within the atlas guard"
+        );
+        const _: () = assert!(
+            TILE_MAX >= TILE_SHROOMLIGHT,
+            "shroomlight within the atlas guard"
+        );
+        const _: () = assert!(
+            TILE_MAX >= TILE_MOB_HOGLIN,
+            "hoglin sprite within the atlas guard"
+        );
         // bounds + window shape
         assert_eq!(V14_COUNT, 26);
         assert_eq!(V14_STATE_BASE + V14_COUNT, 776);
@@ -8572,7 +15197,10 @@ mod v116_tests {
         assert_eq!(name(GHAST_TEAR), "Ghast Tear");
         assert_eq!(name(POTION_LEAPING), "Potion of Leaping");
         // tiles within the atlas guard
-        const _: () = assert!(TILE_MAX >= TILE_MOB_SILVERFISH, "silverfish sprite within the atlas guard");
+        const _: () = assert!(
+            TILE_MAX >= TILE_MOB_SILVERFISH,
+            "silverfish sprite within the atlas guard"
+        );
     }
 }
 
@@ -8605,8 +15233,7 @@ mod farming_tests {
             assert!(
                 matches!(
                     b,
-                    FIRE
-                        | FARMLAND
+                    FIRE | FARMLAND
                         | WHEAT_CROP
                         | CARROTS
                         | POTATOES
@@ -8624,7 +15251,12 @@ mod farming_tests {
     /// (VERIFIED w/Wheat_Crops + Beetroot_Seeds §Block states)
     #[test]
     fn crop_age_ladders() {
-        for (b, max) in [(WHEAT_CROP, 7u8), (CARROTS, 7), (POTATOES, 7), (BEETROOTS, 3)] {
+        for (b, max) in [
+            (WHEAT_CROP, 7u8),
+            (CARROTS, 7),
+            (POTATOES, 7),
+            (BEETROOTS, 3),
+        ] {
             for age in 0..=max {
                 let s = crop_state(b, age);
                 assert_eq!(crop_age(s), age, "{b} age {age} roundtrip");
@@ -8683,10 +15315,7 @@ mod farming_tests {
     /// F3 targeted-block lines carry the vanilla blockstate names
     #[test]
     fn farming_state_descriptions() {
-        assert_eq!(
-            state_description(farmland_state(7)),
-            "Farmland[moisture=7]"
-        );
+        assert_eq!(state_description(farmland_state(7)), "Farmland[moisture=7]");
         assert_eq!(
             state_description(crop_state(WHEAT_CROP, 7)),
             "Wheat Crop[age=7]"
@@ -8712,7 +15341,9 @@ mod farming_tests {
         assert!(!is_item_block(FARMLAND));
         assert!(!is_item_block(WHEAT_CROP));
         // the picker carries the whole farming set
-        for b in [FARMLAND, WHEAT_CROP, CARROTS, POTATOES, BEETROOTS, WHEAT, BREAD, HOE] {
+        for b in [
+            FARMLAND, WHEAT_CROP, CARROTS, POTATOES, BEETROOTS, WHEAT, BREAD, HOE,
+        ] {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
     }

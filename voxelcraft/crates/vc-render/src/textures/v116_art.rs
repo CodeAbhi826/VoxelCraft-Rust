@@ -186,7 +186,17 @@ pub(super) fn blackstone_art(a: &mut [u8], t: u16, rng: &mut Rng) {
 pub(super) fn gilded_blackstone_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     blackstone_art(a, t, rng);
     // the gold runs: diagonal glints in fixed + jittered spots
-    let veins = [(3, 4), (4, 4), (5, 5), (11, 8), (12, 8), (12, 9), (7, 12), (8, 12), (8, 13)];
+    let veins = [
+        (3, 4),
+        (4, 4),
+        (5, 5),
+        (11, 8),
+        (12, 8),
+        (12, 9),
+        (7, 12),
+        (8, 12),
+        (8, 13),
+    ];
     for (x, y) in veins {
         super::put(a, t, x, y, GOLD_M[0], GOLD_M[1], GOLD_M[2], 255);
     }

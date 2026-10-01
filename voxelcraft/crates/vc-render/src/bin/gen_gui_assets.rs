@@ -30,7 +30,8 @@ fn save(path: &Path, name: &str, px: &[u8], w: u32, h: u32) -> bool {
 fn main() {
     let out_dir = {
         // target/gui-art next to whatever profile cargo picked
-        let mut p = PathBuf::from(std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into()));
+        let mut p =
+            PathBuf::from(std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into()));
         p.push("gui-art");
         p
     };

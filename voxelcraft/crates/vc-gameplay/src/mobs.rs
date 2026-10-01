@@ -5781,8 +5781,8 @@ fn physics_tick(m: &mut Mob, world: &World) {
         m.vel[0] *= 0.8;
         m.vel[2] *= 0.8;
         m.fall_dist = 0.0; // water breaks falls (the player rule)
-        // flowing-water current: the same push the player gets —
-        // rivers now carry mobs downstream too
+                           // flowing-water current: the same push the player gets —
+                           // rivers now carry mobs downstream too
         let f = world.water_flow(
             m.pos[0] as i32,
             (m.pos[1] + d.height * 0.5) as i32,

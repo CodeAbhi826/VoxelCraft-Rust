@@ -84,8 +84,8 @@ pub fn open(source: Arc<dyn PackSource>) -> Result<(PackMeta, Arc<dyn PackSource
                 )
             })?,
     };
-    let meta: Manifest = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("{manifest_path}: bad JSON: {e}"))?;
+    let meta: Manifest =
+        serde_json::from_slice(&bytes).map_err(|e| format!("{manifest_path}: bad JSON: {e}"))?;
     let pack_format = meta.pack.format.or(meta.pack.pack_format).unwrap_or(0);
     let description = if meta.pack.description.is_empty() {
         meta.pack.name.clone()
@@ -128,7 +128,13 @@ pub fn open(source: Arc<dyn PackSource>) -> Result<(PackMeta, Arc<dyn PackSource
             }
         }
     }
-    Ok((meta, Arc::new(NsAliasSource { inner: source, aliases })))
+    Ok((
+        meta,
+        Arc::new(NsAliasSource {
+            inner: source,
+            aliases,
+        }),
+    ))
 }
 
 /// Read-side namespace shim: answers flat-key reads (`textures/gui/x.png`)
@@ -325,9 +331,7 @@ impl PackSource for MemorySource {
 /// The file list is derived from the block-dispatch specs (blockstates →
 /// models → textures), so no directory listing is needed.
 #[cfg(target_arch = "wasm32")]
-pub async fn fetch_builtin_pack(
-    specs: &[crate::model::BlockDispatchSpec],
-) -> Option<MemorySource> {
+pub async fn fetch_builtin_pack(specs: &[crate::model::BlockDispatchSpec]) -> Option<MemorySource> {
     let mut mem = MemorySource::new("builtin (fetched)");
     // 1. pack.json + all blockstates
     let mut wanted: Vec<String> = vec!["pack.json".to_string()];
@@ -496,7 +500,11 @@ fn collect_model_refs(bytes: &[u8], out: &mut Vec<String>) {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn collect_parent_and_texture_refs(bytes: &[u8], models: &mut Vec<String>, textures: &mut Vec<String>) {
+fn collect_parent_and_texture_refs(
+    bytes: &[u8],
+    models: &mut Vec<String>,
+    textures: &mut Vec<String>,
+) {
     let Ok(v) = serde_json::from_slice::<serde_json::Value>(bytes) else {
         return;
     };
@@ -536,7 +544,6 @@ fn collect_str_field_recursive(v: &serde_json::Value, field: &str, out: &mut Vec
     }
 }
 
-
 // ------------------------------------------------------- UI Phase 4 --
 // GUI texture overrides through the resource-pack pipeline (Master
 // Prompt Phase 4: a WIRING task — this crate already owns pack
@@ -557,7 +564,9 @@ impl Default for PackStack {
 
 impl PackStack {
     pub fn new() -> Self {
-        PackStack { sources: Vec::new() }
+        PackStack {
+            sources: Vec::new(),
+        }
     }
 
     /// add a source at the given priority position: index 0 = highest
@@ -758,7 +767,7 @@ mod tests {
         let mut stack = PackStack::new();
         stack.push_front(Arc::new(high));
         stack.push_front(Arc::new(low)); // low pushed to front = now highest
-        // low wins hearts AND hunger; high's hearts is shadowed
+                                         // low wins hearts AND hunger; high's hearts is shadowed
         let (hearts, name) = stack
             .read_first("textures/gui/hearts.png")
             .unwrap_or_else(|| (Vec::new(), String::new()));
@@ -790,10 +799,7 @@ mod tests {
             "assets/some-ecosystem-pack/textures/gui/hearts.png",
             b"namespaced".to_vec(),
         );
-        ns_pack.insert(
-            "pack.mcmeta",
-            br#"{"pack":{"pack_format":6}}"#.to_vec(),
-        );
+        ns_pack.insert("pack.mcmeta", br#"{"pack":{"pack_format":6}}"#.to_vec());
         let (_meta, src) = open(Arc::new(ns_pack)).unwrap();
         // flat-key read resolves through the alias
         assert_eq!(
@@ -801,7 +807,9 @@ mod tests {
             Some(b"namespaced".to_vec())
         );
         // direct reads of the real entry still work
-        assert!(src.read("assets/some-ecosystem-pack/textures/gui/hearts.png").is_some());
+        assert!(src
+            .read("assets/some-ecosystem-pack/textures/gui/hearts.png")
+            .is_some());
     }
 
     /// a pack carrying BOTH layouts: the flat entry wins (alias only
@@ -827,12 +835,7 @@ mod tests {
             [v as u8, (v >> 8) as u8]
         }
         fn le32(v: u32) -> [u8; 4] {
-            [
-                v as u8,
-                (v >> 8) as u8,
-                (v >> 16) as u8,
-                (v >> 24) as u8,
-            ]
+            [v as u8, (v >> 8) as u8, (v >> 16) as u8, (v >> 24) as u8]
         }
         let name = b"textures/gui/hearts.png";
         let data = b"zip-heart".to_vec();
@@ -923,10 +926,13 @@ mod tests {
         let src: Arc<dyn PackSource> = Arc::new(mem);
         let r = open(src);
         assert!(r.is_ok(), "mismatched format must not reject (§46)");
-        let (meta, _) = r.unwrap_or((PackMeta {
-            pack_format: 0,
-            description: String::new(),
-        }, Arc::new(MemorySource::new("x"))));
+        let (meta, _) = r.unwrap_or((
+            PackMeta {
+                pack_format: 0,
+                description: String::new(),
+            },
+            Arc::new(MemorySource::new("x")),
+        ));
         assert_eq!(meta.pack_format, 99);
     }
 }

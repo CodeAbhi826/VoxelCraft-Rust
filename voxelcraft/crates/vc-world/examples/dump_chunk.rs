@@ -19,7 +19,8 @@ fn main() {
             rows.push((cx, cz, col.biome, col.height));
         }
     }
-    let mut counts: std::collections::BTreeMap<String, (usize, i64)> = std::collections::BTreeMap::new();
+    let mut counts: std::collections::BTreeMap<String, (usize, i64)> =
+        std::collections::BTreeMap::new();
     for (_, _, b, h) in &rows {
         let e = counts.entry(b.name().to_string()).or_insert((0, 0));
         e.0 += 1;

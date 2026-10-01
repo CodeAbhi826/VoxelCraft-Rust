@@ -36,8 +36,8 @@
 //! 3 passes (shadow/terrain/water). New: binds = 3 + 2·regions·passes;
 //! draws = chunks (loop path) or regions (MDI path).
 
-use vc_world::world::ChunkPos;
 use rustc_hash::FxHashMap;
+use vc_world::world::ChunkPos;
 
 /// chunks per mesh-region side (8 → 128×128 blocks, ≈1–16 MB arena)
 pub const REGION_CHUNKS: i32 = 8;
@@ -561,18 +561,30 @@ mod tests {
     fn aabb_visible_accepts_interior_and_rejects_outside() {
         // a box fully inside a generous axis-aligned frustum: visible
         let inside: [[f32; 4]; 6] = [
-            [1.0, 0.0, 0.0, 100.0],   // x >= -100
-            [-1.0, 0.0, 0.0, 100.0],  // x <= 100
-            [0.0, 1.0, 0.0, 100.0],   // y >= -100
-            [0.0, -1.0, 0.0, 100.0],  // y <= 100
-            [0.0, 0.0, 1.0, 100.0],   // z >= -100
-            [0.0, 0.0, -1.0, 100.0],  // z <= 100
+            [1.0, 0.0, 0.0, 100.0],  // x >= -100
+            [-1.0, 0.0, 0.0, 100.0], // x <= 100
+            [0.0, 1.0, 0.0, 100.0],  // y >= -100
+            [0.0, -1.0, 0.0, 100.0], // y <= 100
+            [0.0, 0.0, 1.0, 100.0],  // z >= -100
+            [0.0, 0.0, -1.0, 100.0], // z <= 100
         ];
-        assert!(aabb_visible(&[0.0, 0.0, 0.0], &[16.0, 256.0, 16.0], &inside));
+        assert!(aabb_visible(
+            &[0.0, 0.0, 0.0],
+            &[16.0, 256.0, 16.0],
+            &inside
+        ));
         // fully beyond the +x limit: rejected by exactly that plane
-        assert!(!aabb_visible(&[200.0, 0.0, 0.0], &[216.0, 256.0, 16.0], &inside));
+        assert!(!aabb_visible(
+            &[200.0, 0.0, 0.0],
+            &[216.0, 256.0, 16.0],
+            &inside
+        ));
         // STRADDLING the x=100 boundary: still visible (p-vertex passes)
-        assert!(aabb_visible(&[50.0, 0.0, 0.0], &[150.0, 256.0, 16.0], &inside));
+        assert!(aabb_visible(
+            &[50.0, 0.0, 0.0],
+            &[150.0, 256.0, 16.0],
+            &inside
+        ));
     }
 
     #[test]
@@ -593,7 +605,11 @@ mod tests {
         assert!(aabb_visible(&[0.0, 0.0, 0.0], &[8.0, 8.0, 0.0], &planes));
         // every corner deep in x+z < -8 (p-vertex (-84, 8, -84):
         // -84 + -84 + 8 = -160 < 0) → rejected by that one plane
-        assert!(!aabb_visible(&[-100.0, 0.0, -100.0], &[-84.0, 8.0, -84.0], &planes));
+        assert!(!aabb_visible(
+            &[-100.0, 0.0, -100.0],
+            &[-84.0, 8.0, -84.0],
+            &planes
+        ));
     }
 
     #[test]

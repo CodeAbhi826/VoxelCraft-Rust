@@ -970,7 +970,9 @@ pub(super) fn strider_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     // the stilt legs read darker than the body (the silhouette's tell)
     for y in 9..15usize {
         for x in [3usize, 5, 9, 11] {
-            super::put(a, t, x as i32, y as i32, ST_LEG[0], ST_LEG[1], ST_LEG[2], 255);
+            super::put(
+                a, t, x as i32, y as i32, ST_LEG[0], ST_LEG[1], ST_LEG[2], 255,
+            );
         }
     }
 }

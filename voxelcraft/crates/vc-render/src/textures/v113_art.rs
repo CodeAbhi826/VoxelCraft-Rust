@@ -58,7 +58,16 @@ pub(super) fn dead_coral_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     for _ in 0..26 {
         let x = rng.next_range(16) as i32;
         let y = rng.next_range(16) as i32;
-        put(a, t, x, y, DEAD[0] * 62 / 100, DEAD[1] * 62 / 100, DEAD[2] * 62 / 100, 255);
+        put(
+            a,
+            t,
+            x,
+            y,
+            DEAD[0] * 62 / 100,
+            DEAD[1] * 62 / 100,
+            DEAD[2] * 62 / 100,
+            255,
+        );
     }
 }
 
@@ -180,7 +189,12 @@ pub(super) fn dead_coral_fan_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
         "................",
     ];
     art(a, t, rows, &|c| match c {
-        'B' => Some(((DEAD[0] * 85 / 100), (DEAD[1] * 85 / 100), (DEAD[2] * 85 / 100), 255)),
+        'B' => Some((
+            (DEAD[0] * 85 / 100),
+            (DEAD[1] * 85 / 100),
+            (DEAD[2] * 85 / 100),
+            255,
+        )),
         _ => None,
     });
 }
@@ -202,30 +216,12 @@ pub(super) fn sea_pickle_art(a: &mut [u8], t: u16, count: u8, _rng: &mut Rng) {
     for x in xs.iter().take(n) {
         for y in 4..15 {
             for dy in 0..2 {
-                put(
-                    a,
-                    t,
-                    x + dy - 1,
-                    y,
-                    GREEN[0],
-                    GREEN[1],
-                    GREEN[2],
-                    255,
-                );
+                put(a, t, x + dy - 1, y, GREEN[0], GREEN[1], GREEN[2], 255);
             }
         }
         // knobby head
         for (hx, hy) in [(0, 3), (1, 3), (0, 4), (1, 4)] {
-            put(
-                a,
-                t,
-                x + hx,
-                hy,
-                LIGHT[0],
-                LIGHT[1],
-                LIGHT[2],
-                255,
-            );
+            put(a, t, x + hx, hy, LIGHT[0], LIGHT[1], LIGHT[2], 255);
         }
     }
 }
@@ -373,7 +369,16 @@ pub(super) fn turtle_egg_art(a: &mut [u8], t: u16, stage: u8, _rng: &mut Rng) {
     let extra = match stage {
         0 => vec![],
         1 => vec![(6, 8), (9, 6), (10, 10)],
-        _ => vec![(5, 7), (6, 8), (7, 9), (9, 5), (10, 6), (11, 10), (8, 11), (7, 6)],
+        _ => vec![
+            (5, 7),
+            (6, 8),
+            (7, 9),
+            (9, 5),
+            (10, 6),
+            (11, 10),
+            (8, 11),
+            (7, 6),
+        ],
     };
     art(a, t, rows, &|c| match c {
         'E' => Some(((SHELL[0]), (SHELL[1]), (SHELL[2]), 255)),
@@ -672,7 +677,12 @@ pub(super) fn dolphin_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     art(a, t, rows, &|c| match c {
         'B' => Some(((BODY[0]), (BODY[1]), (BODY[2]), 255)),
         'b' => Some(((BELLY[0]), (BELLY[1]), (BELLY[2]), 255)),
-        'F' => Some((BODY[0] * 75 / 100, BODY[1] * 75 / 100, BODY[2] * 75 / 100, 255)),
+        'F' => Some((
+            BODY[0] * 75 / 100,
+            BODY[1] * 75 / 100,
+            BODY[2] * 75 / 100,
+            255,
+        )),
         _ => None,
     });
 }
@@ -702,7 +712,12 @@ pub(super) fn cod_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     art(a, t, rows, &|c| match c {
         'B' => Some(((BODY[0]), (BODY[1]), (BODY[2]), 255)),
         'D' => Some((DARK[0], DARK[1], DARK[2], 255)),
-        'F' => Some((DARK[0] * 80 / 100, DARK[1] * 80 / 100, DARK[2] * 80 / 100, 255)),
+        'F' => Some((
+            DARK[0] * 80 / 100,
+            DARK[1] * 80 / 100,
+            DARK[2] * 80 / 100,
+            255,
+        )),
         _ => None,
     });
 }

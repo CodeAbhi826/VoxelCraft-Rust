@@ -6,12 +6,19 @@
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
 
+mod armor_art;
+mod audit16_art;
+mod auditfix_art;
 /// Phase E1 procedural tiles (evolution 1.0–1.2 bracket) — child module so
 /// the art additions stay reviewable while sharing the put/jit/art helpers.
 mod e1_art;
 mod e2_art;
 mod e3_art;
-mod auditfix_art;
+mod farming_art;
+/// UI-overhaul Phase 1: GUI chrome + HUD sprites (public so the
+/// `gui` module's set/loader can call the painters)
+pub mod gui_art;
+mod r13_art;
 mod v112_art;
 mod v113_art;
 mod v114_art;
@@ -20,14 +27,7 @@ mod v114c_art;
 mod v115_art;
 mod v116_art;
 mod v116b_art;
-mod audit16_art;
 mod weather_art;
-mod armor_art;
-mod farming_art;
-mod r13_art;
-/// UI-overhaul Phase 1: GUI chrome + HUD sprites (public so the
-/// `gui` module's set/loader can call the painters)
-pub mod gui_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -2582,7 +2582,16 @@ fn red_sand_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     for _ in 0..10 {
         let x = rng.next_range(16) as i32;
         let y = rng.next_range(16) as i32;
-        put(a, t, x, y, jit(160, 8, rng), jit(84, 8, rng), jit(36, 8, rng), 255);
+        put(
+            a,
+            t,
+            x,
+            y,
+            jit(160, 8, rng),
+            jit(84, 8, rng),
+            jit(36, 8, rng),
+            255,
+        );
     }
 }
 
@@ -2607,7 +2616,16 @@ fn podzol_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     for _ in 0..26 {
         let x = rng.next_range(16) as i32;
         let y = rng.next_range(16) as i32;
-        put(a, t, x, y, jit(160, 14, rng), jit(106, 12, rng), jit(38, 10, rng), 255);
+        put(
+            a,
+            t,
+            x,
+            y,
+            jit(160, 14, rng),
+            jit(106, 12, rng),
+            jit(38, 10, rng),
+            255,
+        );
     }
 }
 
@@ -2615,10 +2633,37 @@ fn podzol_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
 fn podzol_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [134, 96, 67], 7, rng);
     for x in 0..16 {
-        put(a, t, x, 0, jit(160, 10, rng), jit(106, 10, rng), jit(38, 8, rng), 255);
-        put(a, t, x, 1, jit(140, 10, rng), jit(92, 10, rng), jit(34, 8, rng), 255);
+        put(
+            a,
+            t,
+            x,
+            0,
+            jit(160, 10, rng),
+            jit(106, 10, rng),
+            jit(38, 8, rng),
+            255,
+        );
+        put(
+            a,
+            t,
+            x,
+            1,
+            jit(140, 10, rng),
+            jit(92, 10, rng),
+            jit(34, 8, rng),
+            255,
+        );
         if rng.next_f32() < 0.5 {
-            put(a, t, x, 2, jit(150, 12, rng), jit(99, 10, rng), jit(37, 8, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                2,
+                jit(150, 12, rng),
+                jit(99, 10, rng),
+                jit(37, 8, rng),
+                255,
+            );
         }
     }
 }
@@ -2632,7 +2677,16 @@ fn acacia_log_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
         let y0 = rng.next_range(10) as i32;
         let l = 3 + rng.next_range(5) as i32;
         for dy in 0..l {
-            put(a, t, x, y0 + dy, jit(172, 10, rng), jit(105, 12, rng), jit(45, 8, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y0 + dy,
+                jit(172, 10, rng),
+                jit(105, 12, rng),
+                jit(45, 8, rng),
+                255,
+            );
         }
     }
 }
@@ -2646,9 +2700,27 @@ fn acacia_log_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
             let x = (8.0 + (ang.cos() * r as f32)) as i32;
             let y = (8.0 + (ang.sin() * r as f32)) as i32;
             if r < 3 {
-                put(a, t, x, y, jit(176, 8, rng), jit(110, 10, rng), jit(48, 8, rng), 255);
+                put(
+                    a,
+                    t,
+                    x,
+                    y,
+                    jit(176, 8, rng),
+                    jit(110, 10, rng),
+                    jit(48, 8, rng),
+                    255,
+                );
             } else {
-                put(a, t, x, y, jit(140, 8, rng), jit(132, 8, rng), jit(120, 8, rng), 255);
+                put(
+                    a,
+                    t,
+                    x,
+                    y,
+                    jit(140, 8, rng),
+                    jit(132, 8, rng),
+                    jit(120, 8, rng),
+                    255,
+                );
             }
         }
     }
@@ -2662,7 +2734,16 @@ fn dark_oak_log_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
         let y0 = rng.next_range(12) as i32;
         let l = 2 + rng.next_range(4) as i32;
         for dy in 0..l {
-            put(a, t, x, y0 + dy, jit(43, 5, rng), jit(32, 4, rng), jit(22, 3, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y0 + dy,
+                jit(43, 5, rng),
+                jit(32, 4, rng),
+                jit(22, 3, rng),
+                255,
+            );
         }
     }
 }
@@ -2676,7 +2757,16 @@ fn log_top_tinted(a: &mut [u8], t: u16, heart: (i32, i32, i32), rng: &mut Rng) {
             let x = (8.0 + (ang.cos() * r as f32)) as i32;
             let y = (8.0 + (ang.sin() * r as f32)) as i32;
             if r < 3 {
-                put(a, t, x, y, jit(heart.0, 6, rng), jit(heart.1, 6, rng), jit(heart.2, 6, rng), 255);
+                put(
+                    a,
+                    t,
+                    x,
+                    y,
+                    jit(heart.0, 6, rng),
+                    jit(heart.1, 6, rng),
+                    jit(heart.2, 6, rng),
+                    255,
+                );
             }
         }
     }
@@ -2704,9 +2794,26 @@ fn allium_art(a: &mut [u8], t: u16) {
     }
     flower_stem(a, t, 7);
     let pts = [
-        (6, 3), (7, 2), (8, 2), (9, 3), (5, 4), (10, 4), (5, 5), (10, 5),
-        (6, 6), (9, 6), (7, 5), (8, 5), (6, 4), (9, 4), (7, 3), (8, 3),
-        (7, 6), (8, 6), (5, 3), (10, 3),
+        (6, 3),
+        (7, 2),
+        (8, 2),
+        (9, 3),
+        (5, 4),
+        (10, 4),
+        (5, 5),
+        (10, 5),
+        (6, 6),
+        (9, 6),
+        (7, 5),
+        (8, 5),
+        (6, 4),
+        (9, 4),
+        (7, 3),
+        (8, 3),
+        (7, 6),
+        (8, 6),
+        (5, 3),
+        (10, 3),
     ];
     for (x, y) in pts {
         put(a, t, x, y, 214, 126, 199, 255);
@@ -2724,7 +2831,16 @@ fn azure_bluet_art(a: &mut [u8], t: u16) {
         }
     }
     flower_stem(a, t, 8);
-    for (x, y) in [(6, 5), (9, 5), (7, 4), (8, 6), (6, 6), (9, 4), (7, 7), (8, 3)] {
+    for (x, y) in [
+        (6, 5),
+        (9, 5),
+        (7, 4),
+        (8, 6),
+        (6, 6),
+        (9, 4),
+        (7, 7),
+        (8, 3),
+    ] {
         put(a, t, x, y, 238, 240, 240, 255);
     }
     put(a, t, 7, 5, 238, 240, 240, 255);
@@ -2741,7 +2857,18 @@ fn blue_orchid_art(a: &mut [u8], t: u16) {
         }
     }
     flower_stem(a, t, 7);
-    for (x, y) in [(6, 3), (7, 2), (8, 2), (9, 3), (6, 4), (9, 4), (6, 5), (9, 5), (7, 6), (8, 6)] {
+    for (x, y) in [
+        (6, 3),
+        (7, 2),
+        (8, 2),
+        (9, 3),
+        (6, 4),
+        (9, 4),
+        (6, 5),
+        (9, 5),
+        (7, 6),
+        (8, 6),
+    ] {
         put(a, t, x, y, 60, 148, 214, 255);
     }
     for (x, y) in [(7, 3), (8, 3), (7, 4), (8, 4), (7, 5), (8, 5)] {
@@ -2760,13 +2887,36 @@ fn oxeye_daisy_art(a: &mut [u8], t: u16) {
     }
     flower_stem(a, t, 7);
     let petals = [
-        (7, 2), (8, 2), (6, 3), (9, 3), (5, 4), (10, 4), (5, 5), (10, 5),
-        (6, 6), (9, 6), (7, 7), (8, 7), (5, 3), (10, 6), (6, 2), (9, 7),
+        (7, 2),
+        (8, 2),
+        (6, 3),
+        (9, 3),
+        (5, 4),
+        (10, 4),
+        (5, 5),
+        (10, 5),
+        (6, 6),
+        (9, 6),
+        (7, 7),
+        (8, 7),
+        (5, 3),
+        (10, 6),
+        (6, 2),
+        (9, 7),
     ];
     for (x, y) in petals {
         put(a, t, x, y, 244, 246, 244, 255);
     }
-    for (x, y) in [(7, 3), (8, 3), (7, 4), (8, 4), (7, 5), (8, 5), (7, 6), (8, 6)] {
+    for (x, y) in [
+        (7, 3),
+        (8, 3),
+        (7, 4),
+        (8, 4),
+        (7, 5),
+        (8, 5),
+        (7, 6),
+        (8, 6),
+    ] {
         put(a, t, x, y, 224, 200, 76, 255);
     }
     for (x, y) in [(7, 4), (8, 4)] {
@@ -2805,7 +2955,16 @@ fn tulip_art(a: &mut [u8], t: u16, hue: (i32, i32, i32)) {
     }
     // cup rim + inner shadow
     for x in 5..11 {
-        put(a, t, x, 2, (hue.0 + 18).min(255), (hue.1 + 18).min(255), (hue.2 + 18).min(255), 255);
+        put(
+            a,
+            t,
+            x,
+            2,
+            (hue.0 + 18).min(255),
+            (hue.1 + 18).min(255),
+            (hue.2 + 18).min(255),
+            255,
+        );
     }
     put(a, t, 7, 6, hue.0 - 40, hue.1 - 40, hue.2 - 40, 255);
     put(a, t, 8, 6, hue.0 - 40, hue.1 - 40, hue.2 - 40, 255);
@@ -2826,7 +2985,15 @@ fn sunflower_lower_art(a: &mut [u8], t: u16) {
     for (x, y) in [(3, 6), (4, 6), (5, 5), (4, 7), (5, 7), (3, 7), (5, 6)] {
         put(a, t, x, y, 58, 110, 36, 255);
     }
-    for (x, y) in [(10, 9), (11, 9), (12, 8), (11, 10), (12, 10), (10, 10), (12, 9)] {
+    for (x, y) in [
+        (10, 9),
+        (11, 9),
+        (12, 8),
+        (11, 10),
+        (12, 10),
+        (10, 10),
+        (12, 9),
+    ] {
         put(a, t, x, y, 58, 110, 36, 255);
     }
 }
@@ -2845,9 +3012,27 @@ fn sunflower_top_art(a: &mut [u8], t: u16) {
     }
     // rays
     for (x, y) in [
-        (5, 2), (6, 1), (7, 1), (8, 1), (9, 2), (10, 3), (10, 4), (11, 5),
-        (11, 6), (11, 7), (10, 8), (9, 9), (8, 10), (7, 10), (6, 9), (5, 8),
-        (4, 7), (4, 6), (4, 5), (5, 4), (5, 3),
+        (5, 2),
+        (6, 1),
+        (7, 1),
+        (8, 1),
+        (9, 2),
+        (10, 3),
+        (10, 4),
+        (11, 5),
+        (11, 6),
+        (11, 7),
+        (10, 8),
+        (9, 9),
+        (8, 10),
+        (7, 10),
+        (6, 9),
+        (5, 8),
+        (4, 7),
+        (4, 6),
+        (4, 5),
+        (5, 4),
+        (5, 3),
     ] {
         put(a, t, x, y, 246, 202, 44, 255);
     }
@@ -2894,10 +3079,32 @@ fn double_flower_top_art(a: &mut [u8], t: u16, stalk: (i32, i32, i32), bloom: (i
     }
     // bloom: rounded cluster of buds
     for (x, y) in [
-        (5, 5), (6, 4), (7, 4), (8, 4), (9, 4), (10, 5), (5, 6), (10, 6),
-        (5, 7), (10, 7), (6, 8), (9, 8), (6, 5), (9, 5), (7, 5), (8, 5),
-        (6, 6), (7, 6), (8, 6), (9, 6), (6, 7), (7, 7), (8, 7), (9, 7),
-        (7, 8), (8, 8),
+        (5, 5),
+        (6, 4),
+        (7, 4),
+        (8, 4),
+        (9, 4),
+        (10, 5),
+        (5, 6),
+        (10, 6),
+        (5, 7),
+        (10, 7),
+        (6, 8),
+        (9, 8),
+        (6, 5),
+        (9, 5),
+        (7, 5),
+        (8, 5),
+        (6, 6),
+        (7, 6),
+        (8, 6),
+        (9, 6),
+        (6, 7),
+        (7, 7),
+        (8, 7),
+        (9, 7),
+        (7, 8),
+        (8, 8),
     ] {
         put(a, t, x, y, bloom.0, bloom.1, bloom.2, 255);
     }
@@ -3017,7 +3224,22 @@ fn pufferfish_art(a: &mut [u8], t: u16) {
         }
     }
     // spikes
-    for (x, y) in [(3, 5), (3, 10), (12, 5), (12, 10), (5, 3), (10, 3), (5, 12), (10, 12), (2, 7), (13, 7), (7, 2), (8, 2), (7, 13), (8, 13)] {
+    for (x, y) in [
+        (3, 5),
+        (3, 10),
+        (12, 5),
+        (12, 10),
+        (5, 3),
+        (10, 3),
+        (5, 12),
+        (10, 12),
+        (2, 7),
+        (13, 7),
+        (7, 2),
+        (8, 2),
+        (7, 13),
+        (8, 13),
+    ] {
         put(a, t, x, y, 160, 130, 30, 255);
     }
     // eyes
@@ -3029,7 +3251,6 @@ fn pufferfish_art(a: &mut [u8], t: u16) {
     put(a, t, 7, 9, 120, 96, 22, 255);
     put(a, t, 8, 9, 120, 96, 22, 255);
 }
-
 
 /// 1.8 rabbit entity sprite: small body, long ears, white tail — the
 /// skittish grass-biome mob
@@ -3075,9 +3296,6 @@ fn rabbit_sprite_art(a: &mut [u8], t: u16) {
         put(a, t, x, y, fur_d.0, fur_d.1, fur_d.2, 255);
     }
 }
-
-
-
 
 // 1.10 mob sprites (clean-room, like the other entity tiles)
 
@@ -3217,8 +3435,26 @@ fn magma_art(a: &mut [u8], t: u16, rng: &mut Rng) {
         let y = rng.next_range(12) as i32;
         let l = 2 + rng.next_range(4) as i32;
         for i in 0..l {
-            put(a, t, x + i, y + i, jit(226, 20, rng), jit(106, 16, rng), jit(24, 10, rng), 255);
-            put(a, t, x + i + 1, y + i, jit(168, 60, rng), jit(70, 14, rng), jit(16, 8, rng), 255);
+            put(
+                a,
+                t,
+                x + i,
+                y + i,
+                jit(226, 20, rng),
+                jit(106, 16, rng),
+                jit(24, 10, rng),
+                255,
+            );
+            put(
+                a,
+                t,
+                x + i + 1,
+                y + i,
+                jit(168, 60, rng),
+                jit(70, 14, rng),
+                jit(16, 8, rng),
+                255,
+            );
         }
     }
     // hot spots
@@ -3237,9 +3473,27 @@ fn nether_wart_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
         let y = rng.next_range(16) as i32;
         let bright = rng.next_f32() < 0.4;
         if bright {
-            put(a, t, x, y, jit(158, 20, rng), jit(34, 12, rng), jit(42, 10, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(158, 20, rng),
+                jit(34, 12, rng),
+                jit(42, 10, rng),
+                255,
+            );
         } else {
-            put(a, t, x, y, jit(88, 16, rng), jit(14, 8, rng), jit(22, 8, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(88, 16, rng),
+                jit(14, 8, rng),
+                jit(22, 8, rng),
+                255,
+            );
         }
     }
 }
@@ -3292,7 +3546,16 @@ fn grass_path_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     for _ in 0..12 {
         let x = rng.next_range(16) as i32;
         let y = rng.next_range(16) as i32;
-        put(a, t, x, y, jit(120, 8, rng), jit(104, 8, rng), jit(74, 6, rng), 255);
+        put(
+            a,
+            t,
+            x,
+            y,
+            jit(120, 8, rng),
+            jit(104, 8, rng),
+            jit(74, 6, rng),
+            255,
+        );
     }
 }
 
@@ -3300,9 +3563,27 @@ fn grass_path_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
 fn grass_path_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [134, 96, 67], 7, rng);
     for x in 0..16 {
-        put(a, t, x, 0, jit(148, 10, rng), jit(127, 10, rng), jit(93, 8, rng), 255);
+        put(
+            a,
+            t,
+            x,
+            0,
+            jit(148, 10, rng),
+            jit(127, 10, rng),
+            jit(93, 8, rng),
+            255,
+        );
         if rng.next_f32() < 0.4 {
-            put(a, t, x, 1, jit(138, 10, rng), jit(116, 10, rng), jit(84, 8, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                1,
+                jit(138, 10, rng),
+                jit(116, 10, rng),
+                jit(84, 8, rng),
+                255,
+            );
         }
     }
 }
@@ -3313,7 +3594,16 @@ fn purpur_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     for _ in 0..10 {
         let x = rng.next_range(16) as i32;
         let y = rng.next_range(16) as i32;
-        put(a, t, x, y, jit(155, 8, rng), jit(118, 8, rng), jit(155, 8, rng), 255);
+        put(
+            a,
+            t,
+            x,
+            y,
+            jit(155, 8, rng),
+            jit(118, 8, rng),
+            jit(155, 8, rng),
+            255,
+        );
     }
 }
 
@@ -3322,7 +3612,16 @@ fn purpur_pillar_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [169, 133, 169], 5, rng);
     for x in [2, 5, 8, 11, 14] {
         for y in 0..16 {
-            put(a, t, x, y, jit(150, 6, rng), jit(114, 6, rng), jit(150, 6, rng), 255);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(150, 6, rng),
+                jit(114, 6, rng),
+                jit(150, 6, rng),
+                255,
+            );
         }
     }
 }
@@ -3369,7 +3668,16 @@ fn chorus_plant_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     for _ in 0..12 {
         let x = rng.next_range(16) as i32;
         let y = rng.next_range(16) as i32;
-        put(a, t, x, y, jit(90, 10, rng), jit(60, 8, rng), jit(104, 10, rng), 255);
+        put(
+            a,
+            t,
+            x,
+            y,
+            jit(90, 10, rng),
+            jit(60, 8, rng),
+            jit(104, 10, rng),
+            255,
+        );
     }
 }
 
@@ -3383,7 +3691,11 @@ fn chorus_flower_art(a: &mut [u8], t: u16) {
     for y in 4..12 {
         for x in 4..12 {
             let edge = x == 4 || x == 11 || y == 4 || y == 11;
-            let c = if edge { (122, 96, 132) } else { (188, 178, 196) };
+            let c = if edge {
+                (122, 96, 132)
+            } else {
+                (188, 178, 196)
+            };
             put(a, t, x, y, c.0, c.1, c.2, 255);
         }
     }
@@ -3478,7 +3790,16 @@ fn shield_art(a: &mut [u8], t: u16) {
 fn slime_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     for y in 0..16 {
         for x in 0..16 {
-            put(a, t, x, y, jit(112, 6, rng), jit(182, 8, rng), jit(102, 6, rng), 165);
+            put(
+                a,
+                t,
+                x,
+                y,
+                jit(112, 6, rng),
+                jit(182, 8, rng),
+                jit(102, 6, rng),
+                165,
+            );
         }
     }
     // inner cube (darker, more opaque)
@@ -3501,7 +3822,16 @@ fn coarse_dirt_art(a: &mut [u8], t: u16, rng: &mut Rng) {
         let x = rng.next_range(16) as i32;
         let y = rng.next_range(16) as i32;
         let g = 90 + rng.next_range(60) as i32;
-        put(a, t, x, y, jit(g, 8, rng), jit(g - 6, 8, rng), jit(g - 14, 8, rng), 255);
+        put(
+            a,
+            t,
+            x,
+            y,
+            jit(g, 8, rng),
+            jit(g - 6, 8, rng),
+            jit(g - 14, 8, rng),
+            255,
+        );
     }
 }
 
@@ -3510,7 +3840,16 @@ fn polished_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32), rng: &mut Rng) {
     noise_fill(a, t, [rgb.0, rgb.1, rgb.2], 4, rng);
     // faint diagonal polish streaks
     for i in 0..16 {
-        put(a, t, i, i, (rgb.0 + 10).min(255), (rgb.1 + 10).min(255), (rgb.2 + 10).min(255), 255);
+        put(
+            a,
+            t,
+            i,
+            i,
+            (rgb.0 + 10).min(255),
+            (rgb.1 + 10).min(255),
+            (rgb.2 + 10).min(255),
+            255,
+        );
     }
 }
 
@@ -3521,15 +3860,42 @@ fn red_sandstone_art(a: &mut [u8], t: u16, rng: &mut Rng, smooth: bool) {
         for y in [3, 7, 11, 13] {
             for x in 0..16 {
                 if rng.next_f32() < 0.85 {
-                    put(a, t, x, y, jit(150, 8, rng), jit(78, 6, rng), jit(36, 4, rng), 255);
+                    put(
+                        a,
+                        t,
+                        x,
+                        y,
+                        jit(150, 8, rng),
+                        jit(78, 6, rng),
+                        jit(36, 4, rng),
+                        255,
+                    );
                 }
             }
         }
     }
     // frame edges slightly darker
     for i in 0..16 {
-        put(a, t, i, 0, jit(160, 6, rng), jit(86, 6, rng), jit(40, 4, rng), 255);
-        put(a, t, i, 15, jit(160, 6, rng), jit(86, 6, rng), jit(40, 4, rng), 255);
+        put(
+            a,
+            t,
+            i,
+            0,
+            jit(160, 6, rng),
+            jit(86, 6, rng),
+            jit(40, 4, rng),
+            255,
+        );
+        put(
+            a,
+            t,
+            i,
+            15,
+            jit(160, 6, rng),
+            jit(86, 6, rng),
+            jit(40, 4, rng),
+            255,
+        );
     }
 }
 
@@ -3542,7 +3908,16 @@ fn prismarine_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32), rng: &mut Rng) {
         let y = rng.next_range(12) as i32;
         let l = 2 + rng.next_range(4) as i32;
         for i in 0..l {
-            put(a, t, x + i, y + i, (rgb.0 - 26).max(0), (rgb.1 - 26).max(0), (rgb.2 - 20).max(0), 255);
+            put(
+                a,
+                t,
+                x + i,
+                y + i,
+                (rgb.0 - 26).max(0),
+                (rgb.1 - 26).max(0),
+                (rgb.2 - 20).max(0),
+                255,
+            );
         }
     }
 }
@@ -3566,7 +3941,16 @@ fn dark_prismarine_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     for _ in 0..10 {
         let x = rng.next_range(16) as i32;
         let y = rng.next_range(16) as i32;
-        put(a, t, x, y, jit(48, 6, rng), jit(84, 8, rng), jit(78, 8, rng), 255);
+        put(
+            a,
+            t,
+            x,
+            y,
+            jit(48, 6, rng),
+            jit(84, 8, rng),
+            jit(78, 8, rng),
+            255,
+        );
     }
 }
 
@@ -3680,8 +4064,26 @@ fn rabbit_meat_art(a: &mut [u8], t: u16, meat: (i32, i32, i32), cooked: bool) {
         }
     } else {
         // raw marbling
-        put(a, t, 6, 8, (meat.0 + 30).min(255), (meat.1 + 20).min(255), (meat.2 + 20).min(255), 255);
-        put(a, t, 8, 9, (meat.0 + 30).min(255), (meat.1 + 20).min(255), (meat.2 + 20).min(255), 255);
+        put(
+            a,
+            t,
+            6,
+            8,
+            (meat.0 + 30).min(255),
+            (meat.1 + 20).min(255),
+            (meat.2 + 20).min(255),
+            255,
+        );
+        put(
+            a,
+            t,
+            8,
+            9,
+            (meat.0 + 30).min(255),
+            (meat.1 + 20).min(255),
+            (meat.2 + 20).min(255),
+            255,
+        );
     }
 }
 
@@ -3695,7 +4097,11 @@ fn rabbit_hide_art(a: &mut [u8], t: u16) {
     for y in 3..13 {
         for x in 2..14 {
             let edge = x <= 3 || x >= 13 || y <= 4 || y >= 12;
-            let c = if edge { (166, 128, 92) } else { (190, 150, 110) };
+            let c = if edge {
+                (166, 128, 92)
+            } else {
+                (190, 150, 110)
+            };
             put(a, t, x, y, c.0, c.1, c.2, 255);
         }
     }
@@ -3716,7 +4122,11 @@ fn rabbit_foot_art(a: &mut [u8], t: u16) {
     for y in 6..13 {
         for x in 4..11 {
             let edge = x == 4 || x == 10 || y == 6 || y == 12;
-            let c = if edge { (188, 122, 128) } else { (222, 152, 158) };
+            let c = if edge {
+                (188, 122, 128)
+            } else {
+                (222, 152, 158)
+            };
             put(a, t, x, y, c.0, c.1, c.2, 255);
         }
     }
@@ -3991,8 +4401,7 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_CHISELED_QUARTZ => e3_art::chiseled_quartz_art(&mut a, t, &mut rng),
             TILE_QUARTZ_PILLAR_TOP => e3_art::quartz_pillar_top_art(&mut a, t, &mut rng),
             TILE_QUARTZ_PILLAR_SIDE => e3_art::quartz_pillar_side_art(&mut a, t, &mut rng),
-            t if (TILE_TERRACOTTA_STAINED_BASE
-                ..=TILE_TERRACOTTA_STAINED_BASE + 15)
+            t if (TILE_TERRACOTTA_STAINED_BASE..=TILE_TERRACOTTA_STAINED_BASE + 15)
                 .contains(&t) =>
             {
                 let c = (t - TILE_TERRACOTTA_STAINED_BASE) as u8;
@@ -4176,9 +4585,7 @@ pub fn generate_atlas() -> Vec<u8> {
             }
             TILE_COOKIE => v112_art::cookie_art(&mut a, t),
             // parrot egg (egg-shaped — the egg-art convention)
-            TILE_PARROT_EGG => {
-                e1_art::egg_art(&mut a, t, (206, 48, 36), (250, 204, 68))
-            }
+            TILE_PARROT_EGG => e1_art::egg_art(&mut a, t, (206, 48, 36), (250, 204, 68)),
             // 5 parrot variant sprites + the illusioner
             t if (TILE_PARROT_BASE..=TILE_PARROT_BASE + 4).contains(&t) => {
                 let v = (t - TILE_PARROT_BASE) as u8;
@@ -4272,9 +4679,7 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_BARREL_TOP => v114_art::barrel_top_art(&mut a, t, &mut rng),
             TILE_BARREL_SIDE => v114_art::barrel_side_art(&mut a, t, &mut rng),
             TILE_SWEET_BERRIES => v114_art::sweet_berries_art(&mut a, t, &mut rng),
-            TILE_EGG_FOX => {
-                e1_art::egg_art(&mut a, t, (240, 240, 240), (204, 96, 42))
-            }
+            TILE_EGG_FOX => e1_art::egg_art(&mut a, t, (240, 240, 240), (204, 96, 42)),
             TILE_MOB_FOX => v114_art::fox_art(&mut a, t, &mut rng),
             TILE_STICK => v114_art::stick_art(&mut a, t, &mut rng),
             TILE_CHARCOAL => v114_art::charcoal_art(&mut a, t, &mut rng),
@@ -4350,7 +4755,9 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_POLISHED_BASALT_SIDE => v116b_art::polished_basalt_side_art(&mut a, t, &mut rng),
             TILE_POLISHED_BASALT_TOP => v116b_art::polished_basalt_top_art(&mut a, t, &mut rng),
             TILE_POLISHED_BLACKSTONE => v116b_art::polished_blackstone_art(&mut a, t, &mut rng),
-            TILE_POLISHED_BLACKSTONE_BRICKS => v116b_art::polished_blackstone_bricks_art(&mut a, t, &mut rng),
+            TILE_POLISHED_BLACKSTONE_BRICKS => {
+                v116b_art::polished_blackstone_bricks_art(&mut a, t, &mut rng)
+            }
             TILE_SOUL_TORCH => v116b_art::soul_torch_art(&mut a, t, &mut rng),
             TILE_SOUL_LANTERN => v116b_art::soul_lantern_art(&mut a, t, &mut rng),
             TILE_SPAWN_EGG_STRIDER => v116b_art::strider_egg_art(&mut a, t, &mut rng),
@@ -4412,7 +4819,13 @@ pub fn generate_atlas() -> Vec<u8> {
                 farming_art::root_crop_art(&mut a, t, true, (t - TILE_CARROTS_BASE) as u8, &mut rng)
             }
             t if (TILE_POTATOES_BASE..=TILE_POTATOES_BASE + 3).contains(&t) => {
-                farming_art::root_crop_art(&mut a, t, false, (t - TILE_POTATOES_BASE) as u8, &mut rng)
+                farming_art::root_crop_art(
+                    &mut a,
+                    t,
+                    false,
+                    (t - TILE_POTATOES_BASE) as u8,
+                    &mut rng,
+                )
             }
             t if (TILE_BEETROOTS_BASE..=TILE_BEETROOTS_BASE + 3).contains(&t) => {
                 farming_art::beetroot_art(&mut a, t, (t - TILE_BEETROOTS_BASE) as u8, &mut rng)
@@ -4687,8 +5100,12 @@ pub fn merge_pack_tile_overrides(
     let mut animations = Vec::new();
     for (loc, tile) in vc_blocks::blocks::PACK_OVERRIDABLE {
         let path = vc_pack::model::texture_path(loc);
-        let Some(bytes) = source.read(&path) else { continue };
-        let Ok(img) = image::load_from_memory(&bytes) else { continue };
+        let Some(bytes) = source.read(&path) else {
+            continue;
+        };
+        let Ok(img) = image::load_from_memory(&bytes) else {
+            continue;
+        };
         let rgba = img.to_rgba8();
         let (w, h) = rgba.dimensions();
         // animation metadata? (same semantics as the model-texture merge)
@@ -4812,7 +5229,6 @@ pub fn scan_labpbr_materials(source: &dyn vc_pack::pack::PackSource) -> usize {
     }
     tiles_with_maps
 }
-
 
 /// Merge pack textures into the procedural atlas + fill the ModelSet's
 /// tile registry. Returns the animations to drive per frame.
@@ -5063,7 +5479,10 @@ mod pack_tex_tests {
             let img = image::RgbaImage::from_pixel(2, 2, image::Rgba(px));
             let mut bytes = Vec::new();
             image::DynamicImage::ImageRgba8(img)
-                .write_to(&mut std::io::Cursor::new(&mut bytes), image::ImageFormat::Png)
+                .write_to(
+                    &mut std::io::Cursor::new(&mut bytes),
+                    image::ImageFormat::Png,
+                )
                 .unwrap();
             bytes
         }
@@ -5071,15 +5490,9 @@ mod pack_tex_tests {
         let mut mem = vc_pack::pack::MemorySource::new("napp-test");
         mem.insert("textures/block/stone.png", png2x2([120, 120, 120, 255]));
         // flat normal (128,128) + AO 255 + height 255
-        mem.insert(
-            "textures/block/stone_n.png",
-            png2x2([128, 128, 255, 255]),
-        );
+        mem.insert("textures/block/stone_n.png", png2x2([128, 128, 255, 255]));
         // smoothness 200, F0 100, porosity 30, emission 0
-        mem.insert(
-            "textures/block/stone_s.png",
-            png2x2([200, 100, 30, 0]),
-        );
+        mem.insert("textures/block/stone_s.png", png2x2([200, 100, 30, 0]));
         mem.insert("textures/block/dirt.png", png2x2([134, 96, 67, 255]));
         let n = scan_labpbr_materials(&mem);
         assert_eq!(n, 1, "stone gained material maps; dirt did not");
@@ -5087,27 +5500,32 @@ mod pack_tex_tests {
         // corrupt _n (not a PNG) → the tile does not count
         let mut bad = vc_pack::pack::MemorySource::new("corrupt-test");
         bad.insert("textures/block/stone.png", png2x2([120, 120, 120, 255]));
-        bad.insert(
-            "textures/block/stone_n.png",
-            b"not a png".to_vec(),
+        bad.insert("textures/block/stone_n.png", b"not a png".to_vec());
+        assert_eq!(
+            scan_labpbr_materials(&bad),
+            0,
+            "undecodable maps don't count"
         );
-        assert_eq!(scan_labpbr_materials(&bad), 0, "undecodable maps don't count");
 
         // a vanilla-style pack (no companions at all) → zero
         let mut plain = vc_pack::pack::MemorySource::new("plain-test");
         plain.insert("textures/block/stone.png", png2x2([120, 120, 120, 255]));
-        assert_eq!(scan_labpbr_materials(&plain), 0, "no companions, no materials");
+        assert_eq!(
+            scan_labpbr_materials(&plain),
+            0,
+            "no companions, no materials"
+        );
 
         // _s alone still counts (spec allows either map alone)
         let mut sonly = vc_pack::pack::MemorySource::new("s-only-test");
         sonly.insert("textures/block/stone.png", png2x2([120, 120, 120, 255]));
-        sonly.insert(
-            "textures/block/stone_s.png",
-            png2x2([200, 100, 30, 0]),
+        sonly.insert("textures/block/stone_s.png", png2x2([200, 100, 30, 0]));
+        assert_eq!(
+            scan_labpbr_materials(&sonly),
+            1,
+            "the specular map alone counts"
         );
-        assert_eq!(scan_labpbr_materials(&sonly), 1, "the specular map alone counts");
     }
-
 
     #[test]
     fn missing_tile_draws_checker() {
@@ -5355,7 +5773,11 @@ mod pack_merge_tests {
             px.copy_from_slice(&[100, 150, 200, 255]);
         }
         let mips = generate_mips(&atlas, 1);
-        assert!(mips[0].as_chunks::<4>().0.iter().all(|px| *px == [100, 150, 200, 255]));
+        assert!(mips[0]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .all(|px| *px == [100, 150, 200, 255]));
     }
 
     /// the real merge must not touch ANY procedural tile: generate the
@@ -5569,8 +5991,7 @@ mod v113_art_tests {
             }
             (r / n.max(1), g / n.max(1), b / n.max(1))
         };
-        let colors: Vec<(i64, i64, i64)> =
-            (0..5).map(|i| avg(TILE_CORAL_BLOCK_BASE + i)).collect();
+        let colors: Vec<(i64, i64, i64)> = (0..5).map(|i| avg(TILE_CORAL_BLOCK_BASE + i)).collect();
         for i in 0..5 {
             for j in i + 1..5 {
                 let d = (colors[i].0 - colors[j].0).abs()
@@ -5580,10 +6001,14 @@ mod v113_art_tests {
             }
         }
         // dead forms: all gray, all close to each other
-        let dead: Vec<(i64, i64, i64)> =
-            (0..5).map(|i| avg(TILE_DEAD_CORAL_BLOCK_BASE + i)).collect();
+        let dead: Vec<(i64, i64, i64)> = (0..5)
+            .map(|i| avg(TILE_DEAD_CORAL_BLOCK_BASE + i))
+            .collect();
         for c in dead {
-            assert!(c.0.abs_diff(c.1) < 12 && c.1.abs_diff(c.2) < 12, "dead coral {c:?} not gray");
+            assert!(
+                c.0.abs_diff(c.1) < 12 && c.1.abs_diff(c.2) < 12,
+                "dead coral {c:?} not gray"
+            );
         }
     }
 
@@ -5703,8 +6128,14 @@ mod v113_art_tests {
             }
             n
         };
-        assert!(warm(TILE_BLAST_FURNACE_SIDE_LIT) >= 20, "lit blast furnace glows");
-        assert!(warm(TILE_BLAST_FURNACE_SIDE) == 0, "unlit blast furnace has no glow");
+        assert!(
+            warm(TILE_BLAST_FURNACE_SIDE_LIT) >= 20,
+            "lit blast furnace glows"
+        );
+        assert!(
+            warm(TILE_BLAST_FURNACE_SIDE) == 0,
+            "unlit blast furnace has no glow"
+        );
         assert!(warm(TILE_SMOKER_SIDE_LIT) >= 20, "lit smoker glows");
         assert!(warm(TILE_SMOKER_SIDE) == 0, "unlit smoker has no glow");
     }

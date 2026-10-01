@@ -55,7 +55,9 @@ fn main() {
             let mut tall_grass = 0usize;
             let mut biome_count = std::collections::BTreeMap::new();
             for i in 0..256usize {
-                *biome_count.entry(Biome::from_u8(chunk.biome[i]).name().to_string()).or_insert(0usize) += 1;
+                *biome_count
+                    .entry(Biome::from_u8(chunk.biome[i]).name().to_string())
+                    .or_insert(0usize) += 1;
             }
             for i in 0..(16usize * 16 * 200) {
                 let b = chunk.get_idx(i);
@@ -65,10 +67,11 @@ fn main() {
                     }
                     LEAVES | SPRUCE_LEAVES | BIRCH_LEAVES | JUNGLE_LEAVES | ACACIA_LEAVES
                     | DARK_OAK_LEAVES => leaves += 1,
-                    ALLIUM | OXEYE_DAISY | CORNFLOWER | LILY_OF_THE_VALLEY
-                    | ORANGE_TULIP | RED_TULIP | WHITE_TULIP | PINK_TULIP
-                    | PEONY | ROSE_BUSH | LILAC | SUNFLOWER | FLOWER_RED
-                    | FLOWER_YELLOW | AZURE_BLUET | BLUE_ORCHID => flora += 1,
+                    ALLIUM | OXEYE_DAISY | CORNFLOWER | LILY_OF_THE_VALLEY | ORANGE_TULIP
+                    | RED_TULIP | WHITE_TULIP | PINK_TULIP | PEONY | ROSE_BUSH | LILAC
+                    | SUNFLOWER | FLOWER_RED | FLOWER_YELLOW | AZURE_BLUET | BLUE_ORCHID => {
+                        flora += 1
+                    }
                     TALL_GRASS => tall_grass += 1,
                     _ => {}
                 }

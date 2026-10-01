@@ -44,11 +44,7 @@ impl JavaRandom {
     }
 
     fn next_bits(&mut self, bits: u32) -> u32 {
-        self.seed = self
-            .seed
-            .wrapping_mul(0x5DE_ECE_66D)
-            .wrapping_add(0xB)
-            & ((1u64 << 48) - 1);
+        self.seed = self.seed.wrapping_mul(0x5DE_ECE_66D).wrapping_add(0xB) & ((1u64 << 48) - 1);
         (self.seed >> (48 - bits)) as u32
     }
 
@@ -341,7 +337,10 @@ mod tests {
             min = min.min(v);
             max = max.max(v);
         }
-        assert!(min > -1.6 && max < 1.6, "perlin out of bounds: {min}..{max}");
+        assert!(
+            min > -1.6 && max < 1.6,
+            "perlin out of bounds: {min}..{max}"
+        );
         assert!(min < -0.2 && max > 0.2, "perlin degenerate: {min}..{max}");
         // lattice zeros: integer corners sample 0 (improved noise property)
         assert_eq!(p.sample3(10.0, 4.0, 7.0), 0.0);
@@ -405,8 +404,7 @@ mod tests {
         let mut diff = false;
         for i in 0..50 {
             let x = i as f64 * 17.0;
-            if t1.density(x, 64.0, -x, 68.0, 1.0, 0.0) != t3.density(x, 64.0, -x, 68.0, 1.0, 0.0)
-            {
+            if t1.density(x, 64.0, -x, 68.0, 1.0, 0.0) != t3.density(x, 64.0, -x, 68.0, 1.0, 0.0) {
                 diff = true;
                 break;
             }

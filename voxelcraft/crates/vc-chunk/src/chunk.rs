@@ -261,7 +261,12 @@ impl Section {
         } else {
             SECTION_LEN.div_ceil(epl)
         };
-        let mut s = Section { palette, bits, data: vec![0u64; words], non_air };
+        let mut s = Section {
+            palette,
+            bits,
+            data: vec![0u64; words],
+            non_air,
+        };
         for (i, &v) in flat.iter().enumerate() {
             if v == 0 {
                 continue; // air = palette index 0 = packed zero
@@ -563,14 +568,16 @@ mod tests {
         assert_eq!(c.get(5, 70, 5), 12);
         assert_eq!(shared.get(5, 70, 5), 0); // original untouched
         assert_eq!(shared.get(4, 70, 4), 9); // shared data still visible
-        // and the untouched sections are still Arc-shared (cheap clone)
-        assert!(std::sync::Arc::ptr_eq(
-            c.sections[4].as_ref().unwrap(),
-            shared.sections[4].as_ref().unwrap(),
-        ) || !std::sync::Arc::ptr_eq(
-            c.sections[4].as_ref().unwrap(),
-            shared.sections[4].as_ref().unwrap(),
-        )); // (sanity: field exists and compares)
+                                             // and the untouched sections are still Arc-shared (cheap clone)
+        assert!(
+            std::sync::Arc::ptr_eq(
+                c.sections[4].as_ref().unwrap(),
+                shared.sections[4].as_ref().unwrap(),
+            ) || !std::sync::Arc::ptr_eq(
+                c.sections[4].as_ref().unwrap(),
+                shared.sections[4].as_ref().unwrap(),
+            )
+        ); // (sanity: field exists and compares)
 
         // clearing the last block drops the section entirely
         c.set(4, 70, 4, 0);

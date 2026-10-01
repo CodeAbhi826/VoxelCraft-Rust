@@ -20,13 +20,13 @@ use vc_blocks::blocks::*;
 /// shared across all of them (the single-player form of vanilla's
 /// per-player rule).
 const ENDER_CHEST_KEY: [i32; 3] = [1 << 20, 0, 1 << 20];
+use rustc_hash::FxHashMap;
 use vc_mesh::mesh::{mesh_sections, MeshData};
 use vc_render::render::{Camera, RenderStats, Renderer, SkyState};
 use vc_render::ui::{self, UiCanvas, Widget, WidgetKind, UI_H, UI_W};
 use vc_world::gen::Biome;
 use vc_world::world::{ChunkPos, World};
 use winit::keyboard::KeyCode;
-use rustc_hash::FxHashMap;
 
 // ------------------------------------------------------------- keybinds --
 
@@ -2314,9 +2314,7 @@ async fn acquire_classic_art_pack() -> Option<std::sync::Arc<dyn vc_pack::pack::
                 }
             },
             None => {
-                vc_render::render::report_boot_log(
-                    "no classic-art pack on server — entry hidden",
-                );
+                vc_render::render::report_boot_log("no classic-art pack on server — entry hidden");
                 None
             }
         }
@@ -2468,8 +2466,8 @@ impl GameApp {
             let wayland = std::env::var("WAYLAND_DISPLAY")
                 .map(|_| "set")
                 .unwrap_or("unset");
-            let backend = std::env::var("WINIT_UNIX_BACKEND")
-                .unwrap_or_else(|_| "auto".to_string());
+            let backend =
+                std::env::var("WINIT_UNIX_BACKEND").unwrap_or_else(|_| "auto".to_string());
             vc_render::render::report_boot_log(&format!(
                 "pointer env: session={session} wayland_display={wayland} \
                  winit_unix_backend={backend} VC_POINTER={}",
@@ -3269,8 +3267,7 @@ impl GameApp {
                     // routed through the authoritative path so the raw
                     // DeviceEvent::Button copy of the SAME physical
                     // click is dropped (see the DeviceEvent arm)
-                    self.last_routed_click =
-                        Some((mouse_button_code(button), pressed, self.time));
+                    self.last_routed_click = Some((mouse_button_code(button), pressed, self.time));
                 }
                 #[cfg(target_arch = "wasm32")]
                 WindowEvent::MouseInput { .. } => {
@@ -3436,8 +3433,7 @@ impl GameApp {
                                 );
                             }
                         } else if let Some(btn) = mouse_button_from_code(button) {
-                            let (cx, cy) =
-                                (self.cursor.0 as i32, self.cursor.1 as i32);
+                            let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
                             if vc_render::render::is_verbose() {
                                 vc_render::render::report_debug_log(
                                     "input",
@@ -3449,8 +3445,7 @@ impl GameApp {
                                 );
                             }
                             self.route_mouse_click(btn, pressed, cx, cy);
-                            self.last_routed_click =
-                                Some((button, pressed, self.time));
+                            self.last_routed_click = Some((button, pressed, self.time));
                         }
                     }
                     _ => {}
@@ -3930,7 +3925,11 @@ impl GameApp {
                     self.apply_fullscreen();
                     vc_render::render::report_boot_log(&format!(
                         "e2e: fullscreen {}",
-                        if self.settings.fullscreen { "on" } else { "off" }
+                        if self.settings.fullscreen {
+                            "on"
+                        } else {
+                            "off"
+                        }
                     ));
                     self.ui.dirty = true;
                 }
@@ -4113,19 +4112,17 @@ impl GameApp {
                 }
                 // a Locked pin on Linux still cannot have Locked (X11):
                 // Confined is the closest honoring rung
-                PointerEnvOverride::Locked if cfg!(target_os = "linux") => &[
-                    PointerLockMode::Confined,
-                    PointerLockMode::Delta,
-                ],
+                PointerEnvOverride::Locked if cfg!(target_os = "linux") => {
+                    &[PointerLockMode::Confined, PointerLockMode::Delta]
+                }
                 PointerEnvOverride::Locked => &[
                     PointerLockMode::Locked,
                     PointerLockMode::Confined,
                     PointerLockMode::Delta,
                 ],
-                PointerEnvOverride::Auto if cfg!(target_os = "linux") => &[
-                    PointerLockMode::Confined,
-                    PointerLockMode::Delta,
-                ],
+                PointerEnvOverride::Auto if cfg!(target_os = "linux") => {
+                    &[PointerLockMode::Confined, PointerLockMode::Delta]
+                }
                 PointerEnvOverride::Auto => &[
                     PointerLockMode::Locked,
                     PointerLockMode::Confined,
@@ -4136,9 +4133,7 @@ impl GameApp {
         for rung in rungs {
             let grabbed = match rung {
                 PointerLockMode::Locked => self.window.set_cursor_grab(G::Locked).is_ok(),
-                PointerLockMode::Confined => {
-                    self.window.set_cursor_grab(G::Confined).is_ok()
-                }
+                PointerLockMode::Confined => self.window.set_cursor_grab(G::Confined).is_ok(),
                 // the visible-cursor fallback always "grabs"
                 PointerLockMode::Delta => true,
             };
@@ -7257,9 +7252,8 @@ impl GameApp {
         // walk phase: horizontal speed drives the accumulator cadence
         // (the mob driver's `anim_walk += hs * 3.5` at 20 Hz maps to the
         // same feel when scaled by dt here); idle → phase 0
-        let hs = (self.player.vel.x * self.player.vel.x
-            + self.player.vel.z * self.player.vel.z)
-            .sqrt();
+        let hs =
+            (self.player.vel.x * self.player.vel.x + self.player.vel.z * self.player.vel.z).sqrt();
         let phase = if hs > 0.05 {
             self.bob_phase.fract()
         } else {
@@ -7272,14 +7266,19 @@ impl GameApp {
         } else {
             [0.92f32, 0.92, 0.92]
         };
-        let rots = sample_anim(
-            model,
-            if hs > 0.05 { "walk" } else { "idle" },
-            phase,
-        );
+        let rots = sample_anim(model, if hs > 0.05 { "walk" } else { "idle" }, phase);
         // player hitbox 1.8 blocks / rig 32 px (the auto-fit scale)
         let scale = 1.8 / model.px_height;
-        emit_model_vertices(model, [pos.x, pos.y, pos.z], yaw, &rots, scale, tint, view_dir, &mut self.particle_verts);
+        emit_model_vertices(
+            model,
+            [pos.x, pos.y, pos.z],
+            yaw,
+            &rots,
+            scale,
+            tint,
+            view_dir,
+            &mut self.particle_verts,
+        );
     }
 
     fn build_end_entity_vertices(&mut self, right: [f32; 3], up: [f32; 3]) {
@@ -9583,8 +9582,7 @@ impl GameApp {
             self.renderer.clear_v2_pack();
             return;
         };
-        let packs =
-            vc_render::shaderpack::scan_pack_files(std::path::Path::new("shader-packs"));
+        let packs = vc_render::shaderpack::scan_pack_files(std::path::Path::new("shader-packs"));
         let Some((id, files)) = packs.into_iter().find(|(id, _)| *id == name) else {
             vc_render::render::report_boot_log(&format!(
                 "shader pack {name} not found in shader-packs/ — vanilla post stays"
@@ -9592,11 +9590,8 @@ impl GameApp {
             self.renderer.clear_v2_pack();
             return;
         };
-        let pack = vc_render::shaderpack::build_pack(
-            &id,
-            &files,
-            &std::collections::BTreeMap::new(),
-        );
+        let pack =
+            vc_render::shaderpack::build_pack(&id, &files, &std::collections::BTreeMap::new());
         let report = self.renderer.set_v2_pack(&pack.passes, &id);
         let installed = self.renderer.v2_pack_id().is_some();
         vc_render::render::report_boot_log(&format!(
@@ -9696,8 +9691,7 @@ impl GameApp {
         let tile = TILE_DESTROY_BASE + stage;
         // face light — the solid cell itself is (0,0) (the black-overlay
         // half of the 2026-09-21 "black breaking" report)
-        let (sky, blk) =
-            face_light_at(&self.world, &self.light, m.pos[0], m.pos[1], m.pos[2]);
+        let (sky, blk) = face_light_at(&self.world, &self.light, m.pos[0], m.pos[1], m.pos[2]);
         let light = vc_particles::particles::particle_light(sky, blk);
         // atlas UV of the stage tile
         let tx = (tile % 32) as f32;
@@ -10611,10 +10605,7 @@ impl GameApp {
                 // the title buttons sit near the center, so a first click
                 // without any prior motion now lands somewhere sane, and
                 // the very first CursorMoved makes it exact.
-                self.cursor = (
-                    self.ui.live_w as f32 / 2.0,
-                    self.ui.live_h as f32 / 2.0,
-                );
+                self.cursor = (self.ui.live_w as f32 / 2.0, self.ui.live_h as f32 / 2.0);
             }
             vc_render::render::report_debug_log(
                 "gfx",
@@ -13742,12 +13733,9 @@ impl GameApp {
             // loop makes, so the assertion sees production geometry
             self.rebuild_ui();
             let view = self.container_view();
-            let g = self.ui.container_screen(
-                &view,
-                self.cursor,
-                &self.atlas,
-                self.advanced_tooltips,
-            );
+            let g =
+                self.ui
+                    .container_screen(&view, self.cursor, &self.atlas, self.advanced_tooltips);
             // (a) geometry: 27 chest slots + 36 player slots resolved
             let geom_ok = g.chest.len() == 27 && g.inv.len() == 36;
             // (b) chrome: the vanilla-grey 9-slice panel on the GPU
@@ -13786,12 +13774,9 @@ impl GameApp {
         {
             self.rebuild_ui();
             let view = self.container_view();
-            let g = self.ui.container_screen(
-                &view,
-                self.cursor,
-                &self.atlas,
-                self.advanced_tooltips,
-            );
+            let g =
+                self.ui
+                    .container_screen(&view, self.cursor, &self.atlas, self.advanced_tooltips);
             // furnace slot triple resolved + the same grey-panel check
             let slots_ok = g.furnace.is_some();
             let panel_quads = self
@@ -14316,8 +14301,7 @@ impl GameApp {
             // rendering behind the pause menu), so the ladder keys off that;
             // e2e_fkeys()/e2e_fkeys_capture() force Screen::Game for their
             // rebuilds and restore whatever screen was active.
-            let in_world =
-                self.screen == Screen::Game || self.screen == Screen::Pause;
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
             match self.e2e_fkeys_stage {
                 0 if in_world => {
                     self.e2e_fkeys();
@@ -14442,8 +14426,7 @@ impl GameApp {
                 // unconditional exit used to win the race on headless
                 // runners — 0-1 frames rendered, ladder never past stage 0)
                 #[cfg(not(target_arch = "wasm32"))]
-                let fkeys_pending =
-                    std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 3;
+                let fkeys_pending = std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 3;
                 #[cfg(target_arch = "wasm32")]
                 let fkeys_pending = false;
                 if !fkeys_pending {
@@ -14472,7 +14455,8 @@ impl GameApp {
                     // construction.
                     self.rebuild_ui();
                     let (left, right) = self.f3_lines();
-                    self.ui.debug_canvas_full(&left, &right, &self.f3_targeted_lines());
+                    self.ui
+                        .debug_canvas_full(&left, &right, &self.f3_targeted_lines());
                     self.ui.dump_png(&p2);
                     vc_render::render::report_boot_log(
                         "smoke: F3 liveness pair written (dump 2 @ 1.6 s)",
@@ -14484,8 +14468,7 @@ impl GameApp {
             // smoke exit at 2.2 s fired before the first draw landed on
             // the headless runner)
             #[cfg(not(target_arch = "wasm32"))]
-            let fkeys_pending =
-                std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 3;
+            let fkeys_pending = std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 3;
             #[cfg(target_arch = "wasm32")]
             let fkeys_pending = false;
             if t_in > 2.2 && !fkeys_pending {
@@ -17482,8 +17465,7 @@ impl GameApp {
                 for (pos, item) in done {
                     // face light — the campfire cell itself is (0,0)
                     // (black cooked-item drops, same 2026-09-21 family)
-                    let (biome, _, _) =
-                        light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+                    let (biome, _, _) = light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
                     let (sky, blk) =
                         face_light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
                     self.sim
@@ -20842,52 +20824,49 @@ impl GameApp {
         // widening is the documented future step).
         let ox = pc.0 * 16 + lx as i32;
         let oz = pc.1 * 16 + lz as i32;
-        let snap: Option<(i32, i32, i32)> =
-            if self.world.dimension == vc_world::world::Dimension::Nether {
-                self.nether_floor_y(c, lx.min(15), lz.min(15))
-                    .map(|y| (ox, y, oz))
-            } else {
-                let mut found = None;
-                'spiral: for r in 0..=8i32 {
-                    for dz in -r..=r {
-                        for dx in -r..=r {
-                            if r > 0 && dx.abs() != r && dz.abs() != r {
-                                continue; // walk the ring, not the disc
-                            }
-                            let wx = ox + dx;
-                            let wz = oz + dz;
-                            let Some(nc) = self.world.chunk((wx.div_euclid(16), wz.div_euclid(16)))
-                            else {
-                                continue; // neighbor not generated — skip
-                            };
-                            let t = nc.top_solid_y(
-                                wx.rem_euclid(16) as usize,
-                                wz.rem_euclid(16) as usize,
-                            );
-                            if t < 0 {
-                                continue;
-                            }
-                            let y = t + 1;
-                            let feet = self.world.get_block(wx, y, wz);
-                            let head = self.world.get_block(wx, y + 1, wz);
-                            if feet != vc_blocks::blocks::WATER
-                                && head != vc_blocks::blocks::WATER
-                            {
-                                found = Some((wx, y, wz));
-                                break 'spiral;
-                            }
+        let snap: Option<(i32, i32, i32)> = if self.world.dimension
+            == vc_world::world::Dimension::Nether
+        {
+            self.nether_floor_y(c, lx.min(15), lz.min(15))
+                .map(|y| (ox, y, oz))
+        } else {
+            let mut found = None;
+            'spiral: for r in 0..=8i32 {
+                for dz in -r..=r {
+                    for dx in -r..=r {
+                        if r > 0 && dx.abs() != r && dz.abs() != r {
+                            continue; // walk the ring, not the disc
+                        }
+                        let wx = ox + dx;
+                        let wz = oz + dz;
+                        let Some(nc) = self.world.chunk((wx.div_euclid(16), wz.div_euclid(16)))
+                        else {
+                            continue; // neighbor not generated — skip
+                        };
+                        let t =
+                            nc.top_solid_y(wx.rem_euclid(16) as usize, wz.rem_euclid(16) as usize);
+                        if t < 0 {
+                            continue;
+                        }
+                        let y = t + 1;
+                        let feet = self.world.get_block(wx, y, wz);
+                        let head = self.world.get_block(wx, y + 1, wz);
+                        if feet != vc_blocks::blocks::WATER && head != vc_blocks::blocks::WATER {
+                            found = Some((wx, y, wz));
+                            break 'spiral;
                         }
                     }
                 }
-                found.or_else(|| {
-                    let t = c.top_solid_y(lx.min(15), lz.min(15));
-                    if t >= 0 {
-                        Some((ox, t + 1, oz))
-                    } else {
-                        None
-                    }
-                })
-            };
+            }
+            found.or_else(|| {
+                let t = c.top_solid_y(lx.min(15), lz.min(15));
+                if t >= 0 {
+                    Some((ox, t + 1, oz))
+                } else {
+                    None
+                }
+            })
+        };
         if let Some((sx, y, sz)) = snap {
             if sx != ox || sz != oz {
                 vc_render::render::report_boot_log(&format!(
@@ -21712,10 +21691,7 @@ impl GameApp {
                 "F3 + H".to_string(),
                 "Advanced tooltips (block ids)".to_string(),
             ),
-            (
-                "F3 + G".to_string(),
-                "Show chunk borders".to_string(),
-            ),
+            ("F3 + G".to_string(), "Show chunk borders".to_string()),
             ("F3".to_string(), "Toggle this overlay".to_string()),
         ]
     }
@@ -22150,143 +22126,143 @@ impl GameApp {
         // reported in the live in-game test round.
         let hud_hidden = self.container.is_some() || self.picker_open || self.hide_hud;
         if !hud_hidden {
-        self.ui.crosshair();
-        // 1.9+ attack indicator (vanilla 1.16.5 default: below the
-        // crosshair, hidden while fully charged). Reuses the swing-timer
-        // fraction the melee code already computes for damage scaling.
-        {
-            use vc_gameplay::combat;
-            let (_, atk_speed) = combat::held_attack(self.player.held().block);
-            let period = combat::attack_cooldown_ticks(atk_speed) / 20.0;
-            let p = (self.swing_t / period).min(1.0);
-            self.ui.attack_indicator(p);
-        }
-        let toast = self
-            .item_toast
-            .as_ref()
-            .map(|(s, t)| (s.as_str(), (*t * 200.0).clamp(0.0, 220.0) as u8));
-        self.ui.hotbar(
-            &self.player.inv.slots[..vc_inventory::inventory::INV_SLOTS.min(9)],
-            self.player.selected,
-            &self.atlas,
-            toast,
-        );
-        let xp = self.player.xp_fraction();
-        let level = self.player.xp_level.max(0) as u32;
-        // §29: the health bar is REAL now — potions heal it, damage lowers it;
-        // the XP bar shows the real in-level progress + level.
-        //
-        // Sub-round 1 (2026-09-14 Survival HUD round): the per-mode
-        // element set now follows the LIVE wiki — VERIFIED
-        // reference wiki /Heads-up_display (fetched 2026-09-14): "In
-        // Creative mode, the health, hunger, oxygen, experience, and
-        // armor bars are hidden." Creative renders crosshair + hotbar +
-        // boss bar + held-item name ONLY. The retired `xp_bar_only`
-        // (creative XP bar + bubbles) is gone; the old rationale
-        // ("levels still matter for enchanting") is recorded in the
-        // round-9 reference audit §2 — the wiki wins per the
-        // cross-check rule.
-        if !self.mode.invulnerable() {
-            use vc_gameplay::effects::EffectKind;
-            let hunger_poisoned = self.player.effects.amplifier(EffectKind::Hunger).is_some();
-            let regen = self
+            self.ui.crosshair();
+            // 1.9+ attack indicator (vanilla 1.16.5 default: below the
+            // crosshair, hidden while fully charged). Reuses the swing-timer
+            // fraction the melee code already computes for damage scaling.
+            {
+                use vc_gameplay::combat;
+                let (_, atk_speed) = combat::held_attack(self.player.held().block);
+                let period = combat::attack_cooldown_ticks(atk_speed) / 20.0;
+                let p = (self.swing_t / period).min(1.0);
+                self.ui.attack_indicator(p);
+            }
+            let toast = self
+                .item_toast
+                .as_ref()
+                .map(|(s, t)| (s.as_str(), (*t * 200.0).clamp(0.0, 220.0) as u8));
+            self.ui.hotbar(
+                &self.player.inv.slots[..vc_inventory::inventory::INV_SLOTS.min(9)],
+                self.player.selected,
+                &self.atlas,
+                toast,
+            );
+            let xp = self.player.xp_fraction();
+            let level = self.player.xp_level.max(0) as u32;
+            // §29: the health bar is REAL now — potions heal it, damage lowers it;
+            // the XP bar shows the real in-level progress + level.
+            //
+            // Sub-round 1 (2026-09-14 Survival HUD round): the per-mode
+            // element set now follows the LIVE wiki — VERIFIED
+            // reference wiki /Heads-up_display (fetched 2026-09-14): "In
+            // Creative mode, the health, hunger, oxygen, experience, and
+            // armor bars are hidden." Creative renders crosshair + hotbar +
+            // boss bar + held-item name ONLY. The retired `xp_bar_only`
+            // (creative XP bar + bubbles) is gone; the old rationale
+            // ("levels still matter for enchanting") is recorded in the
+            // round-9 reference audit §2 — the wiki wins per the
+            // cross-check rule.
+            if !self.mode.invulnerable() {
+                use vc_gameplay::effects::EffectKind;
+                let hunger_poisoned = self.player.effects.amplifier(EffectKind::Hunger).is_some();
+                let regen = self
+                    .player
+                    .effects
+                    .amplifier(EffectKind::Regeneration)
+                    .is_some();
+                let status = ui::HudStatus {
+                    health: self.player.health,
+                    // Round 17: the LIVE foodLevel — the hardcoded 20/20
+                    // spawn display is retired with the FoodData system
+                    // (VERIFIED w/Food §Hunger values); the saturation-zero
+                    // jitter flag rides along (w/Food §Saturation)
+                    food: self.player.hunger.food as f32,
+                    food_jitter: self.player.hunger.saturation <= 0.0,
+                    xp,
+                    level,
+                    air: self.player.air,
+                    armor: self.player.armor_points,
+                    // hearts shake while regenerating / hurt / at low
+                    // health (clean-room; audit §3)
+                    hearts_jitter: regen || self.player.hurt_t > 0.0 || self.player.health <= 4.0,
+                    hunger_poisoned,
+                    tick_phase: (self.sim.ticks & 1) as i32,
+                };
+                self.ui.status_bars(&status);
+                // Sub-round 1: the damage-flash vignette, decaying with the
+                // player's hurt timer (vanilla hurtTime semantics)
+                if self.player.hurt_t > 0.0 {
+                    let a = self.player.hurt_t / Player::HURT_FLASH_SECS;
+                    self.ui.damage_vignette(a);
+                }
+                // 2026-09-25 night: the underwater screen wash (vanilla tints
+                // the whole view blue while the camera eye is submerged)
+                if self.player.head_in_water {
+                    self.ui.underwater_tint(1.0);
+                }
+            }
+            // Sub-round 1: the status-effect icons, top-right (wiki-
+            // verified split/sort/blink rules on the painter).
+            // Sub-round 2/3 round (2026-09-15, user callout "what about
+            // the effects"): effects render in EVERY gameplay mode —
+            // VERIFIED reference wiki /Heads-up_display (live
+            // 2026-09-14): "All effects ... the player currently has are
+            // shown on the top-right of the screen", and the Creative-mode
+            // hidden list ("health, hunger, oxygen, experience, and armor
+            // bars are hidden") does NOT include the effect icons. The
+            // icons previously rode the !invulnerable() gate and vanished
+            // in Creative — now hoisted out of it.
+            let entries: Vec<ui::EffectIconEntry> = self
                 .player
                 .effects
-                .amplifier(EffectKind::Regeneration)
-                .is_some();
-            let status = ui::HudStatus {
-                health: self.player.health,
-                // Round 17: the LIVE foodLevel — the hardcoded 20/20
-                // spawn display is retired with the FoodData system
-                // (VERIFIED w/Food §Hunger values); the saturation-zero
-                // jitter flag rides along (w/Food §Saturation)
-                food: self.player.hunger.food as f32,
-                food_jitter: self.player.hunger.saturation <= 0.0,
-                xp,
-                level,
-                air: self.player.air,
-                armor: self.player.armor_points,
-                // hearts shake while regenerating / hurt / at low
-                // health (clean-room; audit §3)
-                hearts_jitter: regen || self.player.hurt_t > 0.0 || self.player.health <= 4.0,
-                hunger_poisoned,
-                tick_phase: (self.sim.ticks & 1) as i32,
-            };
-            self.ui.status_bars(&status);
-            // Sub-round 1: the damage-flash vignette, decaying with the
-            // player's hurt timer (vanilla hurtTime semantics)
-            if self.player.hurt_t > 0.0 {
-                let a = self.player.hurt_t / Player::HURT_FLASH_SECS;
-                self.ui.damage_vignette(a);
+                .active
+                .iter()
+                .filter(|e| e.ticks_left > 0)
+                .map(|e| ui::EffectIconEntry {
+                    icon: effect_icon_index(e.kind),
+                    amplifier: e.amplifier,
+                    ticks_left: e.ticks_left,
+                    positive: effect_is_positive(e.kind),
+                })
+                .collect();
+            if !entries.is_empty() {
+                self.ui.effect_icons(&entries, self.sim.ticks as i64);
             }
-            // 2026-09-25 night: the underwater screen wash (vanilla tints
-            // the whole view blue while the camera eye is submerged)
-            if self.player.head_in_water {
-                self.ui.underwater_tint(1.0);
-            }
-        }
-        // Sub-round 1: the status-effect icons, top-right (wiki-
-        // verified split/sort/blink rules on the painter).
-        // Sub-round 2/3 round (2026-09-15, user callout "what about
-        // the effects"): effects render in EVERY gameplay mode —
-        // VERIFIED reference wiki /Heads-up_display (live
-        // 2026-09-14): "All effects ... the player currently has are
-        // shown on the top-right of the screen", and the Creative-mode
-        // hidden list ("health, hunger, oxygen, experience, and armor
-        // bars are hidden") does NOT include the effect icons. The
-        // icons previously rode the !invulnerable() gate and vanished
-        // in Creative — now hoisted out of it.
-        let entries: Vec<ui::EffectIconEntry> = self
-            .player
-            .effects
-            .active
-            .iter()
-            .filter(|e| e.ticks_left > 0)
-            .map(|e| ui::EffectIconEntry {
-                icon: effect_icon_index(e.kind),
-                amplifier: e.amplifier,
-                ticks_left: e.ticks_left,
-                positive: effect_is_positive(e.kind),
-            })
-            .collect();
-        if !entries.is_empty() {
-            self.ui.effect_icons(&entries, self.sim.ticks as i64);
-        }
 
-        // Phase E1: the dragon boss bar while the fight is live (VERIFIED:
-        // light purple, top of the screen)
-        if self.world.dimension == vc_world::world::Dimension::End {
-            if let Some(d) = self.sim.dragon.dragon.as_ref() {
-                if d.dying.is_none() {
-                    self.ui
-                        .boss_bar(d.health / vc_gameplay::dragon::DRAGON_HEALTH);
+            // Phase E1: the dragon boss bar while the fight is live (VERIFIED:
+            // light purple, top of the screen)
+            if self.world.dimension == vc_world::world::Dimension::End {
+                if let Some(d) = self.sim.dragon.dragon.as_ref() {
+                    if d.dying.is_none() {
+                        self.ui
+                            .boss_bar(d.health / vc_gameplay::dragon::DRAGON_HEALTH);
+                    }
                 }
             }
-        }
 
-        // Phase E2: the wither boss bar (any dimension; VERIFIED w/Wither:
-        // the boss bar fills through the charge then tracks health)
-        if let Some(w) = self.sim.wither.wither.as_ref() {
-            if w.alive() {
-                if w.charging() {
-                    // the charge fills the bar (VERIFIED §Creation: the
-                    // bar charges up over the 220 ticks)
-                    let frac = (w.phase_t as f32) / (vc_gameplay::wither::CHARGE_TICKS as f32);
-                    self.ui.boss_bar(frac.clamp(0.0, 1.0));
-                } else {
-                    self.ui
-                        .boss_bar(w.health / vc_gameplay::wither::WITHER_HEALTH);
+            // Phase E2: the wither boss bar (any dimension; VERIFIED w/Wither:
+            // the boss bar fills through the charge then tracks health)
+            if let Some(w) = self.sim.wither.wither.as_ref() {
+                if w.alive() {
+                    if w.charging() {
+                        // the charge fills the bar (VERIFIED §Creation: the
+                        // bar charges up over the 220 ticks)
+                        let frac = (w.phase_t as f32) / (vc_gameplay::wither::CHARGE_TICKS as f32);
+                        self.ui.boss_bar(frac.clamp(0.0, 1.0));
+                    } else {
+                        self.ui
+                            .boss_bar(w.health / vc_gameplay::wither::WITHER_HEALTH);
+                    }
                 }
             }
-        }
 
-        // held-item name (fades ~2 s after the selection changes) —
-        // Sub-round 1: shows in BOTH modes (vanilla renders it in
-        // creative too; it is not one of the hidden status rows)
-        if self.held_name_t > 0.0 {
-            let a = (self.held_name_t / 2.0).min(1.0);
-            self.ui.held_item_name(&self.held_name, a);
-        }
+            // held-item name (fades ~2 s after the selection changes) —
+            // Sub-round 1: shows in BOTH modes (vanilla renders it in
+            // creative too; it is not one of the hidden status rows)
+            if self.held_name_t > 0.0 {
+                let a = (self.held_name_t / 2.0).min(1.0);
+                self.ui.held_item_name(&self.held_name, a);
+            }
         } // !hud_hidden — the F3 overlay below stays over containers
 
         if self.show_debug {
@@ -22320,7 +22296,8 @@ impl GameApp {
             // glyph path so the dumped pixels carry the live overlay.
             if let Ok(path) = std::env::var("F3_DUMP") {
                 if !self.f3_dump2 {
-                    self.ui.debug_canvas_full(&left, &right, &self.f3_targeted_lines());
+                    self.ui
+                        .debug_canvas_full(&left, &right, &self.f3_targeted_lines());
                     self.ui.dump_png(&path);
                 }
             }
@@ -22676,9 +22653,7 @@ impl GameApp {
                             let sx = eye.x + dir.x * t * sign;
                             let sy = eye.y + dir.y * t * sign;
                             let sz = eye.z + dir.z * t * sign;
-                            if is_solid(
-                                self.world.get_block(sx as i32, sy as i32, sz as i32),
-                            ) {
+                            if is_solid(self.world.get_block(sx as i32, sy as i32, sz as i32)) {
                                 d = (t - 0.25).max(0.25);
                                 break;
                             }
@@ -22688,10 +22663,7 @@ impl GameApp {
                         let cz = eye.z + dir.z * d * sign;
                         // front view: look back at the player's eyes
                         let (cyaw, cpitch) = if self.camera_mode == 2 {
-                            (
-                                self.player.yaw + std::f32::consts::PI,
-                                -self.player.pitch,
-                            )
+                            (self.player.yaw + std::f32::consts::PI, -self.player.pitch)
                         } else {
                             (self.player.yaw, self.player.pitch)
                         };
@@ -22746,13 +22718,9 @@ impl GameApp {
             // item entities share the billboard pipeline (§22 progressive)
             // — 3D spinning mini-blocks since the 2026-09-21 round
             // (needs the camera dir for the painter face order)
-            self.sim.items.build_vertices(
-                self.time,
-                right,
-                up,
-                dir,
-                &mut self.particle_verts,
-            );
+            self.sim
+                .items
+                .build_vertices(self.time, right, up, dir, &mut self.particle_verts);
             // §27/§29 villagers: crossed-quad sprites, villager scale
             vc_gameplay::villagers::build_vertices(
                 &self.sim.villagers.list,
@@ -24065,10 +24033,28 @@ mod settings_tests {
         let edit = ws.iter().find(|w| w.id == ID_WS_EDIT).unwrap();
         assert_eq!(edit.y, 480 - (540 - 480), "world-select row B anchored");
         assert!(edit.y + edit.h <= 480, "row B fully inside");
-        let ws = ui::layout_world_create(true, "New World", "", "Leave blank", "SURVIVAL", "DEFAULT", true, false);
+        let ws = ui::layout_world_create(
+            true,
+            "New World",
+            "",
+            "Leave blank",
+            "SURVIVAL",
+            "DEFAULT",
+            true,
+            false,
+        );
         let cancel = ws.iter().find(|w| w.id == ID_WC_CANCEL).unwrap();
         assert!(cancel.y + cancel.h <= 480, "page-2 CANCEL fully inside");
-        let ws = ui::layout_world_create(false, "New World", "", "Leave blank", "SURVIVAL", "DEFAULT", true, false);
+        let ws = ui::layout_world_create(
+            false,
+            "New World",
+            "",
+            "Leave blank",
+            "SURVIVAL",
+            "DEFAULT",
+            true,
+            false,
+        );
         let cancel = ws.iter().find(|w| w.id == ID_WC_CANCEL).unwrap();
         assert!(cancel.y + cancel.h <= 480, "page-1 CANCEL fully inside");
         // scale-4 720p (640×360) — every bottom row still inside
@@ -24583,7 +24569,10 @@ mod settings_tests {
         use vc_pack::datapack::{GridItem, MemoryFiles};
         let files = MemoryFiles::demo();
         let report = vc_pack::datapack::scan_pack("demo", &files).expect("demo pack valid");
-        assert_eq!(report.pack_format, vc_pack::datapack::PACK_FORMAT_LEGACY_ERA);
+        assert_eq!(
+            report.pack_format,
+            vc_pack::datapack::PACK_FORMAT_LEGACY_ERA
+        );
         assert_eq!(report.recipes.len(), 2);
         assert_eq!(report.loot_tables.len(), 1);
         assert_eq!(report.tags.len(), 1);
@@ -24666,7 +24655,8 @@ mod settings_tests {
         }
         assert_eq!(chests, 4, "the 4-chest pit claim");
         assert!(
-            vc_pack::datapack::builtin_structure_table("voxelcraft:chests/desert_pyramid").is_some(),
+            vc_pack::datapack::builtin_structure_table("voxelcraft:chests/desert_pyramid")
+                .is_some(),
             "the desert_pyramid loot-table claim"
         );
         // "e2e: mineshaft at chunk ... corridors N (lens [24..=48])"
@@ -24778,12 +24768,7 @@ mod tests {
     fn watchdog_demotes_on_positive_starvation_evidence() {
         // the user is demonstrably moving (3 CursorMoved) but not ONE
         // raw motion arrived >1 s into a real grab → demote
-        assert!(should_demote_to_delta(
-            PointerLockMode::Confined,
-            1.5,
-            3,
-            0
-        ));
+        assert!(should_demote_to_delta(PointerLockMode::Confined, 1.5, 3, 0));
         assert!(should_demote_to_delta(PointerLockMode::Locked, 2.0, 10, 0));
     }
 
@@ -24797,7 +24782,12 @@ mod tests {
             50,
             1
         ));
-        assert!(!should_demote_to_delta(PointerLockMode::Locked, 5.0, 50, 12));
+        assert!(!should_demote_to_delta(
+            PointerLockMode::Locked,
+            5.0,
+            50,
+            12
+        ));
     }
 
     #[test]
@@ -24806,15 +24796,30 @@ mod tests {
         // no CursorMoved evidence = nobody is moving the mouse — an
         // idle grab is not starvation (a screensaver-quiet session must
         // not kick itself into delta-look)
-        assert!(!should_demote_to_delta(PointerLockMode::Confined, 30.0, 0, 0));
-        assert!(!should_demote_to_delta(PointerLockMode::Confined, 30.0, 2, 0));
+        assert!(!should_demote_to_delta(
+            PointerLockMode::Confined,
+            30.0,
+            0,
+            0
+        ));
+        assert!(!should_demote_to_delta(
+            PointerLockMode::Confined,
+            30.0,
+            2,
+            0
+        ));
     }
 
     #[test]
     #[cfg(not(target_arch = "wasm32"))]
     fn watchdog_respects_the_grace_window() {
         // positive evidence but inside the 1 s grace → not yet
-        assert!(!should_demote_to_delta(PointerLockMode::Confined, 0.5, 5, 0));
+        assert!(!should_demote_to_delta(
+            PointerLockMode::Confined,
+            0.5,
+            5,
+            0
+        ));
         assert!(!should_demote_to_delta(
             PointerLockMode::Confined,
             1.0,
@@ -24827,7 +24832,12 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     fn watchdog_delta_is_immune() {
         // Delta IS the fallback — nothing to demote
-        assert!(!should_demote_to_delta(PointerLockMode::Delta, 10.0, 100, 0));
+        assert!(!should_demote_to_delta(
+            PointerLockMode::Delta,
+            10.0,
+            100,
+            0
+        ));
     }
 
     /// 2026-09-25 (B-1): a spawn column whose top solid block sits UNDER
@@ -24841,9 +24851,7 @@ mod tests {
     fn spawn_column_under_water_is_rejected_and_neighbor_is_accepted() {
         use vc_blocks::blocks::{AIR, GRASS, WATER};
         let mut c = vc_chunk::Chunk::empty();
-        for (x, z, floor, water_top) in
-            [(0usize, 0usize, 60i32, 63i32), (1, 0, 60, 59)]
-        {
+        for (x, z, floor, water_top) in [(0usize, 0usize, 60i32, 63i32), (1, 0, 60, 59)] {
             for y in 0..=floor {
                 c.set(x, y as usize, z, GRASS);
             }
@@ -24884,10 +24892,7 @@ mod tests {
             PointerEnvOverride::parse(Some("locked")),
             PointerEnvOverride::Locked
         );
-        assert_eq!(
-            PointerEnvOverride::parse(None),
-            PointerEnvOverride::Auto
-        );
+        assert_eq!(PointerEnvOverride::parse(None), PointerEnvOverride::Auto);
         // unknown values fall back to auto (never a boot failure)
         assert_eq!(
             PointerEnvOverride::parse(Some("banana")),

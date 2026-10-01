@@ -15,9 +15,9 @@
 //! per the §Enchanted books rule. The ItemStack model grew dmg/prior/
 //! ench2/name fields this round to carry the state.
 
+use crate::enchanting::{enchant_def, incompatible};
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
-use crate::enchanting::{enchant_def, incompatible};
 
 /// anvil degrade chance per use (VERIFIED w/Anvil: 12%)
 pub const DEGRADE_CHANCE_PER_USE: f32 = 0.12;
@@ -147,9 +147,15 @@ pub fn ench_applies_to(ench: u8, block: u16) -> bool {
     let id = enchant_def(ench).id;
     match id {
         // any armor piece
-        "protection" | "fire_protection" | "blast_protection"
-        | "projectile_protection" | "thorns" | "unbreaking" | "mending"
-        | "binding_curse" | "vanishing_curse" => true,
+        "protection"
+        | "fire_protection"
+        | "blast_protection"
+        | "projectile_protection"
+        | "thorns"
+        | "unbreaking"
+        | "mending"
+        | "binding_curse"
+        | "vanishing_curse" => true,
         // helmet only
         "respiration" | "aqua_affinity" => piece == 0,
         // boots only
@@ -218,7 +224,11 @@ pub fn combine(
         return None;
     }
     let s_enchants: Vec<(u8, u8)> = sacrifice.enchants().iter().flatten().copied().collect();
-    let t_max_dur = if t_book { None } else { armor_max_durability(target.block) };
+    let t_max_dur = if t_book {
+        None
+    } else {
+        armor_max_durability(target.block)
+    };
     let t_damaged = t_max_dur.is_some_and(|m| target.dmg > 0 && target.dmg < m);
 
     // refusal: nothing to do (VERIFIED: "If the target item is at full
@@ -229,8 +239,8 @@ pub fn combine(
     }
 
     let mut result = *target;
-    let mut cost = prior_work_penalty(target.prior as u32)
-        + prior_work_penalty(sacrifice.prior as u32);
+    let mut cost =
+        prior_work_penalty(target.prior as u32) + prior_work_penalty(sacrifice.prior as u32);
 
     // --- repair (same-item only; books never repair) ---
     if same_item && !s_book {
@@ -261,7 +271,10 @@ pub fn combine(
         // incompatible with a target enchant: +1 level, not transferred
         // (VERIFIED §Costs: "Add one level for every incompatible
         // enchantment on the target (in Java Edition)")
-        if carried.iter().any(|&(t_id, _)| t_id != id && incompatible(t_id, id)) {
+        if carried
+            .iter()
+            .any(|&(t_id, _)| t_id != id && incompatible(t_id, id))
+        {
             cost += 1;
             continue;
         }
@@ -308,7 +321,8 @@ pub fn combine(
     }
 
     // --- rename ---
-    let pure_rename = !same_item_repaired_or_enchanted(t_damaged, same_item, !s_enchants.is_empty());
+    let pure_rename =
+        !same_item_repaired_or_enchanted(t_damaged, same_item, !s_enchants.is_empty());
     if let Some(name) = rename {
         result.name = name;
         cost += RENAME_COST;
@@ -322,7 +336,11 @@ pub fn combine(
     };
 
     let too_expensive = cost > COST_CAP;
-    Some(AnvilPlan { result, cost, too_expensive })
+    Some(AnvilPlan {
+        result,
+        cost,
+        too_expensive,
+    })
 }
 
 #[inline]
@@ -378,7 +396,6 @@ pub fn stage_after_use(block: u16, roll: f32) -> Option<u16> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn constants_match_the_live_wiki() {
@@ -505,7 +522,10 @@ mod tests {
     fn anvil_rename_costs_one_level() {
         let t = ItemStack::new(IRON_HELMET, 1);
         let empty = ItemStack::EMPTY;
-        assert!(combine(&t, &empty, None).is_none(), "nothing to do -> red X");
+        assert!(
+            combine(&t, &empty, None).is_none(),
+            "nothing to do -> red X"
+        );
         let plan = combine(&t, &empty, Some(4)).expect("rename makes it valid");
         assert_eq!(plan.cost, RENAME_COST);
         assert_eq!(plan.result.name, 4);
@@ -556,8 +576,16 @@ mod tests {
     /// opposite of the gate); corrected against the wiki.
     #[test]
     fn anvil_damage_stage_advances_on_use() {
-        assert_eq!(stage_after_use(ANVIL, 0.5), Some(ANVIL), "87% survive (0.5 >= 0.12)");
-        assert_eq!(stage_after_use(ANVIL, 0.05), Some(CHIPPED_ANVIL), "the 12% degrade roll");
+        assert_eq!(
+            stage_after_use(ANVIL, 0.5),
+            Some(ANVIL),
+            "87% survive (0.5 >= 0.12)"
+        );
+        assert_eq!(
+            stage_after_use(ANVIL, 0.05),
+            Some(CHIPPED_ANVIL),
+            "the 12% degrade roll"
+        );
         assert_eq!(stage_after_use(CHIPPED_ANVIL, 0.1), Some(DAMAGED_ANVIL));
         assert_eq!(stage_after_use(DAMAGED_ANVIL, 0.0), None, "destroyed");
     }

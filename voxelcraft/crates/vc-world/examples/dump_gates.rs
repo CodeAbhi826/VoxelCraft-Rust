@@ -104,9 +104,8 @@ fn main() {
         let mean = xs.iter().sum::<f64>() / n;
         let var = xs.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / n;
         let std = var.sqrt();
-        let frac = |lo: f64, hi: f64| {
-            xs.iter().filter(|&&x| x > lo && x <= hi).count() as f64 / n * 100.0
-        };
+        let frac =
+            |lo: f64, hi: f64| xs.iter().filter(|&&x| x > lo && x <= hi).count() as f64 / n * 100.0;
         println!(
             "  {name}: mean={mean:.3} std={std:.3} | P(>0.2)={:.1}% P(>0.3)={:.1}% P(>0.32)={:.1}%",
             frac(0.2, 9.0),

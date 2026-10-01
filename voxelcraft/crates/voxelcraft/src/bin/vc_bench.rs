@@ -14,7 +14,6 @@
 //! in-game `--benchmark` mode on a real desktop (§31: label unavailable
 //! rather than fabricate).
 
-use std::collections::HashMap;
 use std::hint::black_box;
 use std::sync::Arc;
 use std::time::Instant;
@@ -233,7 +232,7 @@ fn main() {
     // measurable). One "frame" = region ordering + the three pass lists +
     // region runs + MDI args packing for every visible chunk.
     let mut gpu: FxHashMap<ChunkPos, ChunkGpu> = FxHashMap::default();
-    let mut allocs: HashMap<(i32, i32), (SlotAlloc, SlotAlloc)> = HashMap::new();
+    let mut allocs: FxHashMap<(i32, i32), (SlotAlloc, SlotAlloc)> = FxHashMap::default();
     for &(pos, v_len, i_len, w_i_len) in mesh_dims.iter() {
         let rk = draw::region_of(pos);
         let (va, ia) = allocs.entry(rk).or_default();

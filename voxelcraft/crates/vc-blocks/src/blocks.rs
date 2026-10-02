@@ -14670,7 +14670,7 @@ mod v112_tests {
             TILE_MAX >= TILE_ILLUSIONER,
             "1.12 tiles within the atlas guard"
         );
-        assert_eq!(PICKER_BLOCKS.len(), 467);
+        assert_eq!(PICKER_BLOCKS.len(), 470);
         // the V9 + V10 windows are all present (the picker-gap fix)
         for want in [
             SEA_PICKLE,
@@ -14988,7 +14988,7 @@ mod v115_tests {
         assert_eq!(V12_COUNT, 18);
         assert_eq!(BLOCK_COUNT, 536);
         assert_eq!(STATE_COUNT, 872); // + the Round-13 station identities (861..=862)
-        assert_eq!(PICKER_BLOCKS.len(), 467);
+        assert_eq!(PICKER_BLOCKS.len(), 470);
     }
 }
 #[cfg(test)]
@@ -15154,7 +15154,7 @@ mod v116_tests {
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
         assert_eq!(BLOCK_COUNT, 536);
         assert_eq!(STATE_COUNT, 872); // + the Round-13 station identities (861..=862)
-        assert_eq!(PICKER_BLOCKS.len(), 467);
+        assert_eq!(PICKER_BLOCKS.len(), 470);
     }
 
     /// the V14 window (ids 454..=478, states 750..=775): the
@@ -15349,7 +15349,7 @@ mod v116_tests {
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
         assert_eq!(BLOCK_COUNT, 536);
         assert_eq!(STATE_COUNT, 872); // + the Round-13 station identities (861..=862)
-        assert_eq!(PICKER_BLOCKS.len(), 467);
+        assert_eq!(PICKER_BLOCKS.len(), 470);
     }
 
     /// the V15 window (ids 479..=504, states 776..=803): the
@@ -15627,6 +15627,107 @@ mod tnt_tests {
         assert_eq!(
             state_tiles(TNT_STATE),
             [TILE_TNT_TOP, TILE_TNT_BOTTOM, TILE_TNT_SIDE, TILE_TNT_SIDE]
+        );
+    }
+}
+
+#[cfg(test)]
+mod bed_tests {
+    use super::*;
+
+    /// beds round: the two-part block round-trips through the registry
+    /// (VERIFIED w/Bed, live 2026-09-22, raw wikitext via the MediaWiki
+    /// API: infobox hardness 0.2, blast resistance 0.2, transparent;
+    /// §Block states: facing 4 values, part foot/head; §Breaking: any
+    /// tool, drops itself)
+    #[test]
+    fn bed_block_roundtrips() {
+        assert_eq!(BED, 534);
+        assert_eq!(BED_HEAD, 535);
+        // the state window: part(2) × facing(4), 864..=871
+        assert_eq!(BED_STATE_BASE, 864);
+        assert_eq!(BED_STATE_TO_BLOCK.len(), 8);
+        // the fresh-bed default: facing 0, the half's own part
+        assert_eq!(default_state(BED), bed_state(false, 0));
+        assert_eq!(default_state(BED_HEAD), bed_state(true, 0));
+        // the fold maps foot states to the foot, head states to the head
+        for f in 0..4u8 {
+            assert_eq!(state_block(bed_state(false, f)), BED);
+            assert_eq!(state_block(bed_state(true, f)), BED_HEAD);
+            assert!(is_bed_state(bed_state(false, f)));
+            assert!(is_bed_state(bed_state(true, f)));
+        }
+        assert!(!bed_state_is_head(bed_state(false, 3)));
+        assert!(bed_state_is_head(bed_state(true, 0)));
+        // the facing codec round-trips (clamped 0..3)
+        for f in 0..4u8 {
+            assert_eq!(bed_facing(bed_state(false, f)), f);
+            assert_eq!(bed_facing(bed_state(true, f)), f);
+        }
+        assert_eq!(bed_facing(bed_state(false, 9)), 3, "clamped");
+        assert_eq!(bed_facing(0), 0, "non-bed states fold to facing 0");
+        assert!(is_bed_block(BED) && is_bed_block(BED_HEAD));
+        assert!(!is_bed_block(TNT));
+        assert!(
+            !is_model_state(bed_state(true, 2)),
+            "never a JSON-model state"
+        );
+        // hardness 0.2 — any tool, ×1.5 = 0.3 s hand break
+        assert_eq!(BED_HARDNESS, 0.2);
+        assert_eq!(BED_BLAST_RESISTANCE, 0.2);
+        assert_eq!(break_time_secs(BED), 0.3);
+        assert_eq!(break_time_secs(BED_HEAD), 0.3);
+    }
+
+    /// beds round: the two defs carry the clean-room art (the foot's
+    /// blanket top, the head's pillow top, the shared side + underside),
+    /// transparent (neighbor faces never cull), the Wool sound family,
+    /// and the whole registry stays within the atlas (the
+    /// all_def_tiles_within_tile_max guard re-runs implicitly).
+    #[test]
+    fn bed_defs_and_tiles() {
+        let foot = def(BED);
+        let head = def(BED_HEAD);
+        assert_eq!(foot.name, "Red Bed");
+        assert_eq!(head.name, "Red Bed");
+        assert_eq!(
+            foot.tiles,
+            [TILE_BED_FOOT_TOP, TILE_BED_BOTTOM, TILE_BED_SIDE]
+        );
+        assert_eq!(
+            head.tiles,
+            [TILE_BED_HEAD_TOP, TILE_BED_BOTTOM, TILE_BED_SIDE]
+        );
+        assert!(foot.solid && head.solid, "the bed collides with entities");
+        assert!(!foot.opaque && !head.opaque, "Transparent: Yes (VERIFIED)");
+        assert!(!foot.cross && !head.cross);
+        assert!(matches!(foot.sound, SoundFamily::Wool));
+        assert!(matches!(head.sound, SoundFamily::Wool));
+        assert_eq!(foot.emissive, 0);
+        // both halves are placeable blocks riding the Decoration tab
+        assert!(!is_item_block(BED) && !is_item_block(BED_HEAD));
+        assert!(PICKER_BLOCKS.contains(&BED), "picker missing BED");
+        assert!(PICKER_BLOCKS.contains(&BED_HEAD), "picker missing BED_HEAD");
+        assert_eq!(creative_tab(BED), CreativeTab::DecorationBlocks);
+        assert_eq!(creative_tab(BED_HEAD), CreativeTab::DecorationBlocks);
+        // the per-state tiles ride state_tiles's fallback to the defs
+        assert_eq!(
+            state_tiles(bed_state(false, 1)),
+            [
+                TILE_BED_FOOT_TOP,
+                TILE_BED_BOTTOM,
+                TILE_BED_SIDE,
+                TILE_BED_SIDE
+            ]
+        );
+        assert_eq!(
+            state_tiles(bed_state(true, 1)),
+            [
+                TILE_BED_HEAD_TOP,
+                TILE_BED_BOTTOM,
+                TILE_BED_SIDE,
+                TILE_BED_SIDE
+            ]
         );
     }
 }

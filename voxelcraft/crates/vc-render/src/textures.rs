@@ -9,6 +9,11 @@ use vc_rng::rng::Rng;
 mod armor_art;
 mod audit16_art;
 mod auditfix_art;
+/// beds round: the red bed's four faces (the foot-top blanket, the
+/// head-top pillow, the shared side, the plank underside) — child module
+/// so the art additions stay reviewable while sharing the put/jit/art
+/// helpers.
+mod bed_art;
 /// Phase E1 procedural tiles (evolution 1.0–1.2 bracket) — child module so
 /// the art additions stay reviewable while sharing the put/jit/art helpers.
 mod e1_art;
@@ -4814,6 +4819,11 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_TNT_SIDE => tnt_art::tnt_side_art(&mut a, t, &mut rng),
             TILE_TNT_TOP => tnt_art::tnt_top_art(&mut a, t, &mut rng),
             TILE_TNT_BOTTOM => tnt_art::tnt_bottom_art(&mut a, t, &mut rng),
+            // ---- beds round (2026-09-22): the red bed's four faces ----
+            TILE_BED_FOOT_TOP => bed_art::foot_top_art(&mut a, t, &mut rng),
+            TILE_BED_HEAD_TOP => bed_art::head_top_art(&mut a, t, &mut rng),
+            TILE_BED_SIDE => bed_art::side_art(&mut a, t, &mut rng),
+            TILE_BED_BOTTOM => bed_art::bottom_art(&mut a, t, &mut rng),
             // ---- backlog round (farming, 2026-09-09): the farming set ----
             TILE_FARMLAND_DRY => farming_art::farmland_art(&mut a, t, false),
             TILE_FARMLAND_WET => farming_art::farmland_art(&mut a, t, true),

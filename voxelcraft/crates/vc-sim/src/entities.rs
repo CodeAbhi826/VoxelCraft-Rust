@@ -838,16 +838,20 @@ impl PrimedTntSystem {
             // buoyancy — the documented water adaptation above)
             let t = &mut self.tnts[i];
             t.vel[1] -= 0.04;
-            // per-axis move; the collision probes the hitbox's two
-            // extremes along the moved axis (a 0.98-block box)
+            // per-axis move; the collision probes the 0.98 hitbox's
+            // extremes along the moved axis. pos is BOTTOM-anchored on Y
+            // (the render centers the cuboid at pos + half) and CENTERED
+            // on X/Z — the Y probe spans [target, target + 0.98], the
+            // horizontal probes [target − 0.49, target + 0.49] (the
+            // 2026-10-02 CI catch: the old ±half Y probe floated the
+            // entity ~0.5 above the floor)
             for axis in 0..3 {
                 let target = t.pos[axis] + t.vel[axis];
-                let mut probe = t.pos;
-                probe[axis] = target;
-                let mut lo = probe;
-                lo[axis] = target - half;
-                let mut hi = probe;
-                hi[axis] = target + half;
+                let (lo, hi) = if axis == 1 {
+                    (target, target + TNT_HITBOX)
+                } else {
+                    (target - half, target + half)
+                };
                 let hit = is_solid(world.get_block(lo[0] as i32, lo[1] as i32, lo[2] as i32))
                     || is_solid(world.get_block(hi[0] as i32, hi[1] as i32, hi[2] as i32));
                 if hit {
@@ -926,7 +930,11 @@ impl PrimedTntSystem {
     /// seconds between the TNT block's texture, and a copy of it that has
     /// been brightened to near-white")
     pub fn flash_bright(&self, t: &PrimedTnt) -> f32 {
-        if (t.age / TNT_FLASH_PERIOD_TICKS) % 2 == 1 {
+        // age is incremented BEFORE the phase read (tick's first sample is
+        // age 1), so the phase folds the COMPLETED ticks: dark ages 1..10
+        // (the first 0.5 s), bright 11..20, dark 21..30, bright 31..40 —
+        // the verified "alternating every 0.5 seconds" from priming
+        if ((t.age - 1) / TNT_FLASH_PERIOD_TICKS) % 2 == 1 {
             1.0 // the near-white brightened copy
         } else {
             0.0 // the TNT block's texture
@@ -1271,9 +1279,14 @@ mod tests {
         assert_eq!(sys.exploded_total, 1);
         assert!(sys.tnts.is_empty(), "the entity is consumed");
         let c = sys.explosions[0];
+        // the entity fell and rests on the y=64 stone's top surface
+        // (~65.0 + the one-tick residual) — the explosion fires
+        // 0.06125 above the RESTED position (the rest-height
+        // tolerance covers the residual)
         assert!(
-            (c[1] - (66.0 + TNT_EXPLOSION_HEIGHT_OFFSET)).abs() < 1e-5,
-            "0.06125 above the entity position (VERIFIED)"
+            (c[1] - (65.0 + TNT_EXPLOSION_HEIGHT_OFFSET)).abs() < 0.06,
+            "0.06125 above the rested entity position, got {}",
+            c[1]
         );
     }
 
@@ -1306,15 +1319,22 @@ mod tests {
                 "fuse {f} outside the verified 10–30 window"
             );
         }
-        // the roll is not pinned to one value
-        let mut distinct = 0;
-        for f in TNT_CHAIN_FUSE_MIN..=TNT_CHAIN_FUSE_MAX {
-            let mut sys = PrimedTntSystem::new(f as u64 * 7919);
-            if sys.chain_fuse() == f {
-                distinct += 1;
+        // the roll is not pinned to one value: many seeds cover the
+        // window (the old hand-picked f·7919 seeds assumed the seed
+        // maps to its own fuse — brittle)
+        let mut seen: Vec<i32> = Vec::new();
+        for s in 0..200u64 {
+            let mut sys = PrimedTntSystem::new(s);
+            let f = sys.chain_fuse();
+            if !seen.contains(&f) {
+                seen.push(f);
             }
         }
-        assert!(distinct >= 2, "the roll covers the window");
+        assert!(
+            seen.len() >= 2,
+            "the roll covers the window ({} distinct of 200 seeds)",
+            seen.len()
+        );
         assert_eq!(TNT_FLASH_PERIOD_TICKS, 10, "0.5 s at 20 Hz");
         assert_eq!(TNT_HITBOX, 0.98);
         assert_eq!(TNT_EXPLOSION_POWER, 4.0);

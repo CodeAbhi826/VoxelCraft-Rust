@@ -12511,6 +12511,35 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
         0,
         SoundFamily::Wool,
     ),
+    // Round K: the nether portal — light 11 (VERIFIED
+    // Nether_Portal_(block): light 11, transparent, hardness -1, blast 0,
+    // glass sound), non-solid, non-opaque, item form non-existent
+    d(
+        "Nether Portal",
+        [TILE_NETHER_PORTAL, TILE_NETHER_PORTAL, TILE_NETHER_PORTAL],
+        false,
+        false,
+        false,
+        false,
+        11,
+        SoundFamily::Glass,
+    ),
+    // Round K: the flint-and-steel item — the Tools tab (durability not
+    // modeled: the shears/hoe precedent, disclosed)
+    d(
+        "Flint and Steel",
+        [
+            TILE_FLINT_AND_STEEL,
+            TILE_FLINT_AND_STEEL,
+            TILE_FLINT_AND_STEEL,
+        ],
+        false,
+        false,
+        false,
+        false,
+        0,
+        SoundFamily::Gravel,
+    ),
 ];
 
 #[inline]

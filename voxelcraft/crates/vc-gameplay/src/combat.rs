@@ -89,6 +89,58 @@ pub enum Difficulty {
     Hard,
 }
 
+// ---------------------------------------------------------------------------
+// TNT round — the verified explosion math (all values live-verified
+// 2026-09-22 against reference wiki /Explosion §Damage/§Velocity/
+// §Dropping blocks; see also w/TNT §Behavior)
+// ---------------------------------------------------------------------------
+
+/// The explosion's per-entity blast impact — VERIFIED w/Explosion §Damage
+/// (the Java code): `impact = (1 - distance/(2*power)) * exposure`.
+/// `distance` is measured from the explosion center to the entity's
+/// position; `exposure` (Explosion §Exposure) is the fraction of
+/// unobstructed rays from the explosion center to the sample points on
+/// the entity's bounding-box grid. Clamped at 0 (a fully blocked blast
+/// has impact 0 — the +1 floor below still damages in-range entities).
+#[inline]
+pub fn explosion_impact(distance: f32, power: f32, exposure: f32) -> f32 {
+    (1.0 - distance / (2.0 * power)).max(0.0) * exposure.max(0.0)
+}
+
+/// The explosion's per-entity damage — VERIFIED w/Explosion §Damage (the
+/// Java code): `damage = (impact*impact + impact)/2 * 7*(2*power) + 1`,
+/// i.e. `7 · power · (impact² + impact) + 1`. The +1 at the end means all
+/// entities in range (within 2·power) receive at least 1 damage even when
+/// the explosion is fully blocked (the invulnerable/Peaceful exceptions
+/// are the callers' gates).
+#[inline]
+pub fn explosion_damage(impact: f32, power: f32) -> f32 {
+    7.0 * power * (impact * impact + impact) + 1.0
+}
+
+/// The explosion's knockback magnitude — VERIFIED w/Explosion §Velocity
+/// (the Java code): `magnitude = (1 - distance/(2*power)) * exposure *
+/// knockbackMultiplier * (1 - EXPLOSION_KNOCKBACK_RESISTANCE)`. The
+/// knockback multiplier is 1.0 for every engine explosion cause (the
+/// wind-charge rows are post-1.16.5); the engine's mobs carry no
+/// `explosion_knockback_resistance` attribute — both factors reduce out.
+#[inline]
+pub fn explosion_knockback(distance: f32, power: f32, exposure: f32) -> f32 {
+    (1.0 - distance / (2.0 * power)).max(0.0) * exposure.max(0.0)
+}
+
+/// The per-block item-drop chance for an explosion — VERIFIED w/Explosion
+/// §Dropping blocks: "Blocks destroyed by TNT have a 100% chance of
+/// dropping. Other explosions have a 1/power chance of dropping items."
+#[inline]
+pub fn explosion_drop_chance(power: f32, tnt: bool) -> f32 {
+    if tnt {
+        1.0
+    } else {
+        1.0 / power.max(1.0)
+    }
+}
+
 /// Player melee damage for a held item. Fists (or any non-weapon block —
 /// we have no sword items yet) are VERIFIED vanilla "Other Items": 1 HP
 /// base at attack speed 4.0.
@@ -213,5 +265,62 @@ mod tests {
         // → 1 × (1 − 0.06) = 0.94
         let o = player_melee(0, 1.0, false, false, 2.0, 0.0);
         assert!((o.damage - 0.94).abs() < 1e-4);
+    }
+
+    #[test]
+    fn tnt_impact_matches_the_verified_formula() {
+        // VERIFIED w/Explosion §Damage (the Java code): impact =
+        // (1 − distance/(2·power)) · exposure. Power 4 (TNT), fully
+        // exposed, at the center: impact = 1
+        assert!((explosion_impact(0.0, 4.0, 1.0) - 1.0).abs() < 1e-6);
+        // 4 blocks out (the blast radius): 1 − 4/8 = 0.5
+        assert!((explosion_impact(4.0, 4.0, 1.0) - 0.5).abs() < 1e-6);
+        // half-exposed at the center: 0.5
+        assert!((explosion_impact(0.0, 4.0, 0.5) - 0.5).abs() < 1e-6);
+        // 8 blocks out (2·power): 0 — out of range
+        assert!((explosion_impact(8.0, 4.0, 1.0).abs()) < 1e-6);
+        // beyond 2·power clamps at 0 (never negative)
+        assert_eq!(explosion_impact(12.0, 4.0, 1.0), 0.0);
+        // a fully blocked blast: exposure 0
+        assert_eq!(explosion_impact(0.0, 4.0, 0.0), 0.0);
+        // the creeper's power 3: 3 blocks out → 1 − 3/6 = 0.5
+        assert!((explosion_impact(3.0, 3.0, 1.0) - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn tnt_damage_matches_the_verified_formula() {
+        // VERIFIED w/Explosion §Damage (the Java code): damage =
+        // (impact² + impact)/2 · 7·(2·power) + 1 = 7·power·(impact² +
+        // impact) + 1. Power 4, impact 1 (a point-blank fully exposed
+        // hit): 7·4·2 + 1 = 57
+        assert!((explosion_damage(1.0, 4.0) - 57.0).abs() < 1e-4);
+        // the +1 floor: impact 0 (fully blocked, still in range) = 1
+        assert!((explosion_damage(0.0, 4.0) - 1.0).abs() < 1e-6);
+        // impact 0.5 at the blast radius: 7·4·(0.25 + 0.5) + 1 = 22
+        assert!((explosion_damage(0.5, 4.0) - 22.0).abs() < 1e-4);
+        // the creeper's power 3, impact 1: 7·3·2 + 1 = 43
+        assert!((explosion_damage(1.0, 3.0) - 43.0).abs() < 1e-4);
+        // difficulty scaling rides difficulty_scale: 57 → Hard 85.5 /
+        // Easy 29.5 (min(57/2+1, 57)) — the wiki's per-difficulty rows
+        assert!((difficulty_scale(57.0, Difficulty::Hard) - 85.5).abs() < 1e-4);
+        assert!((difficulty_scale(57.0, Difficulty::Easy) - 29.5).abs() < 1e-4);
+        assert_eq!(difficulty_scale(57.0, Difficulty::Peaceful), 0.0);
+    }
+
+    #[test]
+    fn tnt_knockback_and_drop_chances_match() {
+        // VERIFIED w/Explosion §Velocity (the Java code): magnitude =
+        // (1 − distance/(2·power)) · exposure (the default 1.0 knockback
+        // multiplier; no explosion_knockback_resistance in the engine)
+        assert!((explosion_knockback(0.0, 4.0, 1.0) - 1.0).abs() < 1e-6);
+        assert!((explosion_knockback(4.0, 4.0, 1.0) - 0.5).abs() < 1e-6);
+        assert_eq!(explosion_knockback(0.0, 4.0, 0.0), 0.0);
+        // VERIFIED w/Explosion §Dropping blocks: TNT explosions drop
+        // 100%; other explosions 1/power
+        assert_eq!(explosion_drop_chance(4.0, true), 1.0);
+        assert!((explosion_drop_chance(3.0, false) - 1.0 / 3.0).abs() < 1e-6);
+        assert!((explosion_drop_chance(4.0, false) - 0.25).abs() < 1e-6);
+        // a degenerate power never divides by zero
+        assert!((explosion_drop_chance(0.0, false) - 1.0).abs() < 1e-6);
     }
 }

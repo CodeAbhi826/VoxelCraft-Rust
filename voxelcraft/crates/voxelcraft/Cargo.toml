@@ -36,6 +36,9 @@ serde_json = { workspace = true }
 winit = { workspace = true }
 pollster = { workspace = true }
 wgpu = { workspace = true }
+# T5 contract (2026-10-01): the E2E border-visibility diff decodes the
+# captured PNGs to raw RGBA (the byte sizes differ with compression)
+image = { workspace = true }
 vc-anvil = { workspace = true }
 vc-audio = { workspace = true }
 vc-blocks = { workspace = true }

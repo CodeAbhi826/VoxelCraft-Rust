@@ -19,6 +19,7 @@ mod farming_art;
 /// `gui` module's set/loader can call the painters)
 pub mod gui_art;
 mod r13_art;
+mod tnt_art;
 mod v112_art;
 mod v113_art;
 mod v114_art;
@@ -4809,6 +4810,10 @@ pub fn generate_atlas() -> Vec<u8> {
             // Round 13 (station GUIs): the book item + the grindstone block
             TILE_BOOK => r13_art::book_art(&mut a, t, &mut rng),
             TILE_GRINDSTONE => r13_art::grindstone_art(&mut a, t, &mut rng),
+            // TNT round: the TNT block's three faces (clean-room art)
+            TILE_TNT_SIDE => tnt_art::tnt_side_art(&mut a, t, &mut rng),
+            TILE_TNT_TOP => tnt_art::tnt_top_art(&mut a, t, &mut rng),
+            TILE_TNT_BOTTOM => tnt_art::tnt_bottom_art(&mut a, t, &mut rng),
             // ---- backlog round (farming, 2026-09-09): the farming set ----
             TILE_FARMLAND_DRY => farming_art::farmland_art(&mut a, t, false),
             TILE_FARMLAND_WET => farming_art::farmland_art(&mut a, t, true),

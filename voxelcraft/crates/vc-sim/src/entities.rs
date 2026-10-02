@@ -612,6 +612,383 @@ impl XpOrbSystem {
     }
 }
 
+// ---------------------------------------------------------------------------
+// TNT round — primed TNT (the gravity-affected fuse entity, all values
+// live-verified 2026-09-22 against reference wiki /TNT §Behavior; see
+// also w/Explosion §Damage/§Dropping blocks)
+// ---------------------------------------------------------------------------
+
+pub const MAX_PRIMED_TNT: usize = 256;
+/// the fuse: fire/redstone-activated TNT explodes after 80 game ticks
+/// (4 seconds) — VERIFIED w/TNT §Behavior: "If activated by fire or a
+/// redstone signal, or summoned by commands, primed TNT explodes after
+/// 80 game ticks (4 seconds)". The timer decreases by 1 every game tick
+/// and the primed TNT explodes when it reaches 0 (§Behavior "Countdown
+/// timer").
+pub const TNT_FUSE_TICKS: i32 = 80;
+/// the chain-prime fuse: explosion-activated TNT explodes after a random
+/// number of game ticks between 10 and 30 (0.5 to 1.5 s) — VERIFIED
+/// w/TNT §Behavior.
+pub const TNT_CHAIN_FUSE_MIN: i32 = 10;
+pub const TNT_CHAIN_FUSE_MAX: i32 = 30;
+/// the primed entity's initial velocity: 0.2 blocks per tick upward and
+/// 0.02 blocks per tick in a random direction — VERIFIED w/TNT §Behavior
+/// ("given an initial velocity of 0.2 blocks per tick upward, and 0.02
+/// blocks per tick in a random direction").
+pub const TNT_PRIME_VEL_UP: f32 = 0.2;
+pub const TNT_PRIME_VEL_RANDOM: f32 = 0.02;
+/// the primed entity's hitbox — VERIFIED w/TNT §Behavior (infobox):
+/// "Height: 0.98 blocks, Width: 0.98 blocks". The explosion sits 0.06125
+/// blocks above the entity's position (the same verified row).
+pub const TNT_HITBOX: f32 = 0.98;
+pub const TNT_EXPLOSION_HEIGHT_OFFSET: f32 = 0.06125;
+/// the flash: the primed TNT's texture blinks, alternating every 0.5
+/// seconds between the TNT block's texture and a near-white brightened
+/// copy — VERIFIED w/TNT §Behavior (§Appearance). Engine form: the
+/// 10-tick phase at the 20 Hz sim (0.5 s).
+pub const TNT_FLASH_PERIOD_TICKS: i32 = 10;
+/// the TNT explosion's power — VERIFIED w/TNT §Behavior: "Primed TNT
+/// creates explosions with a power of 4, which can break most blocks"
+/// (also w/Explosion §Causes: the TNT row is 4, the creeper's row is 3).
+pub const TNT_EXPLOSION_POWER: f32 = 4.0;
+
+#[derive(Clone, Copy, Debug)]
+pub struct PrimedTnt {
+    /// the entity's center-bottom position (the block position +
+    /// [0.5, +0.0, +0.5] — VERIFIED w/TNT §Behavior)
+    pub pos: [f32; 3],
+    pub vel: [f32; 3],
+    /// game ticks until the explosion (VERIFIED: decrements by 1 every
+    /// tick, explodes at 0)
+    pub fuse: i32,
+    /// sim ticks alive (drives the 10-tick flash phase)
+    pub age: i32,
+    /// baked billboard brightness + tint at prime (the item-drop pattern)
+    pub light: f32,
+    pub tint: [f32; 3],
+}
+
+pub struct PrimedTntSystem {
+    pub tnts: Vec<PrimedTnt>,
+    rng: Rng,
+    /// explosions queued for the game layer to drain (world edits + light
+    /// + entity damage live there — the creeper-explosion split)
+    pub explosions: Vec<[f32; 3]>,
+    /// registered TNT block placements (the ignition sweep's scan set —
+    /// chain-primed and exploded blocks leave the set)
+    blocks: rustc_hash::FxHashSet<[i32; 3]>,
+    /// stats
+    pub primed_total: u64,
+    pub exploded_total: u64,
+}
+
+impl PrimedTntSystem {
+    pub fn new(seed: u64) -> Self {
+        PrimedTntSystem {
+            tnts: Vec::with_capacity(16),
+            rng: Rng::new(seed ^ 0x7D_0001),
+            explosions: Vec::new(),
+            blocks: rustc_hash::FxHashSet::default(),
+            primed_total: 0,
+            exploded_total: 0,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.tnts.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.tnts.is_empty()
+    }
+
+    /// register a placed TNT block for the ignition sweep (the placement
+    /// path is the only registrar — the conduits pattern)
+    pub fn register_block(&mut self, pos: [i32; 3]) {
+        self.blocks.insert(pos);
+    }
+
+    /// ONE sim tick for all primed TNT entities: the fuse countdown (1
+    /// per tick, explodes at 0 — VERIFIED), gravity 0.04 + drag 0.98 (the
+    /// verified shared entity profile the items/falling blocks carry),
+    /// per-axis collision probing the 0.98 hitbox's extremes, and the
+    /// explosion at fuse 0 queued at pos + 0.06125 above (VERIFIED) for
+    /// game.rs to drain via explode().
+    ///
+    /// DOCUMENTED ADAPTATION (water): vanilla primed TNT is "pushed by
+    /// flowing water" and does not float (no buoyancy); the engine's
+    /// shared water drag 0.9 applies — the exact vanilla water drag for
+    /// the primed entity was not separately verified.
+    pub fn tick(&mut self, world: &vc_world::world::World) {
+        let half = TNT_HITBOX * 0.5;
+        let mut i = 0;
+        while i < self.tnts.len() {
+            // the fuse countdown (VERIFIED: 1 per tick, explode at 0)
+            self.tnts[i].age += 1;
+            self.tnts[i].fuse -= 1;
+            if self.tnts[i].fuse <= 0 {
+                // the explosion location: 0.06125 blocks above the
+                // entity's position (VERIFIED w/TNT §Behavior)
+                let p = self.tnts[i].pos;
+                self.explosions
+                    .push([p[0], p[1] + TNT_EXPLOSION_HEIGHT_OFFSET, p[2]]);
+                self.exploded_total += 1;
+                self.tnts.remove(i);
+                continue;
+            }
+            // physics: gravity 0.04 (the shared entity profile; no
+            // buoyancy — the documented water adaptation above)
+            let t = &mut self.tnts[i];
+            t.vel[1] -= 0.04;
+            // per-axis move; the collision probes the hitbox's two
+            // extremes along the moved axis (a 0.98-block box)
+            for axis in 0..3 {
+                let target = t.pos[axis] + t.vel[axis];
+                let mut probe = t.pos;
+                probe[axis] = target;
+                let mut lo = probe;
+                lo[axis] = target - half;
+                let mut hi = probe;
+                hi[axis] = target + half;
+                let hit = is_solid(world.get_block(
+                    lo[0] as i32,
+                    lo[1] as i32,
+                    lo[2] as i32,
+                )) || is_solid(world.get_block(
+                    hi[0] as i32,
+                    hi[1] as i32,
+                    hi[2] as i32,
+                ));
+                if hit {
+                    if axis == 1 {
+                        t.vel[1] = 0.0;
+                        // ground friction (the item pattern's slip)
+                        t.vel[0] *= 0.6;
+                        t.vel[2] *= 0.6;
+                    } else {
+                        t.vel[axis] = 0.0;
+                    }
+                } else {
+                    t.pos[axis] = target;
+                }
+            }
+            // drag: 0.98 in air (the shared profile), 0.9 in water (the
+            // documented adaptation)
+            let in_water = world.get_block(
+                t.pos[0] as i32,
+                t.pos[1] as i32,
+                t.pos[2] as i32,
+            ) == WATER;
+            let drag = if in_water { 0.9 } else { 0.98 };
+            t.vel[0] *= drag;
+            t.vel[2] *= drag;
+            if in_water {
+                t.vel[1] *= 0.9;
+            } else {
+                t.vel[1] *= 0.98;
+            }
+            i += 1;
+        }
+    }
+
+    /// prime a TNT block: the block is replaced with the primed entity
+    /// placed offset from the block's bottom center by [+0.5, +0.0, +0.5]
+    /// (VERIFIED w/TNT §Behavior), given the initial velocity (0.2 up +
+    /// 0.02 random — VERIFIED), and the fuse (80 for fire/redstone —
+    /// VERIFIED; the caller passes the random 10–30 chain-prime fuse).
+    /// `biome`/`sky`/`blk` bake the entity's brightness + tint at prime
+    /// (the item-drop pattern; TNT has no biome tint).
+    #[allow(clippy::too_many_arguments)]
+    pub fn prime(
+        &mut self,
+        wx: i32,
+        wy: i32,
+        wz: i32,
+        biome: u8,
+        sky: u8,
+        blk: u8,
+        fuse: i32,
+    ) {
+        if self.tnts.len() >= MAX_PRIMED_TNT {
+            return; // cap: the oldest entities still live, refuse the prime
+        }
+        let tint = vc_blocks::tint::block_tint_color(TNT, biome);
+        let s = sky.min(15) as f32 / 15.0;
+        let b = blk.min(15) as f32 / 15.0;
+        let light = (s.max(b) * 0.96 + 0.04) * s.max(b).powf(1.2);
+        let ang = self.rng.next_f32() * std::f32::consts::TAU;
+        self.tnts.push(PrimedTnt {
+            pos: [wx as f32 + 0.5, wy as f32, wz as f32 + 0.5],
+            vel: [
+                ang.sin() * TNT_PRIME_VEL_RANDOM,
+                TNT_PRIME_VEL_UP,
+                ang.cos() * TNT_PRIME_VEL_RANDOM,
+            ],
+            fuse,
+            age: 0,
+            light,
+            tint,
+        });
+        self.primed_total += 1;
+        self.blocks.remove(&[wx, wy, wz]);
+    }
+
+    /// the chain-prime fuse roll: a random number of game ticks between
+    /// 10 and 30 inclusive (VERIFIED w/TNT §Behavior)
+    pub fn chain_fuse(&mut self) -> i32 {
+        TNT_CHAIN_FUSE_MIN
+            + self.rng.next_range((TNT_CHAIN_FUSE_MAX - TNT_CHAIN_FUSE_MIN + 1) as u32) as i32
+    }
+
+    /// the 10-tick flash phase (VERIFIED: "blinks, alternating every 0.5
+    /// seconds between the TNT block's texture, and a copy of it that has
+    /// been brightened to near-white")
+    pub fn flash_bright(&self, t: &PrimedTnt) -> f32 {
+        if (t.age / TNT_FLASH_PERIOD_TICKS) % 2 == 1 {
+            1.0 // the near-white brightened copy
+        } else {
+            0.0 // the TNT block's texture
+        }
+    }
+
+    /// block-model rendering: a 0.98-block cuboid (VERIFIED hitbox) with
+    /// the TNT faces (state_tiles), vanilla face shading (top 1.0 /
+    /// bottom 0.5 / X 0.6 / Z 0.8) — no spin (the primed entity renders
+    /// as the block model, not a spinning item). The flash phase
+    /// brightens every face toward near-white on the bright phase.
+    /// Emitted into the shared particle stream like the item cubes.
+    pub fn build_vertices(&self, out: &mut Vec<vc_particles::particles::ParticleVertex>) {
+        let half = TNT_HITBOX * 0.5;
+        for t in self.tnts.iter() {
+            let tiles = state_tiles(TNT);
+            let flash = self.flash_bright(t);
+            let cy = t.pos[1] + half; // the hitbox is bottom-anchored
+            let base = [
+                t.light * t.tint[0],
+                t.light * t.tint[1],
+                t.light * t.tint[2],
+            ];
+            // the near-white brightened copy (the flash's bright phase)
+            let col = [
+                base[0] + (1.0 - base[0]) * flash,
+                base[1] + (1.0 - base[1]) * flash,
+                base[2] + (1.0 - base[2]) * flash,
+            ];
+            // (corners CCW seen from outside, normal, shade, tile)
+            let faces: [([[f32; 3]; 4], [f32; 3], f32, u16); 6] = [
+                // +Y top
+                (
+                    [
+                        [-half, half, -half],
+                        [half, half, -half],
+                        [half, half, half],
+                        [-half, half, half],
+                    ],
+                    [0.0, 1.0, 0.0],
+                    1.0,
+                    tiles[0],
+                ),
+                // −Y bottom
+                (
+                    [
+                        [-half, -half, half],
+                        [half, -half, half],
+                        [half, -half, -half],
+                        [-half, -half, -half],
+                    ],
+                    [0.0, -1.0, 0.0],
+                    0.5,
+                    tiles[1],
+                ),
+                // +X
+                (
+                    [
+                        [half, -half, -half],
+                        [half, half, -half],
+                        [half, half, half],
+                        [half, -half, half],
+                    ],
+                    [1.0, 0.0, 0.0],
+                    0.6,
+                    tiles[2],
+                ),
+                // −X
+                (
+                    [
+                        [-half, -half, half],
+                        [-half, half, half],
+                        [-half, half, -half],
+                        [-half, -half, -half],
+                    ],
+                    [-1.0, 0.0, 0.0],
+                    0.6,
+                    tiles[2],
+                ),
+                // +Z
+                (
+                    [
+                        [half, -half, half],
+                        [half, half, half],
+                        [-half, half, half],
+                        [-half, -half, half],
+                    ],
+                    [0.0, 0.0, 1.0],
+                    0.8,
+                    tiles[3],
+                ),
+                // −Z
+                (
+                    [
+                        [-half, -half, -half],
+                        [-half, half, -half],
+                        [half, half, -half],
+                        [-half, -half, -half],
+                    ],
+                    [0.0, 0.0, -1.0],
+                    0.8,
+                    tiles[3],
+                ),
+            ];
+            for (fi, (corners, _nrm, shade, tile)) in faces.iter().enumerate() {
+                // [1.12 fix] 32-tile atlas rows (was %16//16)
+                let tx = (*tile % 32) as f32;
+                let ty = (*tile / 32) as f32;
+                // per-face shade on the flash color (the top keeps 1.0)
+                let fc = [
+                    col[0] * shade,
+                    col[1] * shade,
+                    col[2] * shade,
+                ];
+                // UV: v flipped so texture top = block top (side faces);
+                // top/bottom map the tile straight on
+                let uvs = if fi < 2 {
+                    [
+                        [tx / 32.0, (ty + 1.0) / 32.0],
+                        [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
+                        [(tx + 1.0) / 32.0, ty / 32.0],
+                        [tx / 32.0, ty / 32.0],
+                    ]
+                } else {
+                    [
+                        [tx / 32.0, (ty + 1.0) / 32.0],
+                        [tx / 32.0, ty / 32.0],
+                        [(tx + 1.0) / 32.0, ty / 32.0],
+                        [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
+                    ]
+                };
+                for ci in [0usize, 1, 2, 0, 2, 3] {
+                    let cn = corners[ci];
+                    out.push(vc_particles::particles::ParticleVertex {
+                        pos: [t.pos[0] + cn[0], cy + cn[1], t.pos[2] + cn[2]],
+                        uv: [uvs[ci][0], uvs[ci][1]],
+                        col: fc,
+                    });
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -782,5 +1159,141 @@ mod tests {
         assert!(sys.orbs.is_empty(), "VERIFIED: 5-minute despawn");
         assert_eq!(ORB_DESPAWN_TICKS, 6000);
         assert_eq!(ORB_ATTRACT_DIST, 7.25);
+    }
+
+    // ---------------- TNT round: primed TNT ----------------
+
+    #[test]
+    fn tnt_fuse_is_80_ticks_and_explodes_at_zero() {
+        // VERIFIED w/TNT §Behavior: "primed TNT explodes after 80 game
+        // ticks (4 seconds)"; "The timer decreases by 1 every game tick,
+        // and the Primed TNT explodes when it reaches 0"
+        let w = flat_world();
+        let mut sys = PrimedTntSystem::new(3);
+        sys.prime(0, 66, 0, 2, 15, 0, TNT_FUSE_TICKS);
+        assert_eq!(sys.len(), 1);
+        assert_eq!(sys.tnts[0].pos, [0.5, 66.0, 0.5], "block pos +[0.5,0,0.5]");
+        assert_eq!(
+            sys.tnts[0].vel[1],
+            TNT_PRIME_VEL_UP,
+            "0.2 blocks/tick upward (VERIFIED)"
+        );
+        assert!(
+            sys.tnts[0].vel[0].hypot(sys.tnts[0].vel[2]) <= TNT_PRIME_VEL_RANDOM + 1e-6,
+            "0.02 blocks/tick random horizontal (VERIFIED)"
+        );
+        // no explosion before the fuse
+        for _ in 0..TNT_FUSE_TICKS - 1 {
+            sys.tick(&w);
+            assert!(sys.explosions.is_empty(), "the fuse guards");
+            assert_eq!(sys.len(), 1);
+        }
+        // the 80th tick drains the fuse to 0 → the explosion queues
+        sys.tick(&w);
+        assert_eq!(sys.explosions.len(), 1, "explodes at fuse 0");
+        assert_eq!(sys.exploded_total, 1);
+        assert!(sys.tnts.is_empty(), "the entity is consumed");
+        let c = sys.explosions[0];
+        assert!(
+            (c[1] - (66.0 + TNT_EXPLOSION_HEIGHT_OFFSET)).abs() < 1e-5,
+            "0.06125 above the entity position (VERIFIED)"
+        );
+    }
+
+    #[test]
+    fn tnt_falls_with_the_shared_entity_profile() {
+        // gravity 0.04, drag 0.98 (the verified shared profile the
+        // items/falling blocks carry) — the entity rests on the floor
+        let w = flat_world();
+        let mut sys = PrimedTntSystem::new(5);
+        sys.prime(0, 66, 0, 2, 15, 0, 400);
+        for _ in 0..60 {
+            sys.tick(&w);
+        }
+        assert!(!sys.tnts.is_empty(), "a long fuse still lives");
+        let t = &sys.tnts[0];
+        // the 0.98 hitbox rests on the y=64 floor's top surface (y=65)
+        assert!(
+            (t.pos[1] - 65.0).abs() < 0.06,
+            "rest height: {}",
+            t.pos[1]
+        );
+    }
+
+    #[test]
+    fn tnt_chain_fuse_rolls_between_10_and_30() {
+        // VERIFIED w/TNT §Behavior: "If activated by an explosion, primed
+        // TNT explodes after a random number of game ticks between 10
+        // and 30 (0.5 to 1.5 seconds)"
+        let mut sys = PrimedTntSystem::new(7);
+        for _ in 0..400 {
+            let f = sys.chain_fuse();
+            assert!(
+                (TNT_CHAIN_FUSE_MIN..=TNT_CHAIN_FUSE_MAX).contains(&f),
+                "fuse {f} outside the verified 10–30 window"
+            );
+        }
+        // the roll is not pinned to one value
+        let mut distinct = 0;
+        for f in TNT_CHAIN_FUSE_MIN..=TNT_CHAIN_FUSE_MAX {
+            let mut sys = PrimedTntSystem::new(f as u64 * 7919);
+            if sys.chain_fuse() == f {
+                distinct += 1;
+            }
+        }
+        assert!(distinct >= 2, "the roll covers the window");
+        assert_eq!(TNT_FLASH_PERIOD_TICKS, 10, "0.5 s at 20 Hz");
+        assert_eq!(TNT_HITBOX, 0.98);
+        assert_eq!(TNT_EXPLOSION_POWER, 4.0);
+    }
+
+    #[test]
+    fn tnt_flash_phase_alternates_every_10_ticks() {
+        // VERIFIED w/TNT §Behavior (§Appearance): "blinks, alternating
+        // every 0.5 seconds between the TNT block's texture, and a copy
+        // of it that has been brightened to near-white"
+        let w = flat_world();
+        let mut sys = PrimedTntSystem::new(9);
+        sys.prime(0, 66, 0, 2, 15, 0, TNT_FUSE_TICKS);
+        let mut phases = Vec::new();
+        for _ in 0..40 {
+            sys.tick(&w);
+            if let Some(t) = sys.tnts.first() {
+                phases.push(sys.flash_bright(t));
+            }
+        }
+        assert_eq!(phases.len(), 40);
+        // 0.5 s dark / 0.5 s bright: phase flips at ticks 10 and 30
+        assert_eq!(phases[0], 0.0, "the first 0.5 s is the block texture");
+        assert_eq!(phases[9], 0.0);
+        assert_eq!(phases[10], 1.0, "the near-white copy");
+        assert_eq!(phases[19], 1.0);
+        assert_eq!(phases[20], 0.0);
+        assert_eq!(phases[30], 1.0);
+        // the flash renders as near-white vertices (VERIFIED w/TNT
+        // §Appearance: "brightened to near-white")
+        let mut out = Vec::new();
+        sys.build_vertices(&mut out);
+        assert_eq!(out.len(), 36, "six faces per entity cuboid");
+        for v in &out {
+            assert!(v.col[0] >= 0.9, "near-white brightened: {:?}", v.col);
+        }
+    }
+
+    #[test]
+    fn tnt_power_4_versus_the_creeper_3() {
+        // VERIFIED w/TNT §Behavior: "Primed TNT creates explosions with
+        // a power of 4"; w/Explosion §Causes: the TNT row is 4, the
+        // creeper's row is 3 (the engine's mobs.rs constant)
+        assert_eq!(TNT_EXPLOSION_POWER, 4.0);
+        assert_eq!(vc_gameplay::mobs::CREEPER_POWER, 3.0);
+        assert_eq!(
+            TNT_EXPLOSION_POWER as i32,
+            vc_gameplay::mobs::CREEPER_POWER as i32 + 1,
+            "TNT outranges the creeper by one power step"
+        );
+        // the charged creeper's 6 outranges TNT (the End-crystal class)
+        assert_eq!(vc_gameplay::mobs::CHARGED_CREEPER_POWER, 6.0);
+        assert!(vc_gameplay::mobs::CHARGED_CREEPER_POWER > TNT_EXPLOSION_POWER);
     }
 }

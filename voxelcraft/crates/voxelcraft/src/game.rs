@@ -5366,13 +5366,20 @@ impl GameApp {
             .iter()
             .filter(|q| q.texture == vc_render::gui_render::QuadTexture::IconAtlas)
             .count();
+        // Phase 1: the FULL per-frame phase breakdown (the bench module's
+        // five phases: sim / stream / results = the mesh upload / ui / draw)
         format!(
-            "fps {:.0} (avg {:.0} min {:.0} max {:.0}) frame {:.1}ms sim {:.1}ms | chunks meshed {} loaded {} drawn {} gen-queue {} mesh-queue {} | mobs {} edits {} | icons {} (h/m/e {}/{}/{}) gui-quads {} icon-quads {}",
+            "fps {:.0} (avg {:.0} min {:.0} max {:.0}) frame {:.1}ms phases s{:.1}/st{:.1}/r{:.1}/u{:.1}/d{:.1}ms sim {:.1}ms | chunks meshed {} loaded {} drawn {} gen-queue {} mesh-queue {} | mobs {} edits {} | icons {} (h/m/e {}/{}/{}) gui-quads {} icon-quads {}",
             self.fps,
             self.fps_avg,
             self.fps_min,
             self.fps_max,
             self.frame_ms,
+            self.phases.phase_ms(crate::bench::PHASE_SIM),
+            self.phases.phase_ms(crate::bench::PHASE_STREAM),
+            self.phases.phase_ms(crate::bench::PHASE_RESULTS),
+            self.phases.phase_ms(crate::bench::PHASE_UI),
+            self.phases.phase_ms(crate::bench::PHASE_DRAW),
             self.phases.phase_ms(crate::bench::PHASE_SIM),
             self.renderer.chunks.len(),
             self.world.chunks.len(),

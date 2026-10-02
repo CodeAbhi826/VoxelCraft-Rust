@@ -226,6 +226,42 @@ fn main() {
     // memory footprint of the paletted sections
     let heap: usize = chunks.iter().map(|c| c.heap_bytes()).sum();
 
+    // -------------------------------------------------- sim tick (Phase 1)
+    // The 20 Hz deterministic simulation over the generated world — the
+    // per-tick cost the game pays (player-adjacent systems: mobs, items,
+    // fluids, redstone, random ticks). The light engine is the REAL
+    // incremental engine (the game's load path: init_chunk per chunk).
+    let mut sim_world = vc_world::world::World::new(seed);
+    for (&pos, chunk) in by_pos.iter() {
+        sim_world.insert_generated(pos, Arc::clone(chunk), Vec::new());
+    }
+    sim_world.dirty.clear();
+    let mut light_engine = vc_world::light::LightEngine::new();
+    let t_light_init = Instant::now();
+    for &pos in positions.iter() {
+        light_engine.init_chunk(&mut sim_world, pos);
+    }
+    let light_init_ms = t_light_init.elapsed().as_secs_f32() * 1000.0;
+    let mut sim = vc_sim::sim::Sim::new(seed);
+    let scope = vc_sim::sim::TickScope::everything();
+    const SIM_TICKS: usize = 200; // 10 s of sim time at 20 Hz
+    let mut sim_ms: Vec<f32> = Vec::with_capacity(SIM_TICKS);
+    for _ in 0..SIM_TICKS {
+        let t0 = Instant::now();
+        sim.update(1.0 / 20.0, &mut sim_world, &mut light_engine, &scope);
+        sim_ms.push(t0.elapsed().as_secs_f32() * 1000.0);
+        black_box(&sim_world);
+    }
+    // incremental light: a glowstone placement in the middle chunk + pump
+    // (the block-change class the game pays per edit; glowstone = light 15)
+    light_engine.on_block_changed(&mut sim_world, 8, 70, 8, 0, GLOWSTONE);
+    let t0 = Instant::now();
+    let pumped = light_engine.pump(&mut sim_world, 4096);
+    let light_pump_ms = t0.elapsed().as_secs_f32() * 1000.0;
+    let sim_p50 = percentile_ms(&mut sim_ms, 0.50);
+    let sim_p95 = percentile_ms(&mut sim_ms, 0.95);
+    let sim_avg = sim_ms.iter().sum::<f32>() / sim_ms.len().max(1) as f32;
+
     // -------------------------------------------------- Phase 9 drawprep (§37)
     // Simulate the per-frame CPU draw-submission prep with REAL mesh sizes
     // and the REAL allocator/ordering/list/args code (§48 Phase-9 gate:
@@ -354,6 +390,18 @@ fn main() {
         n_chunks,
         heap as f64 / n_chunks.max(1) as f64 / 1024.0
     );
+    // Phase 1: the sim tick + the real light engine (the game's per-tick
+    // and per-edit costs)
+    println!(
+        "sim tick    : avg {sim_avg:.3} ms  p50 {sim_p50:.3} ms  p95 {sim_p95:.3} ms  (20 Hz sim over {} chunks, {} ticks)",
+        by_pos.len(),
+        sim_ms.len()
+    );
+    println!(
+        "light engine: init {light_init_ms:.0} ms ({} chunks)  pump {light_pump_ms:.3} ms (1 glowstone edit, {} nodes)",
+        positions.len(),
+        pumped
+    );
     // Phase 9 §48 gate: draw submission accounting (all three passes)
     println!(
         "drawprep    : {drawprep_us:.1} µs/frame  ({visible_n} visible chunks, {n_regions} regions, 3 passes, incl. MDI args pack)"
@@ -378,8 +426,10 @@ fn main() {
 
     if !json_path.is_empty() {
         let json = format!(
-            "{{\"headless_bench\":{{\"seed\":{seed},\"chunks\":{n_chunks},\"threads\":{threads},\"gen\":{{\"avg_ms\":{gen_avg:.3},\"p50_ms\":{gen_p50:.3},\"p95_ms\":{gen_p95:.3},\"parallel_total_ms\":{gen_par_ms:.3}}},\"mesh\":{{\"chunks\":{},\"avg_ms\":{mesh_avg:.3},\"p50_ms\":{mesh_p50:.3},\"p95_ms\":{mesh_p95:.3},\"parallel_total_ms\":{mesh_par_ms:.3}}},\"remesh3\":{{\"avg_ms\":{rm3_avg:.3},\"p50_ms\":{rm3_p50:.3},\"deterministic\":{remesh3_eq}}},\"drawprep\":{{\"us_per_frame\":{drawprep_us:.2},\"visible\":{visible_n},\"regions\":{n_regions},\"legacy\":{{\"draws\":{},\"binds\":{}}},\"loop\":{{\"draws\":{},\"binds\":{}}},\"mdi\":{{\"draws\":{},\"binds\":{}}}}},\"verts\":{total_verts},\"tris\":{total_tris},\"par_verts\":{par_verts},\"heap_bytes\":{heap}}}}}",
+            "{{\"headless_bench\":{{\"seed\":{seed},\"chunks\":{n_chunks},\"threads\":{threads},\"gen\":{{\"avg_ms\":{gen_avg:.3},\"p50_ms\":{gen_p50:.3},\"p95_ms\":{gen_p95:.3},\"parallel_total_ms\":{gen_par_ms:.3}}},\"mesh\":{{\"chunks\":{},\"avg_ms\":{mesh_avg:.3},\"p50_ms\":{mesh_p50:.3},\"p95_ms\":{mesh_p95:.3},\"parallel_total_ms\":{mesh_par_ms:.3}}},\"remesh3\":{{\"avg_ms\":{rm3_avg:.3},\"p50_ms\":{rm3_p50:.3},\"deterministic\":{remesh3_eq}}},\"sim\":{{\"avg_ms\":{sim_avg:.3},\"p50_ms\":{sim_p50:.3},\"p95_ms\":{sim_p95:.3},\"ticks\":{}}},\"light\":{{\"init_ms\":{light_init_ms:.3},\"pump_ms\":{light_pump_ms:.3},\"pumped\":{}}},\"drawprep\":{{\"us_per_frame\":{drawprep_us:.2},\"visible\":{visible_n},\"regions\":{n_regions},\"legacy\":{{\"draws\":{},\"binds\":{}}},\"loop\":{{\"draws\":{},\"binds\":{}}},\"mdi\":{{\"draws\":{},\"binds\":{}}}}},\"verts\":{total_verts},\"tris\":{total_tris},\"par_verts\":{par_verts},\"heap_bytes\":{heap}}}}}",
             meshable.len(),
+            sim_ms.len(),
+            pumped,
             acc_legacy.draws, acc_legacy.binds,
             acc_loop.draws, acc_loop.binds,
             acc_mdi.draws, acc_mdi.binds

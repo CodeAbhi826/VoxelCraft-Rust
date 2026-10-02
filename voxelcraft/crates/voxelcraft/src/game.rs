@@ -1922,6 +1922,13 @@ pub struct GameApp {
     world_dir: std::path::PathBuf,
     /// §28: a dimension travel is waiting for the spawn chunk (Loading)
     traveling: bool,
+    /// Round K (the Nether portal): a walk-in travel's arrival request —
+    /// the source portal's long axis + the wiki-exact 8:1-scaled
+    /// destination coordinates. Set by travel_through_portal (the
+    /// walk-in trigger), consumed + cleared by travel_to_dimension;
+    /// menu/command travel keeps the legacy debug placement (no portal
+    /// is built there).
+    portal_arrival: Option<(vc_gameplay::portal::PortalAxis, i32, i32)>,
     /// Phase E1: the ender dragon has been defeated in this world (gates
     /// the first-entry fight spawn + the re-fight ritual, deferred)
     dragon_defeated: bool,
@@ -1946,6 +1953,14 @@ pub struct GameApp {
     /// current spawn point, if any (None = the world spawn). Each
     /// respawn consumes one charge (VERIFIED w/Respawn_Anchor)
     respawn_anchor: Option<[i32; 3]>,
+    /// beds round: the bed spawn — the saved HEAD-half cell (VERIFIED
+    /// w/Bed §Setting the spawn point, live 2026-09-22: "the location of
+    /// the head of the bed is saved as the spawn point"). In-memory only
+    /// (vanilla persists it per-player in playerdata — deferred trim);
+    /// the respawn path consumes it (the bed → anchor → world-spawn
+    /// ladder) and clears it when the bed is missing or obstructed.
+    #[allow(dead_code)] // the respawn arm reads it (the spawn-point commit)
+    respawn_bed: Option<[i32; 3]>,
     /// Phase 1: last death cause shown on the death screen
     death_cause: String,
     /// Phase 1: world-create screen state (buffers + selected mode + the
@@ -3030,12 +3045,14 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             world_dir,
             traveling: false,
+            portal_arrival: None,
             dragon_defeated: false,
             pending_play: false,
             mode,
             world_name,
             hardcore_dead: false,
             respawn_anchor: None,
+            respawn_bed: None,
             world_spawn_vec: {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
@@ -4306,6 +4323,14 @@ impl GameApp {
                 // creative — survival/adventure just selects or does
                 // nothing (reference wiki /Controls §Middle click).
                 if let Some((_, b, _)) = self.target {
+                    // Round K: the nether-portal block cannot be picked up
+                    // using pick block (VERIFIED Nether_Portal_(block)
+                    // §Obtaining, live 2026-09-26: "This block cannot be
+                    // picked up using pick block, similar to the End portal
+                    // block") — denied outright, no grant, no toast.
+                    if b == NETHER_PORTAL {
+                        return;
+                    }
                     if let Some(slot) = self
                         .player
                         .inv
@@ -6459,6 +6484,9 @@ impl GameApp {
         // overworld respawn point (the world's own spawn)
         self.respawn_pos = Vec3::new(spawn.0, spawn.1 + 1.0, spawn.2);
         self.world_spawn_vec = self.respawn_pos;
+        // beds round: a fresh world has no bed spawn (the world spawn
+        // owns the respawn until the player sleeps in a bed)
+        self.respawn_bed = None;
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.level_spawn = (spawn.0 as i32, spawn.1 as i32, spawn.2 as i32);
@@ -6789,15 +6817,218 @@ impl GameApp {
         self.world_spawn_vec
     }
 
+    /// beds round: the sleep interaction (VERIFIED w/Bed §Sleeping +
+    /// §Setting the spawn point, live 2026-09-22, raw wikitext via the
+    /// MediaWiki API). Right-clicking a bed: the use-distance gate (3
+    /// blocks, Java) → the monster gate (8 horizontal / 5 vertical
+    /// around the bed head) → the sleep window (12523..23477 ticks
+    /// clear / 12002..23998 rain / any time in a thunderstorm). A sleep
+    /// skips to sunrise (time 0), resets the phantom rest counter and —
+    /// JE: only during rain — the weather to clear; a daytime use still
+    /// sets the spawn. Deferred trims (documented): the 101-tick sleep
+    /// animation, the occupied state (single-player), the Nether/End
+    /// explosion.
+    fn use_bed(&mut self, tpos: [i32; 3]) {
+        // the bed head: the head half IS the saved cell; from the foot
+        // the head sits one cell in the facing direction (the engine's
+        // horizontal-facing convention, 0..3 = north/east/south/west
+        // with north = -Z — the glazed-terracotta placement wrote it)
+        let state = self.world.get_state(tpos[0], tpos[1], tpos[2]);
+        let head = if self.world.get_block(tpos[0], tpos[1], tpos[2]) == BED_HEAD {
+            tpos
+        } else {
+            let (dx, dz) = match vc_blocks::blocks::bed_facing(state) {
+                0 => (0, -1), // north
+                1 => (1, 0),  // east
+                2 => (0, 1),  // south
+                _ => (-1, 0), // west
+            };
+            [tpos[0] + dx, tpos[1], tpos[2] + dz]
+        };
+        let hc = [
+            head[0] as f32 + 0.5,
+            head[1] as f32 + 0.5,
+            head[2] as f32 + 0.5,
+        ];
+        // the use-distance gate: "To use a bed, a player must be within
+        // a distance of 3 blocks" (Java — VERIFIED w/Bed §Sleeping)
+        let dist = ((self.player.pos.x - hc[0]).powi(2)
+            + (self.player.pos.y - hc[1]).powi(2)
+            + (self.player.pos.z - hc[2]).powi(2))
+        .sqrt();
+        if dist > vc_gameplay::sleep::USE_DISTANCE {
+            self.item_toast = Some((
+                "You may not rest now, the bed is too far away".to_string(),
+                2.0,
+            ));
+            return;
+        }
+        // the monster gate: the JE prevent-sleep kinds inside the head's
+        // box (8 horizontal / 5 vertical — VERIFIED w/Bed §Sleeping)
+        let monsters: Vec<[f32; 3]> = self
+            .sim
+            .mobs
+            .list
+            .iter()
+            .filter(|m| m.kind.prevents_sleep(m.provoked))
+            .map(|m| m.pos)
+            .collect();
+        let near = vc_gameplay::sleep::monster_nearby(hc, &monsters);
+        match vc_gameplay::sleep::attempt(self.day_time, self.weather.weather(), near) {
+            vc_gameplay::sleep::SleepAttempt::RefuseMonsters => {
+                // "You may not rest now; there are monsters nearby"
+                // (VERIFIED) — no sleep, no spawn set
+                self.item_toast = Some((
+                    "You may not rest now; there are monsters nearby".to_string(),
+                    2.0,
+                ));
+            }
+            vc_gameplay::sleep::SleepAttempt::RefuseNight => {
+                // "You can sleep only at night or during thunderstorms"
+                // (VERIFIED) — but the daytime use still sets the spawn
+                // (VERIFIED w/Bed §Setting the spawn point)
+                self.item_toast = Some((
+                    "You can sleep only at night or during thunderstorms".to_string(),
+                    2.0,
+                ));
+                self.set_bed_spawn(head);
+            }
+            vc_gameplay::sleep::SleepAttempt::Sleep => {
+                // the night skip: "the time of day changes to sunrise
+                // (time 0)" (VERIFIED w/Bed §Passing the night)
+                self.day_time = vc_gameplay::sleep::SUNRISE;
+                // 1.13: sleeping resets "Time Since Last Rest" (the
+                // phantom insomnia counter — VERIFIED w/Phantom §Spawning;
+                // the beds round's wiring: the sleep path is its caller)
+                self.sim.mobs.note_rest();
+                // "Sleeping ... resets the weather cycle ... In Java, the
+                // weather cycle resets only during rainy or snowy weather"
+                // (VERIFIED w/Bed §Passing the night) — the sleep_reset
+                // wiring's first caller
+                if self.weather.is_raining() {
+                    self.weather.sleep_reset();
+                }
+                self.set_bed_spawn(head);
+            }
+        }
+    }
+
+    /// the spawn-point set: the HEAD cell (VERIFIED w/Bed §Setting the
+    /// spawn point: "the location of the head of the bed is saved as the
+    /// spawn point"). "Respawn point set" only when the saved head
+    /// CHANGES — reorienting the bed with its head in the same location
+    /// updates nothing ("Interacting with it does not produce a
+    /// 'Respawn point set' message as the game doesn't change the saved
+    /// spawn point", VERIFIED).
+    fn set_bed_spawn(&mut self, head: [i32; 3]) {
+        if self.respawn_bed != Some(head) {
+            self.respawn_bed = Some(head);
+            self.item_toast = Some(("Respawn point set".to_string(), 2.0));
+        }
+    }
+
     fn respawn(&mut self) {
         if self.mode.permadeath() || self.hardcore_dead {
             return; // unreachable via UI; guard stays for safety
+        }
+        // beds round: the bed-spawn arm — the check is made ONLY when the
+        // player respawns (VERIFIED w/Bed §Setting the spawn point, live
+        // 2026-09-22, raw wikitext via the MediaWiki API: "The check for a
+        // bed is made only when the player respawns... If a player's bed
+        // is absent... the player respawns at the world spawn point" /
+        // "If a bed is obstructed, the player's spawn point is cleared
+        // after they respawn") — so destruction/moving alone never clears
+        // it; the respawn path does. A bed in the saved space (either
+        // half) respawns there; the vanilla spot rule (non-solid at the
+        // level + two non-colliding cells above it + solid ground below,
+        // VERIFIED) drives the candidate ladder: the two side cells of
+        // the head first, then the block above the head, then the block
+        // above the foot. Trims (documented): which side is chosen
+        // corresponds to the player's facing at set time — folded to a
+        // fixed first-unobstructed order of the perpendicular pair; the
+        // 0-2-blocks-below drop-down scan is also trimmed.
+        if let Some(bpos) = self.respawn_bed {
+            let here = self.world.get_block(bpos[0], bpos[1], bpos[2]);
+            if is_bed_block(here) {
+                // the facing rides the stored state (both halves carry
+                // it); the side cells sit across the bed's axis
+                let facing =
+                    vc_blocks::blocks::bed_facing(self.world.get_state(bpos[0], bpos[1], bpos[2]));
+                let (dx, dz) = match facing {
+                    0 => (0, -1), // north
+                    1 => (1, 0),  // east
+                    2 => (0, 1),  // south
+                    _ => (-1, 0), // west
+                };
+                // the perpendicular pair (the two blocks to the immediate
+                // left and right of the head, VERIFIED) — first
+                // unobstructed wins (the fixed order)
+                let sides = [
+                    [bpos[0] + dz, bpos[1], bpos[2] + dx],
+                    [bpos[0] - dz, bpos[1], bpos[2] - dx],
+                ];
+                let spot_ok = |w: &World, c: [i32; 3]| {
+                    !is_solid(w.get_block(c[0], c[1], c[2]))
+                        && !is_solid(w.get_block(c[0], c[1] + 1, c[2]))
+                        && is_solid(w.get_block(c[0], c[1] - 1, c[2]))
+                };
+                let mut placed: Option<[i32; 3]> = None;
+                if spot_ok(&self.world, sides[0]) {
+                    placed = Some(sides[0]);
+                } else if spot_ok(&self.world, sides[1]) {
+                    placed = Some(sides[1]);
+                } else {
+                    // the block above the head, then the block above the
+                    // foot (VERIFIED ladder tail) — the bed itself is the
+                    // solid below (the full-cube engine documents the
+                    // half-block bed as a colliding cube)
+                    for c in [
+                        [bpos[0], bpos[1] + 1, bpos[2]],
+                        [bpos[0] - dx, bpos[1] + 1, bpos[2] - dz],
+                    ] {
+                        if !is_solid(self.world.get_block(c[0], c[1], c[2]))
+                            && !is_solid(self.world.get_block(c[0], c[1] + 1, c[2]))
+                        {
+                            placed = Some(c);
+                            break;
+                        }
+                    }
+                }
+                if let Some(c) = placed {
+                    self.respawn_pos = Vec3::new(c[0] as f32 + 0.5, c[1] as f32, c[2] as f32 + 0.5);
+                    // the player always wakes up facing the head of the bed
+                    // (VERIFIED) — the engine's forward vector is
+                    // (sin yaw, 0, -cos yaw)
+                    let to_head = (
+                        (bpos[0] as f32 + 0.5) - (c[0] as f32 + 0.5),
+                        (bpos[2] as f32 + 0.5) - (c[2] as f32 + 0.5),
+                    );
+                    if to_head.0.abs() > 1e-4 || to_head.1.abs() > 1e-4 {
+                        self.player.yaw = to_head.0.atan2(-to_head.1);
+                    }
+                } else {
+                    // obstructed: the spawn point is CLEARED after they
+                    // respawn — even if the bed is later made usable
+                    // again, the player continues at the world spawn until
+                    // interacting with the bed again (VERIFIED)
+                    self.respawn_bed = None;
+                    self.respawn_pos = self.world_spawn();
+                }
+            } else {
+                // the bed is absent from the saved space (destroyed or
+                // moved): respawn at the world spawn (VERIFIED)
+                self.respawn_bed = None;
+                self.respawn_pos = self.world_spawn();
+            }
         }
         // 1.16 (Nether Update, part 1): a respawn through a charged
         // anchor CONSUMES one charge (VERIFIED w/Respawn_Anchor: "each
         // respawn consumes one charge"); a 0-charge or destroyed
         // anchor reverts the spawn to the world spawn (the bed-less
-        // equivalent of the spawn-point rules)
+        // equivalent of the spawn-point rules). The bed arm above runs
+        // first: a successful bed respawn leaves the anchor's charge
+        // untouched (vanilla's single-slot last-set behavior folded to
+        // this ladder — bed, then anchor, then the world spawn).
         if let Some(apos) = self.respawn_anchor {
             let s = self.world.get_state(apos[0], apos[1], apos[2]);
             let charge = vc_blocks::blocks::anchor_charge(s);
@@ -17115,6 +17346,43 @@ impl GameApp {
                 }
             }
 
+            // Round K (the Nether portal): the walk-in trigger — standing
+            // in a portal block for 80 game ticks (4 seconds) in survival
+            // or 1 game tick in creative travels to the other dimension
+            // (VERIFIED Nether_portal§Behavior, live 2026-09-26); stepping
+            // out resets the wait (the player.rs accumulator). Spectator
+            // no-clips through the world and cannot use portals (the
+            // vanilla spectator's no-interaction rule).
+            if self.player.in_portal && self.mode != vc_gameplay::modes::GameMode::Spectator {
+                let need = if self.mode.creative() {
+                    vc_gameplay::portal::TRAVEL_TICKS_CREATIVE as f32 / 20.0
+                } else {
+                    vc_gameplay::portal::TRAVEL_TICKS_SURVIVAL as f32 / 20.0
+                };
+                if self.player.portal_accum >= need {
+                    // the entry portal's long axis anchors the far-side
+                    // build (VERIFIED Nether_portal§Portal_creation: "the
+                    // long axis matching the long axis of the source
+                    // portal"); a broken frame geometry falls back to the
+                    // X axis (the destination build re-scans its own)
+                    let axis = vc_gameplay::portal::find_frame(
+                        &self.world,
+                        self.player.pos.x.floor() as i32,
+                        self.player.pos.y.floor() as i32,
+                        self.player.pos.z.floor() as i32,
+                    )
+                    .map(|f| f.axis)
+                    .unwrap_or(vc_gameplay::portal::PortalAxis::X);
+                    let target = if self.world.dimension == vc_world::world::Dimension::Nether {
+                        vc_world::world::Dimension::Overworld
+                    } else {
+                        vc_world::world::Dimension::Nether
+                    };
+                    self.play_event("block.portal.travel", None, 1.0);
+                    self.travel_through_portal(target, axis);
+                }
+            }
+
             // Phase 1: fall damage (MC-12357: fall − 3 HP) — creative is
             // invulnerable, the queued damage drains away instead
             let fall = self.player.take_pending_fall_damage();
@@ -18797,6 +19065,13 @@ impl GameApp {
                         // (Repair & Disenchant)
                         self.open_container(Container::Grindstone { pos: tpos });
                         self.place_timer = 0.3;
+                    } else if tb == BED || tb == BED_HEAD {
+                        // beds round: the sleep interaction (see
+                        // vc_gameplay::sleep) — the monster gate, the
+                        // sleep window, the night skip, the weather
+                        // reset and the spawn-point set
+                        self.use_bed(tpos);
+                        self.place_timer = 0.3;
                     } else if tb == HOPPER {
                         // §Container: right-click opens the hopper screen
                         // (5 slots, VERIFIED "Item Hopper" GUI); the entity
@@ -19142,6 +19417,106 @@ impl GameApp {
                                 ]),
                                 1.0,
                             );
+                        }
+                        self.place_timer = 0.25;
+                        self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == FLINT_AND_STEEL
+                        && self.mode.edits_world_blocks()
+                        && self.world.dimension != vc_world::world::Dimension::End
+                        && self.target.is_some()
+                    {
+                        // Round K (the Nether portal): flint-and-steel lights
+                        // the frame interior (VERIFIED Nether_portal§Creation,
+                        // live 2026-09-26: "it is activated by fire placed
+                        // inside the frame... including use of flint and
+                        // steel"; the ignition cell is the face-adjacent
+                        // cell — the raycast's pre-hit cell). Nether portals
+                        // cannot be activated in the End (VERIFIED, same
+                        // page). An incomplete frame keeps the plain fire
+                        // (VERIFIED: "a fire on an incomplete frame does not
+                        // result in the portal activating upon the placement
+                        // of the last obsidian block").
+                        if let Some((_, _, ignition)) = self.target {
+                            let (fx, fy, fz) = (ignition[0], ignition[1], ignition[2]);
+                            // the frame detection runs on the ignition cell
+                            // (the interior is air + the fire the steel
+                            // just lights)
+                            let ignites = self.world.get_block(fx, fy, fz) == AIR;
+                            let frame = if ignites {
+                                vc_gameplay::portal::find_frame(&self.world, fx, fy, fz)
+                            } else {
+                                None
+                            };
+                            self.play_event(
+                                "item.flintandsteel.use",
+                                Some([fx as f32 + 0.5, fy as f32 + 0.5, fz as f32 + 0.5]),
+                                1.0,
+                            );
+                            if ignites {
+                                match frame {
+                                    Some(frame) => {
+                                        // the interior fills with portal
+                                        // blocks, one of them replacing the
+                                        // fire (VERIFIED
+                                        // Nether_Portal_(block)§Post-generation:
+                                        // "the Nether portal blocks are
+                                        // generated, with one of them
+                                        // replacing the fire")
+                                        let portal_state = default_state(NETHER_PORTAL);
+                                        let mut place = |x: i32, y: i32, z: i32| {
+                                            if let Some((old, new)) =
+                                                self.world.set_block_state(x, y, z, portal_state)
+                                            {
+                                                self.light.on_block_changed(
+                                                    &self.world,
+                                                    x,
+                                                    y,
+                                                    z,
+                                                    old,
+                                                    new,
+                                                );
+                                            }
+                                        };
+                                        for cell in frame.interior_cells() {
+                                            place(cell[0], cell[1], cell[2]);
+                                        }
+                                        self.edits += 1;
+                                        vc_render::render::report_boot_log(&format!(
+                                            "nether portal lit at ({},{},{}) — interior {}x{} (VERIFIED)",
+                                            frame.min[0],
+                                            frame.min[1],
+                                            frame.min[2],
+                                            frame.width(),
+                                            frame.height()
+                                        ));
+                                    }
+                                    None => {
+                                        // an incomplete frame: the plain fire
+                                        // stays (VERIFIED) — placed + the
+                                        // scheduled burnout (the engine's
+                                        // fire rule, the lightning pattern)
+                                        if let Some((old, new)) = self.world.set_block_state(
+                                            fx,
+                                            fy,
+                                            fz,
+                                            default_state(FIRE),
+                                        ) {
+                                            self.light.on_block_changed(
+                                                &self.world,
+                                                fx,
+                                                fy,
+                                                fz,
+                                                old,
+                                                new,
+                                            );
+                                            let burn = 20 + self.audio_rng.next_range(60) as u64;
+                                            self.sim.sched.schedule([fx, fy, fz], burn);
+                                        }
+                                        self.edits += 1;
+                                    }
+                                }
+                            }
                         }
                         self.place_timer = 0.25;
                         self.ui.dirty = true;
@@ -19891,6 +20266,45 @@ impl GameApp {
                                     // bottom slab; the UNDERSIDE → top slab
                                     let half = if prev[1] < tpos[1] { "top" } else { "bottom" };
                                     prop_state_encode(b, &[("half", half)]).unwrap_or(b)
+                                } else if b == BED || b == BED_HEAD {
+                                    // beds round: the bed places TWO blocks (VERIFIED
+                                    // w/Bed §Placement, live 2026-09-22, raw wikitext:
+                                    // "Beds require two blocks of floor space...
+                                    // the foot of the bed is placed on the block
+                                    // selected and the head of the bed on the block
+                                    // farther away from the player") — the head cell
+                                    // must be free, else the placement is denied (the
+                                    // bamboo sentinel pattern). §Block states: facing
+                                    // = "The same direction the player faces when
+                                    // placing the bed" — the player's look bucket,
+                                    // shared with the glazed-terracotta placement
+                                    // (the write) and bed_facing's decode
+                                    let yaw =
+                                        ((self.player.yaw.to_degrees() % 360.0) + 360.0) % 360.0;
+                                    let facing = match yaw {
+                                        315.0..=360.0 | 0.0..=45.0 => 0, // north
+                                        45.0..=135.0 => 1,               // east
+                                        135.0..=225.0 => 2,              // south
+                                        _ => 3,                          // west
+                                    };
+                                    let (dx, dz) = match facing {
+                                        0 => (0, -1), // north = -Z
+                                        1 => (1, 0),  // east = +X
+                                        2 => (0, 1),  // south = +Z
+                                        _ => (-1, 0), // west = -X
+                                    };
+                                    let hb =
+                                        self.world.get_block(prev[0] + dx, prev[1], prev[2] + dz);
+                                    if is_solid(hb) {
+                                        // the head cell is occupied by a solid —
+                                        // deny (vanilla: two blocks of floor space)
+                                        u16::MAX
+                                    } else {
+                                        // the foot goes on the clicked cell; the
+                                        // head half is written by the post-commit
+                                        // hook below
+                                        bed_state(false, facing)
+                                    }
                                 } else if b == COBBLE_STAIRS {
                                     // vanilla stairs: face AWAY from the player
                                     // (the ascent direction); half like slabs
@@ -19972,6 +20386,49 @@ impl GameApp {
                                         prev[1],
                                         prev[2],
                                     );
+                                    // beds round: the bed's head half goes on the
+                                    // block farther away from the player (VERIFIED
+                                    // w/Bed §Placement) — the same look-bucket the
+                                    // dispatch wrote the foot's facing from
+                                    if b == BED || b == BED_HEAD {
+                                        let yaw = ((self.player.yaw.to_degrees() % 360.0) + 360.0)
+                                            % 360.0;
+                                        let facing = match yaw {
+                                            315.0..=360.0 | 0.0..=45.0 => 0, // north
+                                            45.0..=135.0 => 1,               // east
+                                            135.0..=225.0 => 2,              // south
+                                            _ => 3,                          // west
+                                        };
+                                        let (dx, dz) = match facing {
+                                            0 => (0, -1), // north = -Z
+                                            1 => (1, 0),  // east = +X
+                                            2 => (0, 1),  // south = +Z
+                                            _ => (-1, 0), // west = -X
+                                        };
+                                        let head_cell = [prev[0] + dx, prev[1], prev[2] + dz];
+                                        if let Some((old, new)) = self.world.set_block_state(
+                                            head_cell[0],
+                                            head_cell[1],
+                                            head_cell[2],
+                                            bed_state(true, facing),
+                                        ) {
+                                            self.light.on_block_changed(
+                                                &self.world,
+                                                head_cell[0],
+                                                head_cell[1],
+                                                head_cell[2],
+                                                old,
+                                                new,
+                                            );
+                                        }
+                                        notify_sim(
+                                            &self.world,
+                                            &mut self.sim.sched,
+                                            head_cell[0],
+                                            head_cell[1],
+                                            head_cell[2],
+                                        );
+                                    }
                                     // Phase E3: register weighted plates for
                                     // the entity-count sweep (signals VERIFIED
                                     // w/Light_Weighted_Pressure_Plate + the
@@ -20559,6 +21016,21 @@ impl GameApp {
         self.break_timer = 0.0;
         self.place_timer = 0.0;
 
+        // Round K (the Nether portal): the walk-in travel's arrival — the
+        // portal search first, then the far-side build, both at the
+        // wiki-exact 8:1-scaled coordinates (VERIFIED
+        // Nether_portal§Portal_search + §Portal_creation, live 2026-09-26).
+        // Menu/command travel keeps the legacy debug placement (no portal
+        // is built there — the request is simply consumed); the End keeps
+        // its own arrival (the platform at 100/0).
+        let portal_arrival = self.portal_arrival.take();
+        let mut portal_landing: Option<[i32; 3]> = None;
+        if let Some((axis, dx, dz)) = portal_arrival {
+            if dim != vc_world::world::Dimension::End {
+                portal_landing = Some(self.portal_arrive(dim, axis, dx, dz));
+            }
+        }
+
         // player: inventory persists, position rescales; y waits for the snap
         let y = if dim == vc_world::world::Dimension::Nether {
             90.0
@@ -20572,7 +21044,14 @@ impl GameApp {
         } else {
             (nx, nz)
         };
-        self.player.pos = Vec3::new(ax as f32 + 0.5, y, az as f32 + 0.5);
+        self.player.pos = match portal_landing {
+            // the destination portal's interior cell REPLACES the legacy
+            // placement — the player appears IN the portal (VERIFIED
+            // Nether_portal§Portal_search: "the player appears in that
+            // portal")
+            Some(cell) => Vec3::new(cell[0] as f32 + 0.5, cell[1] as f32, cell[2] as f32 + 0.5),
+            None => Vec3::new(ax as f32 + 0.5, y, az as f32 + 0.5),
+        };
         self.player.vel = Vec3::ZERO;
         self.player.flying = false;
 
@@ -20600,6 +21079,199 @@ impl GameApp {
             ax,
             az
         ));
+    }
+
+    /// Round K (the Nether portal): the walk-in trigger's travel — the
+    /// full portal journey (VERIFIED Nether_portal§Behavior +
+    /// §Coordinate_conversion + §Portal_search + §Portal_creation, live
+    /// 2026-09-26). The destination coordinates are the wiki-exact floor
+    /// conversion of the entry portal cell — the entry X/Z are multiplied
+    /// by 8 in the Nether or divided by 8 in the Overworld, "while the
+    /// Y-coordinate is not changed" — then travel_to_dimension runs the
+    /// portal search + the far-side build (portal_arrival) and lands the
+    /// player IN the destination portal.
+    ///
+    /// NOTE (found parity gap, NOT fixed here): World::map_coords uses
+    /// truncating i64 division, which differs from the wiki's
+    /// floor-toward-−∞ conversion for negative coordinates
+    /// (floor(−29 ÷ 8) = −4, truncation gives −3). The menu/command
+    /// travel path keeps map_coords unchanged; this portal path converts
+    /// with div_euclid exactly.
+    fn travel_through_portal(
+        &mut self,
+        dim: vc_world::world::Dimension,
+        axis: vc_gameplay::portal::PortalAxis,
+    ) {
+        // the entry portal cell (the player stands inside it) — the
+        // wiki-exact 8:1 conversion, "while the Y-coordinate is not
+        // changed" (VERIFIED Nether_portal§Coordinate_conversion)
+        let (ex, ez) = (
+            self.player.pos.x.floor() as i32,
+            self.player.pos.z.floor() as i32,
+        );
+        let cur = self.world.dimension;
+        let (dx, dz) = if cur == vc_world::world::Dimension::Nether {
+            (ex * 8, ez * 8)
+        } else {
+            (ex.div_euclid(8), ez.div_euclid(8))
+        };
+        // the far-side build matches the source portal's long axis
+        // (VERIFIED Nether_portal§Portal_creation)
+        self.portal_arrival = Some((axis, dx, dz));
+        self.travel_to_dimension(dim);
+    }
+
+    /// Round K: the Nether-portal arrival (VERIFIED
+    /// Nether_portal§Portal_search + §Portal_creation, live 2026-09-26):
+    /// force-generate the destination chunk, search for an existing
+    /// portal within the radius (128 blocks to the Overworld / 16 blocks
+    /// to the Nether — the closest Euclidean including Y), and build the
+    /// far-side portal when none exists. Returns the landing cell (an
+    /// interior cell of the destination portal).
+    fn portal_arrive(
+        &mut self,
+        dim: vc_world::world::Dimension,
+        axis: vc_gameplay::portal::PortalAxis,
+        dx: i32,
+        dz: i32,
+    ) -> [i32; 3] {
+        // force-generate the destination chunk + its light (the
+        // established force-generate pattern — the search and the build
+        // both need the destination's data)
+        let dpos = (dx.div_euclid(16), dz.div_euclid(16));
+        if !self.world.chunks.contains_key(&dpos) {
+            let (chunk, _) = self.world.gen.generate_chunk(dpos.0, dpos.1, Vec::new());
+            self.world.insert_generated(dpos, chunk.clone(), Vec::new());
+            self.light.init_chunk(&mut self.world, dpos);
+            for (lpos, lmask) in self.light.take_changed() {
+                self.world
+                    .mark_sections_dirty(lpos, lmask, vc_world::world::CAUSE_LIGHT);
+            }
+        }
+        // the search origin sits at the standing height — the Y-coordinate
+        // is not changed by the 8:1 conversion (VERIFIED
+        // Nether_portal§Coordinate_conversion)
+        let entry_y = self.player.pos.y.floor() as i32;
+        let radius = match dim {
+            vc_world::world::Dimension::Nether => vc_gameplay::portal::SEARCH_RADIUS_NETHER,
+            _ => vc_gameplay::portal::SEARCH_RADIUS_OVERWORLD,
+        };
+        if let Some((cell, _)) =
+            vc_gameplay::portal::search_existing_portal(&self.world, dx, dz, entry_y, radius)
+        {
+            // the closest existing portal receives the player (VERIFIED
+            // Nether_portal§Portal_search)
+            return cell;
+        }
+        // no portal in range: build one (VERIFIED §Portal_creation) —
+        // the build-spot scan (3×4 buildable + 4 air above, then the 1×4
+        // fallback), then the forced build at the target coordinates with
+        // the Y constrained
+        let (anchor, forced) =
+            vc_gameplay::portal::find_build_spot(&self.world, dx, entry_y, dz, axis)
+                .map(|(a, _pass2)| (a, false))
+                .unwrap_or_else(|| {
+                    let y = vc_gameplay::portal::forced_y(
+                        entry_y,
+                        dim == vc_world::world::Dimension::Nether,
+                    );
+                    ([dx, y, dz], true)
+                });
+        self.build_nether_portal(anchor, axis, forced)
+    }
+
+    /// Round K: build a nether portal at the interior-bottom anchor
+    /// (VERIFIED Nether_portal§Portal_creation, live 2026-09-26): the
+    /// obsidian frame is "always 4×5 and including the corners" (the
+    /// interior is the 2-wide × 3-tall rectangle anchored at `anchor`),
+    /// the interior fills with portal blocks, "replacing anything in the
+    /// way"; the forced build also creates "a 2×3 platform of obsidian
+    /// with air 3 high above" at the target location, "overwriting
+    /// whatever might be there". Returns the interior's bottom-middle
+    /// cell (the landing cell).
+    fn build_nether_portal(
+        &mut self,
+        anchor: [i32; 3],
+        axis: vc_gameplay::portal::PortalAxis,
+        forced: bool,
+    ) -> [i32; 3] {
+        let (ax_x, ax_z) = axis.step();
+        // the cross-axis step (the portal's depth direction)
+        let (cr_x, cr_z) = (ax_z, ax_x);
+        let (ix, iy, iz) = (anchor[0], anchor[1], anchor[2]);
+        let portal_state = vc_blocks::blocks::default_state(vc_blocks::blocks::NETHER_PORTAL);
+        // forced build: the 2×3 obsidian platform with air 3 high above,
+        // overwriting whatever might be there (VERIFIED §Portal_creation)
+        if forced {
+            for k in -1..=1i32 {
+                for i in 0..2i32 {
+                    let px = ix + ax_x * i + cr_x * k;
+                    let pz = iz + ax_z * i + cr_z * k;
+                    if let Some((old, new)) =
+                        self.world
+                            .set_block_state(px, iy - 1, pz, vc_blocks::blocks::OBSIDIAN)
+                    {
+                        self.light
+                            .on_block_changed(&self.world, px, iy - 1, pz, old, new);
+                    }
+                    for j in 0..3i32 {
+                        if let Some((old, new)) =
+                            self.world
+                                .set_block_state(px, iy + j, pz, vc_blocks::blocks::AIR)
+                        {
+                            self.light
+                                .on_block_changed(&self.world, px, iy + j, pz, old, new);
+                        }
+                    }
+                }
+            }
+        }
+        // the obsidian frame: 4 wide (i −1..=2 along the long axis) ×
+        // 5 tall (iy−1..=iy+3) including the corners — the bottom row,
+        // the top row, and the two side columns
+        let mut place = |x: i32, y: i32, z: i32, state: u16| {
+            if let Some((old, new)) = self.world.set_block_state(x, y, z, state) {
+                self.light.on_block_changed(&self.world, x, y, z, old, new);
+            }
+        };
+        for i in -1..=2i32 {
+            place(
+                ix + ax_x * i,
+                iy - 1,
+                iz + ax_z * i,
+                vc_blocks::blocks::OBSIDIAN,
+            );
+            place(
+                ix + ax_x * i,
+                iy + 3,
+                iz + ax_z * i,
+                vc_blocks::blocks::OBSIDIAN,
+            );
+        }
+        for k in 0..3i32 {
+            for i in [-1i32, 2] {
+                place(
+                    ix + ax_x * i,
+                    iy + k,
+                    iz + ax_z * i,
+                    vc_blocks::blocks::OBSIDIAN,
+                );
+            }
+        }
+        // the interior: the 2-wide × 3-tall rectangle fills with portal
+        // blocks (VERIFIED §Portal_creation: "including portal blocks is
+        // constructed at the target coordinates, replacing anything in
+        // the way")
+        for k in 0..3i32 {
+            for i in 0..2i32 {
+                place(ix + ax_x * i, iy + k, iz + ax_z * i, portal_state);
+            }
+        }
+        self.edits += 1;
+        vc_render::render::report_boot_log(&format!(
+            "nether portal built at ({ix},{iy},{iz}) — 4×5 frame + interior (VERIFIED)"
+        ));
+        [ix, iy, iz]
     }
 
     /// Phase E1: stronghhold end-portal activation (VERIFIED w/The_End:

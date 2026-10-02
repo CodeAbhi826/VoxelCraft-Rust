@@ -119,3 +119,20 @@ Work Log:
 
 Stage Summary:
 - PHASE 1 COMPLETE (baselines committed, regression check live via the bench job, targets proposed). Starting Phase 2 (the parity audit — no engine changes).
+
+---
+Task ID: 8
+Agent: main — Phase 2 (parity audit)
+Task: The 1.16.5 parity matrix (11 domains, 5 parallel audit agents + direct audits)
+
+Work Log:
+- Five parallel audit agents produced the row-by-row audit (domains 1/5, 3/9, 4/6/7, 2/8/11, 10) against the live reference wiki, the extracted 1.16.5 client-jar data (STUDY-ONLY, never copied), and the engine's code/tests. docs/PARITY-MATRIX-1.16.5.md committed with the prioritized gap list + the round-order proposal.
+- REFERENCE COUNTS verified from the jar: 859 recipes (491 shaped + 143 shapeless + 13 special + 53 smelting + 11 blasting + 9 smoking + 9 campfire + 121 stonecutter + 9 smithing), 764 blockstates, 849 loot tables (701 blocks), 147 tags, 80 non-recipe advancements. The "vanilla 846 blocks" figure was NOT verifiable — the jar-derived 764 is the count (the matrix cites 764).
+- GROUND-TRUTH method proven: the user's real Minecraft saves' Biomes IntArrays were decoded (59 region files, ids [0,1,3,4,5,6,7,16,18,19,21,22,24,25,27,29,32,33,34,45,46,48,131,132]) — this RESOLVED the audit's WRONG row: Sunflower Plains now saves as Java id 129 (was 130 = Desert M; commit b4a505c); Flower Forest 132 / Ice Spikes 140 verified correct; the nether ids 170-173 match the 1.16.5 registry. The audit agent's competing "55/52/56" claim matched NO edition's table — the ground truth won.
+- ENGINE HEADLINE: 533/764 blocks (70%), 50 MobKinds of 70 (41 DONE / 12 PARTIAL / 17 MISSING), 28/66 biomes, 1120 recipe entries vs 859 jar JSONs, 20/90 particle kinds, 122 sound entries vs ~700 events.
+- The biggest L-tier gaps: the 17 missing mobs; raids/advancements/commands/scoreboard/gamerules; 11 missing structures (bastion, end_city, igloo, pillager_outpost, ruined_portal, shipwreck, underwater_ruin, ocean monument, swamp hut, buried treasure, desert well); the 48 billboard-sprite kinds needing multi-part models; particles/sounds breadth; A* pathfinding; stonecutter (121 recipes)/smithing (9)/special recipes (13)/recipe book.
+- Two genuine engine findings: the witch NEVER attacks (hostile with damage 6 but no ai_tick case); the wither-skeleton skull 2.5% drop is missing (stale comment game.rs:8004 claims a path that does not exist).
+- Round-order proposal recorded in the matrix: Round K (nether portal) → TNT → beds → fluids → fire → sneak/effects → witch/skull → mobs batch → systems → structures → particles/sounds → GUI → biome/blocks breadth → polish.
+
+Stage Summary:
+- PHASE 2 COMPLETE (matrix committed, round order recorded). Round K (nether portal) launched in parallel — the first Phase 3 round is in flight.

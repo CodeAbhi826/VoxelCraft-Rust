@@ -1720,6 +1720,13 @@ pub struct GameApp {
     /// the border lines must be VISIBLE in the frame, not just flags armed
     /// (the old flag-only contract is how the collapsed-overlay bug shipped)
     e2e_fkeys_behind_on_px: Option<Vec<u8>>,
+    /// T5 contract: the previous frame's drawn-chunk count + the
+    /// consecutive-frames-stable counter — the ladder's key stage waits
+    /// for the initial meshing burst to settle, so the borders-ON and
+    /// borders-OFF captures see the SAME chunk set (a mid-burst pair
+    /// would differ by whole new chunks and mask the border signal)
+    e2e_fkeys_last_chunks: u32,
+    e2e_fkeys_stable: u32,
     /// smoke stage 3: the in-game click fired once
     smoke_clicked_ingame: bool,
     /// smoke stage 3: game-entry time (F3_DUMP holds gameplay ~2 s)
@@ -2991,6 +2998,8 @@ impl GameApp {
             e2e_fkeys_stage: 0,
             e2e_fkeys_ok: true,
             e2e_fkeys_behind_on_px: None,
+            e2e_fkeys_last_chunks: u32::MAX,
+            e2e_fkeys_stable: 0,
             edits: 0,
             stats_t: 0.0,
             pointer_locked: false,
@@ -13959,9 +13968,26 @@ impl GameApp {
             self.e2e_fkeys_ok = false;
             return;
         }
-        let diff = on.iter().zip(off.iter()).filter(|(a, b)| a != b).count();
-        // 1280x696x4 = 3,566,080 bytes; 2000 changed bytes = 500 pixels —
-        // the 5×5 border grid adds thousands of line pixels across the
+        // the PNG byte sizes differ with compression — decode both to raw
+        // RGBA (fixed 1280x696x4) and compare the PIXEL data
+        let on_px = image::load_from_memory(&on)
+            .map(|i| i.to_rgba8().into_raw())
+            .unwrap_or_default();
+        let off_px = image::load_from_memory(&off)
+            .map(|i| i.to_rgba8().into_raw())
+            .unwrap_or_default();
+        if on_px.len() != off_px.len() || on_px.is_empty() {
+            vc_render::render::report_boot_log("e2e: fkeys border-visibility diff DECODE MISMATCH");
+            self.e2e_fkeys_ok = false;
+            return;
+        }
+        let diff = on_px
+            .iter()
+            .zip(off_px.iter())
+            .filter(|(a, b)| a != b)
+            .count();
+        // 1280x696x4 = 3,566,080 px; 2000 changed px — the 5×5 border grid
+        // adds thousands of line pixels across the
         // frame, the inter-frame noise is a handful
         let ok = diff > 2000;
         vc_render::render::report_boot_log(&format!(
@@ -14359,8 +14385,19 @@ impl GameApp {
             // e2e_fkeys()/e2e_fkeys_capture() force Screen::Game for their
             // rebuilds and restore whatever screen was active.
             let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            // T5 contract: the key stage waits for the initial meshing
+            // burst to settle (the drawn-chunk count stable for 10 frames)
+            // so the borders-ON/OFF capture pair sees the SAME chunk set
+            if in_world {
+                if self.stats.chunks == self.e2e_fkeys_last_chunks {
+                    self.e2e_fkeys_stable += 1;
+                } else {
+                    self.e2e_fkeys_stable = 0;
+                }
+                self.e2e_fkeys_last_chunks = self.stats.chunks;
+            }
             match self.e2e_fkeys_stage {
-                0 if in_world => {
+                0 if in_world && self.e2e_fkeys_stable >= 10 => {
                     self.e2e_fkeys();
                 }
                 1 if self.renderer.screenshot_png.is_some() => {
@@ -14496,7 +14533,10 @@ impl GameApp {
                 // unconditional exit used to win the race on headless
                 // runners — 0-1 frames rendered, ladder never past stage 0)
                 #[cfg(not(target_arch = "wasm32"))]
-                let fkeys_pending = std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 3;
+                // T5 ladder (2026-10-01): the verdict capture is stage 3
+                // now — the hold must cover it (the old `< 3` released the
+                // smoke exit one frame before the leg's verdict)
+                let fkeys_pending = std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 4;
                 #[cfg(target_arch = "wasm32")]
                 let fkeys_pending = false;
                 if !fkeys_pending {

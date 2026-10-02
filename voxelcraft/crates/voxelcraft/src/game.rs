@@ -8763,10 +8763,10 @@ impl GameApp {
     ///   is replaced with the primed entity at the chain-prime fuse — a
     ///   random number of game ticks between 10 and 30 (VERIFIED w/TNT
     ///   §Behavior).
-    /// DOCUMENTED TRIM (mob knockback): the verified velocity formula
-    /// applies to every affected entity; the engine's mobs keep the
-    /// damage-only blast (no impulse) — the mob knockback path is future
-    /// work.
+    ///   DOCUMENTED TRIM (mob knockback): the verified velocity formula
+    ///   applies to every affected entity; the engine's mobs keep the
+    ///   damage-only blast (no impulse) — the mob knockback path is future
+    ///   work.
     fn explode(&mut self, center: [f32; 3], power: f32, tnt: bool) {
         use vc_gameplay::combat;
         let r = power as i32;

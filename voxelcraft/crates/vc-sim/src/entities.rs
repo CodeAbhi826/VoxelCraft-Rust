@@ -750,15 +750,8 @@ impl PrimedTntSystem {
                 lo[axis] = target - half;
                 let mut hi = probe;
                 hi[axis] = target + half;
-                let hit = is_solid(world.get_block(
-                    lo[0] as i32,
-                    lo[1] as i32,
-                    lo[2] as i32,
-                )) || is_solid(world.get_block(
-                    hi[0] as i32,
-                    hi[1] as i32,
-                    hi[2] as i32,
-                ));
+                let hit = is_solid(world.get_block(lo[0] as i32, lo[1] as i32, lo[2] as i32))
+                    || is_solid(world.get_block(hi[0] as i32, hi[1] as i32, hi[2] as i32));
                 if hit {
                     if axis == 1 {
                         t.vel[1] = 0.0;
@@ -774,11 +767,8 @@ impl PrimedTntSystem {
             }
             // drag: 0.98 in air (the shared profile), 0.9 in water (the
             // documented adaptation)
-            let in_water = world.get_block(
-                t.pos[0] as i32,
-                t.pos[1] as i32,
-                t.pos[2] as i32,
-            ) == WATER;
+            let in_water =
+                world.get_block(t.pos[0] as i32, t.pos[1] as i32, t.pos[2] as i32) == WATER;
             let drag = if in_water { 0.9 } else { 0.98 };
             t.vel[0] *= drag;
             t.vel[2] *= drag;
@@ -799,16 +789,7 @@ impl PrimedTntSystem {
     /// `biome`/`sky`/`blk` bake the entity's brightness + tint at prime
     /// (the item-drop pattern; TNT has no biome tint).
     #[allow(clippy::too_many_arguments)]
-    pub fn prime(
-        &mut self,
-        wx: i32,
-        wy: i32,
-        wz: i32,
-        biome: u8,
-        sky: u8,
-        blk: u8,
-        fuse: i32,
-    ) {
+    pub fn prime(&mut self, wx: i32, wy: i32, wz: i32, biome: u8, sky: u8, blk: u8, fuse: i32) {
         if self.tnts.len() >= MAX_PRIMED_TNT {
             return; // cap: the oldest entities still live, refuse the prime
         }
@@ -837,7 +818,10 @@ impl PrimedTntSystem {
     /// 10 and 30 inclusive (VERIFIED w/TNT §Behavior)
     pub fn chain_fuse(&mut self) -> i32 {
         TNT_CHAIN_FUSE_MIN
-            + self.rng.next_range((TNT_CHAIN_FUSE_MAX - TNT_CHAIN_FUSE_MIN + 1) as u32) as i32
+            + self
+                .rng
+                .next_range((TNT_CHAIN_FUSE_MAX - TNT_CHAIN_FUSE_MIN + 1) as u32)
+                as i32
     }
 
     /// the 10-tick flash phase (VERIFIED: "blinks, alternating every 0.5
@@ -954,11 +938,7 @@ impl PrimedTntSystem {
                 let tx = (*tile % 32) as f32;
                 let ty = (*tile / 32) as f32;
                 // per-face shade on the flash color (the top keeps 1.0)
-                let fc = [
-                    col[0] * shade,
-                    col[1] * shade,
-                    col[2] * shade,
-                ];
+                let fc = [col[0] * shade, col[1] * shade, col[2] * shade];
                 // UV: v flipped so texture top = block top (side faces);
                 // top/bottom map the tile straight on
                 let uvs = if fi < 2 {
@@ -1174,8 +1154,7 @@ mod tests {
         assert_eq!(sys.len(), 1);
         assert_eq!(sys.tnts[0].pos, [0.5, 66.0, 0.5], "block pos +[0.5,0,0.5]");
         assert_eq!(
-            sys.tnts[0].vel[1],
-            TNT_PRIME_VEL_UP,
+            sys.tnts[0].vel[1], TNT_PRIME_VEL_UP,
             "0.2 blocks/tick upward (VERIFIED)"
         );
         assert!(
@@ -1213,11 +1192,7 @@ mod tests {
         assert!(!sys.tnts.is_empty(), "a long fuse still lives");
         let t = &sys.tnts[0];
         // the 0.98 hitbox rests on the y=64 floor's top surface (y=65)
-        assert!(
-            (t.pos[1] - 65.0).abs() < 0.06,
-            "rest height: {}",
-            t.pos[1]
-        );
+        assert!((t.pos[1] - 65.0).abs() < 0.06, "rest height: {}", t.pos[1]);
     }
 
     #[test]

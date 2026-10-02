@@ -1,6 +1,6 @@
 //! the bed bracket: the sleep interaction's PURE decision layer.
 //!
-//! VERIFIED w/Bed (live 2026-09-22, https://minecraft.wiki/w/Bed — raw
+//! VERIFIED w/Bed (live 2026-09-22, the reference wiki page /w/Bed — raw
 //! wikitext via the MediaWiki API):
 //!
 //! * §Sleeping — "A player sleeps by using a bed when the internal sky

@@ -16,32 +16,32 @@ pub(super) fn tnt_side_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let sticks = "rRddrRddrRddrRdd";
     // the band: T (cols 0-3) · gap · N (cols 6-9) · gap · T (cols 12-15)
     let rows = [
-        sticks,             // 0
-        sticks,             // 1
-        sticks,             // 2
-        sticks,             // 3
-        sticks,             // 4
-        sticks,             // 5
-        "tttt..n..n..tttt", // 6
+        sticks,              // 0
+        sticks,              // 1
+        sticks,              // 2
+        sticks,              // 3
+        sticks,              // 4
+        sticks,              // 5
+        "tttt..n..n..tttt",  // 6
         ".t....nn.n....t..", // 7
         ".t....n.nn....t..", // 8
         ".t....n..n....t..", // 9
         ".t....n..n....t..", // 10
-        sticks,             // 11
-        sticks,             // 12
-        sticks,             // 13
-        sticks,             // 14
-        sticks,             // 15
+        sticks,              // 11
+        sticks,              // 12
+        sticks,              // 13
+        sticks,              // 14
+        sticks,              // 15
     ];
     // every glyph maps its own color: the stick glyphs never appear in
     // the band and the letter glyphs never appear in the stick field
     art(a, t, rows, &|ch| {
         Some(match ch {
-            'r' => (198, 46, 38, 255),  // stick body
-            'R' => (224, 74, 48, 255),  // stick highlight
-            'd' => (122, 28, 24, 255),  // the dark bundle gap
+            'r' => (198, 46, 38, 255),      // stick body
+            'R' => (224, 74, 48, 255),      // stick highlight
+            'd' => (122, 28, 24, 255),      // the dark bundle gap
             't' | 'n' => (44, 38, 38, 255), // the dark lettering
-            _ => (232, 228, 218, 255),  // the off-white band
+            _ => (232, 228, 218, 255),      // the off-white band
         })
     });
 }

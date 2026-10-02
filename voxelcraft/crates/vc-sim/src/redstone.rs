@@ -309,7 +309,7 @@ pub fn lamp_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z
     if state_block(s) != REDSTONE_LAMP {
         return; // stale entry
     }
-    let powered = lamp_powered(world, x, y, z);
+    let powered = powered_by_neighbors(world, x, y, z);
     let lit = s == REDSTONE_LAMP_LIT;
     if powered && !lit {
         // ON (VERIFIED: "A redstone lamp activates instantly")
@@ -324,7 +324,16 @@ pub fn lamp_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z
 
 /// is any adjacent cell feeding the lamp? (torch lit / lever on /
 /// wire powered — the engine's verified power sources)
-fn lamp_powered(world: &World, x: i32, y: i32, z: i32) -> bool {
+///
+/// TNT round: this is now the shared powered-neighborhood scan — the
+/// TNT block is a redstone mechanism component (VERIFIED w/TNT
+/// §Redstone component, live 2026-09-22: "A TNT block is considered a
+/// redstone mechanism component, and is activated when it receives a
+/// redstone signal"), and the ignition sweep reads the same verified
+/// power sources the lamp does. Trims (the lamp shares them): vanilla's
+/// direct/strong block-power nuance and repeater/comparator/observer
+/// adjacency are outside this set.
+pub fn powered_by_neighbors(world: &World, x: i32, y: i32, z: i32) -> bool {
     for (dx, dy, dz) in [
         (1i32, 0i32, 0i32),
         (-1, 0, 0),

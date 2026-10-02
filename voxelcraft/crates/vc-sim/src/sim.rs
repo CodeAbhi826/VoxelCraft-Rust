@@ -815,4 +815,61 @@ mod tests {
             "in-ring item fell; frozen one did not"
         );
     }
+
+    // ---------------- TNT round: the sim-level E2E ----------------
+
+    /// the full sim loop: a registered, redstone-powered TNT block primes
+    /// through the ignition sweep on the first step (the block is
+    /// replaced with the primed entity at the 80 gt fuse — VERIFIED w/TNT
+    /// §Activation "a redstone signal" + §Behavior), and the explosion
+    /// queues at fuse 0 for game.rs to drain
+    #[test]
+    fn tnt_e2e_redstone_ignition_to_explosion() {
+        use crate::entities::TNT_FUSE_TICKS;
+        let mut w = flat_world();
+        let mut sim = Sim::new(1234);
+        let mut light = vc_world::light::LightEngine::new();
+        // a TNT block on the floor + a powered wire adjacent (the sweep's
+        // verified redstone source); the block stores its DEDICATED state
+        // (the identity 533 collides with the glazed-terracotta window)
+        w.set_block_state(
+            0,
+            65,
+            0,
+            vc_blocks::blocks::default_state(vc_blocks::blocks::TNT),
+        );
+        sim.tnt.register_block([0, 65, 0]);
+        w.set_block_state(1, 65, 0, vc_blocks::blocks::wire_state(15));
+        // one sim step: the sweep primes
+        sim.step(&mut w, &mut light, &TickScope::everything());
+        assert_eq!(w.get_block(0, 65, 0), AIR, "the block is replaced");
+        assert_eq!(sim.tnt.len(), 1, "the primed entity exists");
+        assert_eq!(
+            sim.tnt.tnts[0].fuse,
+            TNT_FUSE_TICKS - 1,
+            "the first step drains one fuse tick (VERIFIED: 1 per tick)"
+        );
+        assert_eq!(sim.tnt.primed_total, 1);
+        // the fuse never fires early
+        for _ in 0..TNT_FUSE_TICKS - 2 {
+            sim.step(&mut w, &mut light, &TickScope::everything());
+            assert!(
+                sim.tnt.explosions.is_empty(),
+                "the fuse guards (80 gt — VERIFIED)"
+            );
+        }
+        // the 80th step drains the fuse to 0 → the explosion queues
+        sim.step(&mut w, &mut light, &TickScope::everything());
+        assert_eq!(sim.tnt.explosions.len(), 1, "the explosion at fuse 0");
+        assert_eq!(sim.tnt.exploded_total, 1);
+        assert!(sim.tnt.tnts.is_empty(), "the entity is consumed");
+        // the explosion sits at the entity's position (+0.06125 above —
+        // the entities.rs fuse test covers the exact offset); here the
+        // cell identity: the entity stayed near the launch cell
+        let c = sim.tnt.explosions[0];
+        assert!(
+            (c[0] - 0.5).abs() <= 1.5 && (c[2] - 0.5).abs() <= 1.5,
+            "the blast stays at the launch site: {c:?}"
+        );
+    }
 }

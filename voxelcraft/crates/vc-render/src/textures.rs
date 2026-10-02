@@ -23,6 +23,9 @@ mod farming_art;
 /// UI-overhaul Phase 1: GUI chrome + HUD sprites (public so the
 /// `gui` module's set/loader can call the painters)
 pub mod gui_art;
+/// Round K (the Nether portal): the purple animated portal-block swirl +
+/// the flint-and-steel item sprite (clean-room art, tiles 801/802)
+mod portal_art;
 mod r13_art;
 mod tnt_art;
 mod v112_art;
@@ -4824,6 +4827,13 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_BED_HEAD_TOP => bed_art::head_top_art(&mut a, t, &mut rng),
             TILE_BED_SIDE => bed_art::side_art(&mut a, t, &mut rng),
             TILE_BED_BOTTOM => bed_art::bottom_art(&mut a, t, &mut rng),
+            // ---- Round K (the Nether portal): the purple portal-block
+            // swirl (translucent violet, VERIFIED w/Nether_Portal_(block):
+            // "the translucent part of the Nether portal", light 11) +
+            // the flint-and-steel item sprite — clean-room art, never
+            // vanilla pixels
+            TILE_NETHER_PORTAL => portal_art::nether_portal_art(&mut a, t, &mut rng),
+            TILE_FLINT_AND_STEEL => portal_art::flint_and_steel_art(&mut a, t, &mut rng),
             // ---- backlog round (farming, 2026-09-09): the farming set ----
             TILE_FARMLAND_DRY => farming_art::farmland_art(&mut a, t, false),
             TILE_FARMLAND_WET => farming_art::farmland_art(&mut a, t, true),
@@ -5405,6 +5415,62 @@ pub fn merge_pack_textures(
                 tile: TILE_MAGMA,
                 frames,
                 frametime: 8.0 / 20.0,
+                current: 0,
+                timer: 0.0,
+            });
+        }
+    }
+
+    // Round K built-in: the nether-portal block's vortex animation
+    // (VERIFIED — reference wiki /Nether_portal §Creation, live
+    // 2026-09-26: the lit interior "creat[es] portal blocks inside the
+    // frame, resembling a vortex"; the infobox image is animated). The
+    // vanilla strip's frametime is not asserted here — ours is a
+    // clean-room 4-frame shimmer built from the procedural tile by
+    // pulsing only the bright swirl pixels (r > 120 — the deep violet
+    // field stays stable, so it reads as a vortex swirl rather than
+    // noise). Cadence: frametime 4 ticks (0.2 s), our documented
+    // adaptation (the engine's animated-tile cadence). Registered
+    // unconditionally so the engine animates the portal with or without
+    // a resource pack.
+    {
+        let extract_tile = |tile: u16| -> Vec<u8> {
+            let tx = (tile % 32) as usize;
+            let ty = (tile / 32) as usize;
+            let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
+            for y in 0..TILE_PX {
+                for x in 0..TILE_PX {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+                    let dst = (y * TILE_PX + x) * 4;
+                    out[dst..dst + 4].copy_from_slice(&atlas[src..src + 4]);
+                }
+            }
+            out
+        };
+        let base = extract_tile(TILE_NETHER_PORTAL);
+        if base.iter().any(|&b| b != 0) {
+            let frames: Vec<Vec<u8>> = (0..4)
+                .map(|f| {
+                    let mut frame = base.clone();
+                    // smooth 0 → peak → 0 pulse over the 4 frames, so
+                    // frame 0 == the base tile exactly (seamless loop)
+                    let amp = 34.0 * (std::f32::consts::PI * f as f32 / 4.0).sin();
+                    let (px4, _rest) = frame.as_chunks_mut::<4>();
+                    for px in px4 {
+                        if px[0] > 120 {
+                            // brighten R, keep G/B trailing (the swirl glow)
+                            px[0] = (px[0] as f32 + amp).clamp(0.0, 255.0) as u8;
+                            px[1] = (px[1] as f32 + amp * 0.5).clamp(0.0, 255.0) as u8;
+                            px[2] = (px[2] as f32 + amp * 0.3).clamp(0.0, 255.0) as u8;
+                        }
+                    }
+                    frame
+                })
+                .collect();
+            animations.push(AnimatedTile {
+                tile: TILE_NETHER_PORTAL,
+                frames,
+                frametime: 4.0 / 20.0,
                 current: 0,
                 timer: 0.0,
             });

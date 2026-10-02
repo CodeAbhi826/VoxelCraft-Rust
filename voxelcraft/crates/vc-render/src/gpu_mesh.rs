@@ -51,7 +51,7 @@ use wgpu::util::DeviceExt;
 
 use vc_blocks::blocks::{
     ACACIA_LEAVES, BIRCH_LEAVES, BLOCK_COUNT, DARK_OAK_LEAVES, GLASS, GRASS, ICE, LAVA, LEAVES,
-    SPRUCE_LEAVES, STATE_COUNT, TALL_GRASS, WATER,
+    NETHER_PORTAL, SPRUCE_LEAVES, STATE_COUNT, TALL_GRASS, WATER,
 };
 
 /// number of (axis, dir, section, slice) units per chunk = 3·2·16·16
@@ -108,10 +108,13 @@ const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
 // (id 506: fire); the farming bracket: STATE_COUNT=845 (V16 806..=841
 // farmland+4 crops, 842..=844 the wheat/bread/hoe item identities),
 // BLOCK_COUNT=531 (ids 507..=530: the farming set + the 16 armor items)
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=863)
-const L_FL: u32 = 863u;            // lut: block flags           (BLOCK_COUNT=533)
-const L_TC: u32 = 1396u;           // lut: block tint class      (BLOCK_COUNT=533)
-const L_ST: u32 = 1929u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3452)
+// Round K (the Nether portal): STATE_COUNT=874 (TNT 863, beds 864..=871,
+// portal+flint 872..=873), BLOCK_COUNT=538 (TNT 533, beds 534/535,
+// portal 536 + flint-and-steel 537)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=874)
+const L_FL: u32 = 874u;            // lut: block flags           (BLOCK_COUNT=538)
+const L_TC: u32 = 1412u;           // lut: block tint class      (BLOCK_COUNT=538)
+const L_ST: u32 = 1950u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3496)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -124,6 +127,8 @@ const F_GLASS: u32 = 8u;
 const F_ICE: u32 = 16u;
 const F_CROSS: u32 = 32u;
 const F_LAVA: u32 = 64u;
+const F_PORTAL: u32 = 128u;        // Round K: the nether-portal sheet
+                                    // (cull against other portal cells)
 
 // corner (cu, cv) order — CPU: [(0,0),(1,0),(1,1),(0,1)]; computed
 // arithmetically (WGSL const arrays are constant-indexed only)
@@ -164,8 +169,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 862u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 532u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 873u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 537u)]; }
 // water level of a STATE: 0 = source, 1..7 = flowing, 255 = not water
 // (port of vc_blocks::blocks::water_level; the flow-state id range
 // 89..=95 is asserted against WATER_FLOW_BASE/END by the Rust-side
@@ -198,13 +203,14 @@ fn face_visible(bf: u32, fnb: u32) -> bool {
     if (bf & F_LEAVES) != 0u { return (fnb & F_OPAQUE) == 0u; }
     if (bf & F_GLASS) != 0u { return (fnb & F_OPAQUE) == 0u && (fnb & F_GLASS) == 0u; }
     if (bf & F_ICE) != 0u { return (fnb & F_OPAQUE) == 0u && (fnb & F_ICE) == 0u; }
+    if (bf & F_PORTAL) != 0u { return (fnb & F_OPAQUE) == 0u && (fnb & F_PORTAL) == 0u; }
     return (fnb & F_OPAQUE) == 0u;
 }
 
 // tint class -> packed tint byte (kind<<6 | slot), port of
 // vc_blocks::tint::block_face_tint_packed's block match
 fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
-    let tc = lut[L_TC + min(b, 532u)];
+    let tc = lut[L_TC + min(b, 537u)];
     var kind = 0u; var slot = 0u;
     if tc == 1u { if top { kind = 1u; slot = biome; } }          // GRASS top
     else if tc == 2u { kind = 1u; slot = biome; }                // TALL_GRASS
@@ -649,6 +655,10 @@ const L_SB: usize = 0;
 const L_FL: usize = STATE_COUNT;
 const L_TC: usize = L_FL + BLOCK_COUNT;
 const L_ST: usize = L_TC + BLOCK_COUNT;
+// Round K: STATE_COUNT=874 (TNT 863, beds 864..=871, portal+flint
+// 872..=873), BLOCK_COUNT=538 (TNT 533, beds 534/535, portal 536 +
+// flint-and-steel 537) — the WGSL L_* constants mirror these (guarded
+// by wgsl_lut_offsets_match_rust).
 const LUT_WORDS: usize = L_ST + STATE_COUNT * 4;
 
 fn build_lut() -> Vec<u32> {
@@ -682,6 +692,11 @@ fn build_lut() -> Vec<u32> {
         }
         if is_cross(id) {
             flags |= 32; // F_CROSS
+        }
+        if id == NETHER_PORTAL {
+            // Round K: the portal sheet — same-cull class mirrors the
+            // Rust face_visible portal arm (the lava T4 pattern)
+            flags |= 128; // F_PORTAL
         }
         lut[L_FL + b] = flags;
         let tint_class = match id {
@@ -1672,6 +1687,10 @@ mod tests {
                     (fnb & 1) == 0 && (fnb & 8) == 0
                 } else if (f & 16) != 0 {
                     (fnb & 1) == 0 && (fnb & 16) == 0
+                } else if (f & 128) != 0 {
+                    // F_PORTAL (Round K): the portal sheet culled against
+                    // other portal cells
+                    (fnb & 1) == 0 && (fnb & 128) == 0
                 } else {
                     (fnb & 1) == 0
                 };

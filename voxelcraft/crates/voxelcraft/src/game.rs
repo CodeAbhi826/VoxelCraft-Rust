@@ -17743,11 +17743,7 @@ impl GameApp {
             // no-clips through the world and cannot use portals (the
             // vanilla spectator's no-interaction rule).
             if self.player.in_portal && self.mode != vc_gameplay::modes::GameMode::Spectator {
-                let need = if self.mode.creative() {
-                    vc_gameplay::portal::TRAVEL_TICKS_CREATIVE as f32 / 20.0
-                } else {
-                    vc_gameplay::portal::TRAVEL_TICKS_SURVIVAL as f32 / 20.0
-                };
+                let need = vc_gameplay::portal::travel_wait_secs(self.mode.creative());
                 if self.player.portal_accum >= need {
                     // the entry portal's long axis anchors the far-side
                     // build (VERIFIED Nether_portal§Portal_creation: "the
@@ -21508,11 +21504,8 @@ impl GameApp {
             self.player.pos.z.floor() as i32,
         );
         let cur = self.world.dimension;
-        let (dx, dz) = if cur == vc_world::world::Dimension::Nether {
-            (ex * 8, ez * 8)
-        } else {
-            (ex.div_euclid(8), ez.div_euclid(8))
-        };
+        let (dx, dz) =
+            vc_gameplay::portal::portal_coords(cur == vc_world::world::Dimension::Nether, ex, ez);
         // the far-side build matches the source portal's long axis
         // (VERIFIED Nether_portal§Portal_creation)
         self.portal_arrival = Some((axis, dx, dz));

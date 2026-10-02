@@ -13418,14 +13418,13 @@ mod creative_tab_tests {
         assert_eq!(creative_tab_items(CreativeTab::Transportation).len(), 1);
         assert_eq!(creative_tab_items(CreativeTab::Miscellaneous).len(), 184);
         assert_eq!(creative_tab_items(CreativeTab::Foodstuffs).len(), 37);
-        assert_eq!(creative_tab_items(CreativeTab::Tools).len(), 1);
+        // Round K: the flint-and-steel igniter joins the hoe in Tools
+        assert_eq!(creative_tab_items(CreativeTab::Tools).len(), 2);
         // Sub-round 3: Combat = the 5 picker entries + the 16 armor items
         assert_eq!(creative_tab_items(CreativeTab::Combat).len(), 21);
         assert!(creative_tab_items(CreativeTab::Combat).contains(&DIAMOND_CHESTPLATE));
         assert_eq!(creative_tab_items(CreativeTab::Brewing).len(), 25);
-        // Round K/TNT/beds: the flint-and-steel igniter joins the hoe in
-        // Tools; TNT joins Redstone; the beds join DecorationBlocks
-        assert_eq!(creative_tab_items(CreativeTab::Tools).len(), 2);
+        // Round K/TNT/beds: the new picker entries' tab homes
         assert!(creative_tab_items(CreativeTab::Tools).contains(&FLINT_AND_STEEL));
         assert!(creative_tab_items(CreativeTab::Redstone).contains(&TNT));
         assert!(creative_tab_items(CreativeTab::DecorationBlocks).contains(&BED));

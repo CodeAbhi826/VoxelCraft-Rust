@@ -13982,7 +13982,8 @@ impl GameApp {
             let px = image::load_from_memory(png)
                 .map(|i| i.to_rgba8().into_raw())
                 .unwrap_or_default();
-            px.chunks_exact(4)
+            px.as_chunks::<4>()
+                .0
                 .filter(|c| {
                     let (r, g, b) = (c[0] as i32, c[1] as i32, c[2] as i32);
                     r > 60 && r > b + 40 && g > b + 40 && (r - g).abs() < 40

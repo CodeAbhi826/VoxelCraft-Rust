@@ -7,7 +7,7 @@
 //! crate layering of every other gameplay system.
 
 use vc_blocks::blocks::{
-    default_state, AIR, FIRE, FLOWER_RED, FLOWER_YELLOW, NETHER_PORTAL, OBSIDIAN, TALL_GRASS,
+    AIR, FIRE, FLOWER_RED, FLOWER_YELLOW, NETHER_PORTAL, OBSIDIAN, TALL_GRASS,
 };
 use vc_world::world::World;
 
@@ -510,6 +510,7 @@ pub fn forced_y(y: i32, nether: bool) -> i32 {
 mod tests {
     use super::*;
     use std::sync::Arc;
+    use vc_blocks::blocks::default_state;
     use vc_blocks::blocks::STONE;
 
     /// a fully-solid stone chunk at (0, 0) — every cell stone through the

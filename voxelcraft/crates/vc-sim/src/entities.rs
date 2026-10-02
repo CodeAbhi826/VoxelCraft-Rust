@@ -847,11 +847,15 @@ impl PrimedTntSystem {
             // entity ~0.5 above the floor)
             for axis in 0..3 {
                 let target = t.pos[axis] + t.vel[axis];
-                let (lo, hi) = if axis == 1 {
+                let (alo, ahi) = if axis == 1 {
                     (target, target + TNT_HITBOX)
                 } else {
                     (target - half, target + half)
                 };
+                let mut lo = t.pos;
+                let mut hi = t.pos;
+                lo[axis] = alo;
+                hi[axis] = ahi;
                 let hit = is_solid(world.get_block(lo[0] as i32, lo[1] as i32, lo[2] as i32))
                     || is_solid(world.get_block(hi[0] as i32, hi[1] as i32, hi[2] as i32));
                 if hit {

@@ -304,9 +304,15 @@ jobs:
           grep -q "FKEY CONTRACT OK" smoke-fkeys.log
           grep -q "e2e: fkeys behind view saved" smoke-fkeys.log
           grep -q "e2e: fkeys front view saved" smoke-fkeys.log
+          # T5 contract (2026-10-01): the border lines must be VISIBLE in
+          # the frame — the ladder pixel-diffs the borders-ON behind
+          # capture against a borders-OFF one (the old flag-only contract
+          # is how the collapsed-overlay bug shipped: flags armed, zero
+          # border lines rendered)
+          grep -q "border-visibility diff .* VISIBLE (contract ok)" smoke-fkeys.log || { echo "FAIL: border lines NOT VISIBLE in the capture (T5 contract)"; exit 1; }
           test -s run3/screenshots/e2e_fkeys_behind_*.png || { echo "FAIL: behind-view screenshot missing"; exit 1; }
           test -s run3/screenshots/e2e_fkeys_front_*.png || { echo "FAIL: front-view screenshot missing"; exit 1; }
-          echo "FKEYS OK - F1/F2/F5/F3+G/F11 verified through the real input path (both F5 views captured)"
+          echo "FKEYS OK - F1/F2/F5/F3+G/F11 verified through the real input path (both F5 views captured, border lines pixel-verified)"
 
           echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 

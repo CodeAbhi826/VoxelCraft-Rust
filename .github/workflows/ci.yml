@@ -70,7 +70,7 @@ jobs:
           cargo --version
           rustc --version
 
-      - name: cargo test (whole workspace — 14 libraries + app, 181 tests)
+      - name: cargo test (whole workspace — 14 libraries + app)
         working-directory: voxelcraft
         run: cargo test --release --no-default-features --workspace
 
@@ -103,7 +103,7 @@ jobs:
         working-directory: voxelcraft
         run: cargo check --release --no-default-features --workspace --lib --target wasm32-unknown-unknown
 
-      - name: cargo test (wasm32-compile unit tests — headless-safe subset)
+      - name: cargo compile-check (wasm32 unit tests — headless-safe subset, --no-run)
         working-directory: voxelcraft
         run: cargo test --no-default-features --workspace --lib --target wasm32-unknown-unknown --no-run
 

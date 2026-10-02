@@ -508,12 +508,14 @@ mod tests {
     use std::sync::Arc;
     use vc_blocks::blocks::STONE;
 
-    /// a stone-filled chunk at (0, 0) — the loaded-chunk pattern (World
-    /// edits no-op on missing chunks; the campfire-test pattern)
+    /// a fully-solid stone chunk at (0, 0) — every cell stone through the
+    /// 256-tall ceiling (the solid-world pattern: the open sky above an
+    /// 81-tall fill hosts valid build spots at y 81+, so the solid-world
+    /// tests fill the whole column)
     fn stone_world(seed: u64) -> World {
         let mut w = World::new(seed);
         let mut c = vc_chunk::chunk::Chunk::empty();
-        for y in 0..=80usize {
+        for y in 0..=255usize {
             for lz in 0..16usize {
                 for lx in 0..16usize {
                     c.set(lx, y, lz, STONE);
@@ -662,6 +664,15 @@ mod tests {
         let mut w = stone_world(8);
         build_frame(&mut w, [4, 65, 4], PortalAxis::X, 2, 3);
         build_frame(&mut w, [12, 65, 12], PortalAxis::X, 2, 3);
+        // the search scans for NETHER_PORTAL blocks — the game layer
+        // fills the interior after the frame validates, so the test
+        // fills both interiors (the fill is the game's portal blocks)
+        for k in 0..3i32 {
+            for i in 0..2i32 {
+                let _ = w.set_block_state(4 + i, 65 + k, 4, NETHER_PORTAL);
+                let _ = w.set_block_state(12 + i, 65 + k, 12, NETHER_PORTAL);
+            }
+        }
         let (cell, d) =
             search_existing_portal(&w, 5, 5, 65, 128).expect("a portal within range must be found");
         assert_eq!(cell, [5, 65, 4], "the closest portal receives the player");

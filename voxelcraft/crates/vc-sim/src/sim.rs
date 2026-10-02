@@ -405,7 +405,7 @@ impl Sim {
             // (the face-light rule — a solid cell's own light reads 0)
             let biome = world
                 .chunk((pos[0].div_euclid(16), pos[2].div_euclid(16)))
-                .map(|c| c.biome[(pos[2].rem_euclid(16)) * 16 + pos[0].rem_euclid(16)])
+                .map(|c| c.biome[((pos[2].rem_euclid(16)) * 16 + pos[0].rem_euclid(16)) as usize])
                 .unwrap_or(2);
             let (sky, blk) = face_light(world, pos[0], pos[1], pos[2]);
             self.tnt.prime(

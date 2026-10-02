@@ -13984,6 +13984,7 @@ impl GameApp {
                 .unwrap_or_default();
             px.as_chunks::<4>()
                 .0
+                .iter()
                 .filter(|c| {
                     let (r, g, b) = (c[0] as i32, c[1] as i32, c[2] as i32);
                     r > 60 && r > b + 40 && g > b + 40 && (r - g).abs() < 40

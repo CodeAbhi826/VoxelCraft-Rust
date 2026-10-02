@@ -7,8 +7,7 @@
 //! crate layering of every other gameplay system.
 
 use vc_blocks::blocks::{
-    default_state, state_block, AIR, FIRE, FLOWER_RED, FLOWER_YELLOW, NETHER_PORTAL, OBSIDIAN,
-    TALL_GRASS,
+    default_state, AIR, FIRE, FLOWER_RED, FLOWER_YELLOW, NETHER_PORTAL, OBSIDIAN, TALL_GRASS,
 };
 use vc_world::world::World;
 
@@ -352,7 +351,11 @@ pub fn search_existing_portal(
         for ly in 0..256usize {
             for lz in 0..16usize {
                 for lx in 0..16usize {
-                    if state_block(chunk.get(lx, ly, lz)) != NETHER_PORTAL {
+                    // chunk.get folds to the owning BLOCK id — a second
+                    // state_block fold would alias the portal's state 872
+                    // onto the raw-536 glazed-terracotta class and never
+                    // match (the 2026-10-02 CI catch)
+                    if chunk.get(lx, ly, lz) != NETHER_PORTAL {
                         continue;
                     }
                     let wx = kx * 16 + lx as i32;

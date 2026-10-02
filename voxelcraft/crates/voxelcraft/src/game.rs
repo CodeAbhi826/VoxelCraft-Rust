@@ -5,7 +5,7 @@
 
 use crate::player::{raycast, Input, Player};
 use glam::Vec3;
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use vc_audio::sounds::native_audio;
@@ -10450,7 +10450,7 @@ impl GameApp {
         //     position against the NEW table so paint and hit-test agree.
         // (b) STALE DRAG: a slider drag left open across a screen change
         //     would keep feeding slider_value_at from the dead widget id.
-        let live_ids: std::collections::HashSet<u16> = self.widgets.iter().map(|w| w.id).collect();
+        let live_ids: rustc_hash::FxHashSet<u16> = self.widgets.iter().map(|w| w.id).collect();
         if self.dragging.is_some_and(|d| !live_ids.contains(&d)) {
             if vc_render::render::is_verbose() {
                 vc_render::render::report_debug_log(
@@ -10493,7 +10493,7 @@ impl GameApp {
                     .iter()
                     .filter(|w| self.widgets.iter().filter(|o| o.id == w.id).count() > 1)
                     .map(|w| w.id)
-                    .collect::<std::collections::HashSet<u16>>()
+                    .collect::<rustc_hash::FxHashSet<u16>>()
                     .into_iter()
                     .collect();
                 vc_render::render::report_debug_log(

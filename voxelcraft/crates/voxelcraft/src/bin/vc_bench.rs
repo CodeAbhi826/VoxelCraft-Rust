@@ -254,7 +254,7 @@ fn main() {
     }
     // incremental light: a glowstone placement in the middle chunk + pump
     // (the block-change class the game pays per edit; glowstone = light 15)
-    light_engine.on_block_changed(&mut sim_world, 8, 70, 8, 0, GLOWSTONE);
+    light_engine.on_block_changed(&mut sim_world, 8, 70, 8, 0, vc_blocks::blocks::GLOWSTONE);
     let t0 = Instant::now();
     let pumped = light_engine.pump(&mut sim_world, 4096);
     let light_pump_ms = t0.elapsed().as_secs_f32() * 1000.0;

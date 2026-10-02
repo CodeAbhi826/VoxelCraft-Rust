@@ -18,6 +18,7 @@ pub mod grindstone;
 pub mod hunger;
 pub mod mobs;
 pub mod modes;
+pub mod sleep;
 pub mod spawners;
 pub mod villagers;
 pub mod weather;

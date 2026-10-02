@@ -307,6 +307,41 @@ pub enum MobKind {
 }
 
 impl MobKind {
+    /// The bed bracket's monster gate (VERIFIED w/Bed §Sleeping, live
+    /// 2026-09-22 — the wiki's JE table filtered to the 1.16.5-era
+    /// registry): "If a monster is within 8 blocks of the bed head
+    /// horizontally ... and 5 blocks vertically ... the player is
+    /// prevented from sleeping." `provoked` carries the neutral mobs'
+    /// hostility — the zombified piglin refuses only "when hostile"
+    /// (the table's Partial row); the magma cube, ghast and hoglin do
+    /// NOT prevent sleeping in Java (the table's No rows); every
+    /// passive kind is absent from the table = never blocks rest.
+    pub fn prevents_sleep(self, provoked: bool) -> bool {
+        matches!(
+            self,
+            MobKind::Zombie
+                | MobKind::ZombieVillager
+                | MobKind::Skeleton
+                | MobKind::Stray
+                | MobKind::Husk
+                | MobKind::Creeper
+                | MobKind::Spider
+                | MobKind::CaveSpider
+                | MobKind::Enderman
+                | MobKind::Witch
+                | MobKind::WitherSkeleton
+                | MobKind::Blaze
+                | MobKind::Vindicator
+                | MobKind::Evoker
+                | MobKind::Vex
+                | MobKind::Illusioner
+                | MobKind::Drowned
+                | MobKind::Phantom
+                | MobKind::Piglin
+                | MobKind::Silverfish
+        ) || (self == MobKind::ZombifiedPiglin && provoked)
+    }
+
     /// Parse a registry id from ANY source: our own `voxelcraft:` ids,
     /// ids written by third-party tools of the wider 1.16.5-era
     /// ecosystem (ANY namespace prefix), or bare names. Namespace-
@@ -6483,6 +6518,62 @@ pub fn build_arrow_vertices(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The bed bracket's monster-gate table (VERIFIED w/Bed §Sleeping,
+    /// live 2026-09-22 — the wiki's JE prevent-sleep table filtered to
+    /// the 1.16.5-era registry).
+    #[test]
+    fn prevents_sleep_matches_the_wiki_table() {
+        // JE Yes rows present in the registry
+        for kind in [
+            MobKind::Zombie,
+            MobKind::ZombieVillager,
+            MobKind::Skeleton,
+            MobKind::Stray,
+            MobKind::Husk,
+            MobKind::Creeper,
+            MobKind::Spider,
+            MobKind::CaveSpider,
+            MobKind::Enderman,
+            MobKind::Witch,
+            MobKind::WitherSkeleton,
+            MobKind::Blaze,
+            MobKind::Vindicator,
+            MobKind::Evoker,
+            MobKind::Vex,
+            MobKind::Illusioner,
+            MobKind::Drowned,
+            MobKind::Phantom,
+            MobKind::Piglin,
+            MobKind::Silverfish,
+        ] {
+            assert!(
+                kind.prevents_sleep(false),
+                "{kind:?} must prevent sleeping (JE Yes row)"
+            );
+        }
+        // the Partial row: the zombified piglin refuses only when hostile
+        assert!(!MobKind::ZombifiedPiglin.prevents_sleep(false));
+        assert!(MobKind::ZombifiedPiglin.prevents_sleep(true));
+        // the JE No rows present in the registry
+        for kind in [MobKind::MagmaCube, MobKind::Ghast, MobKind::Hoglin] {
+            assert!(
+                !kind.prevents_sleep(true),
+                "{kind:?} must never prevent sleeping (JE No row)"
+            );
+        }
+        // passives are absent from the table = never block rest
+        for kind in [
+            MobKind::Cow,
+            MobKind::Pig,
+            MobKind::Sheep,
+            MobKind::Chicken,
+            MobKind::Fox,
+            MobKind::Bee,
+        ] {
+            assert!(!kind.prevents_sleep(false), "{kind:?} is a passive");
+        }
+    }
 
     fn flat_world() -> World {
         let mut w = World::new(11);

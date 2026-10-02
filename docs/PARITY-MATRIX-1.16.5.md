@@ -259,7 +259,7 @@ Aspect rows:
 10. Structures: bastion, end_city, igloo, pillager_outpost, ruined_portal, shipwreck, underwater_ruin, ocean monument, swamp hut, witch hut.
 11. Particles ~70 more types + per-type sprites + the additive split; sounds ~580 more events + .ogg loading + music discs/jukebox.
 12. Smoker/blast/stonecutter/loom/smithing/cartography/lectern GUIs; shulker container.
-13. Biome breadth (28/66): the missing splits/variants + the 1.17-correct set (no copper needed).
+13. Biome breadth (28/66): the missing splits/variants + the 1.17-correct set (no copper needed). RESOLVED during the audit: the save-side biome-id mapping was ground-truthed against the REAL 1.16.4 saves' Biomes IntArrays + the pre-1.13 id table — Sunflower Plains now saves as Java id 129 (was 130 = Desert M, FIXED commit b4a505c); Flower Forest 132 and Ice Spikes 140 verified correct; the nether ids 170-173 match the 1.16.5 registry.
 14. Blocks breadth (533/846): the long-tail sets (batches by update bracket).
 
 **Tier 3 — polish/feel (S-M):**

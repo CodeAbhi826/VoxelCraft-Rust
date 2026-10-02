@@ -2614,6 +2614,22 @@ pub fn is_r13_state(s: u16) -> bool {
     (R13_STATE_BASE..R13_STATE_BASE + R13_COUNT).contains(&s)
 }
 
+/// Round K (the Nether portal): the portal + flint-and-steel identity
+/// states (872..=873, the R13 pattern: the blocks' identity
+/// fallthroughs land inside the prop/model windows, so they take the
+/// next free states above the beds window 864..=871).
+pub const NETHER_PORTAL_STATE: u16 = 872;
+pub const FLINT_AND_STEEL_STATE: u16 = 873;
+
+/// 1.16: is this STATE the nether-portal block? (the dedicated state
+/// folds to NETHER_PORTAL; a raw 536 is a glazed-terracotta facing
+/// state — the is_soul_fire pattern. Block-id comparisons use
+/// `== NETHER_PORTAL` directly.)
+#[inline]
+pub fn is_nether_portal(s: u16) -> bool {
+    s == NETHER_PORTAL_STATE || state_block(s) == NETHER_PORTAL
+}
+
 /// beds round (2026-09-22): the bed state window — 8 states above the
 /// TNT identity (863): part(2: 0 = foot, 1 = head) × facing(4). VERIFIED
 /// w/Bed §Block states (live 2026-09-22, raw wikitext): facing
@@ -3440,7 +3456,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 536; // + the backlog fire (506) + the farming set (507-514: farmland, 4
+pub const BLOCK_COUNT: usize = 538; // + the backlog fire (506) + the farming set (507-514: farmland, 4
                                     // crops, wheat, bread, hoe) + the 16 armor items (515-530,
                                     // sub-round 3) + the TNT round: the TNT block (533)
                                     // + the beds round: the bed's two halves (534/535)
@@ -3477,7 +3493,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 872; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
+pub const STATE_COUNT: usize = 874; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
                                     // states + the V17 armor identity window (845..=860, sub-round 3)
                                     // + Round 13's BOOK/GRINDSTONE identity states (861..=862)
                                     // + the TNT round: TNT's dedicated state (863)
@@ -3799,6 +3815,10 @@ pub fn default_state(b: u16) -> u16 {
         // TNT round: TNT's dedicated state (the identity 533 collides
         // with the glazed-terracotta facing window — see TNT_STATE)
         TNT => TNT_STATE,
+        // Round K: the nether-portal + flint-and-steel identity states
+        // (the R13 pattern — see NETHER_PORTAL_STATE)
+        NETHER_PORTAL => NETHER_PORTAL_STATE,
+        FLINT_AND_STEEL => FLINT_AND_STEEL_STATE,
         // beds round: the fresh-bed default — facing 0 (north, the
         // glazed-terracotta convention; the placement path writes the
         // player-facing state)
@@ -4200,6 +4220,9 @@ pub fn state_block(s: u16) -> u16 {
         GRINDSTONE_STATE => return GRINDSTONE,
         // TNT round: the dedicated state folds to its block
         TNT_STATE => return TNT,
+        // Round K: the nether-portal + flint-and-steel identity states
+        NETHER_PORTAL_STATE => return NETHER_PORTAL,
+        FLINT_AND_STEEL_STATE => return FLINT_AND_STEEL,
         // beds round: the bed window folds per half (0..3 foot, 4..7 head)
         s if is_bed_state(s) => {
             return BED_STATE_TO_BLOCK[(s - BED_STATE_BASE) as usize];
@@ -4465,6 +4488,10 @@ pub fn is_model_state(s: u16) -> bool {
         // TNT round: TNT's dedicated state — a full-cube BlockDef block
         // (the V17 pattern: never model states)
         || s == TNT_STATE
+        // Round K: the nether-portal + flint-and-steel identity states
+        // ride their BlockDef flags (the V17 pattern)
+        || s == NETHER_PORTAL_STATE
+        || s == FLINT_AND_STEEL_STATE
         // beds round: the bed window — greedy cubes per their BlockDef
         // flags (the V16 pattern; the pack's own bed model would need a
         // resource-pack bedstate the engine does not ship)
@@ -4573,6 +4600,12 @@ pub fn break_time_secs(block: u16) -> f32 {
         // "Hardness | 0" — "TNT can be broken instantly with any tool or
         // by hand", §Breaking)
         TNT => 0.0,
+        // Round K: the nether-portal block — unbreakable in survival
+        // (hardness −1, VERIFIED w/Nether_Portal_(block) infobox, live
+        // 2026-09-26: "Hardness | -1"; "portal blocks cannot be broken by
+        // tools except in Creative" §Usage — creative breaks instantly
+        // through the same INFINITY path)
+        NETHER_PORTAL => f32::INFINITY,
         // beds round: hardness 0.2 (VERIFIED w/Bed infobox, live
         // 2026-09-22: "Hardness | 0.2") — any tool (§Breaking: "No tool
         // can accelerate the breaking process"); drops itself (§Breaking)
@@ -4964,9 +4997,20 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 800; // + the 16 armor item sprites (775..=790, sub-round 3) + Round 13 book/grindstone (791/792) + Round A player skin (793) // 763 farming bracket + 764..773 destroy stages + 774 arm
-                               // + the TNT round: the TNT block's three faces (794..=796)
-                               // + the beds round: the bed's four faces (797..=800)
+pub const TILE_MAX: u16 = 802;
+/// Round K (the Nether portal): the purple animated portal-block tile —
+/// a clean-room translucent-violet vortex swirl. The wiki describes the
+/// block as "the translucent part of the Nether portal" that emits "a
+/// light level of 11" (VERIFIED w/Nether_Portal_(block) infobox +
+/// §Usage, live 2026-09-26); the swirl art is OURS — no vanilla pixels
+/// were sampled (portal_art::nether_portal_art + the
+/// merge_pack_textures pulse, the magma-block pattern).
+pub const TILE_NETHER_PORTAL: u16 = 801;
+/// Round K: the flint-and-steel item sprite — a steel striker striking
+/// a flint shard, clean-room drawn (portal_art::flint_and_steel_art).
+pub const TILE_FLINT_AND_STEEL: u16 = 802; // + the 16 armor item sprites (775..=790, sub-round 3) + Round 13 book/grindstone (791/792) + Round A player skin (793) // 763 farming bracket + 764..773 destroy stages + 774 arm
+                                           // + the TNT round: the TNT block's three faces (794..=796)
+                                           // + the beds round: the bed's four faces (797..=800)
 
 // ---- the 2026-09-14 round: destroy-stage crack overlays (764..=773) and
 // the first-person arm tile (774). The ten destroy stages are the vanilla
@@ -5565,6 +5609,25 @@ pub const BED: u16 = 534;
 /// the spawn point). Placed on the block farther away from the player
 /// (§Placement).
 pub const BED_HEAD: u16 = 535;
+
+// ---- Round K (the Nether portal): the interior block + the igniter ----
+/// 1.16: the nether-portal INTERIOR block — the translucent purple block
+/// that fills a lit obsidian frame and teleports between the Overworld
+/// and the Nether. Light 11, transparent, non-solid, unbreakable in
+/// survival (hardness −1, blast resistance 0, tool None — VERIFIED
+/// w/Nether_Portal_(block) infobox, live 2026-09-26). The item form is
+/// non-existent in Java ("The Nether portal block cannot be obtained as
+/// an item even by using the /give command"; "cannot be picked up using
+/// pick block" — same page): not in the picker, never placeable, never
+/// an item block.
+pub const NETHER_PORTAL: u16 = 536;
+/// 1.16: the flint-and-steel item — lights the nether-portal frame
+/// interior (VERIFIED w/Nether_portal §Creation, live 2026-09-26: "it is
+/// activated by fire placed inside the frame... including use of flint
+/// and steel"). Creative-picker item (the Tools tab); the vanilla 64-use
+/// durability is NOT modeled (no tool-durability system in the engine —
+/// the shears/hoe precedent, disclosed).
+pub const FLINT_AND_STEEL: u16 = 537;
 /// bed hardness 0.2 (VERIFIED w/Bed infobox: "Hardness | 0.2", linking
 /// w/Breaking#Blocks_by_hardness) — any tool, ×1.5 = 0.3 s hand break
 /// (§Breaking: "No tool can accelerate the breaking process"; the
@@ -5768,6 +5831,9 @@ pub fn is_item_block(b: u16) -> bool {
             // the fox egg (caught by is_spawn_egg too), and the two
             // late-arriving legacy items stick + charcoal ----
             | SWEET_BERRIES
+            // Round K: the flint-and-steel igniter — usable from the
+            // hotbar, never placeable (the tool-item convention)
+            | FLINT_AND_STEEL
             | STICK
             | CHARCOAL
             // ---- 1.14 (part 2): the iron nugget (the lantern recipe's
@@ -12513,6 +12579,13 @@ pub fn face_visible(b: u16, n: u16) -> bool {
     if b == ICE {
         return !is_opaque(n) && n != ICE;
     }
+    if b == NETHER_PORTAL {
+        // Round K: the portal sheet renders against everything except
+        // other portal cells (the frame faces show the portal texture
+        // meeting the obsidian; portal-portal interior boundaries cull
+        // — vanilla's cullface annotations, the lava T4 same-cull class)
+        return !is_opaque(n) && n != NETHER_PORTAL;
+    }
     // fully opaque blocks
     !is_opaque(n)
 }
@@ -12522,7 +12595,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 470] = [
+pub const PICKER_BLOCKS: [u16; 471] = [
     GRASS,
     DIRT,
     STONE,
@@ -13018,6 +13091,8 @@ pub const PICKER_BLOCKS: [u16; 470] = [
     // ---- beds round: the red bed's two halves (the Decoration tab) ----
     BED,
     BED_HEAD,
+    // Round K: the flint-and-steel igniter (the Tools tab)
+    FLINT_AND_STEEL,
 ];
 
 // ---------------------------------------------------------------------------
@@ -13222,7 +13297,9 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         MELON_SLICE | WHEAT_CROP | CARROTS | POTATOES | BEETROOTS => CreativeTab::Foodstuffs,
         WHEAT | BREAD => CreativeTab::Foodstuffs,
         // ---- Tools (1 entries) ----
-        HOE => CreativeTab::Tools,
+        // Round K: the flint-and-steel igniter joins the hoe (its vanilla
+        // Tools-tab home)
+        HOE | FLINT_AND_STEEL => CreativeTab::Tools,
         // ---- Combat (5 entries) ----
         SNOWBALL | ELYTRA | SHIELD | TRIDENT => CreativeTab::Combat,
         // ---- Brewing (25 entries) ----
@@ -13371,7 +13448,7 @@ mod creative_tab_tests {
         // the 16 ids are contiguous 515..=530 and past the old registry
         assert_eq!(LEATHER_CAP, 515);
         assert_eq!(DIAMOND_BOOTS, 530);
-        assert_eq!(BLOCK_COUNT, 536);
+        assert_eq!(BLOCK_COUNT, 538);
         for b in LEATHER_CAP..=DIAMOND_BOOTS {
             // every armor item is an inventory-only item block
             assert!(is_item_block(b), "armor {b} must be an item block");
@@ -14302,8 +14379,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 536, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone + the TNT block");
-        assert_eq!(STATE_COUNT, 872, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities");
+        assert_eq!(BLOCK_COUNT, 538, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone + the TNT block");
+        assert_eq!(STATE_COUNT, 874, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -14354,8 +14431,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 536); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 872); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 538); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 874); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
     }
 
     /// magma emits light level 3 (VERIFIED — reference wiki /Magma_Block,
@@ -14395,8 +14472,8 @@ mod auditfix_tests {
             );
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 536); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 872); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 538); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 874); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // solidity classes: log/planks solid-opaque (hardness family 2
                                       // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
                                       // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -14454,8 +14531,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 536); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 872); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 538); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 874); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_CLEAVER), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -14584,8 +14661,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 536);
-        assert_eq!(STATE_COUNT, 872); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 538);
+        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -14670,7 +14747,7 @@ mod v112_tests {
             TILE_MAX >= TILE_ILLUSIONER,
             "1.12 tiles within the atlas guard"
         );
-        assert_eq!(PICKER_BLOCKS.len(), 470);
+        assert_eq!(PICKER_BLOCKS.len(), 471);
         // the V9 + V10 windows are all present (the picker-gap fix)
         for want in [
             SEA_PICKLE,
@@ -14750,8 +14827,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 536);
-        assert_eq!(STATE_COUNT, 872); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 538);
+        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -14885,8 +14962,8 @@ mod v114_tests {
         );
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 536);
-        assert_eq!(STATE_COUNT, 872); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 538);
+        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
     }
 }
 
@@ -14986,9 +15063,9 @@ mod v115_tests {
         );
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
-        assert_eq!(BLOCK_COUNT, 536);
-        assert_eq!(STATE_COUNT, 872); // + the Round-13 station identities (861..=862)
-        assert_eq!(PICKER_BLOCKS.len(), 470);
+        assert_eq!(BLOCK_COUNT, 538);
+        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
+        assert_eq!(PICKER_BLOCKS.len(), 471);
     }
 }
 #[cfg(test)]
@@ -15152,9 +15229,9 @@ mod v116_tests {
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
-        assert_eq!(BLOCK_COUNT, 536);
-        assert_eq!(STATE_COUNT, 872); // + the Round-13 station identities (861..=862)
-        assert_eq!(PICKER_BLOCKS.len(), 470);
+        assert_eq!(BLOCK_COUNT, 538);
+        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
+        assert_eq!(PICKER_BLOCKS.len(), 471);
     }
 
     /// the V14 window (ids 454..=478, states 750..=775): the
@@ -15347,9 +15424,9 @@ mod v116_tests {
         // spawner states)
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
-        assert_eq!(BLOCK_COUNT, 536);
-        assert_eq!(STATE_COUNT, 872); // + the Round-13 station identities (861..=862)
-        assert_eq!(PICKER_BLOCKS.len(), 470);
+        assert_eq!(BLOCK_COUNT, 538);
+        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
+        assert_eq!(PICKER_BLOCKS.len(), 471);
     }
 
     /// the V15 window (ids 479..=504, states 776..=803): the
@@ -15620,8 +15697,8 @@ mod tnt_tests {
         // the picker carries it (the Redstone tab)
         assert!(PICKER_BLOCKS.contains(&TNT), "picker missing TNT");
         assert_eq!(creative_tab(TNT), CreativeTab::Redstone);
-        assert_eq!(BLOCK_COUNT, 536);
-        assert_eq!(STATE_COUNT, 872);
+        assert_eq!(BLOCK_COUNT, 538);
+        assert_eq!(STATE_COUNT, 874);
         // the per-state tiles fold to the same three faces (the HUD/hotbar
         // blit path through state_tiles's fallback)
         assert_eq!(

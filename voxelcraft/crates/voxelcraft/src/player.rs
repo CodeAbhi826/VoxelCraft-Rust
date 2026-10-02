@@ -271,6 +271,17 @@ pub struct Player {
     /// VERIFIED w/Farmland §Decay: "The player or any mob jumps/falls on
     /// the block" → dirt; the roll happens in the game layer.
     pending_trample: Option<[i32; 3]>,
+    /// Round K (the Nether portal): the feet/head are in a portal block
+    /// this frame (the walk-in trigger's gate — the game layer accumulates
+    /// the 80-tick wait and owns the travel). VERIFIED Nether_portal
+    /// §Behavior, live 2026-09-26.
+    pub in_portal: bool,
+    /// Round K: seconds spent standing in a portal block this attempt
+    /// (reset the moment the player steps out — vanilla "The player can
+    /// step out of a portal before it completes its animation to abort
+    /// the teleport", VERIFIED). The game layer compares it against the
+    /// 80-tick (4 s) survival / 1-tick creative threshold.
+    pub portal_accum: f32,
 }
 
 impl Player {
@@ -286,6 +297,8 @@ impl Player {
             head_in_water: false,
             in_lava: false,
             on_vine: false,
+            in_portal: false,
+            portal_accum: 0.0,
             absorption: 0.0,
             hurt_t: 0.0,
             armor_points: 0,
@@ -634,6 +647,23 @@ impl Player {
         // "Vines cancel a sprint if the player is sprinting").
         let on_vine = feet_block == VINE;
         self.on_vine = on_vine;
+        // Round K (the Nether portal): the walk-in trigger's gate — the
+        // feet OR head in a portal block (the portal is non-solid, the
+        // player stands inside it). The accumulator is the magma
+        // precedent (per-update dt); the game layer compares it against
+        // the 80-tick (4 s) survival / 1-tick creative threshold and
+        // owns the travel. VERIFIED Nether_portal §Behavior +
+        // Nether_Portal_(block) §Usage, live 2026-09-26.
+        let head_block = state_block(head_state);
+        self.in_portal = feet_block == NETHER_PORTAL || head_block == NETHER_PORTAL;
+        if self.in_portal {
+            self.portal_accum += dt;
+        } else {
+            // stepped out — vanilla "The player can step out of a portal
+            // before it completes its animation to abort the teleport"
+            // (VERIFIED Nether_portal §Behavior)
+            self.portal_accum = 0.0;
+        }
         if self.in_water && !self.was_in_water && self.vel.y < -4.0 {
             sounds.push(SoundEvent {
                 family: SoundFamily::Water,

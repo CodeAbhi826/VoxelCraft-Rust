@@ -18,6 +18,10 @@ pub mod grindstone;
 pub mod hunger;
 pub mod mobs;
 pub mod modes;
+/// Round K (the Nether portal): the frame validation, the portal search,
+/// and the far-side build-spot scan (pure over the World; the game layer
+/// owns the world edits + the light hooks)
+pub mod portal;
 pub mod sleep;
 pub mod spawners;
 pub mod villagers;

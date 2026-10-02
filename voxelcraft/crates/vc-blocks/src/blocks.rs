@@ -3389,9 +3389,9 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 533; // + the backlog fire (506) + the farming set (507-514: farmland, 4
+pub const BLOCK_COUNT: usize = 534; // + the backlog fire (506) + the farming set (507-514: farmland, 4
                                     // crops, wheat, bread, hoe) + the 16 armor items (515-530,
-                                    // sub-round 3)
+                                    // sub-round 3) + the TNT round: the TNT block (533)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -3425,9 +3425,10 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 863; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
+pub const STATE_COUNT: usize = 864; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
                                     // states + the V17 armor identity window (845..=860, sub-round 3)
                                     // + Round 13's BOOK/GRINDSTONE identity states (861..=862)
+                                    // + the TNT round: TNT's dedicated state (863)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -3742,6 +3743,9 @@ pub fn default_state(b: u16) -> u16 {
         ENCHANTED_BOOK => ENCHANTED_BOOK_STATE,
         BOOK => BOOK_STATE,
         GRINDSTONE => GRINDSTONE_STATE,
+        // TNT round: TNT's dedicated state (the identity 533 collides
+        // with the glazed-terracotta facing window — see TNT_STATE)
+        TNT => TNT_STATE,
         BEEF => BEEF_STATE,
         PORKCHOP => PORKCHOP_STATE,
         MUTTON => MUTTON_STATE,
@@ -4136,6 +4140,8 @@ pub fn state_block(s: u16) -> u16 {
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
         BOOK_STATE => return BOOK,
         GRINDSTONE_STATE => return GRINDSTONE,
+        // TNT round: the dedicated state folds to its block
+        TNT_STATE => return TNT,
         BEEF_STATE => return BEEF,
         PORKCHOP_STATE => return PORKCHOP,
         MUTTON_STATE => return MUTTON,
@@ -4394,6 +4400,9 @@ pub fn is_model_state(s: u16) -> bool {
         // Round 13: the station identity window (BOOK/GRINDSTONE) —
         // never model states (the V17 pattern)
         || is_r13_state(s)
+        // TNT round: TNT's dedicated state — a full-cube BlockDef block
+        // (the V17 pattern: never model states)
+        || s == TNT_STATE
         || s == ACACIA_LOG_X
         || s == ACACIA_LOG_Z
         || s == DARK_OAK_LOG_X
@@ -4494,6 +4503,10 @@ pub fn break_time_secs(block: u16) -> f32 {
         // instant (hardness 0)
         TALL_GRASS | FERN | DEAD_BUSH | FLOWER_RED | FLOWER_YELLOW | WHEAT_CROP | WHEAT
         | REDSTONE_WIRE | REDSTONE_TORCH | LEVER | VINE => 0.0,
+        // TNT round: hardness 0 (VERIFIED w/TNT §infobox, live 2026-09-22:
+        // "Hardness | 0" — "TNT can be broken instantly with any tool or
+        // by hand", §Breaking)
+        TNT => 0.0,
         // soft ground (0.5–0.6)
         DIRT | COARSE_DIRT | PODZOL => 0.5,
         GRASS => 0.6,
@@ -4881,7 +4894,8 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 793; // + the 16 armor item sprites (775..=790, sub-round 3) + Round 13 book/grindstone (791/792) + Round A player skin (793) // 763 farming bracket + 764..773 destroy stages + 774 arm
+pub const TILE_MAX: u16 = 796; // + the 16 armor item sprites (775..=790, sub-round 3) + Round 13 book/grindstone (791/792) + Round A player skin (793) // 763 farming bracket + 764..773 destroy stages + 774 arm
+                               // + the TNT round: the TNT block's three faces (794..=796)
 
 // ---- the 2026-09-14 round: destroy-stage crack overlays (764..=773) and
 // the first-person arm tile (774). The ten destroy stages are the vanilla
@@ -5426,9 +5440,42 @@ pub const TILE_GRINDSTONE: u16 = 792;
 /// rows 1-5 head/face, rows 6-11 torso+arms, rows 12-14 legs (the same
 /// sub-rect map the zombie humanoid rig already samples).
 pub const TILE_MOB_PLAYER: u16 = 793;
+/// TNT round: the TNT block's side face — the red stick-bundle field with
+/// the white middle band and the procedural dark lettering (clean-room
+/// 16×16 art, textures::tnt_side_art; never vanilla pixels).
+pub const TILE_TNT_SIDE: u16 = 794;
+/// TNT round: the TNT block's top face — the red bundle end-knots on the
+/// shared sand-colored field (clean-room art, textures::tnt_top_art).
+pub const TILE_TNT_TOP: u16 = 795;
+/// TNT round: the TNT block's bottom face — the plain bundle underside
+/// (clean-room art, textures::tnt_bottom_art).
+pub const TILE_TNT_BOTTOM: u16 = 796;
 /// the fire block (id 506 — lightning ignition + flint-and-steel
 /// source; VERIFIED w/Weather §Lightning).
 pub const FIRE: u16 = 506;
+
+// ---- TNT round: the explosive block (id 533) + the primed entity ----
+/// TNT — the explosive block (VERIFIED w/TNT §infobox, live 2026-09-22:
+/// hardness 0, blast resistance 0, flammable Yes (15), catches fire from
+/// lava Yes, Generic sound family = Grass). Instantly broken with any
+/// tool or by hand; drops itself (§Breaking).
+pub const TNT: u16 = 533;
+/// The TNT block's dedicated state: the identity fallthrough (533) lands
+/// inside the glazed-terracotta facing window (529..=592 — the same
+/// collision class as the book/grindstone fixes above), so TNT takes the
+/// next free state above the R13 station window (861..=862).
+pub const TNT_STATE: u16 = 863;
+/// TNT hardness 0 (VERIFIED w/TNT §infobox: "Hardness | 0") — instant
+/// mining with any tool or by hand (§Breaking). The BlockDef table
+/// carries no hardness column; the verified value rides break_time_secs
+/// (the instant-break arm) and this test-facing constant.
+pub const TNT_HARDNESS: f32 = 0.0;
+/// TNT blast resistance 0 (VERIFIED w/TNT §infobox: "Blast resistance |
+/// 0", linking w/Explosion#Blast_resistance). The engine's explosion
+/// terrain model is the probabilistic sphere with a resistant set —
+/// TNT's own block is chain-primed by explosions (never destroyed as a
+/// block), so this value documents the block's class.
+pub const TNT_BLAST_RESISTANCE: f32 = 0.0;
 
 // ---- backlog round (farming, 2026-09-09): the 1.16.5 farming set —
 // FARMLAND + the four seed crops (VERIFIED live 2026-09-09 against the
@@ -12248,6 +12295,18 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
         0,
         SoundFamily::Stone,
     ),
+    // ---- TNT round: the explosive block (533) — the Generic sound
+    // family is Grass (VERIFIED w/TNT §Sounds: "Sound table/Block/Grass")
+    d(
+        "TNT",
+        [TILE_TNT_TOP, TILE_TNT_BOTTOM, TILE_TNT_SIDE],
+        true,
+        true,
+        false,
+        false,
+        0,
+        SoundFamily::Grass,
+    ),
 ];
 
 #[inline]
@@ -12325,7 +12384,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 467] = [
+pub const PICKER_BLOCKS: [u16; 468] = [
     GRASS,
     DIRT,
     STONE,
@@ -12816,6 +12875,8 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     WHEAT,
     BREAD,
     HOE,
+    // ---- TNT round: the TNT block (the Redstone tab) ----
+    TNT,
 ];
 
 // ---------------------------------------------------------------------------
@@ -12968,7 +13029,8 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         SOUL_TORCH | SOUL_LANTERN => CreativeTab::DecorationBlocks,
         // ---- Redstone (7 picker entries + the 10 extras below) ----
         REDSTONE_LAMP | TRIPWIRE_HOOK | DAYLIGHT_SENSOR | LIGHT_WEIGHTED_PLATE | HEAVY_WEIGHTED_PLATE => CreativeTab::Redstone,
-        REDSTONE_BLOCK | TARGET => CreativeTab::Redstone,
+        // TNT round: the TNT block (its vanilla 1.16.5 Redstone-tab home)
+        REDSTONE_BLOCK | TARGET | TNT => CreativeTab::Redstone,
         // the registry redstone components (CREATIVE_REDSTONE_EXTRA) —
         // never in PICKER_BLOCKS, but full tab members
         REDSTONE_WIRE | REDSTONE_TORCH | LEVER | REPEATER | COMPARATOR => CreativeTab::Redstone,
@@ -13166,7 +13228,7 @@ mod creative_tab_tests {
         // the 16 ids are contiguous 515..=530 and past the old registry
         assert_eq!(LEATHER_CAP, 515);
         assert_eq!(DIAMOND_BOOTS, 530);
-        assert_eq!(BLOCK_COUNT, 533);
+        assert_eq!(BLOCK_COUNT, 534);
         for b in LEATHER_CAP..=DIAMOND_BOOTS {
             // every armor item is an inventory-only item block
             assert!(is_item_block(b), "armor {b} must be an item block");
@@ -14097,8 +14159,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 533, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone");
-        assert_eq!(STATE_COUNT, 863, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities");
+        assert_eq!(BLOCK_COUNT, 534, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone + the TNT block");
+        assert_eq!(STATE_COUNT, 864, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -14149,8 +14211,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 863); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 534); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 864); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
     }
 
     /// magma emits light level 3 (VERIFIED — reference wiki /Magma_Block,
@@ -14190,8 +14252,8 @@ mod auditfix_tests {
             );
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 863); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 534); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 864); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // solidity classes: log/planks solid-opaque (hardness family 2
                                       // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
                                       // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -14249,8 +14311,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 863); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 534); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 864); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_CLEAVER), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -14379,8 +14441,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 534);
+        assert_eq!(STATE_COUNT, 864); // + the Round-13 station identities (861..=862)
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -14545,8 +14607,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 534);
+        assert_eq!(STATE_COUNT, 864); // + the Round-13 station identities (861..=862)
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -14680,8 +14742,8 @@ mod v114_tests {
         );
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 534);
+        assert_eq!(STATE_COUNT, 864); // + the Round-13 station identities (861..=862)
     }
 }
 
@@ -14781,8 +14843,8 @@ mod v115_tests {
         );
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
-        assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 534);
+        assert_eq!(STATE_COUNT, 864); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 }
@@ -14947,8 +15009,8 @@ mod v116_tests {
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
-        assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 534);
+        assert_eq!(STATE_COUNT, 864); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 
@@ -15142,8 +15204,8 @@ mod v116_tests {
         // spawner states)
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
-        assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 534);
+        assert_eq!(STATE_COUNT, 864); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 
@@ -15379,5 +15441,49 @@ mod farming_tests {
         ] {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
+    }
+}
+
+#[cfg(test)]
+mod tnt_tests {
+    use super::*;
+
+    /// TNT round: the block round-trips through the registry (VERIFIED
+    /// w/TNT §infobox, live 2026-09-22: hardness 0, blast resistance 0;
+    /// §Breaking: "TNT can be broken instantly with any tool or by hand";
+    /// §Sounds: the Generic family is the Grass sound table)
+    #[test]
+    fn tnt_block_roundtrips() {
+        assert_eq!(TNT, 533);
+        assert_eq!(TNT_STATE, 863);
+        assert_eq!(default_state(TNT), TNT_STATE, "placement stores 863");
+        assert_eq!(state_block(TNT_STATE), TNT, "the state folds to TNT");
+        assert!(!is_model_state(TNT_STATE), "never a JSON-model state");
+        assert_eq!(TNT_HARDNESS, 0.0);
+        assert_eq!(TNT_BLAST_RESISTANCE, 0.0);
+        assert_eq!(break_time_secs(TNT), 0.0, "instant mining");
+        let d = def(TNT);
+        assert_eq!(d.name, "TNT");
+        assert!(d.solid, "a full colliding cube");
+        assert!(d.opaque, "blocks skylight + culls faces");
+        assert_eq!(
+            d.tiles,
+            [TILE_TNT_TOP, TILE_TNT_BOTTOM, TILE_TNT_SIDE],
+            "the three dedicated faces"
+        );
+        assert!(matches!(d.sound, SoundFamily::Grass), "the Grass family");
+        // a real placeable world block (not an inventory-only item)
+        assert!(!is_item_block(TNT));
+        // the picker carries it (the Redstone tab)
+        assert!(PICKER_BLOCKS.contains(&TNT), "picker missing TNT");
+        assert_eq!(creative_tab(TNT), CreativeTab::Redstone);
+        assert_eq!(BLOCK_COUNT, 534);
+        assert_eq!(STATE_COUNT, 864);
+        // the per-state tiles fold to the same three faces (the HUD/hotbar
+        // blit path through state_tiles's fallback)
+        assert_eq!(
+            state_tiles(TNT_STATE),
+            [TILE_TNT_TOP, TILE_TNT_BOTTOM, TILE_TNT_SIDE, TILE_TNT_SIDE]
+        );
     }
 }

@@ -1709,6 +1709,8 @@ pub struct GameApp {
     smoke_script: std::collections::VecDeque<(f32, u16)>,
     /// E2E_CONTAINERS: the native chest+furnace screen stage ran once
     e2e_containers_done: bool,
+    /// beds round: E2E_BEDS — the sleep-interaction leg ran once
+    e2e_beds_done: bool,
     /// E2E_FKEYS: 0 = idle, 1 = key stage ran (behind-ON capture pending),
     /// 2 = behind-ON saved (behind-OFF capture pending), 3 = diff ran
     /// (front capture pending), done = the leg exits in stage 3
@@ -2971,6 +2973,7 @@ impl GameApp {
             snd_rate: 0,
             smoke_script: std::collections::VecDeque::new(),
             e2e_containers_done: false,
+            e2e_beds_done: false,
             smoke_clicked_ingame: false,
             smoke_game_t: 0.0,
             f3_dump2: false,
@@ -13952,6 +13955,175 @@ impl GameApp {
     /// NEVER opened a container screen (the Round-2 grey-chrome work
     /// was verified on wasm only — the exact native/wasm divergence
     /// class this stage closes). Places a chest (slot 0 seeded) and a
+    /// beds round: E2E_BEDS — the sleep-interaction leg. The bed places
+    /// through the REAL state path (bed_state), the REAL use_bed() gates
+    /// run in order: the monster refusal (a zombie beside the head), the
+    /// window refusal (daytime), the distance refusal, then the night
+    /// skip (day_time → sunrise + the phantom rest counter + the weather
+    /// reset) with the spawn set ("Respawn point set"), and finally the
+    /// respawn arm (the bed broken/obstructed → the spawn clears to the
+    /// world spawn at the next respawn — VERIFIED w/Bed §Setting the
+    /// spawn point: the check is made only when the player respawns).
+    /// Logs the "e2e: beds" verdict lines CI greps.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_beds(&mut self) {
+        use vc_blocks::blocks::*;
+        use vc_gameplay::sleep;
+
+        // the working area: a stone floor under the player's column and
+        // the bed column (the anchor/soul-fire legs' determinism pattern
+        // — pin the player so the distance gate measures the bed, not a
+        // fall trajectory)
+        let px = self.player.pos.x.floor() as i32;
+        let py = self.player.pos.y.floor() as i32;
+        let pz = self.player.pos.z.floor() as i32;
+        for c in [[px, py - 1, pz], [px, py - 1, pz + 1], [px, py - 1, pz + 2]] {
+            self.test_place(STONE, c[0], c[1], c[2]);
+        }
+        self.player.pos = glam::Vec3::new(px as f32 + 0.5, py as f32, pz as f32 + 0.5);
+        self.player.vel = glam::Vec3::ZERO;
+        self.player.on_ground = true;
+
+        // 1. the bed pair: foot at (px, py, pz+1), head at (px, py, pz+2)
+        //    — the head one cell south of the foot (facing 2), head
+        //    center 2.0 blocks away (inside the 3-block use distance,
+        //    VERIFIED w/Bed §Sleeping)
+        let foot = [px, py, pz + 1];
+        let head = [px, py, pz + 2];
+        for (c, st) in [(foot, bed_state(false, 2)), (head, bed_state(true, 2))] {
+            if let Some((old, new)) = self.world.set_block_state(c[0], c[1], c[2], st) {
+                self.light
+                    .on_block_changed(&self.world, c[0], c[1], c[2], old, new);
+            }
+            notify_sim(&self.world, &mut self.sim.sched, c[0], c[1], c[2]);
+        }
+
+        // 2. the MONSTER refusal: a zombie beside the head (inside the
+        //    8-horizontal / 5-vertical box, VERIFIED) — no sleep, no
+        //    spawn set, day_time untouched
+        self.day_time = 0.6;
+        self.weather.force_rain(10_000);
+        self.item_toast = None;
+        let zid =
+            self.sim
+                .mobs
+                .spawn_variant(vc_gameplay::mobs::MobKind::Zombie, px, py + 1, pz + 2, 0);
+        self.use_bed(foot);
+        let monster_refused = self
+            .item_toast
+            .as_ref()
+            .map(|(m, _)| m.contains("monsters nearby"))
+            .unwrap_or(false)
+            && self.respawn_bed.is_none()
+            && (self.day_time - 0.6).abs() < 1e-6;
+        if let Some(id) = zid {
+            self.sim.mobs.list.retain(|m| m.id != id);
+        }
+        self.sim.mobs.list.clear();
+
+        // 3. the NIGHT SKIP: no monsters + day_time 0.6 (inside the rain
+        //    window 12002..23998) → sunrise (time 0, VERIFIED w/Bed
+        //    §Passing the night) + the phantom rest counter reset (the
+        //    note_rest wiring) + the weather reset to clear (the
+        //    sleep_reset wiring's first caller — rain was ON) + the
+        //    spawn set to the HEAD cell ("Respawn point set")
+        self.sim.mobs.rest_t = 50_000; // 3+ in-game days since rest
+        self.item_toast = None;
+        self.use_bed(foot);
+        let skip_ok = (self.day_time - sleep::SUNRISE).abs() < 1e-6
+            && self.respawn_bed == Some(head)
+            && self.sim.mobs.rest_t == 0
+            && self.weather.weather() == vc_gameplay::weather::Weather::Clear
+            && self
+                .item_toast
+                .as_ref()
+                .map(|(m, _)| m.contains("Respawn point set"))
+                .unwrap_or(false);
+
+        // 4. the WINDOW refusal: daytime use (day_time 0.2, outside both
+        //    windows) → "You can sleep only at night..." but the spawn
+        //    point IS set (VERIFIED w/Bed §Setting the spawn point)
+        self.day_time = 0.2;
+        self.item_toast = None;
+        self.use_bed(foot);
+        let window_refused = self
+            .item_toast
+            .as_ref()
+            .map(|(m, _)| m.contains("only at night"))
+            .unwrap_or(false)
+            && self.respawn_bed == Some(head)
+            && (self.day_time - 0.2).abs() < 1e-6;
+
+        // 5. the DISTANCE refusal: the player 10 blocks away → "too far
+        //    away", the spawn unchanged
+        self.player.pos = glam::Vec3::new(px as f32 + 0.5, py as f32, pz as f32 + 10.5);
+        self.item_toast = None;
+        self.use_bed(foot);
+        let distance_refused = self
+            .item_toast
+            .as_ref()
+            .map(|(m, _)| m.contains("too far away"))
+            .unwrap_or(false)
+            && self.respawn_bed == Some(head);
+        self.player.pos = glam::Vec3::new(px as f32 + 0.5, py as f32, pz as f32 + 0.5);
+
+        // 6. the respawn arm, MISSING branch: the bed destroyed → the
+        //    spawn resets to the world spawn + the spawn point CLEARED
+        //    (VERIFIED w/Bed §Setting the spawn point: the check is made
+        //    only when the player respawns)
+        self.respawn_pos = glam::Vec3::new(px as f32 + 0.5, py as f32, pz as f32 + 0.5);
+        self.finish_break(head);
+        self.respawn();
+        let missing_ok =
+            self.respawn_bed.is_none() && (self.player.pos - self.world_spawn()).length() < 0.01;
+
+        // 7. the respawn arm, OBSTRUCTED branch: a fresh bed with every
+        //    candidate cell solid (both side cells at the level, above
+        //    the head, above the foot) → world spawn + the spawn cleared
+        //    (VERIFIED: "If a bed is obstructed, the player's spawn point
+        //    is cleared after they respawn")
+        for c in [
+            [px + 1, py, pz + 2],
+            [px - 1, py, pz + 2],
+            [px, py + 1, pz + 2],
+            [px, py + 1, pz + 1],
+        ] {
+            self.test_place(STONE, c[0], c[1], c[2]);
+        }
+        if let Some((old, new)) =
+            self.world
+                .set_block_state(foot[0], foot[1], foot[2], bed_state(false, 2))
+        {
+            self.light
+                .on_block_changed(&self.world, foot[0], foot[1], foot[2], old, new);
+        }
+        if let Some((old, new)) =
+            self.world
+                .set_block_state(head[0], head[1], head[2], bed_state(true, 2))
+        {
+            self.light
+                .on_block_changed(&self.world, head[0], head[1], head[2], old, new);
+        }
+        self.item_toast = None;
+        self.use_bed(foot);
+        let set_again = self.respawn_bed == Some(head);
+        self.respawn_pos = glam::Vec3::new(px as f32 + 0.5, py as f32, pz as f32 + 0.5);
+        self.respawn();
+        let obstructed_ok =
+            self.respawn_bed.is_none() && (self.player.pos - self.world_spawn()).length() < 0.01;
+
+        vc_render::render::report_boot_log(&format!(
+            "e2e: beds monster-refusal={} night-skip={} window-refusal={} distance-refusal={} respawn-missing={} respawn-obstructed={} spawn-set-again={} (VERIFIED w/Bed §Sleeping + §Setting the spawn point)",
+            monster_refused,
+            skip_ok,
+            window_refused,
+            distance_refused,
+            missing_ok,
+            obstructed_ok,
+            set_again,
+        ));
+    }
+
     /// furnace (input+fuel seeded) through the REAL open_container
     /// path, asserts the vanilla-grey 9-slice panel quads on the GPU
     /// layer, dumps the canvas-fallback PNGs (CONTAINER_DUMP), and
@@ -14606,6 +14778,16 @@ impl GameApp {
         if std::env::var("E2E_CONTAINERS").is_ok() && !self.e2e_containers_done {
             self.e2e_containers();
             self.e2e_containers_done = true;
+        }
+        // beds round: E2E_BEDS — the sleep-interaction leg (native-only).
+        // Places a bed through the REAL placement state path, drives the
+        // REAL use_bed() gates (window / monsters / distance), the night
+        // skip, the weather reset, the spawn set/clear and the respawn
+        // arm, and reports the verdict boot lines.
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_BEDS").is_ok() && !self.e2e_beds_done {
+            self.e2e_beds();
+            self.e2e_beds_done = true;
         }
         // Round A: E2E_FKEYS — the function-key contract leg. Stage 0
         // waits for world entry (the captures must show the WORLD, not

@@ -14572,12 +14572,13 @@ impl GameApp {
                     );
                 }
             }
-            // E2E_FKEYS owns the exit when it is mid-ladder (stages 1–2
-            // need rendered frames for the two F5 captures; the plain
+            // E2E_FKEYS owns the exit when it is mid-ladder (the capture
+            // stages need rendered frames for the F5 captures; the plain
             // smoke exit at 2.2 s fired before the first draw landed on
-            // the headless runner)
+            // the headless runner). T5 ladder (2026-10-01): the verdict
+            // capture is stage 3 — the hold covers it.
             #[cfg(not(target_arch = "wasm32"))]
-            let fkeys_pending = std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 3;
+            let fkeys_pending = std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 4;
             #[cfg(target_arch = "wasm32")]
             let fkeys_pending = false;
             if t_in > 2.2 && !fkeys_pending {

@@ -2,7 +2,7 @@
 
 **Purpose:** the row-by-row parity audit the overhaul executes from. Built by
 five parallel audit agents (2026-10-02) against: the live reference wiki
-(minecraft.wiki), the extracted vanilla 1.16.5 client-jar data (STUDY-ONLY,
+(the reference wiki), the extracted vanilla 1.16.5 client-jar data (STUDY-ONLY,
 never copied: `/home/abhin/vc-verify/mc-1.16.5/`), and the engine's code +
 tests. Status: DONE / PARTIAL / MISSING / WRONG.
 
@@ -202,7 +202,7 @@ Aspect rows:
 
 ## Domain 5 — Items and crafting (audited directly)
 
-- Recipe set | DONE (in scope) / PARTIAL (breadth) | 1120 recipe entries in craft.rs vs the jar's 859 recipe JSONs — the engine carries MORE entries (variants + the backlog fire); shaped/shapeless grammar matches the jar | recipe_grammar_matches_the_vanilla_jar, stand_recipe_needs_the_exact_layout | jar data/minecraft/recipes (859)
+- Recipe set | DONE (in scope) / PARTIAL (breadth) | 1120 recipe entries in craft.rs vs the jar's 859 recipe JSONs — the engine carries MORE entries (variants + the backlog fire); shaped/shapeless grammar matches the jar | recipe_grammar_matches_the_vanilla_jar, stand_recipe_needs_the_exact_layout | the jar recipes dir (859)
 - Furnace/blast/smoker | DONE | furnace.rs — COOK_TICKS 200, blast/smoker 100 (COOK_TICKS/2), the class split (furnace rejects food, smoker rejects ore) | phase_e1 tests + v114b_smelter_lantern_recipes | wiki /Blast_Furnace, /Smoker
 - Campfire cooking | DONE | campfire.rs — no fuel, 4 slots, 30s | campfire tests | wiki /Campfire
 - Stonecutter | MISSING | deferral note blocks.rs:1612 | none | wiki /Stonecutter

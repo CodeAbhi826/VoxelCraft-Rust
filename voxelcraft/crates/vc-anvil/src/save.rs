@@ -68,9 +68,13 @@ const BIOME_TO_VANILLA: [i32; 28] = [
     6,   // Swamp
     37,  // Badlands
     14,  // Mushroom Fields (live-verified in gen.rs)
-    132, // Flower Forest (Bedrock-classic value; Java unverified, disclosed)
-    130, // Sunflower Plains (Bedrock-classic; Java unverified, disclosed)
-    140, // Ice Spikes (Bedrock-classic; Java unverified, disclosed)
+    132, // Flower Forest (VERIFIED Biome/IDs_before_1.13: mutated_forest
+    // = Flower Forest = 132; confirmed in the real 1.16.4 saves'
+    // Biomes IntArrays — id 132 present)
+    129, // Sunflower Plains (VERIFIED: mutated_plains = Sunflower Plains
+    // = 129; the table carried into 1.13-1.17 — the old 130 was
+    // Desert M/desert_lakes, a Phase-2 audit catch)
+    140, // Ice Spikes (VERIFIED: mutated_ice_flats = Ice Plains Spikes = 140)
     29,  // Dark Forest (roofed_forest)
     44,  // Warm Ocean (gen.rs live-verified)
     45,  // Lukewarm Ocean (gen.rs live-verified)

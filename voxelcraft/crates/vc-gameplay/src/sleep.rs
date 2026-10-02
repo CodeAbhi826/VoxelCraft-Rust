@@ -97,7 +97,11 @@ pub fn attempt(day_time: f32, weather: Weather, monster_near: bool) -> SleepAtte
 /// thunderstorm, the rain window in rain, the clear window otherwise —
 /// VERIFIED (Bed §Sleeping).
 pub fn window_contains(day_time: f32, weather: Weather) -> bool {
-    let t = day_time * DAY_TICKS;
+    // the wiki windows are whole ticks; the engine's f32 day fraction
+    // round-trips the product within ±0.5 tick (12523.0 / 24000 · 24000
+    // is 12522.999... in f32) — snap to the tick so the inclusive bounds
+    // stay exact
+    let t = (day_time * DAY_TICKS).round();
     match weather {
         Weather::Thunder => true,
         Weather::Rain => (SLEEP_RAIN_MIN..=SLEEP_RAIN_MAX).contains(&t),

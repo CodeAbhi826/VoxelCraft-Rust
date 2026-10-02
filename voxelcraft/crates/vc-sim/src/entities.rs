@@ -735,13 +735,13 @@ impl PrimedTntSystem {
     ///   activate any other adjacent TNT blocks via redstone, but any
     ///   adjacent TNT blocks are activated by the explosion" (VERIFIED
     ///   w/TNT §Redstone component)
-    /// DOCUMENTED TRIMS (the engine has no such systems — w/TNT
-    /// §Activation rows): flint-and-steel/fire charge (no such item),
-    /// dispenser placement + dispenser flint-and-steel use (the engine's
-    /// dispenser ejects items only), flaming projectiles (no Flame
-    /// enchant; burning projectiles never hit TNT), commands, and the
-    /// `unstable` blockstate (the engine's punch path breaks and drops
-    /// like the vanilla default state, §Block states).
+    /// * DOCUMENTED TRIMS (the engine has no such systems — w/TNT
+    ///   §Activation rows): flint-and-steel/fire charge (no such item),
+    ///   dispenser placement + dispenser flint-and-steel use (the engine's
+    ///   dispenser ejects items only), flaming projectiles (no Flame
+    ///   enchant; burning projectiles never hit TNT), commands, and the
+    ///   `unstable` blockstate (the engine's punch path breaks and drops
+    ///   like the vanilla default state, §Block states).
     pub fn ignition_sweep(
         &mut self,
         world: &vc_world::world::World,
@@ -957,7 +957,7 @@ impl PrimedTntSystem {
                 base[2] + (1.0 - base[2]) * flash,
             ];
             // (corners CCW seen from outside, normal, shade, tile)
-            let faces: [([[f32; 3]; 4], [f32; 3], f32, u16); 6] = [
+            let faces: [CuboidFace; 6] = [
                 // +Y top
                 (
                     [

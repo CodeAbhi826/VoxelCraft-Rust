@@ -136,3 +136,14 @@ Work Log:
 
 Stage Summary:
 - PHASE 2 COMPLETE (matrix committed, round order recorded). Round K (nether portal) launched in parallel — the first Phase 3 round is in flight.
+
+---
+Task ID: 9
+Agent: main — Phase 3 boundary (Round K + TNT + beds)
+Task: The nether portal (Round K) + the TNT explosive + the bed pair — commits landed, CI green
+
+Work Log:
+- Three parallel rounds COMPLETE: the portal round (2dd2cd8: vc-gameplay portal.rs — find_frame 2x3 min/21x21 max, search_existing_portal 128-block Overworld/16 Nether, find_build_spot, forced_y 70..118 Nether/70..246 Overworld, portal_coords div_euclid, travel_wait_secs 80 ticks; vc-blocks NETHER_PORTAL 536/FLINT_AND_STEEL 537 + tiles 801/802 + face_visible portal arm), the TNT round (5 commits: sim-level PrimedTnt entity — fuse 80, chain 10-30, prime vel 0.2/0.02, hitbox 0.98, power 4.0, flash 10 ticks; exposure-based explosion damage + chain-priming + explosion drops; vc-blocks TNT 533/state 863 + faces 794..796; E2E leg), the beds round (4 commits: vc-gameplay sleep.rs decision layer + mobs prevents_sleep; use_bed/set_bed_spawn/respawn_bed; bed states 864..871; E2E_BEDS leg).
+- The parallel rounds' cross-crate integration errors fixed from the CI logs (7 failures in a row): the two BlockDef entries missing from BLOCK_TABLE (cdfee8c), the boxed-biome-array i32 index (640b1e8), the explosion call sites lacking the combat:: import in their scope (e616cca + b384f50), the 4 clippy lints in portal.rs (933e861), the state windows 863..873 missing from the roundtrip audit chain + the creative-tab census regenerating for the 4 new picker entries (DecorationBlocks 52→54, Redstone 17→18, Tools 1→2; NETHER_PORTAL is not a picker entry so Miscellaneous stays 184).
+- One more census fix (d0350aa): the Tools header comment was updated to "2 entries" but the pinned assertion kept 1 — the count WAS 2.
+- ATTRIBUTION NOTE: 59f644e swept the portal round's uncommitted game.rs hunks (the TNT round was rate-limited ~40 min; the parent committed the TNT work itself — progress over attribution). 81ec285's commit message overclaims ("imports the combat math" — the import was added but the call sites still lacked the qualification); pushed, cannot amend — disclosed here.

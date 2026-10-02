@@ -118,12 +118,14 @@ spreadsheet open a .xlsx. Rules:
 
 ## 6. Enforcement (how the rules stay true)
 
-* `scripts/audit_tools.py` (repo root) — the trademark/copyright scanner
-  used for the audit; run it before any release.
+* `scripts/legal_audit.py` (repo root) — the trademark/copyright scanner
+  used for the audit; run it before any release. (T7 fix, 2026-10-01: the
+  old `audit_tools.py` name was stale — the scanner was renamed.)
 * Pixel-identity check — decode-and-compare against the reference set
   before any asset release (the reference set itself stays OUTSIDE the
   repository at all times).
-* CI gate: `ci.yml` runs the audit scanner on every push.
+* CI gate: `ci.yml` runs the audit scanner on every push (wired
+  2026-10-01).
 
 ## 7. Distribution notes
 

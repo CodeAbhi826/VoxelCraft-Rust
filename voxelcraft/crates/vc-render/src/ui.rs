@@ -6506,7 +6506,7 @@ impl ContainerGeom {
 #[cfg(test)]
 mod phase3_icon_tests {
     use super::*;
-    use std::collections::HashMap;
+    use rustc_hash::FxHashMap;
     use std::sync::Arc;
 
     #[test]

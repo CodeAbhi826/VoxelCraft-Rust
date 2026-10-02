@@ -91,3 +91,16 @@ Work Log:
 
 Stage Summary:
 - Round T code work COMPLETE and CI-verified; T12 (EMERALD_BLOCK) and T13 (vanilla shade) ledgered as new findings; the E2E/vision verification from the CI-built binary + the ledger reconcile remain, then Phase 1.
+
+---
+Task ID: 6
+Agent: main — Phase 0 GATE (verified)
+Task: Phase 0 gate evidence + the CI-artifact E2E route proven
+
+Work Log:
+- GATE 0 MET: all six CI gates green (34a536f / run 36947278822 + process fixes 8c36894); the tightened native E2E GREEN (linux-game.yml run 36952828705 SUCCESS: all five smoke legs exit 0, the FKEYS leg's T5 border-visibility contract pixel-verified: "yellow px on=19554 off=18776 margin=778 — VISIBLE (contract ok)").
+- Vision verification from the CI-built binary (the artifact route WORKS end to end: gh run download → Xvfb → real Intel GPU): FKEY CONTRACT OK; the fresh captures show (a) the CHUNK BORDER LINES clearly visible across the sky/terrain (T5 FIXED + visible), (b) the FRONT view shows the FULL player rig from 4 blocks (T6 FIXED — the old 1.5 filled the screen with the face), (c) the B-5 Targeted Block line at the bottom-left (voxelcraft:grass), (d) terrain/HUD clean.
+- E2E races fixed during verification: the smoke-exit holds now cover stage 3 (both the immediate and the 2.2s-delayed exit paths); the fkeys ladder waits for the meshing burst to settle (10 stable frames of the drawn-chunk count) and the border-visibility contract switched to DIFFERENTIAL COLORIMETRY (count the yellow-ish line pixels in ON vs OFF captures — a byte/px diff between live frames is meaningless: day-light, clouds and the burst change every frame).
+
+Stage Summary:
+- PHASE 0 COMPLETE. Starting Phase 1 (measure before optimizing).

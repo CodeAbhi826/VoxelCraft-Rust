@@ -7696,7 +7696,7 @@ impl GameApp {
                 }
                 DragonEvent::CrystalExplosion(center) => {
                     // VERIFIED w/End_Crystal: power 6 (charged creeper)
-                    self.explode(center, 6.0);
+                    self.explode(center, 6.0, false);
                     self.play_event("entity.generic.explode", Some(center), 1.0);
                 }
                 DragonEvent::Died(xp) => {
@@ -7752,9 +7752,9 @@ impl GameApp {
             match ev {
                 WitherEvent::BirthExplosion(center) => {
                     // VERIFIED: Java Normal max 69 proximity-scaled; the
-                    // engine's explosion path applies power-scaled damage
-                    // + block destruction
-                    self.explode(center, 6.0);
+                    // engine's explosion path applies exposure-based
+                    // damage + block destruction
+                    self.explode(center, 6.0, false);
                     self.play_event("entity.wither.spawn", Some(center), 1.0);
                 }
                 WitherEvent::SkullShot(from, target) => {
@@ -8601,7 +8601,16 @@ impl GameApp {
         // ---- 3. creeper explosions ----
         let booms = mobs::take_explosions(&mut self.sim.mobs);
         for (center, power) in booms {
-            self.explode(center, power);
+            self.explode(center, power, false);
+        }
+        // ---- 3b. TNT round: the primed-TNT explosions — the fuse entity
+        // detonates at pos + 0.06125 above (VERIFIED w/TNT §Behavior,
+        // live 2026-09-22) with power 4 (VERIFIED §Behavior: "Primed TNT
+        // creates explosions with a power of 4"); world edits + light +
+        // entity damage live here (the creeper-explosion split)
+        let tnt_booms: Vec<[f32; 3]> = std::mem::take(&mut self.sim.tnt.explosions);
+        for center in tnt_booms {
+            self.explode(center, vc_sim::entities::TNT_EXPLOSION_POWER, true);
         }
         // ---- 4. 1.16 target hits ----
         // VERIFIED w/Target: the hit writes the POWER blockstate (1–15
@@ -8717,10 +8726,48 @@ impl GameApp {
 
     /// One explosion: probabilistic sphere of block destruction (bedrock
     /// and obsidian resist), light updates per edit, particles + sound,
-    /// distance-scaled damage to the player and every mob.
-    /// [placeholder: damage = 24·(1 − dist/(power·2)) capped — vanilla's
-    /// exact exposure-based formula was not verified this pass]
-    fn explode(&mut self, center: [f32; 3], power: f32) {
+    /// exposure-based damage to the player and every mob, item drops, and
+    /// chain-priming of the TNT in the radius. `tnt` marks a TNT-caused
+    /// explosion (the 100% drop chance).
+    ///
+    /// TNT round (live-verified 2026-09-22) — replaces the old placeholder
+    /// `damage = 24·(1 − dist/(power·2))`:
+    /// * VERIFIED w/Explosion §Damage (the Java code): `impact =
+    ///   (1 - distance/(2*power)) * exposure`, `damage = (impact² +
+    ///   impact)/2 · 7·(2·power) + 1` — the +1 floor means every entity
+    ///   within 2·power takes at least 1 damage even when the blast is
+    ///   fully blocked (the invulnerable/Peaceful exceptions are the
+    ///   gates). The player's damage scales by difficulty (§Damage table:
+    ///   Easy min(dmg/2+1, dmg), Normal dmg, Hard ×3/2, Peaceful none —
+    ///   the engine's world-creation flow only offers Survival/Hardcore,
+    ///   so Peaceful folds away and the mode maps Normal/Hard); mobs take
+    ///   the unscaled value (the table is the player's rows).
+    /// * VERIFIED w/Explosion §Exposure: the fraction of unobstructed
+    ///   rays from the explosion center to the sample points on the
+    ///   entity's bounding-box grid (see explosion_exposure).
+    /// * VERIFIED w/Explosion §Dropping blocks: "Blocks destroyed by TNT
+    ///   have a 100% chance of dropping. Other explosions have a 1/power
+    ///   chance of dropping items." The drop is the block id itself (the
+    ///   per-block mined-drop special cases live in finish_break —
+    ///   documented trim), and explosions drop regardless of the
+    ///   igniter's gamemode (the mined-drop creative gate does not
+    ///   apply).
+    /// * VERIFIED w/Explosion §Velocity (the Java code): the knockback
+    ///   magnitude = (1 − distance/(2·power)) · exposure along the vector
+    ///   from the explosion center to the entity's eye position (replaces
+    ///   the old hardcoded 2D impulse + fixed lift).
+    /// * TNT round — chain-priming: an explosion ignites the TNT in its
+    ///   radius instead of destroying it as a block (VERIFIED w/TNT
+    ///   §Activation: "Other explosions"; §Redstone component: "any
+    ///   adjacent TNT blocks are activated by the explosion"); the block
+    ///   is replaced with the primed entity at the chain-prime fuse — a
+    ///   random number of game ticks between 10 and 30 (VERIFIED w/TNT
+    ///   §Behavior).
+    /// DOCUMENTED TRIM (mob knockback): the verified velocity formula
+    /// applies to every affected entity; the engine's mobs keep the
+    /// damage-only blast (no impulse) — the mob knockback path is future
+    /// work.
+    fn explode(&mut self, center: [f32; 3], power: f32, tnt: bool) {
         let r = power as i32;
         // Round 15b: the explosion puff + spark ring (VERIFIED w/Particle:
         // the explosion_emitter's large smoke cloud)
@@ -8760,55 +8807,113 @@ impl GameApp {
                     if dist / power > edge {
                         continue;
                     }
+                    // the bake samples BEFORE the AIR write (the light
+                    // BFS commits asynchronously — the finish_break rule)
+                    let (biome, _, _) = light_at(&self.world, &self.light, x, y, z);
+                    let (fs, fb) = face_light_at(&self.world, &self.light, x, y, z);
                     if let Some((old, new)) = self.world.set_block(x, y, z, AIR) {
                         self.light.on_block_changed(&self.world, x, y, z, old, new);
+                    }
+                    if b == TNT {
+                        // chain-priming (see the header): the primed
+                        // entity replaces the block at the 10–30 tick
+                        // chain fuse (VERIFIED w/TNT §Behavior)
+                        let fuse = self.sim.tnt.chain_fuse();
+                        self.sim.tnt.prime(x, y, z, biome, fs, fb, fuse);
+                    } else if self.audio_rng.next_f32() < explosion_drop_chance(power, tnt) {
+                        // item drop (see the header): the verified chance
+                        self.sim.items.drop_block(x, y, z, b, biome, fs, fb);
                     }
                     destroyed += 1;
                 }
             }
         }
-        // entity damage: distance-scaled (see placeholder note)
-        let blast_damage = |ex: f32, ey: f32, ez: f32| -> f32 {
+        // entity damage — the verified impact/exposure formula (see the
+        // header). Exposure per entity: the bounding-box sample grid.
+        use vc_gameplay::combat::{
+            difficulty_scale, explosion_damage, explosion_impact, Difficulty,
+        };
+        // the player's damage scales by difficulty (§Damage table); the
+        // world-creation flow only offers Survival/Hardcore (Normal/Hard)
+        let difficulty = if self.mode.permadeath() {
+            Difficulty::Hard
+        } else {
+            Difficulty::Normal
+        };
+        let blast_damage = |ex: f32, ey: f32, ez: f32, exposure: f32| -> f32 {
             let d =
                 ((ex - center[0]).powi(2) + (ey - center[1]).powi(2) + (ez - center[2]).powi(2))
                     .sqrt();
-            (24.0 * (1.0 - d / (power * 2.0)).max(0.0)).max(0.0)
+            explosion_damage(explosion_impact(d, power, exposure), power)
         };
-        // player (mode-gated, knockback away from the blast)
+        // player (mode-gated; the difficulty-scaled damage + the verified
+        // knockback along the vector to the eye position)
         if !self.mode.invulnerable() && self.screen == Screen::Game {
+            // the 0.6×1.8×0.6 feet-anchored hitbox (the engine's collect
+            // constants — the vanilla player box)
+            let exposure = self.explosion_exposure(
+                center,
+                [
+                    self.player.pos.x - 0.3,
+                    self.player.pos.y,
+                    self.player.pos.z - 0.3,
+                ],
+                [0.6, 1.8, 0.6],
+            );
             let dmg = blast_damage(
                 self.player.pos.x,
-                self.player.pos.y + 0.9,
+                self.player.pos.y,
                 self.player.pos.z,
+                exposure,
             );
-            if dmg > 0.0 {
-                let applied = self.player.damage(dmg);
-                if applied > 0.0 {
-                    let dir = glam::Vec3::new(
-                        self.player.pos.x - center[0],
-                        0.0,
-                        self.player.pos.z - center[2],
-                    )
-                    .normalize_or_zero();
-                    self.player.vel[0] += dir.x * 10.0;
-                    self.player.vel[2] += dir.z * 10.0;
-                    self.player.vel[1] += 6.0;
-                    self.death_cause = "BLOWN UP BY A CREEPER".into();
-                    self.play_event("entity.player.hurt", None, 1.0);
-                    self.ui.dirty = true;
-                }
+            let applied = self.player.damage(difficulty_scale(dmg, difficulty));
+            if applied > 0.0 {
+                self.play_event("entity.player.hurt", None, 1.0);
+                self.ui.dirty = true;
+                self.death_cause = "BLOWN UP BY A CREEPER".into();
             }
+            // VERIFIED w/Explosion §Velocity: the knockback magnitude
+            // along the vector from the explosion center to the entity's
+            // EYE position (the 1.62 eye height) — exposure-gated
+            // naturally (a fully blocked blast has magnitude 0)
+            let eye = self.player.eye();
+            let dir = glam::Vec3::new(eye.x - center[0], eye.y - center[1], eye.z - center[2])
+                .normalize_or_zero();
+            let magnitude = explosion_knockback(
+                ((self.player.pos.x - center[0]).powi(2)
+                    + (self.player.pos.y - center[1]).powi(2)
+                    + (self.player.pos.z - center[2]).powi(2))
+                .sqrt(),
+                power,
+                exposure,
+            );
+            let impulse = dir * magnitude;
+            self.player.vel[0] += impulse.x;
+            self.player.vel[1] += impulse.y;
+            self.player.vel[2] += impulse.z;
         }
-        // every other mob in range takes the same blast (armor applies)
+        // every other mob in range takes the blast (armor applies; the
+        // damage is NOT difficulty-scaled — the difficulty table is the
+        // player's rows)
         use vc_gameplay::combat::armor_reduce;
-        let mob_ids: Vec<(u32, f32)> = self
+        let mob_dmg: Vec<(u32, f32)> = self
             .sim
             .mobs
             .list
             .iter()
-            .map(|m| (m.id, blast_damage(m.pos[0], m.pos[1] + 0.9, m.pos[2])))
+            .map(|m| {
+                let d = vc_gameplay::mobs::def(m.kind);
+                // the mob's own hitbox (feet-anchored, width × height ×
+                // width — the verified sample-grid dims)
+                let exposure = self.explosion_exposure(
+                    center,
+                    [m.pos[0] - d.width * 0.5, m.pos[1], m.pos[2] - d.width * 0.5],
+                    [d.width, d.height, d.width],
+                );
+                (m.id, blast_damage(m.pos[0], m.pos[1], m.pos[2], exposure))
+            })
             .collect();
-        for (id, dmg) in mob_ids {
+        for (id, dmg) in mob_dmg {
             if dmg > 0.0 {
                 let armor = self
                     .sim
@@ -8827,6 +8932,108 @@ impl GameApp {
         }
         self.play_event("entity.generic.explode", Some(center), 1.0);
         let _ = destroyed;
+    }
+
+    /// VERIFIED w/Explosion §Exposure (live 2026-09-22): the exposure is
+    /// the fraction of unobstructed rays from the explosion center to the
+    /// sample points on the entity's bounding-box grid. The sample points
+    /// are arranged in a ⌈2w+1⌉ × ⌈2h+1⌉ × ⌈2l+1⌉ 3D grid (w/h/l = the
+    /// entity's bounding-box dimensions in blocks), spaced by
+    /// size/(2·size+1) per axis, with the negative corner at
+    /// (½(1 − ⌊2w+1⌋/(2w+1)), 0, ½(1 − ⌊2l+1⌋/(2l+1))) — the Y corner is
+    /// 0. Each ray is obstructed when it intersects any block hitbox (the
+    /// engine's solid predicate over the voxel DDA traversal); exposure =
+    /// unobstructed / total. DOCUMENTED TRIMS: the directional-bias bug
+    /// (MC-232355) and the sub-block hitbox edge cases (fences/walls only
+    /// obstruct via their full cube) are out — the engine has no
+    /// sub-block collision boxes.
+    fn explosion_exposure(&self, center: [f32; 3], aabb_min: [f32; 3], size: [f32; 3]) -> f32 {
+        // grid counts (the verified ⌈2·dim+1⌉)
+        let n = [
+            (2.0 * size[0] + 1.0).ceil() as i32,
+            (2.0 * size[1] + 1.0).ceil() as i32,
+            (2.0 * size[2] + 1.0).ceil() as i32,
+        ];
+        // spacing + the negative corner (the verified formulas; Y = 0)
+        let spacing = [
+            size[0] / (2.0 * size[0] + 1.0),
+            size[1] / (2.0 * size[1] + 1.0),
+            size[2] / (2.0 * size[2] + 1.0),
+        ];
+        let corner = [
+            0.5 * (1.0 - (2.0 * size[0] + 1.0).floor() / (2.0 * size[0] + 1.0)),
+            0.0,
+            0.5 * (1.0 - (2.0 * size[2] + 1.0).floor() / (2.0 * size[2] + 1.0)),
+        ];
+        // one ray: obstructed when the segment intersects any solid
+        // voxel (the voxel DDA, inclusive of both ends)
+        let obstructed = |from: [f32; 3], to: [f32; 3]| -> bool {
+            let d = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+            let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            if len < 1e-6 {
+                return false; // degenerate ray
+            }
+            let dir = [d[0] / len, d[1] / len, d[2] / len];
+            let mut voxel = [
+                from[0].floor() as i32,
+                from[1].floor() as i32,
+                from[2].floor() as i32,
+            ];
+            let mut t_max = [0.0f32; 3];
+            let mut t_delta = [0.0f32; 3];
+            let mut step = [0i32; 3];
+            for a in 0..3 {
+                if dir[a] != 0.0 {
+                    step[a] = dir[a].signum() as i32;
+                    let boundary = if step[a] > 0 {
+                        voxel[a] as f32 + 1.0 - from[a]
+                    } else {
+                        from[a] - voxel[a] as f32
+                    };
+                    t_max[a] = boundary / dir[a].abs();
+                    t_delta[a] = 1.0 / dir[a].abs();
+                } else {
+                    t_max[a] = f32::INFINITY;
+                    t_delta[a] = f32::INFINITY;
+                }
+            }
+            loop {
+                if is_solid(self.world.get_block(voxel[0], voxel[1], voxel[2])) {
+                    return true;
+                }
+                let a = if t_max[0] < t_max[1] && t_max[0] < t_max[2] {
+                    0
+                } else if t_max[1] < t_max[2] {
+                    1
+                } else {
+                    2
+                };
+                if t_max[a] > len {
+                    return false; // the segment ended inside this voxel
+                }
+                voxel[a] += step[a];
+                t_max[a] += t_delta[a];
+            }
+        };
+        let mut unobstructed = 0u32;
+        let mut total = 0u32;
+        for iy in 0..n[1] {
+            for iz in 0..n[2] {
+                for ix in 0..n[0] {
+                    let px = aabb_min[0] + corner[0] + ix as f32 * spacing[0];
+                    let py = aabb_min[1] + corner[1] + iy as f32 * spacing[1];
+                    let pz = aabb_min[2] + corner[2] + iz as f32 * spacing[2];
+                    total += 1;
+                    if !obstructed(center, [px, py, pz]) {
+                        unobstructed += 1;
+                    }
+                }
+            }
+        }
+        if total == 0 {
+            return 0.0;
+        }
+        unobstructed as f32 / total as f32
     }
 
     // ------------------------------------------------------ menu actions --
@@ -19026,6 +19233,7 @@ impl GameApp {
                                     tpos[2] as f32 + 0.5,
                                 ],
                                 5.0,
+                                false,
                             );
                             self.death_cause = "BLOWN UP BY A REBIRTH ANCHOR".into();
                         }
@@ -20624,6 +20832,14 @@ impl GameApp {
                                     // attacks live in the game layer tick)
                                     if b == CONDUIT {
                                         self.sim.conduits.insert(prev);
+                                    }
+                                    // TNT round: register a placed TNT
+                                    // block for the ignition sweep
+                                    // (redstone power + fire/lava contact
+                                    // — the sweep lives in sim.rs step 3c;
+                                    // chain-priming rides the explosion)
+                                    if b == TNT {
+                                        self.sim.tnt.register_block(prev);
                                     }
                                     // Phase E3: a LEAD used on a fence ties the
                                     // held leash as a knot (VERIFIED w/Lead —
@@ -23747,6 +23963,12 @@ impl GameApp {
             self.sim
                 .xp_orbs
                 .build_vertices(self.time, right, up, &mut self.particle_verts);
+            // TNT round: primed TNT draws as the block model with the
+            // verified 0.5 s near-white flash (VERIFIED w/TNT §Behavior
+            // §Appearance, live 2026-09-22: "blinks, alternating every
+            // 0.5 seconds between the TNT block's texture, and a copy of
+            // it that has been brightened to near-white")
+            self.sim.tnt.build_vertices(&mut self.particle_verts);
             self.build_end_entity_vertices(right, up);
             // Phase E2: the wither (any dimension — player-summoned)
             self.build_wither_vertices(right, up);

@@ -6,10 +6,15 @@ gathered. The overhaul plan builds on this file: every finding below is a
 candidate work item — fold into MASTER-PLAN rounds or change the plan on the
 fly, per the standing mid-round rule.
 
-**Status: COMPLETE (2026-10-01)** — all four review agents reported; the
-ledger is final; the overhaul umbrella plan
-(`docs/OVERHAUL-PLAN-2026-10-01.md`) carries the findings as Round T
-(T1–T11). CI gates ALL GREEN.
+**Status: PHASE 0 IN EXECUTION (2026-10-02)** — Round T code work COMPLETE
+and CI-verified (all six gates green at `34a536f`, run 36947278822):
+T1–T4 (greedy key full 16-bit state + WGSL mirror + F_LAVA + water-above
+fold + lava culling), T5 (the 25-box static grid + the pixel-based
+border-visibility E2E contract), T6 (F5 front distance 4.0, VERIFIED
+Third-person_view), T11 (netherite pyramid), T7 (stale docs), T8 (FxHash
+everywhere), T9+T10 (particle guards + small fixes). Remaining: the E2E/
+vision verification of T1–T6+T11 from the CI-built binary; the ledger
+reconcile; Phase 1 next.
 
 ---
 

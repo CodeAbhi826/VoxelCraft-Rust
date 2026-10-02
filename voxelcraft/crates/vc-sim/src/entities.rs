@@ -1372,8 +1372,18 @@ mod tests {
         let mut out = Vec::new();
         sys.build_vertices(&mut out);
         assert_eq!(out.len(), 36, "six faces per entity cuboid");
-        for v in &out {
+        for v in &out[0..6] {
+            // the +Y top face (emitted first) is near-white
             assert!(v.col[0] >= 0.9, "near-white brightened: {:?}", v.col);
+        }
+        for v in &out[6..12] {
+            // the −Y bottom face carries the vanilla 0.5 shade on the
+            // flash color (the shade is per-face, the flash is not)
+            assert!(
+                (v.col[0] - 0.5).abs() < 1e-4,
+                "the bottom face's vanilla shade: {:?}",
+                v.col
+            );
         }
     }
 

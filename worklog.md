@@ -104,3 +104,18 @@ Work Log:
 
 Stage Summary:
 - PHASE 0 COMPLETE. Starting Phase 1 (measure before optimizing).
+
+---
+Task ID: 7
+Agent: main — Phase 1 (measure before optimizing)
+Task: The per-frame breakdown harness + the measured baseline
+
+Work Log:
+- The bench gained the sim-tick section (the 20 Hz deterministic sim over the generated world, 200 ticks) and the REAL light-engine section (init_chunk per chunk + a glowstone-edit pump) — the game's per-tick and per-edit costs are now measurable headless. The 1 Hz perf heartbeat carries the full five-phase frame breakdown (s/st/r/u/d ms).
+- The bench job uploads the vc_bench binary (the artifact route: built on CI, run locally — no local compiling).
+- Baselines collected: the GH runner tier (the bench job's JSON: run 36957037728) and the N4000 tier (the downloaded binary run locally). The wasm tier: UNAVAILABLE (no wasm bench harness — disclosed).
+- docs/BASELINE-PERF-2026-10-02.md committed: the table + the optimization ranking. THE #1 COST IS THE LIGHT ENGINE'S INIT (86.6 ms/chunk on the N4000, 15.6 on the runner) — slower than meshing and dominating chunk loading; #2 meshing (49.1/10.6 ms); #3 generation (53.1/11.0 ms, 1.4x parallel speedup on the N4000). The sim tick (0.041 ms) and drawprep (13.9 µs) are non-targets; memory is healthy (10.3 KiB/chunk).
+- Targets (tentative, owner confirms at the end): stable 30 fps on the N4000 (amortize the ~190 ms/chunk pipeline), 60+ on mid, no hitches > 50 ms (the light-init spike is the target), memory < 20 KiB/chunk.
+
+Stage Summary:
+- PHASE 1 COMPLETE (baselines committed, regression check live via the bench job, targets proposed). Starting Phase 2 (the parity audit — no engine changes).

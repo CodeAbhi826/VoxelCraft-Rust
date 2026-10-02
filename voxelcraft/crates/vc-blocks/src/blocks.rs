@@ -13325,7 +13325,7 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         RABBIT_STEW | BEETROOT | BEETROOT_SOUP | EGG | POISONOUS_POTATO => CreativeTab::Foodstuffs,
         MELON_SLICE | WHEAT_CROP | CARROTS | POTATOES | BEETROOTS => CreativeTab::Foodstuffs,
         WHEAT | BREAD => CreativeTab::Foodstuffs,
-        // ---- Tools (1 entries) ----
+        // ---- Tools (2 entries) ----
         // Round K: the flint-and-steel igniter joins the hoe (its vanilla
         // Tools-tab home)
         HOE | FLINT_AND_STEEL => CreativeTab::Tools,
@@ -13413,8 +13413,8 @@ mod creative_tab_tests {
         );
         // per-tab census (regenerates with the table; pins drift)
         assert_eq!(creative_tab_items(CreativeTab::BuildingBlocks).len(), 155);
-        assert_eq!(creative_tab_items(CreativeTab::DecorationBlocks).len(), 52);
-        assert_eq!(creative_tab_items(CreativeTab::Redstone).len(), 17);
+        assert_eq!(creative_tab_items(CreativeTab::DecorationBlocks).len(), 54);
+        assert_eq!(creative_tab_items(CreativeTab::Redstone).len(), 18);
         assert_eq!(creative_tab_items(CreativeTab::Transportation).len(), 1);
         assert_eq!(creative_tab_items(CreativeTab::Miscellaneous).len(), 184);
         assert_eq!(creative_tab_items(CreativeTab::Foodstuffs).len(), 37);
@@ -13423,6 +13423,13 @@ mod creative_tab_tests {
         assert_eq!(creative_tab_items(CreativeTab::Combat).len(), 21);
         assert!(creative_tab_items(CreativeTab::Combat).contains(&DIAMOND_CHESTPLATE));
         assert_eq!(creative_tab_items(CreativeTab::Brewing).len(), 25);
+        // Round K/TNT/beds: the flint-and-steel igniter joins the hoe in
+        // Tools; TNT joins Redstone; the beds join DecorationBlocks
+        assert_eq!(creative_tab_items(CreativeTab::Tools).len(), 2);
+        assert!(creative_tab_items(CreativeTab::Tools).contains(&FLINT_AND_STEEL));
+        assert!(creative_tab_items(CreativeTab::Redstone).contains(&TNT));
+        assert!(creative_tab_items(CreativeTab::DecorationBlocks).contains(&BED));
+        assert!(creative_tab_items(CreativeTab::DecorationBlocks).contains(&BED_HEAD));
     }
 
     /// Sub-round 2: the canonical vanilla anchors — the spot-checks that
@@ -14046,6 +14053,16 @@ mod state_tests {
                 || is_v17_state(s)
                 // Round 13: the station identity window (BOOK/GRINDSTONE)
                 || is_r13_state(s)
+                // Phase 3 Round K/TNT/beds: the dedicated world-block
+                // states (the TNT identity 863, the bed foot/head ×
+                // facing 864..871, the nether portal 872, the
+                // flint-and-steel igniter 873) — the fold and the
+                // default-state roundtrip are verified per-block in
+                // their dedicated ranges' own tests
+                || s == TNT_STATE
+                || is_bed_state(s)
+                || s == NETHER_PORTAL_STATE
+                || s == FLINT_AND_STEEL_STATE
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(

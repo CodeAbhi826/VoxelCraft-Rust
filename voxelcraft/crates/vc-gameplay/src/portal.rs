@@ -124,7 +124,7 @@ impl PortalFrame {
     /// the interior's width along its long axis
     #[inline]
     pub fn width(&self) -> u32 {
-        let (sx, sz) = self.axis.step();
+        let (sx, _sz) = self.axis.step();
         let a = if sx != 0 {
             self.max[0] - self.min[0]
         } else {
@@ -360,7 +360,7 @@ pub fn search_existing_portal(
                     let dy = (ly as i32 - y) as f32;
                     let dz = (wz - cz) as f32;
                     let d = dx * dx + dy * dy + dz * dz;
-                    if best.map_or(true, |(_, bd)| d < bd) {
+                    if best.is_none_or(|(_, bd)| d < bd) {
                         best = Some(([wx, ly as i32, wz], d));
                     }
                 }
@@ -435,10 +435,9 @@ fn scan_build_pass(
                 }
                 let wx = dx + ox;
                 let wz = dz + oz;
-                if world
+                if !world
                     .chunks
-                    .get(&(wx.div_euclid(16), wz.div_euclid(16)))
-                    .is_none()
+                    .contains_key(&(wx.div_euclid(16), wz.div_euclid(16)))
                 {
                     continue; // not generated — skip (the loaded-area scan)
                 }
@@ -479,7 +478,7 @@ fn scan_build_pass(
                     let ddy = (anchor[1] - dy) as i64;
                     let ddz = (anchor[2] - dz) as i64;
                     let d = ddx * ddx + ddy * ddy + ddz * ddz;
-                    if best.map_or(true, |(_, bd)| d < bd) {
+                    if best.is_none_or(|(_, bd)| d < bd) {
                         best = Some((anchor, d));
                     }
                 }

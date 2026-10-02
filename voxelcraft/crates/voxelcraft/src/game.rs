@@ -8821,7 +8821,8 @@ impl GameApp {
                         // chain fuse (VERIFIED w/TNT §Behavior)
                         let fuse = self.sim.tnt.chain_fuse();
                         self.sim.tnt.prime(x, y, z, biome, fs, fb, fuse);
-                    } else if self.audio_rng.next_f32() < combat::explosion_drop_chance(power, tnt) {
+                    } else if self.audio_rng.next_f32() < combat::explosion_drop_chance(power, tnt)
+                    {
                         // item drop (see the header): the verified chance
                         self.sim.items.drop_block(x, y, z, b, biome, fs, fb);
                     }

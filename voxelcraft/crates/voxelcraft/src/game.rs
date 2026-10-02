@@ -8768,6 +8768,7 @@ impl GameApp {
     /// damage-only blast (no impulse) — the mob knockback path is future
     /// work.
     fn explode(&mut self, center: [f32; 3], power: f32, tnt: bool) {
+        use vc_gameplay::combat;
         let r = power as i32;
         // Round 15b: the explosion puff + spark ring (VERIFIED w/Particle:
         // the explosion_emitter's large smoke cloud)

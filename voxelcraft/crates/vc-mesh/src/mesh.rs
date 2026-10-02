@@ -1384,12 +1384,13 @@ mod tests {
                 .all(|&t| t >= vc_render::textures::PACK_TILE_BASE),
             "pack textures must land in the pack tile range"
         );
-        // the animated cobble strip was recognized — 1.10 adds the
-        // built-in magma flowing animation alongside it
+        // the animated strips were recognized — 1.10 adds the built-in
+        // magma flowing animation and Round K adds the nether-portal
+        // vortex alongside the cobblestone shimmer
         assert_eq!(
             anims.len(),
-            2,
-            "cobblestone.png + the built-in 1.10 magma animation register"
+            3,
+            "cobblestone.png + the built-in 1.10 magma + the Round K nether-portal vortex register"
         );
         let cobble = anims
             .iter()
@@ -1401,6 +1402,11 @@ mod tests {
             .find(|a| a.tile == vc_blocks::blocks::TILE_MAGMA)
             .expect("built-in magma flowing animation present (1.10)");
         assert_eq!(magma.frames.len(), 4);
+        let portal = anims
+            .iter()
+            .find(|a| a.tile == vc_blocks::blocks::TILE_NETHER_PORTAL)
+            .expect("the nether-portal vortex animation present (Round K)");
+        assert_eq!(portal.frames.len(), 4);
 
         // install as the global registry so mesh_chunk's model path can see
         // it (single install per test process; legacy-state tests above are

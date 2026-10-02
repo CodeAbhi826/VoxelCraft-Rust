@@ -13955,43 +13955,42 @@ impl GameApp {
     /// 600-vertex line grid crosses the whole frame).
     #[cfg(not(target_arch = "wasm32"))]
     fn e2e_fkeys_diff_behind(&mut self) {
-        let off_px = self.renderer.take_screenshot_png();
-        let (Some(on), Some(off)) = (self.e2e_fkeys_behind_on_px.take(), off_px) else {
+        let off_png = self.renderer.take_screenshot_png();
+        let (Some(on), Some(off)) = (self.e2e_fkeys_behind_on_px.take(), off_png) else {
             vc_render::render::report_boot_log(
                 "e2e: fkeys border-visibility diff MISSING (a capture is absent)",
             );
             self.e2e_fkeys_ok = false;
             return;
         };
-        if on.len() != off.len() {
-            vc_render::render::report_boot_log("e2e: fkeys border-visibility diff SIZE MISMATCH");
-            self.e2e_fkeys_ok = false;
-            return;
-        }
-        // the PNG byte sizes differ with compression — decode both to raw
-        // RGBA (fixed 1280x696x4) and compare the PIXEL data
-        let on_px = image::load_from_memory(&on)
-            .map(|i| i.to_rgba8().into_raw())
-            .unwrap_or_default();
-        let off_px = image::load_from_memory(&off)
-            .map(|i| i.to_rgba8().into_raw())
-            .unwrap_or_default();
-        if on_px.len() != off_px.len() || on_px.is_empty() {
-            vc_render::render::report_boot_log("e2e: fkeys border-visibility diff DECODE MISMATCH");
-            self.e2e_fkeys_ok = false;
-            return;
-        }
-        let diff = on_px
-            .iter()
-            .zip(off_px.iter())
-            .filter(|(a, b)| a != b)
-            .count();
-        // 1280x696x4 = 3,566,080 px; 2000 changed px — the 5×5 border grid
-        // adds thousands of line pixels across the
-        // frame, the inter-frame noise is a handful
-        let ok = diff > 2000;
+        // DIFFERENTIAL COLORIMETRY (2026-10-02): a byte/px diff between two
+        // live frames is meaningless — the day-light, clouds and the
+        // chunk-meshing burst change every frame, so ANY two captures
+        // differ by thousands of pixels. What is stable: the terrain's own
+        // yellow-green pixels (flowers) appear in BOTH captures; the
+        // border grid (yellow, alpha 0.55 over terrain) adds a large
+        // yellow-green population ONLY to the ON capture. Count both and
+        // require the margin.
+        let count_yellowish = |png: &[u8]| -> u32 {
+            let px = image::load_from_memory(png)
+                .map(|i| i.to_rgba8().into_raw())
+                .unwrap_or_default();
+            px.chunks_exact(4)
+                .filter(|c| {
+                    let (r, g, b) = (c[0] as i32, c[1] as i32, c[2] as i32);
+                    r > 60 && r > b + 40 && g > b + 40 && (r - g).abs() < 40
+                })
+                .count() as u32
+        };
+        let (on_n, off_n) = (count_yellowish(&on), count_yellowish(&off));
+        // the border grid contributes thousands of yellow-green line
+        // pixels; the terrain's own yellow (flowers) is in both counts and
+        // cancels — the margin threshold sits above the lighting/cloud
+        // drift noise
+        let ok = on_n > off_n + 300;
         vc_render::render::report_boot_log(&format!(
-            "e2e: fkeys border-visibility diff {diff} bytes changed — {}",
+            "e2e: fkeys border-visibility yellow px on={on_n} off={off_n} margin={} — {}",
+            on_n as i64 - off_n as i64,
             if ok {
                 "VISIBLE (contract ok)"
             } else {

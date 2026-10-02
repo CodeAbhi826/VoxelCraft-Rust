@@ -7,7 +7,8 @@
 //! crate layering of every other gameplay system.
 
 use vc_blocks::blocks::{
-    state_block, AIR, FIRE, FLOWER_RED, FLOWER_YELLOW, NETHER_PORTAL, OBSIDIAN, TALL_GRASS,
+    default_state, state_block, AIR, FIRE, FLOWER_RED, FLOWER_YELLOW, NETHER_PORTAL, OBSIDIAN,
+    TALL_GRASS,
 };
 use vc_world::world::World;
 
@@ -665,12 +666,13 @@ mod tests {
         build_frame(&mut w, [4, 65, 4], PortalAxis::X, 2, 3);
         build_frame(&mut w, [12, 65, 12], PortalAxis::X, 2, 3);
         // the search scans for NETHER_PORTAL blocks — the game layer
-        // fills the interior after the frame validates, so the test
-        // fills both interiors (the fill is the game's portal blocks)
+        // fills the interior through the state path (default_state → 872;
+        // the raw block id 536 folds to a glazed-terracotta facing state
+        // in the id window), so the test fills both interiors the same way
         for k in 0..3i32 {
             for i in 0..2i32 {
-                let _ = w.set_block_state(4 + i, 65 + k, 4, NETHER_PORTAL);
-                let _ = w.set_block_state(12 + i, 65 + k, 12, NETHER_PORTAL);
+                let _ = w.set_block_state(4 + i, 65 + k, 4, default_state(NETHER_PORTAL));
+                let _ = w.set_block_state(12 + i, 65 + k, 12, default_state(NETHER_PORTAL));
             }
         }
         let (cell, d) =

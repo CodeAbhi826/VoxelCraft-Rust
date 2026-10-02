@@ -8821,7 +8821,7 @@ impl GameApp {
                         // chain fuse (VERIFIED w/TNT §Behavior)
                         let fuse = self.sim.tnt.chain_fuse();
                         self.sim.tnt.prime(x, y, z, biome, fs, fb, fuse);
-                    } else if self.audio_rng.next_f32() < explosion_drop_chance(power, tnt) {
+                    } else if self.audio_rng.next_f32() < combat::explosion_drop_chance(power, tnt) {
                         // item drop (see the header): the verified chance
                         self.sim.items.drop_block(x, y, z, b, biome, fs, fb);
                     }
@@ -8880,7 +8880,7 @@ impl GameApp {
             let eye = self.player.eye();
             let dir = glam::Vec3::new(eye.x - center[0], eye.y - center[1], eye.z - center[2])
                 .normalize_or_zero();
-            let magnitude = explosion_knockback(
+            let magnitude = combat::explosion_knockback(
                 ((self.player.pos.x - center[0]).powi(2)
                     + (self.player.pos.y - center[1]).powi(2)
                     + (self.player.pos.z - center[2]).powi(2))

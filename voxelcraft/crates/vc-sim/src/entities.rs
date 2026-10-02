@@ -708,6 +708,104 @@ impl PrimedTntSystem {
         self.blocks.insert(pos);
     }
 
+    /// ONE ignition sweep over the registered TNT placements. Returns the
+    /// positions to prime (the caller removes the block, hooks the light,
+    /// and spawns the entity with the 80-tick fuse); stale entries (the
+    /// block broke or chain-primed since registration) drop from the set.
+    ///
+    /// VERIFIED w/TNT §Activation (live 2026-09-22): the block can be
+    /// activated by "a redstone signal", "Fire spreading onto the TNT
+    /// block", and "Other explosions" — plus flint-and-steel/fire charge,
+    /// flaming projectiles, and dispensers (all trimmed — see below).
+    /// Engine forms:
+    /// * redstone — the engine's verified power-source neighborhood scan
+    ///   (the same set the redstone lamp uses: a lit torch, an ON lever,
+    ///   powered wire); TNT is a redstone mechanism component (VERIFIED
+    ///   w/TNT §Redstone component)
+    /// * fire/lava — a FIRE/SOUL_FIRE/LAVA block at or adjacent to the
+    ///   TNT cell ignites it (VERIFIED w/TNT §infobox: "Catches fire from
+    ///   lava Yes"; §Activation: "Fire spreading onto the TNT block").
+    ///   DOCUMENTED TRIM: the engine has no fire-spread mechanic (fire
+    ///   never spreads onto the block), so the vanilla "the block burns
+    ///   for several seconds before activating" window collapses to
+    ///   contact = activation
+    /// * explosions — game.rs's explode() chain-primes the TNT in its
+    ///   radius (never this sweep). TNT is NOT redstone-conductive:
+    ///   "When a TNT block receives a redstone signal, it does not
+    ///   activate any other adjacent TNT blocks via redstone, but any
+    ///   adjacent TNT blocks are activated by the explosion" (VERIFIED
+    ///   w/TNT §Redstone component)
+    /// DOCUMENTED TRIMS (the engine has no such systems — w/TNT
+    /// §Activation rows): flint-and-steel/fire charge (no such item),
+    /// dispenser placement + dispenser flint-and-steel use (the engine's
+    /// dispenser ejects items only), flaming projectiles (no Flame
+    /// enchant; burning projectiles never hit TNT), commands, and the
+    /// `unstable` blockstate (the engine's punch path breaks and drops
+    /// like the vanilla default state, §Block states).
+    pub fn ignition_sweep(
+        &mut self,
+        world: &vc_world::world::World,
+        scope_center: (i32, i32),
+        scope_radius: i32,
+    ) -> Vec<[i32; 3]> {
+        use crate::redstone::powered_by_neighbors;
+        use vc_blocks::blocks::{state_block, FIRE, LAVA, SOUL_FIRE, TNT};
+        let mut to_prime = Vec::new();
+        let registered: Vec<[i32; 3]> = self.blocks.iter().copied().collect();
+        for pos in registered {
+            // stale: the block broke (or chain-primed) since registration
+            if world.get_block(pos[0], pos[1], pos[2]) != TNT {
+                self.blocks.remove(&pos);
+                continue;
+            }
+            // Phase 6 §26: the sweep freezes outside the simulation ring
+            let in_ring = pos[0]
+                .div_euclid(16)
+                .wrapping_sub(scope_center.0)
+                .saturating_abs()
+                .max(
+                    pos[2]
+                        .div_euclid(16)
+                        .wrapping_sub(scope_center.1)
+                        .saturating_abs(),
+                )
+                <= scope_radius;
+            if !in_ring {
+                continue;
+            }
+            // redstone: the mechanism component's power check (the lamp's
+            // verified source set)
+            if powered_by_neighbors(world, pos[0], pos[1], pos[2]) {
+                to_prime.push(pos);
+                continue;
+            }
+            // fire/lava contact: at the cell or any of the 6 neighbors
+            let mut burning = false;
+            for (dx, dy, dz) in [
+                (0i32, 0i32, 0i32),
+                (1i32, 0i32, 0i32),
+                (-1, 0, 0),
+                (0, 1, 0),
+                (0, -1, 0),
+                (0, 0, 1),
+                (0, 0, -1),
+            ] {
+                let b = state_block(world.get_state(pos[0] + dx, pos[1] + dy, pos[2] + dz));
+                if b == FIRE || b == SOUL_FIRE || b == LAVA {
+                    burning = true;
+                    break;
+                }
+            }
+            if burning {
+                to_prime.push(pos);
+            }
+        }
+        for pos in &to_prime {
+            self.blocks.remove(pos);
+        }
+        to_prime
+    }
+
     /// ONE sim tick for all primed TNT entities: the fuse countdown (1
     /// per tick, explodes at 0 — VERIFIED), gravity 0.04 + drag 0.98 (the
     /// verified shared entity profile the items/falling blocks carry),
@@ -1270,5 +1368,82 @@ mod tests {
         // the charged creeper's 6 outranges TNT (the End-crystal class)
         assert_eq!(vc_gameplay::mobs::CHARGED_CREEPER_POWER, 6.0);
         assert!(vc_gameplay::mobs::CHARGED_CREEPER_POWER > TNT_EXPLOSION_POWER);
+    }
+
+    #[test]
+    fn tnt_ignites_by_redstone_power() {
+        // VERIFIED w/TNT §Activation: "A redstone signal" — the block is
+        // a redstone mechanism component (§Redstone component); the
+        // engine's verified power-source set (the lamp's scan)
+        let mut w = flat_world();
+        let mut sys = PrimedTntSystem::new(11);
+        // the TNT block sits on the floor (the dedicated state, never the
+        // colliding identity 533)
+        w.set_block_state(0, 65, 0, default_state(TNT));
+        sys.register_block([0, 65, 0]);
+        // no power, no fire: no ignition
+        let p = sys.ignition_sweep(&w, (0, 0), i32::MAX);
+        assert!(p.is_empty(), "an unpowered, unlit TNT stays");
+        assert_eq!(sys.len(), 0, "the sweep reports; the caller primes");
+        // a powered wire adjacent → ignition (the mechanism component)
+        w.set_block_state(1, 65, 0, wire_state(15));
+        let p = sys.ignition_sweep(&w, (0, 0), i32::MAX);
+        assert_eq!(p, vec![[0, 65, 0]], "redstone ignition");
+        assert!(sys.blocks.is_empty(), "primed blocks leave the set");
+        // an unpowered wire (power 0) does NOT ignite
+        sys.register_block([0, 65, 0]);
+        w.set_block_state(1, 65, 0, wire_state(0));
+        assert!(
+            sys.ignition_sweep(&w, (0, 0), i32::MAX).is_empty(),
+            "power 0 is not a signal"
+        );
+        // an ON lever adjacent → ignition
+        w.set_block_state(1, 65, 0, lever_state(true));
+        assert_eq!(
+            sys.ignition_sweep(&w, (0, 0), i32::MAX),
+            vec![[0, 65, 0]],
+            "lever ignition"
+        );
+    }
+
+    #[test]
+    fn tnt_ignites_by_fire_and_lava_contact() {
+        // VERIFIED w/TNT §infobox: "Catches fire from lava | Yes";
+        // §Activation: "Fire spreading onto the TNT block" (the engine's
+        // contact = activation form — the no-fire-spread trim)
+        let mut w = flat_world();
+        let mut sys = PrimedTntSystem::new(13);
+        w.set_block_state(0, 65, 0, default_state(TNT));
+        sys.register_block([0, 65, 0]);
+        // fire above the TNT cell
+        w.set_block_state(0, 66, 0, default_state(FIRE));
+        assert_eq!(
+            sys.ignition_sweep(&w, (0, 0), i32::MAX),
+            vec![[0, 65, 0]],
+            "fire contact ignition"
+        );
+        // lava adjacent (the side neighbor)
+        sys.register_block([0, 65, 0]);
+        w.set_block_state(0, 66, 0, default_state(LAVA));
+        assert_eq!(
+            sys.ignition_sweep(&w, (0, 0), i32::MAX),
+            vec![[0, 65, 0]],
+            "lava contact ignition"
+        );
+    }
+
+    #[test]
+    fn tnt_sweep_drops_stale_registrations() {
+        // the block broke since registration → the entry drops and never
+        // reports a phantom prime
+        let mut w = flat_world();
+        let mut sys = PrimedTntSystem::new(17);
+        w.set_block_state(0, 65, 0, default_state(TNT));
+        sys.register_block([0, 65, 0]);
+        // the block is removed (broken by the player)
+        w.set_block(0, 65, 0, AIR);
+        let p = sys.ignition_sweep(&w, (0, 0), i32::MAX);
+        assert!(p.is_empty(), "no phantom prime for a stale entry");
+        assert!(sys.blocks.is_empty(), "the stale entry drops");
     }
 }

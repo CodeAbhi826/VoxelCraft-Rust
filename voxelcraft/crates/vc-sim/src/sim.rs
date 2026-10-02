@@ -4,7 +4,7 @@
 //! accumulator exactly like the particle system — same fixed-step
 //! determinism the Phase-6 regression suite relies on.
 
-use crate::entities::{ItemSystem, XpOrbSystem};
+use crate::entities::{ItemSystem, PrimedTntSystem, XpOrbSystem};
 use crate::fluids;
 use crate::ticks::{RandomTicker, TickScheduler};
 use vc_world::world::World;
@@ -89,6 +89,11 @@ pub struct Sim {
     /// mobs (Phase 2): spawn/AI/physics + arrows; hits, deaths and
     /// explosions queue here for the game layer to drain
     pub mobs: vc_gameplay::mobs::MobSystem,
+    /// TNT round: primed-TNT entities — the fuse countdown + physics,
+    /// the ignition sweep over the registered placements, and the
+    /// explosions queued for the game layer to drain (the
+    /// creeper-explosion split)
+    pub tnt: PrimedTntSystem,
     /// 1.15 (Buzzy Bees): the hive registry + release/work clocks
     /// (world writes + bee releases queue out for the game layer)
     pub hives: vc_gameplay::bees::HiveSystem,
@@ -158,6 +163,9 @@ impl Sim {
             villagers: vc_gameplay::villagers::Villagers::new(seed ^ 0x315_7A9),
             spawners: vc_gameplay::spawners::Spawners::new(seed ^ 0x5C_0DE5),
             mobs: vc_gameplay::mobs::MobSystem::new(seed ^ 0x5C_0DE),
+            // TNT round: the salt lives in PrimedTntSystem::new (the T10
+            // lesson — a call-site XOR of the SAME constant is dead code)
+            tnt: PrimedTntSystem::new(seed),
             hives: vc_gameplay::bees::HiveSystem::new(seed ^ 0xBE_E5),
             is_day: true,
             sky_factor: 1.0,
@@ -380,6 +388,38 @@ impl Sim {
         // drained by game.rs for the bubble sound + stats
         self.brewing.tick();
 
+        // 3c. TNT round: the ignition sweep over the registered TNT
+        // placements (redstone power + fire/lava contact — see
+        // PrimedTntSystem::ignition_sweep for the verified set + trims),
+        // then the fuse countdown + physics; the explosions queue for
+        // game.rs to drain via explode() (the creeper-explosion split)
+        let to_prime: Vec<[i32; 3]> = self.tnt.ignition_sweep(world, scope.center, scope.radius);
+        for pos in to_prime {
+            if let Some((old, new)) =
+                world.set_block(pos[0], pos[1], pos[2], vc_blocks::blocks::AIR)
+            {
+                light.on_block_changed(world, pos[0], pos[1], pos[2], old, new);
+            }
+            // the entity's baked brightness + tint at prime (the
+            // item-drop pattern): biome + the MAX over the 6 neighbors
+            // (the face-light rule — a solid cell's own light reads 0)
+            let biome = world
+                .chunk((pos[0].div_euclid(16), pos[2].div_euclid(16)))
+                .map(|c| c.biome[(pos[2].rem_euclid(16)) * 16 + pos[0].rem_euclid(16)])
+                .unwrap_or(2);
+            let (sky, blk) = face_light(world, pos[0], pos[1], pos[2]);
+            self.tnt.prime(
+                pos[0],
+                pos[1],
+                pos[2],
+                biome,
+                sky,
+                blk,
+                crate::entities::TNT_FUSE_TICKS,
+            );
+        }
+        self.tnt.tick(world);
+
         // 4. item entities (Phase 6 §26: frozen outside the simulation ring)
         self.items.tick(world, scope.center, scope.radius);
 
@@ -547,6 +587,43 @@ impl Sim {
     pub fn collect_items(&mut self, feet: [f32; 3]) -> Vec<u16> {
         self.items.collect(feet)
     }
+}
+
+/// Face light for effects anchored ON a block cell (TNT round: the primed
+/// entity's baked brightness). Same sampling as game.rs's face_light_at:
+/// the light engine's column scan stores sky=0/blk=0 INSIDE opaque cells,
+/// so a solid block's OWN cell reads pitch black — effects that span the
+/// whole block take the MAX over the 6 neighbors (its brightest face).
+/// The light state lives in world.light (LightData map), so no light
+/// engine handle is needed.
+fn face_light(world: &World, wx: i32, wy: i32, wz: i32) -> (u8, u8) {
+    let mut best_sky = 0u8;
+    let mut best_blk = 0u8;
+    for (dx, dy, dz) in [
+        (1i32, 0i32, 0i32),
+        (-1, 0, 0),
+        (0, 1, 0),
+        (0, -1, 0),
+        (0, 0, 1),
+        (0, 0, -1),
+    ] {
+        let (cx, cz) = ((wx + dx).div_euclid(16), (wz + dz).div_euclid(16));
+        let lx = (wx + dx - cx * 16) as usize;
+        let lz = (wz + dz - cz * 16) as usize;
+        let (s, b) = world
+            .light
+            .get(&(cx, cz))
+            .and_then(|ld| {
+                let sec = ((wy + dy).clamp(0, 255) / 16) as usize;
+                let yy = ((wy + dy).clamp(0, 255) % 16) as usize;
+                let idx = (yy << 8) | (lz << 4) | lx;
+                ld.sections[sec].as_ref().map(|s| (s.sky[idx], s.blk[idx]))
+            })
+            .unwrap_or((15, 0));
+        best_sky = best_sky.max(s);
+        best_blk = best_blk.max(b);
+    }
+    (best_sky, best_blk)
 }
 
 #[cfg(test)]

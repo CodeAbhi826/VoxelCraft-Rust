@@ -162,3 +162,20 @@ Work Log:
 - The FKEYS border-visibility contract FLAKED (margin 834 then 51 on the same binary — the per-frame light change pollutes the capture pair). FIXED 4e56285: the day clock freezes from the ladder arm through the verdict. Re-verified on the new binary (4e56285 / run 37088469541): margins 807 + 789, both VISIBLE, FKEY CONTRACT OK twice; the beds leg VERDICT OK twice.
 - ALL 6 CI GATES GREEN at 4e56285 (run 37087784966).
 - The OPEN double-fold class from the sweep addendum FIXED (fc3f646 / run 37089898712, all 6 gates green): the chunk_occl scan's 6 sites + the gen-edit's current read dropped the second state_block fold (Chunk::get already folds to the owning block id — the is_opaque verdicts were aliased for the state-window blocks). Rule of thumb recorded in-code: Chunk::get returns the BLOCK id — a second fold is always wrong; Section::get returns the raw state — a fold is required there.
+
+---
+Task ID: 11
+Agent: main — Phase 3: the fluids round (takeover)
+Task: The waterlogging + bubble columns + infinite water + the mixing products — landed and CI green
+
+Work Log:
+- The fluids+fire+sneak subagent verified the wiki live (all pages via raw wikitext) but its code-writing turns were cut repeatedly by the stream teardown ("Stream ended without finish_reason" — the route tears the stream down mid-generation). Interrupted after ~2 h of no code landed (the progress-over-attribution precedent); it HAD written the fluids work into the shared tree before the stop — reviewed, fixed, and landed by the parent in 3 commits.
+- feat(blocks) 564ab2c: the waterlogging states (the chest pair 874/875) + the BUBBLE_COLUMN block (538/state 876) — the folds, the block def (the water quad path, non-solid, the biome water tint), the audit chain, BLOCK_COUNT 539 / STATE_COUNT 877.
+- feat(sim) fb1f6f0: the infinite water source (a flowing block horizontally adjacent to 2+ sources + support, or one horizontal + one above), the mixing products (lava source + water = obsidian; flowing lava + water = cobblestone; lava downward onto water = stone), the waterlogged containers carry a full source, and the bubble columns (20gt create / 5gt destroy).
+- feat(mesh) 9af843f: the waterlogged containers render BOTH the container and the water overlay (level 0, the WATER tint/culling); the bubble column meshes through the water-quad path.
+- feat(game) bbd1e08: the bubble-column player wiring — the feet/head detection (the column kind scans to its base), the verified transport drag (11 b/s up / 4.9 b/s down, the smooth approach), the air-provide (the drowning meter refills).
+- The CI fix loop (8 commits): the COBBLE id (the engine's cobblestone is COBBLE 4), is_model_state's never-model window (780f7a6), the GPU greedy path handles the waterlogged containers + the bubble column (8b3c120), the F_WATER flag class + the state clamp 876 + the bool above-bits (14cff45 + e4ef744), the tint-class LUT + the naga shift-operand types (530a752), the de-brand paths (7a59a18). ALL 6 GATES GREEN at 7a59a18 (run 37101214721).
+- CROSS-CHECK (the owner's rule — two wikis may disagree): the Water Water-and-lava section vs the Fluid Mixing rules AGREE (live 2026-10-03); the WATER arm now culls against the bubble column (the column IS water — a genuine gap the cross-check caught). The step-face neighbor levels fixed (the bubble/wlog neighbors at level 0 — full water; the low-slab artifact caught).
+- The owner's directives recorded (c85ddb5): the Sodium/mods reference grant (STUDY-ONLY, legal doc §6a), the texture-pack + shader-pack testing legs (the E2E ledger), optimizations are ADDITIVE and must preserve real-game parity (no PC-motivated compromises).
+- MATRIX updated (this commit): the fluids gap rows DONE + the tier-4 strikethrough. The in-game verification of the fluids binary is PENDING: the linux-game build SUCCEEDED (37101508045); the /tmp quota cleared (the owner's say-so), the download + the E2E verification resume now.
+- DISCLOSED trims: slab/stairs/fence waterlogging (the JSON-model dispatch), the bubble columns' air-bubble particles, the water_source_conversion gamerule.

@@ -1136,33 +1136,26 @@ fn chunk_occl(
             continue;
         }
         let y0 = b * 16;
+        // Chunk::get folds to the owning BLOCK id — a second state_block
+        // fold aliases high states onto low ids (the is_opaque verdict
+        // would be wrong for the state-window blocks, e.g. a portal state
+        // 872 folds to the glazed-terracotta class)
         // +X / -X walls: 16×16 cells each (x fixed, y × z varies)
-        if (0..16usize)
-            .any(|dy| (0..16usize).any(|z| !is_opaque(state_block(c.get(15, y0 + dy, z)))))
-        {
+        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(c.get(15, y0 + dy, z)))) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_PX as u32);
         }
-        if (0..16usize)
-            .any(|dy| (0..16usize).any(|z| !is_opaque(state_block(c.get(0, y0 + dy, z)))))
-        {
+        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(c.get(0, y0 + dy, z)))) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_NX as u32);
         }
         // +Z / -Z walls: 16×16 cells each (z fixed, y × x varies)
-        if (0..16usize)
-            .any(|dy| (0..16usize).any(|x| !is_opaque(state_block(c.get(x, y0 + dy, 15)))))
-        {
+        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(c.get(x, y0 + dy, 15)))) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_PZ as u32);
         }
-        if (0..16usize)
-            .any(|dy| (0..16usize).any(|x| !is_opaque(state_block(c.get(x, y0 + dy, 0)))))
-        {
+        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(c.get(x, y0 + dy, 0)))) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_NZ as u32);
         }
         // ceiling plane of this band (y = b·16+15) — only for b < 15
-        if b < 15
-            && (0..16usize)
-                .any(|x| (0..16usize).any(|z| !is_opaque(state_block(c.get(x, y0 + 15, z)))))
-        {
+        if b < 15 && (0..16usize).any(|x| (0..16usize).any(|z| !is_opaque(c.get(x, y0 + 15, z)))) {
             occl.planes |= 1u16 << b;
         }
     }

@@ -453,7 +453,11 @@ impl World {
             let old = Arc::clone(old);
             let lx = (wx - cx * 16) as usize;
             let lz = (wz - cz * 16) as usize;
-            let cur = state_block(old.get(lx, wy as usize, lz));
+            // Chunk::get folds to the owning BLOCK id — the state_block
+            // wrapper here double-folded (the same class as the portal
+            // search's dead scan; benign for the tree-canopy path today,
+            // latent aliasing for any other id)
+            let cur = old.get(lx, wy as usize, lz);
             let target_ok = replaceable(cur) || (cur == LEAVES && id == OAK_LOG);
             if !target_ok {
                 return;

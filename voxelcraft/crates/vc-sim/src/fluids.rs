@@ -34,17 +34,41 @@ fn water_at(world: &World, x: i32, y: i32, z: i32) -> Option<u16> {
     let s = world.get_state(x, y, z);
     let l = water_level(s);
     if l == 255 {
-        None
+        // fluids round: a waterlogged container carries a full water
+        // source in the same block space (VERIFIED w/Waterlogging:
+        // "Both the non-cube block and the water source block occupy
+        // the same space") — the cell reads as a level-0 source
+        if is_waterlogged_state(s) {
+            Some(0)
+        } else {
+            None
+        }
     } else {
         Some(l)
     }
 }
 
-/// can water spread into this cell? (air; water replaceability for plants
-/// is a documented delta — we stop at plants)
+/// can water spread into this cell? (air; plus a waterloggable container
+/// that is not waterlogged yet — flowing water enters it and
+/// waterlogs it, VERIFIED w/Waterlogging §Behavior: water "can be
+/// placed in this block, and this block does not remove the water
+/// source"; the plant replaceability delta stays a documented trim)
 #[inline]
 fn flowable(s: u16) -> bool {
-    s == AIR
+    s == AIR || (is_waterloggable_container(state_block(s)) && !is_waterlogged_state(s))
+}
+
+/// the spread target state for a cell: plain air takes the flowing
+/// level; a waterloggable container takes its waterlogged variant (the
+/// container stays, the water occupies the same space)
+#[inline]
+fn spread_target_state(target: u16, level: u16) -> u16 {
+    if target == AIR {
+        water_state(level as u8)
+    } else {
+        // the caller checked flowable() — the container is waterloggable
+        waterlogged_state(state_block(target)).unwrap_or(water_state(level as u8))
+    }
 }
 
 /// schedule a fluid/gravity update for a position and its 6 neighbors
@@ -85,6 +109,19 @@ pub fn on_block_changed(sched: &mut TickScheduler, world: &World, x: i32, y: i32
             // water placed next to a powder lands here, "placed next to"
             // VERIFIED w/Concrete_Powder §Usage)
             sched.schedule([nx, ny, nz], GRAVITY_TICK_RATE);
+        } else if b == SOUL_SAND || b == MAGMA_BLOCK {
+            // fluids round (1.16, VERIFIED w/Bubble_column: "A bubble
+            // column is created 20 game ticks after placing a magma
+            // block or soul sand") — the placed base schedules the
+            // creation sweep; the sweep converts the water source
+            // column above simultaneously
+            sched.schedule([nx, ny, nz], BUBBLE_CREATE_TICKS);
+        } else if b == BUBBLE_COLUMN {
+            // fluids round: a changed neighbor notifies the column — the
+            // destroyed-base check runs 5 ticks later (VERIFIED
+            // w/Bubble_column: "destroyed 5 game ticks after destroying
+            // the magma block or soul sand")
+            sched.schedule([nx, ny, nz], BUBBLE_DESTROY_TICKS);
         }
     }
 }
@@ -97,9 +134,27 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
 
     let below = world.get_state(x, y - 1, z);
 
+    // ---- fluids round (1.16, VERIFIED w/Fluid §Mixing rule 3 +
+    // w/Water §Water and lava): water contacting a lava SOURCE block on
+    // the top or sides turns the lava into obsidian — the lava's top is
+    // the water's below cell, the lava's sides are the water's four
+    // horizontal neighbors. Waterlogged cells carry the same water
+    // (VERIFIED w/Waterlogging: "Waterlogged blocks can also interact
+    // with lava to produce cobblestone or obsidian").
+    if y > 0 && lava_level(below) == 0 {
+        world.set_block_state(x, y - 1, z, default_state(OBSIDIAN));
+        on_block_changed(sched, world, x, y - 1, z);
+    }
+    for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
+        if lava_level(world.get_state(x + dx, y, z + dz)) == 0 {
+            world.set_block_state(x + dx, y, z + dz, default_state(OBSIDIAN));
+            on_block_changed(sched, world, x + dx, y, z + dz);
+        }
+    }
+
     // 1. fall: air below → pour down (vanilla falling-water column)
     if y > 0 && flowable(below) {
-        world.set_block_state(x, y - 1, z, water_state(1));
+        world.set_block_state(x, y - 1, z, spread_target_state(below, 1));
         on_block_changed(sched, world, x, y - 1, z);
         // falling water does NOT spread horizontally this tick
         sched.schedule([x, y - 1, z], WATER_TICK_RATE);
@@ -159,6 +214,27 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
         }
     }
 
+    // ---- fluids round (1.16, VERIFIED w/Water §Source blocks): a
+    // water source block is created from a flowing block that is
+    // horizontally adjacent to two or more other source blocks and
+    // sitting on top of a solid block or another water source block;
+    // the vertical variant: "adjacent to one source block horizontally
+    // and one vertically above the flowing block"
+    if level >= 1 {
+        let mut sources = 0u8;
+        for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
+            if water_at(world, x + dx, y, z + dz) == Some(0) {
+                sources += 1;
+            }
+        }
+        let above_is_source = water_at(world, x, y + 1, z) == Some(0);
+        let supported = is_solid(state_block(below)) || water_level(below) == 0;
+        if (sources >= 2 && supported) || (sources >= 1 && above_is_source) {
+            world.set_block_state(x, y, z, WATER);
+            on_block_changed(sched, world, x, y, z);
+        }
+    }
+
     // 3. horizontal spread (sources and flows; only when not falling and
     //    the spread level stays ≤ 7)
     let level = water_level(world.get_state(x, y, z));
@@ -179,7 +255,7 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
                     continue;
                 }
                 if flowable(n) {
-                    world.set_block_state(x + dx, y, z + dz, water_state(spread as u8));
+                    world.set_block_state(x + dx, y, z + dz, spread_target_state(n, spread));
                     on_block_changed(sched, world, x + dx, y, z + dz);
                 }
             }
@@ -244,12 +320,40 @@ pub fn lava_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z
     let below = world.get_state(x, y - 1, z);
     let below_b = state_block(below);
 
-    // 1. fall: air (or water — lava flows into water, no interaction
-    //    products in this bracket: documented) below → pour down
-    if y > 0 && (below_b == AIR || below_b == WATER) {
+    // ---- fluids round (1.16, VERIFIED w/Fluid §Mixing rule 1): flowing
+    // lava contacting a water block (source or flowing) in any direction
+    // EXCEPT downward turns the LAVA into cobblestone — the water above
+    // or to the flowing lava's sides. Waterlogged cells carry the same
+    // water (VERIFIED w/Waterlogging: "Waterlogged blocks can also
+    // interact with lava to produce cobblestone or obsidian"). The lava
+    // SOURCE's own contact is water-initiated — rule 3 turns it to
+    // obsidian from the water tick, never here.
+    if level > 0 {
+        let touches = water_at(world, x, y + 1, z).is_some()
+            || [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)]
+                .iter()
+                .any(|&(dx, dz)| water_at(world, x + dx, y, z + dz).is_some());
+        if touches {
+            world.set_block_state(x, y, z, default_state(COBBLESTONE));
+            on_block_changed(sched, world, x, y, z);
+            return;
+        }
+    }
+
+    // 2. fall: air below → pour down; water below → the WATER turns to
+    //    stone (VERIFIED w/Fluid §Mixing rule 2: "If lava flows into a
+    //    water block (source or flowing), the water turns into stone";
+    //    w/Water §Water and lava: "if lava flows downward onto water,
+    //    the water turns to stone")
+    if y > 0 && below_b == AIR {
         world.set_block_state(x, y - 1, z, lava_state(1));
         on_block_changed(sched, world, x, y - 1, z);
         sched.schedule([x, y - 1, z], rate);
+        return;
+    }
+    if y > 0 && below_b == WATER {
+        world.set_block_state(x, y - 1, z, default_state(STONE));
+        on_block_changed(sched, world, x, y - 1, z);
         return;
     }
 
@@ -296,7 +400,10 @@ pub fn lava_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z
         }
     }
 
-    // 3. horizontal spread (level + drop stays ≤ 7)
+    // 3. horizontal spread (level + drop stays ≤ 7). The spread never
+    //    enters a water cell: a flowing lava's water contact is the
+    //    cobblestone rule above; a lava source's contact is the water
+    //    tick's obsidian rule (VERIFIED w/Fluid §Mixing rules 1+3).
     let level = lava_level(world.get_state(x, y, z));
     if level == 255 {
         return;
@@ -308,12 +415,83 @@ pub fn lava_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z
             for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
                 let n = world.get_state(x + dx, y, z + dz);
                 let nb = state_block(n);
-                if nb == AIR || nb == WATER {
+                if nb == AIR {
                     world.set_block_state(x + dx, y, z + dz, lava_state(spread as u8));
                     on_block_changed(sched, world, x + dx, y, z + dz);
                 }
             }
         }
+    }
+}
+
+/// fluids round (1.16, VERIFIED w/Bubble_column, live 2026-09-25):
+/// bubble columns — "A bubble column is created 20 game ticks after
+/// placing a magma block or soul sand, and is destroyed 5 game ticks
+/// after destroying the magma block or soul sand. A bubble column is
+/// created or destroyed in all water source blocks of the bubble
+/// column simultaneously." Propagation: "Bubble columns propagate only
+/// through water source blocks, stopping at any flowing water or
+/// waterlogged block."
+pub const BUBBLE_CREATE_TICKS: u64 = 20;
+pub const BUBBLE_DESTROY_TICKS: u64 = 5;
+
+/// the Java bubble columns' transport speeds (VERIFIED w/Bubble_column
+/// §Transport: "entities move at a speed of approximately 11 blocks
+/// per second when in an upward bubble column, or 4.9 blocks per
+/// second when in a downward bubble column") — blocks per second.
+pub const BUBBLE_UP_SPEED: f32 = 11.0;
+pub const BUBBLE_DOWN_SPEED: f32 = 4.9;
+
+/// which bubble column a cell sits in: 0 = upward (soul sand base —
+/// the drag toward the surface), 1 = whirlpool (magma base — the drag
+/// down). The column is scanned down to its base block; None outside
+/// a bubble column.
+pub fn bubble_column_kind(world: &World, x: i32, y: i32, z: i32) -> Option<u8> {
+    let mut by = y;
+    while by >= 0 && world.get_block(x, by, z) == BUBBLE_COLUMN {
+        by -= 1;
+    }
+    if by < 0 {
+        return None;
+    }
+    match world.get_block(x, by, z) {
+        b if b == SOUL_SAND => Some(0),
+        b if b == MAGMA_BLOCK => Some(1),
+        _ => None,
+    }
+}
+
+/// one bubble-column update — creation at the placed soul sand/magma
+/// cell, destruction at a column cell whose base is gone.
+pub fn bubble_column_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32) {
+    let b = world.get_block(x, y, z);
+    if b == BUBBLE_COLUMN {
+        // the destruction check (scheduled 5 ticks after the base
+        // changed): the base is gone → the whole column is destroyed
+        // simultaneously (back to water); the base is intact → survive
+        let below = world.get_block(x, y - 1, z);
+        if below != SOUL_SAND && below != MAGMA_BLOCK && below != BUBBLE_COLUMN {
+            let mut by = y;
+            while by <= 255 && world.get_block(x, by, z) == BUBBLE_COLUMN {
+                world.set_block_state(x, by, z, WATER);
+                on_block_changed(sched, world, x, by, z);
+                by += 1;
+            }
+        }
+        return;
+    }
+    if b != SOUL_SAND && b != MAGMA_BLOCK {
+        return; // stale entry
+    }
+    // the creation sweep: every PLAIN water source block of the column
+    // above simultaneously — the raw state check (flowing water states
+    // 89..=95 and the waterlogged states fold/compare differently, and
+    // both STOP the column per the VERIFIED propagation rule)
+    let mut by = y + 1;
+    while by <= 255 && world.get_state(x, by, z) == WATER {
+        world.set_block_state(x, by, z, default_state(BUBBLE_COLUMN));
+        on_block_changed(sched, world, x, by, z);
+        by += 1;
     }
 }
 

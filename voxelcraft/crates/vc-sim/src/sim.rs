@@ -253,6 +253,16 @@ impl Sim {
                 b if vc_blocks::blocks::is_concrete_powder(b) => {
                     fluids::gravity_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
+                // fluids round (1.16): bubble columns — the creation sweep
+                // at a placed soul-sand/magma base (20 ticks, VERIFIED
+                // w/Bubble_column) and the destroyed-base destruction
+                // check at a column cell (5 ticks, VERIFIED)
+                b if b == vc_blocks::blocks::SOUL_SAND
+                    || b == vc_blocks::blocks::MAGMA_BLOCK
+                    || b == vc_blocks::blocks::BUBBLE_COLUMN =>
+                {
+                    fluids::bubble_column_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                }
                 vc_blocks::blocks::REDSTONE_WIRE => {
                     crate::redstone::wire_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }

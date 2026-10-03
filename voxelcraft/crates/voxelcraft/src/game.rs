@@ -14331,6 +14331,20 @@ impl GameApp {
             obstructed_ok,
             set_again,
         ));
+        // the gated verdict: every assertion must hold (linux-game.yml
+        // greps this line — the flags-only line above is the evidence
+        // trail; a FAILED verdict fails the CI leg)
+        let beds_ok = monster_refused
+            && skip_ok
+            && window_refused
+            && distance_refused
+            && missing_ok
+            && obstructed_ok
+            && set_again;
+        vc_render::render::report_boot_log(&format!(
+            "e2e: beds VERDICT {}",
+            if beds_ok { "OK" } else { "FAILED" }
+        ));
     }
 
     /// furnace (input+fuel seeded) through the REAL open_container
@@ -14995,8 +15009,28 @@ impl GameApp {
         // arm, and reports the verdict boot lines.
         #[cfg(not(target_arch = "wasm32"))]
         if std::env::var("E2E_BEDS").is_ok() && !self.e2e_beds_done {
-            self.e2e_beds();
-            self.e2e_beds_done = true;
+            // The leg's working area writes through the REAL state path —
+            // World edits NO-OP on missing chunks, so the leg waits for
+            // world entry AND the chunks it touches (the player's own +
+            // the two-south head cell, the FKEYS stage-0 pattern). The
+            // unguarded first-update run placed no bed: the head resolved
+            // to the wrong cell and 5 of 7 verdict flags failed silently
+            // (the 2026-10-03 catch).
+            let (pcx, pcz) = (
+                self.player.pos.x.div_euclid(16),
+                self.player.pos.z.div_euclid(16),
+            );
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            let beds_ready = in_world
+                && self.world.chunks.contains_key(&(pcx, pcz))
+                && self
+                    .world
+                    .chunks
+                    .contains_key(&(pcx, (self.player.pos.z.floor() as i32 + 2).div_euclid(16)));
+            if beds_ready {
+                self.e2e_beds();
+                self.e2e_beds_done = true;
+            }
         }
         // Round A: E2E_FKEYS — the function-key contract leg. Stage 0
         // waits for world entry (the captures must show the WORLD, not

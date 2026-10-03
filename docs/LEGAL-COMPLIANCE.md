@@ -127,6 +127,24 @@ spreadsheet open a .xlsx. Rules:
 * CI gate: `ci.yml` runs the audit scanner on every push (wired
   2026-10-01).
 
+### 6a. The owner's study-only reference grants (2026-10-03, restated)
+
+The owner granted READ-ONLY study access to three reference sets, all kept
+OUTSIDE the repository at all times and never copied into it:
+
+1. /home/abhin/Games/Minecraft/versions/ — the vanilla + OptiFine 1.16.5
+   jars (the jar-derived counts, blockstates, loot tables, biome ids).
+2. /home/abhin/Games/Minecraft/mods/1.16.5/ — Sodium and the other mods
+   (optimization TECHNIQUES and mechanic behavior may be studied; no code,
+   no assets, no class/identifier text is ever copied — the engine's own
+   vocabulary and clean-room implementations only).
+3. The owner's real saves (the biome-id ground truth that resolved the
+   audit's wrong row).
+
+The same rules as every reference set: study the idea and the measured
+facts, author the expression; de-brand anything that names a third party;
+the pixel-identity check guards every asset.
+
 ## 7. Distribution notes
 
 * Game mechanics and data (formulas, timings, recipes, registry names) are

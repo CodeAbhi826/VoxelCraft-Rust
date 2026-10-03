@@ -54,10 +54,30 @@ linux-game.yml greps `FKEY CONTRACT OK` + `border-visibility .* VISIBLE
 | Beds: the bed pair RENDER (the head/foot tiles 798-800, facing states) | vc-blocks + vc-render | place a bed -> the head/foot sprites with the correct facing; the sleeping camera |
 | The flint-and-steel: the portal-frame ignition path + the Tools-tab entry | vc-blocks + the game's ignition | right-click a frame interior with the flint-and-steel -> the fire -> the portal fills |
 | Water: the flow machinery (5-tick levels), lava 30/10-tick rates | vc-sim fluids.rs | dig a channel -> the water/lava flow animation matches the rates |
+| The fluids round: the infinite water source, the mixing products (obsidian/cobble/stone), the waterlogged chest overlay, the bubble columns (20gt/5gt, 11/4.9 b/s) | fluids.rs + mesh.rs + the GPU path | two sources -> a new source; lava+water -> obsidian/cobble/stone; a chest in water -> the water overlay renders; soul sand under water -> the upward column drag; magma -> the whirlpool |
 | Weather: the rain/snow/thunder machine + particles + lightning strikes | vc-gameplay weather.rs | force rain -> the rain particles, a thunder strike -> the flash + the fire |
 | Concrete powder solidification (16 colors) | fluids.rs gravity_tick | drop powder into water -> the solid block |
 | XP orbs: attract 7.25, the 2-tick gate, the 6000-tick despawn | vc-sim XpOrbSystem | kill a mob -> the orbs fly to the player, collect |
 | The GUI batch (the container screens were verified ONCE via E2E_CONTAINERS) | vc-render ui.rs | re-run E2E_CONTAINERS on the final binary |
+
+## The texture-pack + shader-pack testing legs (the owner's directive, 2026-10-03)
+
+The engine loads user-supplied packs (read-side interop, §5 of
+docs/LEGAL-COMPLIANCE.md). The testing phase gains two legs (the final tour
++ the release hardening):
+
+1. **The resource-pack leg**: load a USER-supplied pack (the owner's own
+   test pack, never a third-party one) -> the pack's textures/tiles replace
+   the built-ins on the greedy key (the LUT rebuild), a screenshot proves
+   the pack's textures render; an EMPTY/missing pack falls back to the
+   built-ins.
+2. **The shader-pack leg**: load a BSL/SEUS-format shader pack (the
+   owner's own test pack) -> the pack loads or the documented fallback
+   applies; the engine never bundles one.
+
+Both legs run through the same Xvfb recipe (the env-var pattern of the
+E2E_FKEYS/BEDS legs); the pass criteria are the boot verdict lines CI
+greps. The pack CONTENT is never committed to the repo.
 
 ## Known E2E flakiness + its fixes (do not re-learn these)
 

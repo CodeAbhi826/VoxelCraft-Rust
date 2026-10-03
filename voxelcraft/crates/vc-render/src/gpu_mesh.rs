@@ -109,12 +109,14 @@ const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
 // farmland+4 crops, 842..=844 the wheat/bread/hoe item identities),
 // BLOCK_COUNT=531 (ids 507..=530: the farming set + the 16 armor items)
 // Round K (the Nether portal): STATE_COUNT=874 (TNT 863, beds 864..=871,
-// portal+flint 872..=873), BLOCK_COUNT=538 (TNT 533, beds 534/535,
-// portal 536 + flint-and-steel 537)
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=874)
-const L_FL: u32 = 874u;            // lut: block flags           (BLOCK_COUNT=538)
-const L_TC: u32 = 1412u;           // lut: block tint class      (BLOCK_COUNT=538)
-const L_ST: u32 = 1950u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3496)
+// portal+flint 872..=873), BLOCK_COUNT=539 (TNT 533, beds 534/535,
+// portal 536, flint-and-steel 537 + the fluids round: bubble column 538),
+// STATE_COUNT=877 (the fluids round: the waterlogging states 874..=875
+// + the bubble column's dedicated state 876)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=877)
+const L_FL: u32 = 877u;            // lut: block flags           (BLOCK_COUNT=539)
+const L_TC: u32 = 1416u;           // lut: block tint class      (877+539)
+const L_ST: u32 = 1955u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3508)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -170,7 +172,7 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
 fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 873u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 537u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 538u)]; }
 // water level of a STATE: 0 = source, 1..7 = flowing, 255 = not water
 // (port of vc_blocks::blocks::water_level; the flow-state id range
 // 89..=95 is asserted against WATER_FLOW_BASE/END by the Rust-side
@@ -210,7 +212,7 @@ fn face_visible(bf: u32, fnb: u32) -> bool {
 // tint class -> packed tint byte (kind<<6 | slot), port of
 // vc_blocks::tint::block_face_tint_packed's block match
 fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
-    let tc = lut[L_TC + min(b, 537u)];
+    let tc = lut[L_TC + min(b, 538u)];
     var kind = 0u; var slot = 0u;
     if tc == 1u { if top { kind = 1u; slot = biome; } }          // GRASS top
     else if tc == 2u { kind = 1u; slot = biome; }                // TALL_GRASS
@@ -237,14 +239,21 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
     let bs = job_getb(j, cell[0], cell[1], cell[2]);
     let b = sb(bs);
     let fb = fl(b);
-    // AIR / cross / JSON-model states never emit greedy faces
-    if (b == 0u) || ((fb & F_CROSS) != 0u) || (bs >= MODEL_BASE) { return; }
+    // fluids round: the waterlogged container states (874/875) are
+    // dedicated states (never models) — the cell renders BOTH the water
+    // it carries (the fluid path below, level 0) AND the container's own
+    // greedy faces (the fall-through), bit-parity with the CPU mesher's
+    // wlog rule (VERIFIED w/Waterlogging: both occupy the same space)
+    let wlog = (bs == 874u) || (bs == 875u);
+    // AIR / cross / JSON-model states never emit greedy faces (the
+    // waterlogged states pass — they carry the overlay + the container)
+    if (b == 0u) || ((fb & F_CROSS) != 0u) || (bs >= MODEL_BASE && !wlog) { return; }
     var ncell = array<i32, 3>(cell[0], cell[1], cell[2]);
     ncell[d] = ncell[d] + dir;
     let nb = sb(job_getb(j, ncell[0], ncell[1], ncell[2]));
     let fnb = fl(nb);
 
-    if (fb & F_WATER) != 0u || (fb & F_LAVA) != 0u {
+    if (fb & F_WATER) != 0u || (fb & F_LAVA) != 0u || wlog {
         // fluid key: 1 | l<<1 | aw<<6 | bl<<7 | wt<<11 | level<<19
         // T4 fix (2026-10-01): LAVA routes through the water-quad path too
         // (bit-parity with the CPU mesher's `b == WATER || b == LAVA`) —
@@ -255,18 +264,38 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
         // fluid heights) and side faces between different-height water
         // cells become step faces (the taller side renders the shared
         // vertical face) — bit-parity with the CPU mesher's rule.
-        let wl = select(0u, min(water_level_s(bs), 7u), b == B_WATER);
-        var vis = face_visible(fb, fnb);
-        if (b == B_WATER) && (nb == B_WATER) && (d != 1u) {
-            let nbs = job_getb(j, ncell[0], ncell[1], ncell[2]);
-            let nwl = water_level_s(nbs);
+        // fluids round: the waterlogged cell's water is a full source
+        // (level 0, the WATER tint row); the bubble column renders as
+        // water (the biome tint, uniform).
+        let wl = select(0u, min(water_level_s(bs), 7u), (b == B_WATER) && !wlog);
+        // the wlog overlay's tint/vis are the WATER class (the CPU's
+        // tint_b); the bubble column already carries F_WATER
+        let wt_b = select(b, B_WATER, wlog);
+        let is_water = (b == B_WATER) || wlog;
+        var vis = face_visible(fl(wt_b), fnb);
+        // the step-face rule — the CPU's `is_water && (nb == WATER ||
+        // nb == BUBBLE_COLUMN || is_waterlogged_state(nbs)) && d != 1`
+        // (the taller side renders the shared vertical face; the bubble
+        // column IS water in the cull)
+        let nbs2 = job_getb(j, ncell[0], ncell[1], ncell[2]);
+        let nb_wlog = (nbs2 == 874u) || (nbs2 == 875u);
+        if is_water && ((nb == B_WATER) || (nb == 538u) || nb_wlog) && (d != 1u) {
+            let nwl = select(0u, min(water_level_s(nbs2), 7u), nb == B_WATER);
             let above = job_getb(j, cell[0], cell[1] + 1, cell[2]);
             let nabove = job_getb(j, ncell[0], ncell[1] + 1, ncell[2]);
             // T3 fix (2026-10-01): `above`/`nabove` are raw STATE ids —
             // fold to the owning BLOCK id before comparing to `b` (bit-parity
-            // with the CPU mesher's sb() fold)
-            let my_h = fluid_height_w(water_level_s(bs), sb(above) == b);
-            let nb_h = fluid_height_w(nwl, sb(nabove) == b);
+            // with the CPU mesher's sb() fold); the fluids round extends the
+            // full-height arm to the waterlogged/bubble above-cells
+            let my_aw = select(0u, 1u, (sb(above) == b) || (above == 874u) || (above == 875u) || (sb(above) == 538u));
+            let nb_aw = select(0u, 1u, (sb(nabove) == b) || (nabove == 874u) || (nabove == 875u) || (sb(nabove) == 538u));
+            // the step-face my_h uses the UNMIN'D water level (falling
+            // water level 8 renders full height — bit-parity with the
+            // CPU mesher's my_level = water_level(bs); the cull-level
+            // wl above stays min'd to 7 for the greedy key)
+            let my_level = select(0u, water_level_s(bs), (b == B_WATER) && !wlog);
+            let my_h = fluid_height_w(my_level, my_aw);
+            let nb_h = fluid_height_w(nwl, nb_aw);
             vis = my_h > nb_h + 0.0001;
         }
         if vis {
@@ -276,12 +305,17 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
             // T3 fix: fold the raw STATE id before the compare; the aw bit
             // compares to the CELL's own block (b), not B_WATER — bit-parity
             // with the CPU's `sb(above) == b` (a lava cell with lava above
-            // sets aw=1 exactly like the CPU)
-            let aw = select(0u, 1u, sb(above) == b);
-            let wt = tint_packed(b, false, biome_at(j, cell[0], cell[2]));
+            // sets aw=1 exactly like the CPU); the fluids round extends the
+            // arm to the waterlogged/bubble above-cells
+            let aw = select(0u, 1u, (sb(above) == b) || (above == 874u) || (above == 875u) || (sb(above) == 538u));
+            let wt = tint_packed(wt_b, false, biome_at(j, cell[0], cell[2]));
             wmask[t] = 1u | (l << 1u) | (aw << 6u) | (bl << 7u) | (wt << 11u) | (wl << 19u);
         }
-        return;
+        // the waterlogged container's own faces still emit below (the
+        // chest pair is a greedy cube — both quads coexist, vanilla
+        // renders the water in the same block space); every other fluid
+        // cell returns here
+        if !wlog { return; }
     }
     if !face_visible(fb, fnb) { return; }
 

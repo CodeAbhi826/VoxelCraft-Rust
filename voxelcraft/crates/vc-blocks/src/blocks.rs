@@ -12682,8 +12682,10 @@ pub fn face_visible(b: u16, n: u16) -> bool {
         return false;
     }
     if b == WATER {
-        // water visible through non-water, non-opaque neighbors (air, glass, plants)
-        return !is_opaque(n) && n != WATER;
+        // water visible through non-water, non-opaque neighbors (air, glass,
+        // plants); the bubble column IS water (same fluid — vanilla culs the
+        // face, the fluids-round cross-check 2026-10-03)
+        return !is_opaque(n) && n != WATER && n != BUBBLE_COLUMN;
     }
     if b == LAVA {
         // lava culled against lava (T4 fix, 2026-10-01: the old fall-through

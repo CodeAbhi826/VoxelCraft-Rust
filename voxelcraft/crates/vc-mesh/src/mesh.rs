@@ -447,11 +447,13 @@ pub fn mesh_sections(
                                     0 // lava + bubble column: uniform
                                 };
                                 // the fluid level of a raw neighbor state for
-                                // the culling: waterlogged states carry a
-                                // full source (level 0)
-                                let nwl: u16 = if is_waterlogged_state(nbs) {
+                                // the culling: waterlogged states and the
+                                // bubble column carry a full source (level 0 —
+                                // the column IS water, vanilla culs the step
+                                // face; the fluids-round cross-check)
+                                let nwl: u16 = if is_waterlogged_state(nbs) || nb == BUBBLE_COLUMN {
                                     0
-                                } else if nb == WATER || nb == BUBBLE_COLUMN {
+                                } else if nb == WATER {
                                     water_level(nbs).min(7)
                                 } else {
                                     255

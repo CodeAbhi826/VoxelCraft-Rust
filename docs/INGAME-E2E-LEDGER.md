@@ -19,7 +19,7 @@ chmod +x /tmp/vc-e2e/voxelcraft-*linux-x64
 
 # in-game legs under Xvfb (the binary glob is voxelcraft-*linux-x64 —
 # hyphen, not dot):
-E2E_FKEYS=1 xvfb-run -a -s "-screen 0 1280x720x24" ./voxelcraft-*linux-x64 --smoke --debug
+E2E_FKEYS=1 xvfb-run -a -s "-screen 0 1280x720x24" ./voxelcraft-*linux-x64 --smoke --verbose
 E2E_BEDS=1  xvfb-run -a -s "-screen 0 1280x720x24" ./voxelcraft-*linux-x64 --smoke
 E2E_CONTAINERS=1 xvfb-run -a -s "-screen 0 1280x720x24" ./voxelcraft-*linux-x64 --smoke
 ```

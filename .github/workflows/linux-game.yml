@@ -116,7 +116,7 @@ jobs:
           set +e
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
             env WGPU_BACKEND=Vulkan E2E_V114=1 E2E_V115=1 E2E_V116=1 \
-            "./$BIN_NAME" --smoke --debug 2>&1 | tee smoke.log
+            "./$BIN_NAME" --smoke --verbose 2>&1 | tee smoke.log
           CODE=$?
           set -e
           echo "smoke exit code: $CODE"
@@ -128,10 +128,10 @@ jobs:
           grep -q "smoke: title reached" smoke.log
           grep -qE "loading (complete|timeout)" smoke.log
           grep -q "smoke: game entered" smoke.log
-          # --debug regression guard: the raw diagnostic stream engaged and
+          # --verbose regression guard: the raw diagnostic stream engaged and
           # produced its categories (screen transitions, input routing, the
           # 1 Hz perf heartbeat, the exit summary) — the bug-report channel
-          grep -q "raw debug stream enabled (--debug)" smoke.log
+          grep -q "raw debug stream enabled (--verbose)" smoke.log
           grep -q "\[screen\] intro -> title" smoke.log
           grep -q "\[input\] click left down" smoke.log
           grep -q "\[perf\] fps" smoke.log
@@ -198,7 +198,7 @@ jobs:
           set +e
           timeout 120 xvfb-run -a -s "-screen 0 1280x720x24" \
             env WGPU_BACKEND=Vulkan E2E_MENU=1 \
-            "./$BIN_NAME" --smoke --debug 2>&1 | tee menu.log
+            "./$BIN_NAME" --smoke --verbose 2>&1 | tee menu.log
           CODE=$?
           set -e
           echo "menu smoke exit code: $CODE"
@@ -233,7 +233,7 @@ jobs:
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
             env WGPU_BACKEND=Vulkan E2E_CONTAINERS=1 \
             CONTAINER_DUMP_CHEST=run-chest.png CONTAINER_DUMP_FURNACE=run-furnace.png \
-            "./$BIN_NAME" --smoke --debug 2>&1 | tee containers.log
+            "./$BIN_NAME" --smoke --verbose 2>&1 | tee containers.log
           CODE=$?
           set -e
           echo "containers smoke exit code: $CODE"
@@ -291,7 +291,7 @@ jobs:
           set +e
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
             env WGPU_BACKEND=Vulkan E2E_FKEYS=1 \
-            "../$BIN_NAME" --smoke --debug 2>&1 | tee ../smoke-fkeys.log
+            "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-fkeys.log
           CODE=$?
           set -e
           popd >/dev/null

@@ -700,9 +700,8 @@ impl Sim {
                 [(0i32, 0i32), (1, 0), (-1, 0), (0, 1), (0, -1)]
                     .iter()
                     .any(|&(dx, dz)| {
-                        (y + 1..=255).all(|yy| {
-                            !is_opaque(state_block(world.get_state(x + dx, yy as i32, z + dz)))
-                        })
+                        (y + 1..=255)
+                            .all(|yy| !is_opaque(state_block(world.get_state(x + dx, yy, z + dz))))
                     });
             let rain_chance = 0.20 + 0.03 * f32::from(age);
             if reaches && roll() < rain_chance {
@@ -812,9 +811,8 @@ impl Sim {
                 && [(0i32, 0i32), (1, 0), (-1, 0), (0, 1), (0, -1)]
                     .iter()
                     .any(|&(rx, rz)| {
-                        (ty + 1..=255).all(|yy| {
-                            !is_opaque(state_block(world.get_state(tx + rx, yy as i32, z + rz)))
-                        })
+                        (ty + 1..=255)
+                            .all(|yy| !is_opaque(state_block(world.get_state(tx + rx, yy, z + rz))))
                     });
             if !rain_hit && roll() < prob {
                 let _ = world.set_block_state(tx, ty, z, fire_age_state(0));

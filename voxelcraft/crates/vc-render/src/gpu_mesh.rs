@@ -113,10 +113,10 @@ const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
 // portal 536, flint-and-steel 537 + the fluids round: bubble column 538),
 // STATE_COUNT=877 (the fluids round: the waterlogging states 874..=875
 // + the bubble column's dedicated state 876)
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=877)
-const L_FL: u32 = 877u;            // lut: block flags           (BLOCK_COUNT=539)
-const L_TC: u32 = 1416u;           // lut: block tint class      (877+539)
-const L_ST: u32 = 1955u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3508)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=892)
+const L_FL: u32 = 892u;            // lut: block flags           (BLOCK_COUNT=539)
+const L_TC: u32 = 1431u;           // lut: block tint class      (892+539)
+const L_ST: u32 = 1970u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3568)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -171,7 +171,7 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 876u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 891u)]; }
 fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 538u)]; }
 // water level of a STATE: 0 = source, 1..7 = flowing, 255 = not water
 // (port of vc_blocks::blocks::water_level; the flow-state id range

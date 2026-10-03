@@ -415,9 +415,15 @@ pub fn mesh_sections(
                             }
                             let mut ncell = cell;
                             ncell[d] += dir;
-                            let nb = sb(getb(&blocks, ncell[0], ncell[1], ncell[2]));
+                            let nbs = getb(&blocks, ncell[0], ncell[1], ncell[2]);
+                            let nb = sb(nbs);
+                            // fluids round: a waterlogged container cell renders
+                            // BOTH its block (the container, below) and the
+                            // water it carries (the overlay here — VERIFIED
+                            // w/Waterlogging: both occupy the same space)
+                            let wlog = is_waterlogged_state(bs);
 
-                            if b == WATER || b == LAVA {
+                            if b == WATER || b == LAVA || wlog || b == BUBBLE_COLUMN {
                                 // fluids mesh through the water-quad path (§18
                                 // tint: biome water color / the fixed lava slot —
                                 // both in the greedy key so runs never merge).
@@ -428,13 +434,41 @@ pub fn mesh_sections(
                                 // flowing water descends (8−l)/9 like vanilla
                                 // instead of every cell showing the 14/16
                                 // source slab. LAVA stays level-0 (uniform).
-                                let wl: u64 = if b == WATER {
-                                    water_level(bs).min(7) as u64
-                                } else {
+                                // The waterlogged cell's water takes the
+                                // WATER tint/culling and level 0 (a full
+                                // source); the bubble column renders as
+                                // water (the biome tint, uniform).
+                                let tint_b = if wlog { WATER } else { b };
+                                let my_level: u16 = if wlog {
                                     0
+                                } else if b == WATER {
+                                    water_level(bs)
+                                } else {
+                                    0 // lava + bubble column: uniform
                                 };
-                                let mut vis = face_visible(b, nb);
-                                if b == WATER && nb == WATER && d != 1 {
+                                // the fluid level of a raw neighbor state for
+                                // the culling: waterlogged states carry a
+                                // full source (level 0)
+                                let nwl: u16 = if is_waterlogged_state(nbs) {
+                                    0
+                                } else if nb == WATER || nb == BUBBLE_COLUMN {
+                                    water_level(nbs).min(7)
+                                } else {
+                                    255
+                                };
+                                let is_water = b == WATER || wlog;
+                                let wl: u64 = my_level.min(7) as u64;
+                                let mut vis = if wlog || b == WATER {
+                                    face_visible(WATER, nb)
+                                } else {
+                                    face_visible(b, nb)
+                                };
+                                if is_water
+                                    && (nb == WATER
+                                        || nb == BUBBLE_COLUMN
+                                        || is_waterlogged_state(nbs))
+                                    && d != 1
+                                {
                                     // step faces between different-height
                                     // water cells: the TALLER side renders
                                     // the shared vertical face (vanilla
@@ -442,8 +476,6 @@ pub fn mesh_sections(
                                     // previously all water-water side faces
                                     // were culled, leaving see-through gaps
                                     // at every step once heights diverged)
-                                    let nbs = getb(&blocks, ncell[0], ncell[1], ncell[2]);
-                                    let nwl = water_level(nbs);
                                     let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
                                     let nabove = getb(&blocks, ncell[0], ncell[1] + 1, ncell[2]);
                                     // T3 fix (2026-10-01): `above` is a raw
@@ -453,8 +485,18 @@ pub fn mesh_sections(
                                     // WATER BLOCK id, so flowing-water states
                                     // 89..=95 never matched and the
                                     // full-height-column arm never fired)
-                                    let my_h = fluid_height(water_level(bs), sb(above) == b);
-                                    let nb_h = fluid_height(nwl, sb(nabove) == b);
+                                    let my_h = fluid_height(
+                                        my_level,
+                                        sb(above) == b
+                                            || is_waterlogged_state(above)
+                                            || sb(above) == BUBBLE_COLUMN,
+                                    );
+                                    let nb_h = fluid_height(
+                                        nwl,
+                                        sb(nabove) == b
+                                            || is_waterlogged_state(nabove)
+                                            || sb(nabove) == BUBBLE_COLUMN,
+                                    );
                                     vis = my_h > nb_h + 1e-4;
                                 }
                                 if vis {
@@ -464,9 +506,16 @@ pub fn mesh_sections(
                                     // T3 fix (2026-10-01): fold the raw STATE
                                     // id to the owning BLOCK id before the
                                     // compare (see the height-compare note)
-                                    let aw = if sb(above) == b { 1u64 } else { 0u64 };
+                                    let aw = if sb(above) == b
+                                        || is_waterlogged_state(above)
+                                        || sb(above) == BUBBLE_COLUMN
+                                    {
+                                        1u64
+                                    } else {
+                                        0u64
+                                    };
                                     let wt = vc_blocks::tint::block_face_tint_packed(
-                                        b,
+                                        tint_b,
                                         false,
                                         biome_at(cell[0] as usize, cell[2] as usize),
                                     ) as u64;
@@ -477,7 +526,13 @@ pub fn mesh_sections(
                                         | (wt << 11)
                                         | (wl << 19);
                                 }
-                                continue;
+                                if !wlog {
+                                    continue;
+                                }
+                                // the waterlogged container's own faces still
+                                // emit below (the chest pair is a greedy cube —
+                                // both quads coexist, vanilla renders the water
+                                // in the same block space)
                             }
 
                             if !face_visible(b, nb) {

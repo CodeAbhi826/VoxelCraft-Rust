@@ -63,6 +63,14 @@ impl TickScope {
     }
 }
 
+/// the fire tick's cadence: the random-tick MEAN at randomTickSpeed 3 —
+/// 4096/3 ticks = 1365.3 (68.25 s at the 20 Hz; VERIFIED w/Tick: "random
+/// ticks ... 3 per chunk section per game tick, each block a 1/4096
+/// chance" — the expected ticks per block-tick is 4096/3). The
+/// deterministic scheduled tick is the documented adaptation of the
+/// nondeterministic random tick (the SAME mean cadence).
+pub const FIRE_TICK_RATE: u64 = 1365;
+
 pub struct Sim {
     pub sched: TickScheduler,
     random: RandomTicker,
@@ -792,7 +800,7 @@ impl Sim {
             // 2-arg get_biome: the biome is a per-column value)
             let biome = world.get_biome(tx, z);
             let halved = matches!(
-                biome,
+                vc_world::gen::Biome::from_u8(biome),
                 vc_world::gen::Biome::Jungle | vc_world::gen::Biome::Swamp
             );
             let deg = f32::from(ignite) + 7.0 * d + 40.0;

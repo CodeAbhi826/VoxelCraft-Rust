@@ -337,6 +337,26 @@ jobs:
           grep -q "e2e: beds VERDICT OK" smoke-beds.log || { echo "FAIL: the beds E2E verdict is not OK (the flags line above shows which gate failed)"; exit 1; }
           echo "BEDS OK - the sleep gates verified in-game (monster/window/distance refusals, the night skip, the respawn arm)"
 
+          # Fluids round: the in-game fluids leg (E2E_FLUIDS=1) — the REAL
+          # fluid ticks through the sim's scheduler (the infinite water
+          # source, the lava/water mixing product, the bubble column, the
+          # waterlogged chest). The VERDICT line is the gated contract.
+          mkdir -p run5 && pushd run5 >/dev/null
+          set +e
+          timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan E2E_FLUIDS=1 \
+            "../$BIN_NAME" --smoke 2>&1 | tee ../smoke-fluids.log
+          CODE=$?
+          set -e
+          popd >/dev/null
+          echo "fluids smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: fluids E2E exited $CODE"
+            exit 1
+          fi
+          grep -q "e2e: fluids VERDICT OK" smoke-fluids.log || { echo "FAIL: the fluids E2E verdict is not OK (the flags line above shows which scenario failed)"; exit 1; }
+          echo "FLUIDS OK - the fluid rules verified in-game (the infinite source, the mixing product, the bubble column, the waterlogged chest)"
+
           echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 
       - name: Upload artifact (the raw executable, no archive)

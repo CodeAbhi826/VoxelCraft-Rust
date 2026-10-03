@@ -171,7 +171,7 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 873u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 876u)]; }
 fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 538u)]; }
 // water level of a STATE: 0 = source, 1..7 = flowing, 255 = not water
 // (port of vc_blocks::blocks::water_level; the flow-state id range
@@ -287,8 +287,8 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
             // fold to the owning BLOCK id before comparing to `b` (bit-parity
             // with the CPU mesher's sb() fold); the fluids round extends the
             // full-height arm to the waterlogged/bubble above-cells
-            let my_aw = select(0u, 1u, (sb(above) == b) || (above == 874u) || (above == 875u) || (sb(above) == 538u));
-            let nb_aw = select(0u, 1u, (sb(nabove) == b) || (nabove == 874u) || (nabove == 875u) || (sb(nabove) == 538u));
+            let my_aw = (sb(above) == b) || (above == 874u) || (above == 875u) || (sb(above) == 538u);
+            let nb_aw = (sb(nabove) == b) || (nabove == 874u) || (nabove == 875u) || (sb(nabove) == 538u);
             // the step-face my_h uses the UNMIN'D water level (falling
             // water level 8 renders full height — bit-parity with the
             // CPU mesher's my_level = water_level(bs); the cull-level
@@ -307,7 +307,7 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
             // with the CPU's `sb(above) == b` (a lava cell with lava above
             // sets aw=1 exactly like the CPU); the fluids round extends the
             // arm to the waterlogged/bubble above-cells
-            let aw = select(0u, 1u, (sb(above) == b) || (above == 874u) || (above == 875u) || (sb(above) == 538u));
+            let aw = (sb(above) == b) || (above == 874u) || (above == 875u) || (sb(above) == 538u);
             let wt = tint_packed(wt_b, false, biome_at(j, cell[0], cell[2]));
             wmask[t] = 1u | (l << 1u) | (aw << 6u) | (bl << 7u) | (wt << 11u) | (wl << 19u);
         }
@@ -707,7 +707,10 @@ fn build_lut() -> Vec<u32> {
         if is_opaque(id) {
             flags |= 1; // F_OPAQUE
         }
-        if id == WATER {
+        if id == WATER || id == BUBBLE_COLUMN {
+            // fluids round: the bubble column IS water (the same fluid
+            // class — the F_WATER flag drives the water-quad path and
+            // the same-cull, mirroring the Rust face_visible water arm)
             flags |= 2; // F_WATER
         }
         if id == LEAVES || id == BIRCH_LEAVES || id == SPRUCE_LEAVES {

@@ -2621,6 +2621,63 @@ pub fn is_r13_state(s: u16) -> bool {
 pub const NETHER_PORTAL_STATE: u16 = 872;
 pub const FLINT_AND_STEEL_STATE: u16 = 873;
 
+// ---------------------------------------------------------------------------
+// fluids round (2026-09-25): waterlogging + bubble columns
+// ---------------------------------------------------------------------------
+// The waterlogging states (874..=875): one dedicated state per
+// waterloggable CONTAINER block, the chest pair — a waterlogged cell
+// carries a full water source (level 0) in the same block space
+// (VERIFIED w/Waterlogging: "Waterlogging is the mechanic that allows
+// non-cube blocks ... to be filled with a water source block. Both the
+// non-cube block and the water source block occupy the same space").
+// The dedicated states fold to their container block everywhere block
+// ids are expected (the bed-window pattern). Vanilla waterlogging is
+// orthogonal to every other property; the engine's variant pins the
+// container's default state (the chest pair has no other properties).
+pub const CHEST_WATERLOGGED_STATE: u16 = 874;
+pub const TRAPPED_CHEST_WATERLOGGED_STATE: u16 = 875;
+
+/// true if this STATE is a waterlogged container (the container renders
+/// and the water tick treats the cell as a full source)
+#[inline]
+pub fn is_waterlogged_state(s: u16) -> bool {
+    s == CHEST_WATERLOGGED_STATE || s == TRAPPED_CHEST_WATERLOGGED_STATE
+}
+
+/// the waterlogged state for a container block (None = not waterloggable)
+#[inline]
+pub fn waterlogged_state(block: u16) -> Option<u16> {
+    match block {
+        CHEST => Some(CHEST_WATERLOGGED_STATE),
+        TRAPPED_CHEST => Some(TRAPPED_CHEST_WATERLOGGED_STATE),
+        _ => None,
+    }
+}
+
+/// true if this BLOCK id has a waterlogged variant (the water tick's
+/// flowable-target set — the engine's core interactable container pair;
+/// slab/stairs/fence waterlogging is a documented trim: their states
+/// live in the JSON-model dispatch, which would need per-state model
+/// entries — future work)
+#[inline]
+pub fn is_waterloggable_container(b: u16) -> bool {
+    b == CHEST || b == TRAPPED_CHEST
+}
+
+/// the bubble column block (id 538 — soul sand under a water source
+/// column → upward column, magma → whirlpool; VERIFIED w/Bubble_column,
+/// live 2026-09-25: "created by magma blocks and soul sand and ...
+/// will either pull entities downward or push them upward"). Not
+/// obtainable as an item (no picker entry); renders through the water
+/// quad path (the F_WATER flag class) with the biome water tint.
+pub const BUBBLE_COLUMN: u16 = 538;
+/// The bubble column block's dedicated state: the identity fallthrough
+/// (538) lands inside the glazed-terracotta facing window (529..=592 —
+/// the same collision class as the TNT/book/grindstone fixes above),
+/// so the bubble column takes the next free state above the
+/// waterlogging states (874..=875).
+pub const BUBBLE_COLUMN_STATE: u16 = 876;
+
 /// 1.16: is this STATE the nether-portal block? (the dedicated state
 /// folds to NETHER_PORTAL; a raw 536 is a glazed-terracotta facing
 /// state — the is_soul_fire pattern. Block-id comparisons use
@@ -3456,10 +3513,11 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 538; // + the backlog fire (506) + the farming set (507-514: farmland, 4
+pub const BLOCK_COUNT: usize = 539; // + the backlog fire (506) + the farming set (507-514: farmland, 4
                                     // crops, wheat, bread, hoe) + the 16 armor items (515-530,
                                     // sub-round 3) + the TNT round: the TNT block (533)
                                     // + the beds round: the bed's two halves (534/535)
+                                    // + the fluids round: the bubble column (538)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -3493,11 +3551,13 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 874; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
+pub const STATE_COUNT: usize = 877; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
                                     // states + the V17 armor identity window (845..=860, sub-round 3)
                                     // + Round 13's BOOK/GRINDSTONE identity states (861..=862)
                                     // + the TNT round: TNT's dedicated state (863)
                                     // + the beds round: the bed state window (864..=871)
+                                    // + the fluids round: the waterlogging states (874..=875)
+                                    // + the bubble column's dedicated state (876)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -3819,6 +3879,12 @@ pub fn default_state(b: u16) -> u16 {
         // (the R13 pattern — see NETHER_PORTAL_STATE)
         NETHER_PORTAL => NETHER_PORTAL_STATE,
         FLINT_AND_STEEL => FLINT_AND_STEEL_STATE,
+        // fluids round: the bubble column's dedicated state (the identity
+        // 538 collides with the glazed-terracotta facing window — see
+        // BUBBLE_COLUMN_STATE). The waterlogging states are never default
+        // states: a container places dry and the waterlog path writes the
+        // waterlogged variant.
+        BUBBLE_COLUMN => BUBBLE_COLUMN_STATE,
         // beds round: the fresh-bed default — facing 0 (north, the
         // glazed-terracotta convention; the placement path writes the
         // player-facing state)
@@ -4223,6 +4289,12 @@ pub fn state_block(s: u16) -> u16 {
         // Round K: the nether-portal + flint-and-steel identity states
         NETHER_PORTAL_STATE => return NETHER_PORTAL,
         FLINT_AND_STEEL_STATE => return FLINT_AND_STEEL,
+        // fluids round: the waterlogging states fold to their container
+        // (the bed-window pattern) and the bubble column's dedicated
+        // state folds to its block
+        CHEST_WATERLOGGED_STATE => return CHEST,
+        TRAPPED_CHEST_WATERLOGGED_STATE => return TRAPPED_CHEST,
+        BUBBLE_COLUMN_STATE => return BUBBLE_COLUMN,
         // beds round: the bed window folds per half (0..3 foot, 4..7 head)
         s if is_bed_state(s) => {
             return BED_STATE_TO_BLOCK[(s - BED_STATE_BASE) as usize];
@@ -12540,6 +12612,24 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
         0,
         SoundFamily::Gravel,
     ),
+    // fluids round: the bubble column — soul sand under a water source
+    // column → upward column, magma → whirlpool (VERIFIED w/Bubble_
+    // column, live 2026-09-25). Not obtainable as an item (no picker
+    // entry — vanilla's bubble_column block is command-placed only);
+    // fluid: true → meshes through the water quad path (the F_WATER
+    // flag class), non-solid (entities pass through), the biome water
+    // tint. Rendered as water — the vanilla air-bubble particles are
+    // future work (disclosed).
+    d(
+        "Bubble Column",
+        [TILE_WATER, TILE_WATER, TILE_WATER],
+        false,
+        false,
+        false,
+        true,
+        0,
+        SoundFamily::Water,
+    ),
 ];
 
 #[inline]
@@ -12614,6 +12704,12 @@ pub fn face_visible(b: u16, n: u16) -> bool {
         // meeting the obsidian; portal-portal interior boundaries cull
         // — vanilla's cullface annotations, the lava T4 same-cull class)
         return !is_opaque(n) && n != NETHER_PORTAL;
+    }
+    if b == BUBBLE_COLUMN {
+        // fluids round: the bubble column is water-shaped — same-cull
+        // against water and other bubble-column cells (the water T3
+        // class), visible through non-opaque non-water neighbors
+        return !is_opaque(n) && n != WATER && n != BUBBLE_COLUMN;
     }
     // fully opaque blocks
     !is_opaque(n)
@@ -13483,7 +13579,7 @@ mod creative_tab_tests {
         // the 16 ids are contiguous 515..=530 and past the old registry
         assert_eq!(LEATHER_CAP, 515);
         assert_eq!(DIAMOND_BOOTS, 530);
-        assert_eq!(BLOCK_COUNT, 538);
+        assert_eq!(BLOCK_COUNT, 539);
         for b in LEATHER_CAP..=DIAMOND_BOOTS {
             // every armor item is an inventory-only item block
             assert!(is_item_block(b), "armor {b} must be an item block");
@@ -14062,6 +14158,12 @@ mod state_tests {
                 || is_bed_state(s)
                 || s == NETHER_PORTAL_STATE
                 || s == FLINT_AND_STEEL_STATE
+                // fluids round: the waterlogging states fold to their
+                // container block (the bed-window pattern) and the bubble
+                // column's dedicated state folds to its block — never
+                // model states
+                || is_waterlogged_state(s)
+                || s == BUBBLE_COLUMN_STATE
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(
@@ -14249,6 +14351,25 @@ mod state_tests {
                     );
                     assert_eq!(default_state(b), s, "r13 state {s} roundtrip");
                 }
+                // fluids round: the waterlogging states fold to their
+                // container block (never a default state — a container
+                // places dry and the waterlog path writes the waterlogged
+                // variant); the bubble column's dedicated state roundtrips
+                if is_waterlogged_state(s) {
+                    assert_eq!(
+                        state_block(s),
+                        if s == CHEST_WATERLOGGED_STATE {
+                            CHEST
+                        } else {
+                            TRAPPED_CHEST
+                        },
+                        "waterlogged state {s} folds to its container"
+                    );
+                }
+                if s == BUBBLE_COLUMN_STATE {
+                    assert_eq!(state_block(s), BUBBLE_COLUMN, "bubble column fold");
+                    assert_eq!(default_state(BUBBLE_COLUMN), s, "bubble column roundtrip");
+                }
                 continue;
             }
             let Some((b, props)) = prop_state_decode(s) else {
@@ -14424,8 +14545,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 538, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone + the TNT block");
-        assert_eq!(STATE_COUNT, 874, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities");
+        assert_eq!(BLOCK_COUNT, 539, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone + the TNT block");
+        assert_eq!(STATE_COUNT, 877, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -14476,8 +14597,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 538); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 874); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 539); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 877); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
     }
 
     /// magma emits light level 3 (VERIFIED — reference wiki /Magma_Block,
@@ -14517,8 +14638,8 @@ mod auditfix_tests {
             );
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 538); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 874); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 539); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 877); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // solidity classes: log/planks solid-opaque (hardness family 2
                                       // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
                                       // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -14576,8 +14697,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 538); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 874); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 539); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 877); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_CLEAVER), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -14706,8 +14827,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 538);
-        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(STATE_COUNT, 877); // + the Round-13 station identities (861..=862)
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -14872,8 +14993,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 538);
-        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(STATE_COUNT, 877); // + the Round-13 station identities (861..=862)
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -15007,8 +15128,8 @@ mod v114_tests {
         );
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 538);
-        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(STATE_COUNT, 877); // + the Round-13 station identities (861..=862)
     }
 }
 
@@ -15108,8 +15229,8 @@ mod v115_tests {
         );
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
-        assert_eq!(BLOCK_COUNT, 538);
-        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(STATE_COUNT, 877); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 471);
     }
 }
@@ -15274,8 +15395,8 @@ mod v116_tests {
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
-        assert_eq!(BLOCK_COUNT, 538);
-        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(STATE_COUNT, 877); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 471);
     }
 
@@ -15469,8 +15590,8 @@ mod v116_tests {
         // spawner states)
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
-        assert_eq!(BLOCK_COUNT, 538);
-        assert_eq!(STATE_COUNT, 874); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(STATE_COUNT, 877); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 471);
     }
 
@@ -15742,8 +15863,8 @@ mod tnt_tests {
         // the picker carries it (the Redstone tab)
         assert!(PICKER_BLOCKS.contains(&TNT), "picker missing TNT");
         assert_eq!(creative_tab(TNT), CreativeTab::Redstone);
-        assert_eq!(BLOCK_COUNT, 538);
-        assert_eq!(STATE_COUNT, 874);
+        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(STATE_COUNT, 877);
         // the per-state tiles fold to the same three faces (the HUD/hotbar
         // blit path through state_tiles's fallback)
         assert_eq!(

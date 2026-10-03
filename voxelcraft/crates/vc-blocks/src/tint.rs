@@ -222,6 +222,9 @@ pub fn block_face_tint_packed(block: u16, top_face: bool, biome: u8) -> u8 {
         WATER => pack(KIND_WATER, biome),
         // Phase E2: fixed lava color (not biome-tinted)
         LAVA => pack(KIND_WATER, SLOT_LAVA),
+        // fluids round: the bubble column takes the WATER tint (the
+        // biome slot — the column renders as water)
+        BUBBLE_COLUMN => pack(KIND_WATER, biome),
         _ => TINT_NONE,
     }
 }
@@ -245,6 +248,8 @@ pub fn block_tint_color(block: u16, biome: u8) -> [f32; 3] {
         SPRUCE_LEAVES => rgb(SPRUCE_COLOR),
         ACACIA_LEAVES | DARK_OAK_LEAVES => foliage_color(biome),
         WATER => water_color(biome),
+        // fluids round: the bubble column — the biome water color
+        BUBBLE_COLUMN => water_color(biome),
         _ => [1.0, 1.0, 1.0],
     }
 }

@@ -132,12 +132,14 @@ spreadsheet open a .xlsx. Rules:
 The owner granted READ-ONLY study access to three reference sets, all kept
 OUTSIDE the repository at all times and never copied into it:
 
-1. /home/abhin/Games/Minecraft/versions/ — the vanilla + OptiFine 1.16.5
-   jars (the jar-derived counts, blockstates, loot tables, biome ids).
-2. /home/abhin/Games/Minecraft/mods/1.16.5/ — Sodium and the other mods
-   (optimization TECHNIQUES and mechanic behavior may be studied; no code,
-   no assets, no class/identifier text is ever copied — the engine's own
-   vocabulary and clean-room implementations only).
+1. The owner's local `versions/` directory (the study-only reference
+   set) — the vanilla + OptiFine 1.16.5 jars (the jar-derived counts,
+   blockstates, loot tables, biome ids).
+2. The owner's local `mods/1.16.5/` directory (the study-only reference
+   set) — Sodium and the other mods (optimization TECHNIQUES and mechanic
+   behavior may be studied; no code, no assets, no class/identifier text
+   is ever copied — the engine's own vocabulary and clean-room
+   implementations only).
 3. The owner's real saves (the biome-id ground truth that resolved the
    audit's wrong row).
 

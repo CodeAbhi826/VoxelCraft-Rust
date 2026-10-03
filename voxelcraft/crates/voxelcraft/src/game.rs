@@ -14491,7 +14491,7 @@ impl GameApp {
             self.test_place(STONE, c[0], c[1], c[2]);
         }
         let mut ok = true;
-        let mut check = |cond: &mut bool, pass: bool, what: &str| {
+        let check = |cond: &mut bool, pass: bool, what: &str| {
             if !pass {
                 *cond = false;
                 vc_render::render::report_boot_log(&format!("e2e: fluids FAIL {what}"));

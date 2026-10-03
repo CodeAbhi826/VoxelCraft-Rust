@@ -334,7 +334,8 @@ pub fn lava_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z
                 .iter()
                 .any(|&(dx, dz)| water_at(world, x + dx, y, z + dz).is_some());
         if touches {
-            world.set_block_state(x, y, z, default_state(COBBLESTONE));
+            // the engine's cobblestone block id is COBBLE (4)
+            world.set_block_state(x, y, z, default_state(COBBLE));
             on_block_changed(sched, world, x, y, z);
             return;
         }

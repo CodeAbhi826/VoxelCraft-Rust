@@ -2666,7 +2666,7 @@ pub fn fire_age_state(age: u8) -> u16 {
     if age == 0 {
         V16_STATE_BASE
     } else {
-        FIRE_AGE_BASE + age.saturating_sub(1).min(14)
+        FIRE_AGE_BASE + u16::from(age.saturating_sub(1).min(14))
     }
 }
 

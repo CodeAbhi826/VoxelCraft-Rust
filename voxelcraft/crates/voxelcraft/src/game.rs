@@ -1729,6 +1729,13 @@ pub struct GameApp {
     /// would differ by whole new chunks and mask the border signal)
     e2e_fkeys_last_chunks: u32,
     e2e_fkeys_stable: u32,
+    /// T5 contract (2026-10-03): the day clock freezes while the ladder is
+    /// mid-capture — the day advance + the async sky-light recompute
+    /// change the yellow-ish pixel count between the borders-ON and
+    /// borders-OFF captures (one run measured margin 834, the next 51 —
+    /// the same binary, the pollution is the per-frame light change), so
+    /// both captures must see the SAME light
+    e2e_fkeys_freeze_day: bool,
     /// smoke stage 3: the in-game click fired once
     smoke_clicked_ingame: bool,
     /// smoke stage 3: game-entry time (F3_DUMP holds gameplay ~2 s)
@@ -3018,6 +3025,7 @@ impl GameApp {
             e2e_fkeys_behind_on_px: None,
             e2e_fkeys_last_chunks: u32::MAX,
             e2e_fkeys_stable: 0,
+            e2e_fkeys_freeze_day: false,
             edits: 0,
             stats_t: 0.0,
             pointer_locked: false,
@@ -14517,6 +14525,10 @@ impl GameApp {
         self.screen = saved_screen;
         self.e2e_fkeys_ok &= ok;
         self.e2e_fkeys_stage = 1;
+        // the day clock freezes from here through the verdict (the two
+        // captures must see the SAME light — the E2E contract's margin
+        // flake was the per-frame light change)
+        self.e2e_fkeys_freeze_day = true;
         // Stay on Game for the capture frames (the auto-pause below fires
         // only on a Focused(false) EVENT, which already happened; being
         // on Pause would put menu blur + a first-person camera into the
@@ -14568,6 +14580,9 @@ impl GameApp {
             // restore: first-person, borders off (the leg armed them)
             self.debug_chunks = false;
             self.camera_mode = 0;
+            // the day clock unfreezes (the leg is done — the process exits
+            // below, the flag resets for the guard's cleanliness)
+            self.e2e_fkeys_freeze_day = false;
             let all = self.e2e_fkeys_ok;
             vc_render::render::report_boot_log(&format!(
                 "e2e: fkeys both views captured — FKEY CONTRACT {}",
@@ -14961,7 +14976,12 @@ impl GameApp {
 
     fn update(&mut self, dt: f32) {
         self.time += dt;
-        self.day_time = (self.day_time + dt / DAY_LEN_SECS).max(0.0) % 1.0;
+        // T5 contract: the day clock freezes while the FKEYS ladder is
+        // mid-capture (the E2E capture must see the SAME light in both
+        // frames — see e2e_fkeys_freeze_day)
+        if !self.e2e_fkeys_freeze_day {
+            self.day_time = (self.day_time + dt / DAY_LEN_SECS).max(0.0) % 1.0;
+        }
         // 1.15 (Buzzy Bees): the day flag for the sim — day_time 0..=0.5
         // is the sun-up half of the cycle (sun_dir.y > 0 at noon; the
         // bees' night-return + the hives' day-release gate)

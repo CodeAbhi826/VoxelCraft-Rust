@@ -246,3 +246,41 @@ disclosed, not a violation.
 - No plan-of-record rewrite yet (MASTER-PLAN update happens when all four
   review agents have reported).
 - No force-push, no branch switch, no CI job removals.
+
+## 8. Addendum — 2026-10-02 catches (Phase 3 execution)
+
+Found while landing the Round K (nether portal) + TNT + beds rounds; each
+caught from a CI failure, each fixed on the branch (all 6 gates green at
+d605f0e, run 37058504683):
+
+- FIXED | portal.rs:355 | The portal search double-folded: state_block(
+  chunk.get(...)) — Chunk::get already folds to the owning block id, so the
+  portal's state 872 went to 536 (the glazed-terracotta class) and never
+  matched; the game's live portal search was dead. Production bug, caught
+  by the round's own test.
+- FIXED | entities.rs tick() | The primed-TNT collision probe treated pos
+  as the CENTER on Y (extremes pos ± 0.49) while the render is
+  BOTTOM-anchored — the entity floated ~0.5 above the floor; the Y probe
+  now spans [target, target + 0.98].
+- FIXED | entities.rs flash_bright | The flash phase used the in-tick age
+  (incremented before the read) — the bright phase flipped one tick early;
+  now folds the completed ticks.
+- FIXED | sleep.rs window_contains | The f32 day-fraction roundtrip
+  (12523/24000 · 24000 = 12522.999...) fell below the inclusive wiki bound;
+  the product now snaps to the tick.
+- OPEN — the same double-fold class (verify the accessor, then fix):
+  * world.rs:456 apply_gen_edit — state_block(old.get(...)) where old is
+    Arc<Chunk> (Chunk::get folds): benign for the tree-canopy
+    LEAVES/OAK_LOG path today, latent aliasing for any other id.
+  * game.rs:1141-1152 the occlusion scan — state_block(c.get(...)) where c
+    is a Chunk (folds): the is_opaque verdict is aliased for states >= 256
+    whose owning block id lands in another block's state window.
+  * Rule of thumb going forward: Chunk::get returns the BLOCK id — a
+    second fold is always wrong; Section::get returns the raw state — a
+    fold is required there.
+- OPEN (from the compacted ledger, restated): World::map_coords truncating
+  division (vanilla floor-toward-negative-infinity); EMERALD_BLOCK absent
+  from the registry (T12); vanilla shade:false unimplemented (T13,
+  CompiledFace.shade dead data); the Nether lava sea; death in the
+  Nether/End does not travel back to the Overworld; InhabitedTime stub;
+  bits_for 8-bit cap.

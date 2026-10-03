@@ -1774,16 +1774,16 @@ pub struct GameApp {
     last_ui_t: f32,
     last_frame_t: f32,
     last_draw_t: f32,
-    /// --debug [input] detector: game-time of the LAST CursorMoved (the
+    /// --verbose [input] detector: game-time of the LAST CursorMoved (the
     /// click-vs-motion gap — a click whose cursor position predates a
     /// live-canvas resize / GUI-scale change lands in a STALE coordinate
     /// space and mis-hits; this field makes that visible in the stream)
     last_cursor_move_t: f32,
-    /// --debug [input] detector: game-time of the last UI-canvas size
+    /// --verbose [input] detector: game-time of the last UI-canvas size
     /// change (resize / GUI scale flip). A click between a canvas resize
     /// and the next CursorMoved uses cached coords from the OLD space.
     last_canvas_resize_t: f32,
-    /// --debug [gfx]: the screen whose widget table was last dumped —
+    /// --verbose [gfx]: the screen whose widget table was last dumped —
     /// refresh_widgets fires on every slider DRAG motion (drag →
     /// apply_slider → after_settings_change → refresh_widgets), so the
     /// verbose widget-table dump is gated to a screen change (rects
@@ -1792,7 +1792,7 @@ pub struct GameApp {
     fps: f32,
     frames: u32,
     fps_t: f32,
-    /// --debug: 1 Hz cadence accumulator for the [perf] summary line
+    /// --verbose: 1 Hz cadence accumulator for the [perf] summary line
     dbg_t: f32,
     /// rolling 100-frame window: min / avg / max fps + last frame ms
     fps_min: f32,
@@ -2563,7 +2563,7 @@ impl GameApp {
             std::sync::atomic::Ordering::Relaxed,
         );
         let t_renderer = t_boot.elapsed() - t_pack;
-        // --debug [gfx]: the boot graphics identity — the coordinate spaces
+        // --verbose [gfx]: the boot graphics identity — the coordinate spaces
         // every later input event maps through (surface px, scale factor,
         // resolved GUI scale, live canvas) in ONE line, so a report that
         // starts mid-session can still be anchored
@@ -3203,7 +3203,7 @@ impl GameApp {
         match event {
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::CloseRequested => {
-                    // --debug: the exit summary a bug report ends on
+                    // --verbose: the exit summary a bug report ends on
                     self.dbg_exit_summary();
                     #[cfg(not(target_arch = "wasm32"))]
                     if self.bench.is_none() {
@@ -3212,7 +3212,7 @@ impl GameApp {
                     elwt.exit();
                 }
                 WindowEvent::Resized(size) => {
-                    // --debug [gfx]: the surface geometry flip (every input
+                    // --verbose [gfx]: the surface geometry flip (every input
                     // coordinate maps through this)
                     vc_render::render::report_debug_log(
                         "gfx",
@@ -3317,7 +3317,7 @@ impl GameApp {
                 #[cfg(not(target_arch = "wasm32"))]
                 WindowEvent::CursorMoved { position, .. } => {
                     let (ux, uy) = self.phys_to_ui(position.x as f32, position.y as f32);
-                    // --debug [input]: pointer-motion tracking — the anchor
+                    // --verbose [input] derived: pointer-motion tracking — the anchor
                     // every later click is validated against (see
                     // last_cursor_move_t / the menu click trace). Only the
                     // UI-space position + hover state, at motion-changed
@@ -4655,7 +4655,7 @@ impl GameApp {
         cx: i32,
         cy: i32,
     ) {
-        // --debug: every click routed — button, state, screen, canvas
+        // --verbose: every click routed — button, state, screen, canvas
         // coords + what is under it. MENUS: the richer one-line trace
         // lives in menu_mouse (widget id/kind/label + hover cross-check
         // + cursor age) — this summary only fires for the game-family
@@ -4745,7 +4745,7 @@ impl GameApp {
         if pressed {
             self.unlock_audio();
             if let Some(w) = self.widgets.iter().find(|w| w.hit(x, y)) {
-                // --debug [input] menu-activation trace: the exact chain a
+                // --verbose [input] derived menu-activation trace: the exact chain a
                 // menu click drives — widget id/kind/label/enabled, the
                 // hover state AT CLICK TIME (a hover≠hit mismatch means the
                 // painted highlight and the hit-test table disagree — the
@@ -4819,7 +4819,7 @@ impl GameApp {
                     }
                 }
             } else {
-                // --debug: the no-sound case — the click landed OUTSIDE
+                // --verbose: the no-sound case — the click landed OUTSIDE
                 // every widget rect (the other half of the "sometimes no
                 // sound, nothing opens" report: coordinates that miss the
                 // painted buttons entirely)
@@ -4948,7 +4948,7 @@ impl GameApp {
     // ------------------------------------------------------ screen flow --
 
     fn set_screen(&mut self, screen: Screen) {
-        // --debug: every screen transition (the boot flow + menu tree in
+        // --verbose: every screen transition (the boot flow + menu tree in
         // the raw log — the first thing a bug report wants)
         vc_render::render::report_debug_log(
             "screen",
@@ -5324,7 +5324,7 @@ impl GameApp {
         }
     }
 
-    /// --debug [perf] line: fps envelope, frame/sim ms, chunk pipeline
+    /// --verbose [perf] line: fps envelope, frame/sim ms, chunk pipeline
     /// depths, mob count — the steady-state heartbeat for bug reports.
     /// Phase 3: queue icons for every item the CURRENT screen can show
     /// (hotbar 9 + open-container slots + visible picker window). The
@@ -5429,7 +5429,38 @@ impl GameApp {
         )
     }
 
-    /// --debug [gfx] 1 Hz line (2026-09-20): the UI/render pipeline
+    /// --verbose [sim] 1 Hz line (the fluids round, 2026-10-03): the sim
+    /// internals heartbeat — the hidden state the [perf] line does not
+    /// carry: the sim tick count, the scheduler depth, the entity system
+    /// counts (items/orbs/TNT/furnaces/campfires/brewing/villagers), and
+    /// the player's environment flags (in-water/bubble/portal/lava, the
+    /// day time, the weather). Every hidden state that a "nothing
+    /// happens" bug report needs, in one line.
+    fn dbg_sim_line(&self) -> String {
+        let day_hh = self.day_time * 24.0;
+        format!(
+            "ticks {} sched {} | items {} orbs {} tnt {} (exploded {}) furnaces {} campfires {} brewing {} villagers {} | player w{} b{}({}) p{} l{} day {:.2}h {:?}",
+            self.sim.ticks,
+            self.sim.sched.pending(),
+            self.sim.items.len(),
+            self.sim.xp_orbs.len(),
+            self.sim.tnt.len(),
+            self.sim.tnt.exploded_total,
+            self.sim.furnaces.map.len(),
+            self.sim.campfires.map.len(),
+            self.sim.brewing.map.len(),
+            self.sim.villagers.list.len(),
+            self.player.in_water as u8,
+            self.player.bubble_kind != 255,
+            self.player.bubble_kind,
+            self.player.in_portal as u8,
+            self.player.in_lava as u8,
+            day_hh,
+            self.weather.weather(),
+        )
+    }
+
+    /// --verbose [gfx] 1 Hz line (2026-09-20): the UI/render pipeline
     /// heartbeat — runs in EVERY screen, so a menu that stopped
     /// repainting (the "click sound plays, nothing opens, screen frozen"
     /// report) shows up as a stalled rebuild count / fps envelope in the
@@ -5474,7 +5505,7 @@ impl GameApp {
         )
     }
 
-    /// --debug [exit] summary: uptime, frames, fps envelope, world edits —
+    /// --verbose [exit] summary: uptime, frames, fps envelope, world edits —
     /// the line a bug report ends on (window close AND the smoke exits).
     fn dbg_exit_summary(&self) {
         vc_render::render::report_debug_log(
@@ -5487,7 +5518,7 @@ impl GameApp {
     }
 
     fn start_game(&mut self) {
-        // --debug: world entry — the save identity + where the player
+        // --verbose: world entry — the save identity + where the player
         // lands (ties the [screen] loading->game transition to the world),
         // plus the first [perf] sample right here (the 1 Hz heartbeat
         // starts on the next update — this immediate line guarantees the
@@ -9541,13 +9572,13 @@ impl GameApp {
                 self.settings.clouds_level = (self.settings.clouds_level + 1) % 3;
                 self.after_settings_change();
             }
-            // ---- --debug input-regression detector (2026-09-20 round) --
+            // ---- --verbose input-regression detector (2026-09-20 round) --
             // The reported Linux bug class: "click SINGLEPLAYER/OPTIONS,
             // sometimes hear the click sound, but nothing opens". A click
             // that reaches activate() with an id NO arm handles is exactly
             // that symptom — the sound already played in menu_mouse, the
             // match falls through here, the screen never changes. Kept a
-            // no-op in normal play (zero behavior change); under --debug
+            // no-op in normal play (zero behavior change); under --verbose
             // it screams into the raw stream with the full context line.
             _ => {
                 vc_render::render::report_debug_log(
@@ -10931,7 +10962,7 @@ impl GameApp {
         }
         self.update_hover();
 
-        // ---- --debug [gfx]: the widget-table dump + the two structural
+        // ---- --verbose [gfx]: the widget-table dump + the two structural
         // detectors. THE bug-report tool for "clicked where the button
         // LOOKS like it is, nothing happened": the dump is the exact
         // hit-test table the click routed through, and the detectors
@@ -11052,7 +11083,7 @@ impl GameApp {
         if cw != self.ui.live_w || ch != self.ui.live_h {
             self.ui.resize(cw, ch);
             ui::set_live_ui_size(cw, ch);
-            // --debug [gfx]: the live-canvas geometry flip — every input
+            // --verbose [gfx]: the live-canvas geometry flip — every input
             // coordinate is mapped through this space, so a click landing
             // between this flip and the next CursorMoved (see
             // last_canvas_resize_t) hit-tests in a STALE space
@@ -21310,7 +21341,7 @@ impl GameApp {
         if live_debug && self.time - self.last_ui_t > 0.05 {
             self.ui.dirty = true;
         }
-        // --debug: the verbose MENU heartbeat — while the raw stream is on,
+        // --verbose: the verbose MENU heartbeat — while the raw stream is on,
         // menu screens repaint at 5 Hz so the on-canvas debug strip (see
         // dbg_ui_strip: cursor/hover/widget count) stays live without
         // pointer motion (the menu-tree twin of the F3-freeze fix above)
@@ -21322,7 +21353,7 @@ impl GameApp {
         }
         if self.ui.dirty && self.time - self.last_ui_t > cadence {
             crate::phase!(self.phases, crate::bench::PHASE_UI, self.rebuild_ui());
-            // --debug: the in-screenshot diagnostic strip — drawn ON the
+            // --verbose: the in-screenshot diagnostic strip — drawn ON the
             // fresh canvas (top layer) so a bug screenshot carries the
             // same facts the [gfx] stream logs: screen, cursor, hover,
             // widget count, live canvas, rebuild count
@@ -21374,7 +21405,7 @@ impl GameApp {
             }
         }
 
-        // --debug: 1 Hz raw perf + world-streaming summary while playing
+        // --verbose: 1 Hz raw perf + world-streaming summary while playing
         // (the [perf] line: fps envelope, frame/sim ms, chunk pipeline
         // depths, mob count — the steady-state heartbeat for bug reports)
         // 2026-09-20: the [gfx] line runs in EVERY screen (the menu-tree
@@ -21387,6 +21418,7 @@ impl GameApp {
                 self.dbg_t = 1.0;
                 if self.screen == Screen::Game {
                     vc_render::render::report_debug_log("perf", &self.dbg_perf_line());
+                    vc_render::render::report_debug_log("sim", &self.dbg_sim_line());
                 }
                 vc_render::render::report_debug_log("gfx", &self.dbg_gfx_line());
             }
@@ -23286,7 +23318,7 @@ impl GameApp {
         format!("Display {}x{} ({})", w, h, vendor)
     }
 
-    /// --debug: the on-canvas diagnostic strip (menus, top layer) — the
+    /// --verbose: the on-canvas diagnostic strip (menus, top layer) — the
     /// screenshot twin of the [gfx] 1 Hz line: screen, cursor position,
     /// hover widget, widget count, live canvas, rebuild count. Only
     /// drawn while the raw stream is on; a bug screenshot then carries

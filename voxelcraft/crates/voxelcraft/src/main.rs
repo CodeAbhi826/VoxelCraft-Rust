@@ -21,31 +21,39 @@ fn main() {
             env!("CARGO_PKG_VERSION")
         );
         println!("  (no args)     normal launch — intro → title → world");
-        println!("  --debug       raw diagnostic log: [t+s][cat] lines to the");
-        println!("                terminal + logs/latest.log. Categories:");
-        println!("                input  — every event: hover changes, menu");
-        println!("                clicks (widget id/kind/label + hover/hit");
-        println!("                cross-check), unhandled-id WARNs, screen");
-        println!("                routing; gfx — boot/surface/gui-scale/canvas");
-        println!("                geometry, the per-screen widget-table dump,");
-        println!("                duplicate-id + overlap WARNs, 1 Hz UI/render");
-        println!("                heartbeat; screen — every transition; perf,");
-        println!("                world, save, f3 — the steady-state stream");
-        println!("                (run with --debug when reporting bugs)");
+        println!("  --verbose     the full raw diagnostic stream: [t+s][cat]");
+        println!("                lines to the terminal + logs/latest.log —");
+        println!("                EVERYTHING raw, even the hidden internals and");
+        println!("                the minute errors. Categories: input — every");
+        println!("                event: hover changes, menu clicks (widget");
+        println!("                id/kind/label + hover/hit cross-check),");
+        println!("                unhandled-id WARNs, screen routing; gfx —");
+        println!("                boot/surface/gui-scale/canvas geometry, the");
+        println!("                per-screen widget-table dump, duplicate-id +");
+        println!("                overlap WARNs, 1 Hz UI/render heartbeat; sim");
+        println!("                — the 1 Hz internals heartbeat (the sim");
+        println!("                ticks, the scheduler depth, the entity counts,");
+        println!("                the player's state flags); screen — every");
+        println!("                transition; perf, world, save, f3 — the");
+        println!("                steady-state stream (run with --verbose when");
+        println!("                reporting bugs)");
         println!("  --smoke       CI end-to-end smoke run (boots, enters a world, exits)");
         println!("  --benchmark   [frames=600] [warmup=120] [seed=…] [json=bench.json]");
         return;
     }
 
-    // --debug: the raw diagnostic stream (--help above documents it) —
-    // enable BEFORE any boot line so the [t+ timestamps anchor at start
-    let debug_on = args.iter().any(|a| a == "--debug");
+    // --verbose: the full raw diagnostic stream (--help above documents
+    // it) — enable BEFORE any boot line so the [t+ timestamps anchor at
+    // start. THE flag for the raw log (the old --debug name is retired —
+    // the same stream, everything raw).
+    let debug_on = args.iter().any(|a| a == "--verbose");
     if debug_on {
         vc_render::render::set_verbose(true);
         vc_render::render::report_boot_log(
-            "raw debug stream enabled (--debug) — lines: [t+s][category] message; \
-             categories: input screen world perf save f3 gfx (gfx = the UI/render pipeline: \
-             surface/gui-scale/canvas geometry, widget-table dumps, 1 Hz heartbeat)",
+            "raw debug stream enabled (--verbose) — lines: [t+s][category] message; \
+             categories: input screen sim world perf save f3 gfx (gfx = the UI/render pipeline: \
+             surface/gui-scale/canvas geometry, widget-table dumps, 1 Hz heartbeat; \
+             sim = the 1 Hz internals heartbeat)",
         );
     }
 

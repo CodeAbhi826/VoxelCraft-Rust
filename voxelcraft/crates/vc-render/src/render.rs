@@ -5541,7 +5541,7 @@ impl Renderer {
             );
             ui.upload_pending = false;
         } else if ui.dirty && crate::render::is_verbose() {
-            // --debug [gfx]: a rebuild is pending but this (possibly
+            // --verbose [gfx]: a rebuild is pending but this (possibly
             // spontaneous) redraw has no fresh pixels yet — the frame
             // intentionally re-draws the CURRENT canvas; the pending
             // rebuild lands on the next update() pass. This line is the
@@ -6574,8 +6574,8 @@ pub fn report_boot_log(msg: &str) {
     }
 }
 
-/// --debug (raw diagnostics) flag: set by the host crate's CLI parse
-/// (native: `--debug` argument; wasm: `?debug` URL param) before the
+/// --verbose (raw diagnostics) flag: set by the host crate's CLI parse
+/// (native: `--verbose` argument; wasm: `?debug` or `?verbose` URL param) before the
 /// first boot line. When off, report_debug_log() is a no-op — the
 /// always-on boot lines are unaffected. When on, the raw event stream
 /// (input, screen transitions, world streaming, perf samples, saves)
@@ -6584,12 +6584,12 @@ pub fn report_boot_log(msg: &str) {
 static VERBOSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Session-relative timestamp for the [t+SSS.s] debug prefixes — anchored
-/// when --debug is switched on (before the first boot line, so effectively
+/// when --verbose is switched on (before the first boot line, so effectively
 /// process start). web_time::Instant: the ?debug URL param makes wasm call
 /// Instant::now() too, and the std one panics on wasm32-unknown-unknown.
 static DEBUG_START: std::sync::OnceLock<web_time::Instant> = std::sync::OnceLock::new();
 
-/// Enable/disable the raw diagnostic stream (--debug).
+/// Enable/disable the raw diagnostic stream (--verbose).
 pub fn set_verbose(v: bool) {
     if v {
         DEBUG_START.get_or_init(web_time::Instant::now);
@@ -6597,7 +6597,7 @@ pub fn set_verbose(v: bool) {
     VERBOSE.store(v, std::sync::atomic::Ordering::Relaxed);
 }
 
-/// Is the raw diagnostic stream (--debug) enabled?
+/// Is the raw diagnostic stream (--verbose) enabled?
 pub fn is_verbose() -> bool {
     VERBOSE.load(std::sync::atomic::Ordering::Relaxed)
 }
@@ -6609,7 +6609,7 @@ fn debug_since_start() -> f32 {
         .as_secs_f32()
 }
 
-/// Raw diagnostic line (--debug): `[t+  12.3s][cat] msg` to the same sinks
+/// Raw diagnostic line (--verbose): `[t+  12.3s][cat] msg` to the same sinks
 /// as report_boot_log. Zero-cost no-op while the flag is off.
 #[allow(dead_code)]
 pub fn report_debug_log(cat: &str, msg: &str) {
@@ -6826,7 +6826,7 @@ mod shader_tests {
         }
     }
 
-    /// --debug contract: the raw stream is OFF by default (normal boots
+    /// --verbose contract: the raw stream is OFF by default (normal boots
     /// stay quiet) and the flag flips it. The verbose-gated
     /// report_debug_log() formatting itself is exercised by the
     /// integration smoke (linux-game.yml greps the [t+ line).
@@ -6836,9 +6836,9 @@ mod shader_tests {
         // order-independent with any future verbose test
         let prev = is_verbose();
         set_verbose(false);
-        assert!(!is_verbose(), "--debug must default to OFF");
+        assert!(!is_verbose(), "--verbose must default to OFF");
         set_verbose(true);
-        assert!(is_verbose(), "--debug flips the raw stream on");
+        assert!(is_verbose(), "--verbose flips the raw stream on");
         set_verbose(prev);
     }
 }

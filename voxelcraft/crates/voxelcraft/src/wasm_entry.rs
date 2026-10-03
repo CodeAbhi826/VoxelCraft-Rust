@@ -73,22 +73,25 @@ pub fn start() -> Result<(), JsValue> {
     }
 
     // ?debug / ?debug=1: the browser-build equivalent of the native
-    // --debug flag — routes the raw diagnostic stream to the JS console
-    // (same [t+s][cat] lines; see play.html for the hint text). Read via
-    // the same JS interop as boot_log (no extra web-sys features).
+    // ?verbose / ?debug: the browser-build equivalent of the native
+    // --verbose flag — routes the full raw diagnostic stream to the JS
+    // console (same [t+s][cat] lines; the ?debug URL param is kept as the
+    // legacy alias of ?verbose). Read via the same JS interop as boot_log
+    // (no extra web-sys features).
     let w: JsValue = window.into();
     let search = js_sys::Reflect::get(&w, &"location".into())
         .ok()
         .and_then(|loc| js_sys::Reflect::get(&loc, &"search".into()).ok())
         .and_then(|s| s.as_string())
         .unwrap_or_default();
-    if search
-        .trim_start_matches('?')
-        .split('&')
-        .any(|kv| matches!(kv.trim(), "debug" | "debug=1" | "debug=true"))
-    {
+    if search.trim_start_matches('?').split('&').any(|kv| {
+        matches!(
+            kv.trim(),
+            "verbose" | "verbose=1" | "verbose=true" | "debug" | "debug=1" | "debug=true"
+        )
+    }) {
         vc_render::render::set_verbose(true);
-        boot_log("raw debug stream enabled (?debug) — [t+s][category] lines follow");
+        boot_log("raw debug stream enabled (?verbose) — [t+s][category] lines follow");
     }
 
     wasm_bindgen_futures::spawn_local(async move {

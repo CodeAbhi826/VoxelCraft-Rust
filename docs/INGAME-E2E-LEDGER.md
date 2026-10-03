@@ -40,6 +40,8 @@ linux-game.yml greps `FKEY CONTRACT OK` + `border-visibility .* VISIBLE
 | F2 capture arm + the swapchain readback PNG | both F5 views saved to screenshots/ | same |
 | Chunk-border lines VISIBLE (T5, pixel contract) | differential colorimetry "yellow px on=19554 off=18776 margin=778 — VISIBLE"; on=28402 off=27568 margin=834 | run 36952828705 / 37059363272 |
 | Beds: the sleep gates IN-GAME (all 7 flags) | "monster-refusal=true night-skip=true window-refusal=true distance-refusal=true respawn-missing=true respawn-obstructed=true spawn-set-again=true" + "e2e: beds VERDICT OK" | run 37085711880 (binary fddcd26) |
+| The fluids round IN-GAME (all 4 scenarios through the REAL sim ticks) | "infinite-source=true mixing-obsidian=true bubble-column=true waterlogged-chest=true" + "e2e: fluids VERDICT OK" | run 37151410074 (binary fdd68ab) |
+| The --verbose raw stream + the 1 Hz [sim] internals heartbeat | "[t+62.0s][sim] ticks 90 sched 0 | items 0 orbs 0 tnt 0 ... | player w0 bfalse(255) p0 l0 day 7.29h Clear" — the ticks at 20/s, the scheduler 0, the flags correct; the stream is clean (no hidden quirks) | run 37151410074 |
 | Smoke: intro -> panorama title -> world entry, all five legs exit 0 | the smoke boot lines | every linux-game run |
 | Terrain/HUD/rig deep-pixel audit (2x crops) | CLEAN (the pre-overhaul sweep's internal game check) | the local compile (31m45s) |
 

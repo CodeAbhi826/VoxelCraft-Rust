@@ -179,3 +179,15 @@ Work Log:
 - The owner's directives recorded (c85ddb5): the Sodium/mods reference grant (STUDY-ONLY, legal doc §6a), the texture-pack + shader-pack testing legs (the E2E ledger), optimizations are ADDITIVE and must preserve real-game parity (no PC-motivated compromises).
 - MATRIX updated (this commit): the fluids gap rows DONE + the tier-4 strikethrough. The in-game verification of the fluids binary is PENDING: the linux-game build SUCCEEDED (37101508045); the /tmp quota cleared (the owner's say-so), the download + the E2E verification resume now.
 - DISCLOSED trims: slab/stairs/fence waterlogging (the JSON-model dispatch), the bubble columns' air-bubble particles, the water_source_conversion gamerule.
+
+---
+Task ID: 12
+Agent: main — the --verbose raw-log flag + the E2E_FLUIDS in-game leg
+Task: The owner's directive — everything raw in ONE flag, the hidden internals exposed, and the fluids round verified in-game
+
+Work Log:
+- --verbose REPLACED --debug as THE raw-log flag (3a0eaf1): the full raw stream showing everything, even the hidden internals and the minute errors; the wasm ?verbose URL param joins ?debug as its legacy alias; the [sim] heartbeat line is NEW — the 1 Hz internals (the sim ticks, the scheduler depth, the entity counts items/orbs/tnt/furnaces/campfires/brewing/villagers, the player's environment flags in-water/bubble/portal/lava, the day time, the weather). The CI's E2E legs all run --verbose now (fdd68ab) and the regression guard greps the verbose boot line.
+- The E2E_FLUIDS in-game leg (c7f0dda + e739a6a + the Fn-closure fix 1fdbd4d): four scenarios drive the REAL fluid ticks through the sim's scheduler (the bench pump pattern) — the infinite water source (two sources flow into the middle, which converts), the lava/water mixing product (a water source above a lava source turns it to obsidian), the bubble column (soul sand under source water, 20gt), and the waterlogged chest (flowing water waterlogs it). VERIFIED IN-GAME on the CI binary (run 37151410074): "infinite-source=true mixing-obsidian=true bubble-column=true waterlogged-chest=true" + "e2e: fluids VERDICT OK"; the CI greps the verdict.
+- The [sim] heartbeat VERIFIED in-game: "[t+62.0s][sim] ticks 90 sched 0 | items 0 orbs 0 tnt 0 ... | player w0 bfalse(255) p0 l0 day 7.29h Clear" — the ticks at 20/s, the scheduler 0, the day clock consistent; the raw stream is CLEAN (no hidden quirks found in this pass).
+- ALL 6 GATES GREEN at fdd68ab (run 37150707875) and the linux-game build+smoke green (37151410074).
+- The FKEYS leg re-verified on the same binary: margin 828 — VISIBLE, FKEY CONTRACT OK.

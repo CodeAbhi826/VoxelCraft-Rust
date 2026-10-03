@@ -3,6 +3,7 @@
 
 use glam::Vec3;
 use vc_blocks::blocks::*;
+use vc_sim::fluids::{BUBBLE_DOWN_SPEED, BUBBLE_UP_SPEED};
 use vc_world::world::World;
 
 pub const WALK_SPEED: f32 = 4.317;
@@ -154,6 +155,14 @@ pub struct Player {
     pub flying: bool,
     pub in_water: bool,
     pub head_in_water: bool,
+    /// fluids round (1.16): the feet cell's bubble column — 255 = none,
+    /// 0 = upward (soul sand base, the drag toward the surface), 1 =
+    /// whirlpool (magma base, the drag down). VERIFIED w/Bubble_column,
+    /// live 2026-09-25 raw wikitext.
+    pub bubble_kind: u8,
+    /// the head cell in a bubble column — the column provides air (the
+    /// drowning meter refills, VERIFIED w/Bubble_column: "air-providing")
+    pub head_in_bubble: bool,
     /// Phase E2: feet in lava (contact damage + slow — VERIFIED w/Lava)
     pub in_lava: bool,
     /// horizontal collision this frame (any axis-0/2 move clamped) —
@@ -295,6 +304,8 @@ impl Player {
             flying: true, // spawn in air, land when chunks ready
             in_water: false,
             head_in_water: false,
+            bubble_kind: 255,
+            head_in_bubble: false,
             in_lava: false,
             on_vine: false,
             in_portal: false,
@@ -655,6 +666,20 @@ impl Player {
         // owns the travel. VERIFIED Nether_portal §Behavior +
         // Nether_Portal_(block) §Usage, live 2026-09-26.
         let head_block = state_block(head_state);
+        // fluids round (1.16): the bubble-column detection — the feet OR
+        // head cell in a BUBBLE_COLUMN block; the kind scans down to the
+        // column's base (soul sand = upward, magma = whirlpool). VERIFIED
+        // w/Bubble_column, live 2026-09-25 raw wikitext.
+        self.bubble_kind = if feet_block == BUBBLE_COLUMN {
+            vc_sim::fluids::bubble_column_kind(world, fx, feet_y, fz).unwrap_or(255)
+        } else if head_block == BUBBLE_COLUMN {
+            // the feet cell left the column but the head is still in it —
+            // scan from the head cell (the drag follows the column)
+            vc_sim::fluids::bubble_column_kind(world, fx, head_y, fz).unwrap_or(255)
+        } else {
+            255
+        };
+        self.head_in_bubble = head_block == BUBBLE_COLUMN;
         self.in_portal = feet_block == NETHER_PORTAL || head_block == NETHER_PORTAL;
         if self.in_portal {
             self.portal_accum += dt;
@@ -1005,7 +1030,7 @@ impl Player {
         while self.air_accum >= TICK_DT && air_ticks < 40 {
             self.air_accum -= TICK_DT;
             air_ticks += 1;
-            if self.head_in_water {
+            if self.head_in_water && !self.head_in_bubble {
                 if !water_breathing {
                     self.air -= 1.0;
                     if self.air <= AIR_DROWN_AT {
@@ -1014,6 +1039,8 @@ impl Player {
                     }
                 } // else: frozen (VERIFIED — the meter does not run out)
             } else {
+                // fluids round: the bubble column provides air (VERIFIED
+                // w/Bubble_column: "air-providing vertical water current")
                 self.air = (self.air + AIR_REGEN_PER_TICK).min(AIR_MAX);
             }
         }
@@ -1218,6 +1245,21 @@ impl Player {
                             self.vel.y -= 0.6 * TICK_DT * TPS;
                         }
                     }
+                }
+                // fluids round (1.16, VERIFIED w/Bubble_column §Transport,
+                // live 2026-09-25): "entities move at a speed of
+                // approximately 11 blocks per second when in an upward
+                // bubble column, or 4.9 blocks per second when in a
+                // downward bubble column" — the column accelerates the
+                // player toward the verified terminal speed (the longer
+                // the rise, the faster; the smooth approach saturates)
+                if self.bubble_kind != 255 {
+                    let target = if self.bubble_kind == 0 {
+                        BUBBLE_UP_SPEED
+                    } else {
+                        -BUBBLE_DOWN_SPEED
+                    };
+                    self.vel.y += (target - self.vel.y) * (4.0 * TICK_DT).min(1.0);
                 }
                 if !self.in_water && !self.in_lava {
                     // vanilla fallDistance: the distance THIS tick's

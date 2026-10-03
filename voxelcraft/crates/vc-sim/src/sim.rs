@@ -100,6 +100,21 @@ pub struct Sim {
     /// 1.15: the day flag (set by the game layer from the sun state —
     /// drives the bees' night-return + the hives' day-release)
     pub is_day: bool,
+    /// fire round: the rain flag (set by the game layer from the weather
+    /// machine — the fire tick's rain-dousing reads it; VERIFIED w/Fire
+    /// Extinguishing: "Rain affects fire if it falls directly onto the
+    /// fire, or into the four adjacent blocks. Specifically, no matter
+    /// the age, any block tick has a 20-65% chance of rain extinguishing
+    /// the fire, depending on the fire's age: 20 percent plus 3
+    /// percentage points per age of the fire")
+    pub rain: bool,
+    /// fire round: the difficulty scalar d 0-3 for the spread degree
+    /// (set by the game layer from the mode: the engine's Survival maps
+    /// Normal → 2, Hardcore → Hard → 3; Peaceful 0 / Easy 1 fold away —
+    /// the world-creation flow only offers Survival/Hardcore). VERIFIED
+    /// w/Fire §Spread: "i = max adjacent flammability, d = difficulty
+    /// (0-3), and a = fire age".
+    pub fire_difficulty: u8,
     /// Backlog round (weather): the weather sky-light factor (1.0
     /// clear, 12/15 rain, 10/15 thunder — VERIFIED w/Weather; set by
     /// the game layer). The daylight sensor reads it: "Inclement
@@ -168,6 +183,8 @@ impl Sim {
             tnt: PrimedTntSystem::new(seed),
             hives: vc_gameplay::bees::HiveSystem::new(seed ^ 0xBE_E5),
             is_day: true,
+            rain: false,
+            fire_difficulty: 2,
             sky_factor: 1.0,
             dragon: vc_gameplay::dragon::DragonSystem::new(seed ^ 0xDA60_0005),
             wither: vc_gameplay::wither::WitherSystem::new(seed ^ 0xB055_0002),
@@ -338,13 +355,13 @@ impl Sim {
                         pos[2],
                     );
                 }
-                // ---- backlog round (weather): the fire burnout — the
-                // lightning/flint-and-steel fire expires on its
-                // scheduled tick ("the rain usually puts the fire out
-                // before it can spread", VERIFIED w/Weather — the
-                // scheduled delay IS the rain-doused burn window)
-                vc_blocks::blocks::FIRE => {
-                    world.set_block_state(pos[0], pos[1], pos[2], vc_blocks::blocks::AIR);
+                // ---- fire round: the fire tick — the age increment +
+                // the extinguish rules + the burn-away + the spread (the
+                // bare instant burnout is replaced; VERIFIED w/Fire,
+                // live 2026-10-03 raw wikitext). Re-schedules itself while
+                // alive at the deterministic random-tick cadence.
+                s if vc_blocks::blocks::is_fire_block(s) => {
+                    self.fire_tick(world, pos, vc_blocks::blocks::fire_age(s));
                 }
                 vc_blocks::blocks::TRAPPED_CHEST
                 | vc_blocks::blocks::LIGHT_WEIGHTED_PLATE
@@ -596,6 +613,210 @@ impl Sim {
     /// by the caller
     pub fn collect_items(&mut self, feet: [f32; 3]) -> Vec<u16> {
         self.items.collect(feet)
+    }
+
+    /// fire round: ONE fire tick (the deterministic random-tick cadence) —
+    /// the age increment, the extinguish rules, the burn-away of the
+    /// flammable block below, and the spread attempt. Every rule is the
+    /// live-verified vanilla 1.16.5 behavior (VERIFIED w/Fire, live
+    /// 2026-10-03, raw wikitext via the MediaWiki API):
+    /// * the cadence: FIRE_TICK_RATE = the random-tick mean at
+    ///   randomTickSpeed 3 (4096/3 ticks = 68.25 s at the 20 Hz; VERIFIED
+    ///   w/Tick: "random ticks ... 3 per chunk section per game tick, each
+    ///   block a 1/4096 chance") — the deterministic scheduled tick is the
+    ///   documented adaptation of the nondeterministic random tick (the
+    ///   SAME mean cadence).
+    /// * Extinguishing: water touching (the 6 neighbors) -> out; rain
+    ///   reaching the spot -> 20% + 3%/age chance per tick ("any block
+    ///   tick has a 20-65% chance of rain extinguishing the fire ...
+    ///   20 percent plus 3 percentage points per age"); age > 3 with
+    ///   nothing flammable adjacent OR no solid top surface below -> out;
+    ///   age 15 with nothing flammable below -> 1/4 chance per tick.
+    /// * Burning away: the flammable block below burns at burn_odds/300
+    ///   per tick (destroyed, no drops — TNT ignites instead via the
+    ///   ignition sweep's fire-contact rule).
+    /// * Spread: the 3x3 horizontal / up-to-4-above / 1-below range over
+    ///   flammable blocks (never waterlogged); each target's ignition
+    ///   degree = (i + 7d + 40)/(a + 30) against the base (100 the
+    ///   same-level 3x3x3 range, 200/300/400 for 2/3/4 above) — the
+    ///   probability degree/base per tick; blocked when rain hits the
+    ///   spot or its four horizontal neighbors; halved (rounded down) in
+    ///   the fast-burning biomes (jungle/swamp — the
+    ///   increased_fire_burnout tag's engine mapping). The ignition
+    ///   degree's i reads the TARGET's own ignite odds (the Java
+    ///   getFlammability reading; the wiki's "max adjacent flammability"
+    ///   wording is ambiguous — the cross-check resolved it).
+    pub fn fire_tick(&mut self, world: &mut vc_world::world::World, pos: [i32; 3], age: u8) {
+        use vc_blocks::blocks::{
+            fire_age_state, flammability, is_fire_block, is_opaque, is_waterlogged_state,
+            state_block, AIR, FIRE_AGE_MAX, TNT,
+        };
+        let (x, y, z) = (pos[0], pos[1], pos[2]);
+        let next_age = age.saturating_add(1).min(FIRE_AGE_MAX);
+
+        // deterministic roll stream: seed <- world seed (x) position (x)
+        // the sim tick — xorshift (the RandomTicker's pattern)
+        let mut s = self.random.seed
+            ^ ((x as u64) << 32)
+            ^ ((y as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15))
+            ^ ((z as u64).wrapping_mul(0xC2B2_AE3D_27D4_EB4F))
+            ^ self.ticks.wrapping_mul(0x1656_67B1_9E37_79B9);
+        let mut roll = || {
+            s ^= s << 13;
+            s ^= s >> 7;
+            s ^= s << 17;
+            ((s >> 40) as f32) / 16_777_216.0 // [0, 1)
+        };
+
+        // ---- extinguishing: water touching (the 6 neighbors) -> out
+        for (dx, dy, dz) in [
+            (1i32, 0i32, 0i32),
+            (-1, 0, 0),
+            (0, 1, 0),
+            (0, -1, 0),
+            (0, 0, 1),
+            (0, 0, -1),
+        ] {
+            let nb = world.get_state(x + dx, y + dy, z + dz);
+            if state_block(nb) == WATER {
+                let _ = world.set_block_state(x, y, z, AIR);
+                self.sched.schedule(pos, FIRE_TICK_RATE);
+                return;
+            }
+        }
+        // ---- rain dousing: 20% + 3%/age per tick, when the rain reaches
+        // the spot (the fire cell or one of its four horizontal neighbors
+        // is sky-exposed — no opaque block above, the rain falls through)
+        if self.rain {
+            let reaches =
+                [(0i32, 0i32), (1, 0), (-1, 0), (0, 1), (0, -1)]
+                    .iter()
+                    .any(|&(dx, dz)| {
+                        (y + 1..=255).all(|yy| {
+                            !is_opaque(state_block(world.get_state(x + dx, yy as i32, z + dz)))
+                        })
+                    });
+            let rain_chance = 0.20 + 0.03 * f32::from(age);
+            if reaches && roll() < rain_chance {
+                let _ = world.set_block_state(x, y, z, AIR);
+                self.sched.schedule(pos, FIRE_TICK_RATE);
+                return;
+            }
+        }
+        // ---- the support + the flammable-adjacency checks
+        let below_b = state_block(world.get_state(x, y - 1, z));
+        let below_supports = is_opaque(below_b);
+        // "nothing flammable is adjacent to the fire" — the 6 neighbors
+        let adjacent_flammable = [
+            (1i32, 0i32, 0i32),
+            (-1, 0, 0),
+            (0, 1, 0),
+            (0, -1, 0),
+            (0, 0, 1),
+            (0, 0, -1),
+        ]
+        .iter()
+        .any(|&(dx, dy, dz)| {
+            flammability(state_block(world.get_state(x + dx, y + dy, z + dz))).is_some()
+        });
+        // age > 3: out when nothing flammable is adjacent OR the below
+        // block lost its solid top surface
+        if age > 3 && (!adjacent_flammable || !below_supports) {
+            let _ = world.set_block_state(x, y, z, AIR);
+            self.sched.schedule(pos, FIRE_TICK_RATE);
+            return;
+        }
+        // age 15: a 1/4 chance per tick when nothing flammable is below
+        if age >= FIRE_AGE_MAX && !flammability(below_b).is_some() && roll() < 0.25 {
+            let _ = world.set_block_state(x, y, z, AIR);
+            self.sched.schedule(pos, FIRE_TICK_RATE);
+            return;
+        }
+        // ---- burning away: the flammable block below burns at
+        // burn_odds/300 per tick (destroyed, no drops; TNT ignites via
+        // the sweep — never here)
+        if let Some((_, burn)) = flammability(below_b) {
+            if below_b != TNT && roll() < f32::from(burn) / 300.0 {
+                let _ = world.set_block_state(x, y - 1, z, AIR);
+            }
+        }
+        // ---- the spread: the 3x3 horizontal / up-to-4-above / 1-below
+        // range over flammable blocks (never waterlogged); each target's
+        // ignition degree = (i + 7d + 40)/(a + 30) against the base;
+        // the probability degree/base per tick
+        let d = f32::from(self.fire_difficulty.min(3));
+        for (dx, dy) in [
+            (0i32, 0i32),
+            (1, 0),
+            (-1, 0),
+            (0, 1),
+            (0, -1),
+            (1, 1),
+            (-1, 1),
+            (1, -1),
+            (-1, -1),
+            (0, 2),
+            (1, 2),
+            (-1, 2),
+            (0, 3),
+            (1, 3),
+            (-1, 3),
+            (0, 4),
+            (1, 4),
+            (-1, 4),
+            (0, -1),
+        ] {
+            let (tx, ty) = (x + dx, y + dy);
+            if !(0..=255).contains(&ty) {
+                continue;
+            }
+            let tstate = world.get_state(tx, ty, z);
+            let tb = state_block(tstate);
+            let Some((ignite, _)) = flammability(tb) else {
+                continue;
+            };
+            if is_waterlogged_state(tstate) || is_fire_block(tstate) {
+                continue; // never waterlogged targets; never re-ignite fire
+            }
+            // the base: 100 (the same-level 3x3x3 range), 200/300/400 for
+            // 2/3/4 above (VERIFIED w/Fire §Spread)
+            let up = (ty - y) as u32;
+            let base = match up {
+                0 | 1 => 100.0f32,
+                2 => 200.0,
+                3 => 300.0,
+                _ => 400.0,
+            };
+            // the fast-burning biome halving (jungle/swamp): the degree is
+            // halved (rounded down) — the biome read per target (the
+            // 2-arg get_biome: the biome is a per-column value)
+            let biome = world.get_biome(tx, z);
+            let halved = matches!(
+                biome,
+                vc_world::gen::Biome::Jungle | vc_world::gen::Biome::Swamp
+            );
+            let deg = f32::from(ignite) + 7.0 * d + 40.0;
+            let deg = if halved { (deg * 0.5).floor() } else { deg };
+            let prob = (deg / (f32::from(next_age) + 30.0) / base).min(1.0);
+            // the rain-blocked spread: the spot or its four horizontal
+            // neighbors rain-hit -> blocked
+            let rain_hit = self.rain
+                && [(0i32, 0i32), (1, 0), (-1, 0), (0, 1), (0, -1)]
+                    .iter()
+                    .any(|&(rx, rz)| {
+                        (ty + 1..=255).all(|yy| {
+                            !is_opaque(state_block(world.get_state(tx + rx, yy as i32, z + rz)))
+                        })
+                    });
+            if !rain_hit && roll() < prob {
+                let _ = world.set_block_state(tx, ty, z, fire_age_state(0));
+            }
+        }
+        // the fire ages every tick and re-schedules while alive (the
+        // age's placement state updates — the V16 base = age 0, the
+        // window = 1..15)
+        let _ = world.set_block_state(x, y, z, fire_age_state(next_age));
+        self.sched.schedule(pos, FIRE_TICK_RATE);
     }
 }
 

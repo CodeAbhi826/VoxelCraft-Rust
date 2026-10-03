@@ -2637,6 +2637,8 @@ pub const FLINT_AND_STEEL_STATE: u16 = 873;
 // carries the age; the engine's window is the same persistence (the
 // sim-side registry would be lost on save/load).
 pub const FIRE_AGE_BASE: u16 = 877;
+/// the age ceiling (VERIFIED w/Fire Extinguishing: "growing to age 15")
+pub const FIRE_AGE_MAX: u8 = 15;
 
 /// true if this STATE is a fire block (the age-0 default or the age window)
 #[inline]

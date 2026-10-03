@@ -314,6 +314,29 @@ jobs:
           test -s run3/screenshots/e2e_fkeys_front_*.png || { echo "FAIL: front-view screenshot missing"; exit 1; }
           echo "FKEYS OK - F1/F2/F5/F3+G/F11 verified through the real input path (both F5 views captured, border lines pixel-verified)"
 
+          # Beds round: the sleep-interaction leg (E2E_BEDS=1) — the REAL
+          # use_bed() gates run in-game (the monster/window/distance
+          # refusals, the night skip + the weather reset + the spawn set,
+          # the respawn arm both branches). The unguarded first-update run
+          # placed no bed and failed 5 of 7 flags silently — the leg now
+          # waits for world entry + the chunks it touches, and the VERDICT
+          # line is the gated contract.
+          mkdir -p run4 && pushd run4 >/dev/null
+          set +e
+          timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan E2E_BEDS=1 \
+            "../$BIN_NAME" --smoke 2>&1 | tee ../smoke-beds.log
+          CODE=$?
+          set -e
+          popd >/dev/null
+          echo "beds smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: beds E2E exited $CODE"
+            exit 1
+          fi
+          grep -q "e2e: beds VERDICT OK" smoke-beds.log || { echo "FAIL: the beds E2E verdict is not OK (the flags line above shows which gate failed)"; exit 1; }
+          echo "BEDS OK - the sleep gates verified in-game (monster/window/distance refusals, the night skip, the respawn arm)"
+
           echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 
       - name: Upload artifact (the raw executable, no archive)

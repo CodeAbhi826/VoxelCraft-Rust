@@ -657,7 +657,7 @@ impl Sim {
     pub fn fire_tick(&mut self, world: &mut vc_world::world::World, pos: [i32; 3], age: u8) {
         use vc_blocks::blocks::{
             fire_age_state, flammability, is_fire_block, is_opaque, is_waterlogged_state,
-            state_block, AIR, FIRE_AGE_MAX, TNT,
+            state_block, AIR, FIRE_AGE_MAX, TNT, WATER,
         };
         let (x, y, z) = (pos[0], pos[1], pos[2]);
         let next_age = age.saturating_add(1).min(FIRE_AGE_MAX);

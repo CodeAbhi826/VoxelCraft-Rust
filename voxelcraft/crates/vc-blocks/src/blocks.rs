@@ -4568,6 +4568,11 @@ pub fn is_model_state(s: u16) -> bool {
         // flags (the V16 pattern; the pack's own bed model would need a
         // resource-pack bedstate the engine does not ship)
         || is_bed_state(s)
+        // fluids round: the waterlogging states (the container renders as
+        // the block + the water overlay) and the bubble column's
+        // dedicated state (the water-quad path) — never model states
+        || is_waterlogged_state(s)
+        || s == BUBBLE_COLUMN_STATE
         || s == ACACIA_LOG_X
         || s == ACACIA_LOG_Z
         || s == DARK_OAK_LOG_X

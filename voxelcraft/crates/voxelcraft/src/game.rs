@@ -1704,6 +1704,8 @@ pub struct GameApp {
     e2e_containers_done: bool,
     /// beds round: E2E_BEDS — the sleep-interaction leg ran once
     e2e_beds_done: bool,
+    /// fluids round: E2E_FLUIDS — the in-game fluids leg ran once
+    e2e_fluids_done: bool,
     /// E2E_FKEYS: 0 = idle, 1 = key stage ran (behind-ON capture pending),
     /// 2 = behind-ON saved (behind-OFF capture pending), 3 = diff ran
     /// (front capture pending), done = the leg exits in stage 3
@@ -2974,6 +2976,7 @@ impl GameApp {
             smoke_script: std::collections::VecDeque::new(),
             e2e_containers_done: false,
             e2e_beds_done: false,
+            e2e_fluids_done: false,
             smoke_clicked_ingame: false,
             smoke_game_t: 0.0,
             f3_dump2: false,
@@ -14461,6 +14464,142 @@ impl GameApp {
         ));
     }
 
+    /// fluids round: E2E_FLUIDS — the in-game fluids leg (native-only).
+    /// Drives the REAL fluid ticks through the sim's scheduler (the bench
+    /// pump pattern: sim.step per tick) over four scenarios built through
+    /// the REAL state path in the player's chunks:
+    ///   A. the infinite water source — two sources flow into the middle,
+    ///      which converts to a source (VERIFIED w/Water Source blocks)
+    ///   B. the lava/water mixing — a water source above a lava source
+    ///      turns the lava to obsidian (VERIFIED w/Fluid Mixing rule 3)
+    ///   C. the bubble column — soul sand under source water generates
+    ///      the column 20gt later (VERIFIED w/Bubble_column)
+    ///   D. the waterlogged chest — flowing water enters a dry chest and
+    ///      waterlogs it (VERIFIED w/Waterlogging)
+    /// Logs the "e2e: fluids" verdict + the gated VERDICT line CI greps.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_fluids(&mut self) {
+        use vc_blocks::blocks::*;
+
+        let px = self.player.pos.x.floor() as i32;
+        let py = self.player.pos.y.floor() as i32;
+        let pz = self.player.pos.z.floor() as i32;
+
+        // the working area: a solid stone floor under the scenarios (the
+        // beds-leg pattern — the sources' support rule needs solid below)
+        for c in (px..px + 14).map(|x| [x, py - 1, pz]) {
+            self.test_place(STONE, c[0], c[1], c[2]);
+        }
+        let mut ok = true;
+        let mut check = |cond: &mut bool, pass: bool, what: &str| {
+            if !pass {
+                *cond = false;
+                vc_render::render::report_boot_log(&format!("e2e: fluids FAIL {what}"));
+            }
+        };
+
+        // ---- A. the infinite water source: sources at px+2/px+4, air at
+        // px+3; the sources spread into the middle, the middle converts
+        let _ = self.world.set_block_state(px + 2, py, pz, WATER);
+        let _ = self.world.set_block_state(px + 4, py, pz, WATER);
+        notify_sim(&self.world, &mut self.sim.sched, px + 2, py, pz);
+        notify_sim(&self.world, &mut self.sim.sched, px + 4, py, pz);
+        for _ in 0..20 {
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
+        }
+        let mid = self.world.get_state(px + 3, py, pz);
+        check(
+            &mut ok,
+            water_level(mid) == 0,
+            "the infinite source: the middle converts to a source",
+        );
+
+        // ---- B. the mixing product: a water source above a lava source
+        // turns the lava to obsidian (the water tick's below-lava rule)
+        let _ = self.world.set_block_state(px + 7, py, pz, lava_state(0));
+        let _ = self.world.set_block_state(px + 7, py + 1, pz, WATER);
+        notify_sim(&self.world, &mut self.sim.sched, px + 7, py, pz);
+        notify_sim(&self.world, &mut self.sim.sched, px + 7, py + 1, pz);
+        for _ in 0..20 {
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
+        }
+        let mixed = state_block(self.world.get_state(px + 7, py, pz));
+        check(
+            &mut ok,
+            mixed == OBSIDIAN,
+            "the lava source turned to obsidian",
+        );
+
+        // ---- C. the bubble column: soul sand under source water turns
+        // the column into bubble blocks 20gt later (the creation sweep
+        // converts the source column above simultaneously)
+        let _ = self
+            .world
+            .set_block_state(px + 10, py - 1, pz, default_state(SOUL_SAND));
+        for y in py..py + 3 {
+            let _ = self.world.set_block_state(px + 10, y, pz, WATER);
+            notify_sim(&self.world, &mut self.sim.sched, px + 10, y, pz);
+        }
+        notify_sim(&self.world, &mut self.sim.sched, px + 10, py - 1, pz);
+        for _ in 0..30 {
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
+        }
+        let col = state_block(self.world.get_state(px + 10, py + 1, pz));
+        let kind = vc_sim::fluids::bubble_column_kind(&self.world, px + 10, py + 1, pz);
+        check(
+            &mut ok,
+            col == BUBBLE_COLUMN && kind == Some(0),
+            "the soul sand generated an upward bubble column",
+        );
+
+        // ---- D. the waterlogged chest: a dry chest placed, then flowing
+        // water enters it and waterlogs it (the water tick's flowable
+        // target rule)
+        let _ = self
+            .world
+            .set_block_state(px + 12, py, pz, default_state(CHEST));
+        let _ = self.world.set_block_state(px + 13, py, pz, WATER);
+        notify_sim(&self.world, &mut self.sim.sched, px + 12, py, pz);
+        notify_sim(&self.world, &mut self.sim.sched, px + 13, py, pz);
+        for _ in 0..20 {
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
+        }
+        let chest_state = self.world.get_state(px + 12, py, pz);
+        check(
+            &mut ok,
+            is_waterlogged_state(chest_state),
+            "the flowing water waterlogged the chest",
+        );
+
+        vc_render::render::report_boot_log(&format!(
+            "e2e: fluids infinite-source={} mixing-obsidian={} bubble-column={} waterlogged-chest={} (VERIFIED w/Water + w/Fluid + w/Bubble_column + w/Waterlogging)",
+            water_level(mid) == 0,
+            mixed == OBSIDIAN,
+            col == BUBBLE_COLUMN && kind == Some(0),
+            is_waterlogged_state(chest_state),
+        ));
+        vc_render::render::report_boot_log(&format!(
+            "e2e: fluids VERDICT {}",
+            if ok { "OK" } else { "FAILED" }
+        ));
+    }
+
     /// Round A: the F-KEY CONTRACT E2E leg (E2E_FKEYS=1, native) — every
     /// function key's effect through the REAL key_action input path,
     /// verified in-engine so CI greps a single verdict line:
@@ -15044,6 +15183,31 @@ impl GameApp {
             if beds_ready {
                 self.e2e_beds();
                 self.e2e_beds_done = true;
+            }
+        }
+        // fluids round: E2E_FLUIDS — the in-game fluids leg (native-only).
+        // Drives the REAL fluid ticks through the sim's scheduler: the
+        // infinite water source, the lava/water mixing product, the
+        // bubble column, and the waterlogged chest, and reports the
+        // gated verdict boot line. Same world-entry + chunk-ready guard
+        // as the beds leg (World edits no-op on missing chunks).
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_FLUIDS").is_ok() && !self.e2e_fluids_done {
+            let (px_f, pz_f) = (
+                self.player.pos.x.floor() as i32,
+                self.player.pos.z.floor() as i32,
+            );
+            let (pcx, pcz) = (px_f.div_euclid(16), pz_f.div_euclid(16));
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            let fluids_ready = in_world
+                && self.world.chunks.contains_key(&(pcx, pcz))
+                && self
+                    .world
+                    .chunks
+                    .contains_key(&(pcx, (pz_f + 1).div_euclid(16)));
+            if fluids_ready {
+                self.e2e_fluids();
+                self.e2e_fluids_done = true;
             }
         }
         // Round A: E2E_FKEYS — the function-key contract leg. Stage 0

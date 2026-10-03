@@ -2622,6 +2622,86 @@ pub const NETHER_PORTAL_STATE: u16 = 872;
 pub const FLINT_AND_STEEL_STATE: u16 = 873;
 
 // ---------------------------------------------------------------------------
+// fire round (2026-10-03): the fire-age property
+// ---------------------------------------------------------------------------
+// The fire-age window (877..=891): age 1..15 — the placement default
+// FIRE (805, the V16 base) IS age 0. The age drives the extinguish and
+// the spread rules (VERIFIED w/Fire Extinguishing + Spread, live
+// 2026-10-03 raw wikitext: "Fire has an age property that determines how
+// it extinguishes, ranging from age 0 when the fire is set, and growing
+// to age 15"; "For fire older than age 3, if nothing flammable is
+// adjacent to the fire, or if the block below doesn't have a solid top
+// surface, the fire is extinguished by the next block tick. At age 15,
+// as long as there isn't a flammable block below the fire, a block tick
+// has a 1/4 chance to extinguish the fire."). The vanilla fire blockstate
+// carries the age; the engine's window is the same persistence (the
+// sim-side registry would be lost on save/load).
+pub const FIRE_AGE_BASE: u16 = 877;
+
+/// true if this STATE is a fire block (the age-0 default or the age window)
+#[inline]
+pub fn is_fire_block(s: u16) -> bool {
+    s == V16_STATE_BASE || (FIRE_AGE_BASE..=FIRE_AGE_BASE + 14).contains(&s)
+}
+
+/// the fire's age at a state: 0 (the placement default) ..= 15
+/// (255 = not fire)
+#[inline]
+pub fn fire_age(s: u16) -> u8 {
+    if s == V16_STATE_BASE {
+        0
+    } else if (FIRE_AGE_BASE..=FIRE_AGE_BASE + 14).contains(&s) {
+        (s - FIRE_AGE_BASE + 1) as u8
+    } else {
+        255
+    }
+}
+
+/// the state for a fire age (0 = the placement default; 1..=15 = the
+/// window; 16+ saturates at 15 — the age caps)
+#[inline]
+pub fn fire_age_state(age: u8) -> u16 {
+    if age == 0 {
+        V16_STATE_BASE
+    } else {
+        FIRE_AGE_BASE + age.saturating_sub(1).min(14)
+    }
+}
+
+/// a block's (ignite, burn) odds — the wiki's flammable-blocks table
+/// (VERIFIED w/Fire Flammable blocks, live 2026-10-03: the relative
+/// values; "the higher the ignite odds, the more quickly a block catches
+/// fire if the fire is available to spread there. The higher the burn
+/// odds, the more quickly a block on fire burns away"). None =
+/// non-flammable. The engine's blocks only (the set the registry
+/// carries; the missing blocks are a documented trim).
+#[inline]
+pub fn flammability(b: u16) -> Option<(u8, u8)> {
+    match b {
+        // Logs / Wood / Block of Coal: 5, 5, lava yes
+        OAK_LOG | BIRCH_LOG | SPRUCE_LOG | JUNGLE_LOG => Some((5, 5)),
+        // Overworld Planks / wooden slabs/fences/gates/stairs / Beehive:
+        // 5, 20, lava yes
+        PLANKS | BEEHIVE => Some((5, 20)),
+        // Bookshelf / Lectern / Bee Nest: 30, 20
+        BOOKSHELF | BEE_NEST => Some((30, 20)),
+        // Leaves / Wool (every color): 30, 60, lava yes
+        LEAVES | BIRCH_LEAVES | WOOL_WHITE | WOOL_RED | WOOL_BLUE | WOOL_YELLOW | WOOL_BLACK => {
+            Some((30, 60))
+        }
+        // Hay Bale: 60, 20, lava no
+        HAY_BALE => Some((60, 20)),
+        // TNT (ignites instead of vanishing) / Vines / Glow Lichen:
+        // 15, 100, lava yes
+        TNT | VINE => Some((15, 100)),
+        // Short/Tall Grass / Fern / Dead Bush / 1-block Flowers:
+        // 60, 100, lava yes
+        TALL_GRASS | FLOWER_RED | FLOWER_YELLOW | DEAD_BUSH => Some((60, 100)),
+        _ => None,
+    }
+}
+
+// ---------------------------------------------------------------------------
 // fluids round (2026-09-25): waterlogging + bubble columns
 // ---------------------------------------------------------------------------
 // The waterlogging states (874..=875): one dedicated state per
@@ -3551,13 +3631,15 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 877; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
+pub const STATE_COUNT: usize = 892; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
                                     // states + the V17 armor identity window (845..=860, sub-round 3)
                                     // + Round 13's BOOK/GRINDSTONE identity states (861..=862)
                                     // + the TNT round: TNT's dedicated state (863)
                                     // + the beds round: the bed state window (864..=871)
                                     // + the fluids round: the waterlogging states (874..=875)
                                     // + the bubble column's dedicated state (876)
+                                    // + the fire round: the fire-age window (877..=891,
+                                    // age 1..15 — FIRE 805 is age 0)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -4388,6 +4470,11 @@ pub fn state_block(s: u16) -> u16 {
         s if is_v16_state(s) => {
             return V16_STATE_TO_BLOCK[(s - V16_STATE_BASE) as usize];
         }
+        // fire round: the fire-age window (877..=891, age 1..15) folds to
+        // the FIRE block (the age-0 default is the V16 base 805)
+        s if is_fire_block(s) => {
+            return FIRE;
+        }
         // Sub-round 3: the armor-item identity window
         s if is_v17_state(s) => {
             return V17_STATE_TO_BLOCK[(s - V17_STATE_BASE) as usize];
@@ -4573,6 +4660,10 @@ pub fn is_model_state(s: u16) -> bool {
         // dedicated state (the water-quad path) — never model states
         || is_waterlogged_state(s)
         || s == BUBBLE_COLUMN_STATE
+        // fire round: the fire-age window — never model states (the
+        // cross renders the fire; the age rides the state for the sim
+        // rules + persistence)
+        || is_fire_block(s)
         || s == ACACIA_LOG_X
         || s == ACACIA_LOG_Z
         || s == DARK_OAK_LOG_X
@@ -14171,6 +14262,11 @@ mod state_tests {
                 // model states
                 || is_waterlogged_state(s)
                 || s == BUBBLE_COLUMN_STATE
+                // fire round: the fire-age window (877..=891, age 1..15)
+                // folds to the FIRE block (the age-0 default is the V16
+                // base 805) — never model states; the fold is verified
+                // per-block in the fire round's own tests
+                || is_fire_block(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(

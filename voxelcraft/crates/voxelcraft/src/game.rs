@@ -14934,6 +14934,10 @@ impl GameApp {
         };
         // the daylight sensor's sky term carries the weather factor
         self.sim.sky_factor = self.weather.sky_factor();
+        // fire round: the fire tick's rain-dousing reads the rain flag
+        // (the is_day/sky_factor precedent — the game layer owns the
+        // weather machine)
+        self.sim.rain = raining;
         if overworld && raining && self.screen == Screen::Game {
             let world_ptr: *const vc_world::world::World = &self.world;
             // SAFETY: rain_exposure_tick only reads the world
@@ -18145,6 +18149,81 @@ impl GameApp {
                             self.play_event("entity.player.hurt", None, 1.0);
                             self.death_cause = "TRIED TO SWIM IN LAVA".into();
                             self.ui.dirty = true;
+                        }
+                    }
+
+                    // fire round (VERIFIED w/Fire, live 2026-10-03, raw
+                    // wikitext via the MediaWiki API): the Fire tag + the
+                    // fire damage. "While inside a fire block, the fire
+                    // inflicts damage at a rate of 1 HP per tick (although
+                    // damage immunity reduces this to once every
+                    // half-second)" — 1 HP per 10 sim ticks (the lava
+                    // precedent's immunity form); "Soul fire deals damage
+                    // at a rate of 2 HP per half-second". "Players start
+                    // with a Fire value of -20 ticks... If the value
+                    // becomes greater than 0... it is immediately set to
+                    // 160 ticks" — the after-burn floor (the 8 s);
+                    // "When the player is on fire outside the fire block,
+                    // they take damage at 1 HP per second" — 1 HP per 20
+                    // sim ticks. Water/rain extinguish (the tag resets to
+                    // -20; VERIFIED: "Players and mobs that are burning
+                    // can be extinguished by powder snow, rain, water or
+                    // a cauldron"). Fire Resistance's effect (the effects
+                    // round) will gate this damage.
+                    {
+                        let in_fire_src = self.player.in_fire || self.player.in_soul_fire;
+                        // the Fire tag: the after-burn floor + the decay
+                        if in_fire_src {
+                            if self.player.fire_ticks < 160.0 {
+                                self.player.fire_ticks = 160.0;
+                            }
+                        } else {
+                            self.player.fire_ticks -= 1.0;
+                        }
+                        // the extinguish: water or the rain reaching the
+                        // player (the biome precip + the sky exposure)
+                        if in_fire_src || self.player.fire_ticks > 0.0 {
+                            let wet = self.player.in_water;
+                            let rain_hit = !wet
+                                && raining
+                                && (0..=255i32).all(|yy| {
+                                    !vc_blocks::blocks::is_opaque(vc_blocks::blocks::state_block(
+                                        self.world.get_state(
+                                            self.player.pos.x.floor() as i32,
+                                            yy,
+                                            self.player.pos.z.floor() as i32,
+                                        ),
+                                    ))
+                                });
+                            if wet || rain_hit {
+                                self.player.fire_ticks = -20.0;
+                            }
+                        }
+                        // the fire damage: inside the source — 1 HP (fire)
+                        // / 2 HP (soul) per 10 sim ticks; outside — 1 HP
+                        // per 20 sim ticks (the burn)
+                        if !self.mode.invulnerable() {
+                            let (dmg, every) = if self.player.in_soul_fire {
+                                (2.0, 10u64)
+                            } else if self.player.in_fire {
+                                (1.0, 10u64)
+                            } else if self.player.fire_ticks > 0.0 {
+                                (1.0, 20u64)
+                            } else {
+                                (0.0, 20u64)
+                            };
+                            if dmg > 0.0 && sim_tick.is_multiple_of(every) {
+                                let applied = self.player.damage(dmg);
+                                if applied > 0.0 {
+                                    self.play_event("entity.player.hurt", None, 1.0);
+                                    self.death_cause = if self.player.in_lava {
+                                        "TRIED TO SWIM IN LAVA".into()
+                                    } else {
+                                        "BURNED TO DEATH".into()
+                                    };
+                                    self.ui.dirty = true;
+                                }
+                            }
                         }
                     }
 

@@ -165,6 +165,19 @@ pub struct Player {
     pub head_in_bubble: bool,
     /// Phase E2: feet in lava (contact damage + slow — VERIFIED w/Lava)
     pub in_lava: bool,
+    /// fire round: the feet OR head cell in a FIRE block (non-solid —
+    /// the player stands inside it; VERIFIED w/Fire)
+    pub in_fire: bool,
+    /// the feet OR head cell in a SOUL_FIRE block (2 HP per half-second —
+    /// the more dangerous fire; VERIFIED w/Fire + w/Soul_fire)
+    pub in_soul_fire: bool,
+    /// the vanilla Fire tag: the remaining burn ticks. Starts -20 (the
+    /// 20-tick grace: 1 s inside a fire, leave, and immediately stop
+    /// taking damage); in fire the tag holds at >= 160 (the 8 s
+    /// after-burn floor); decremented per tick outside the source; while
+    /// > 0 the player burns at 1 HP per second. Water/rain extinguish
+    /// (the tag resets to -20). VERIFIED w/Fire, live 2026-10-03.
+    pub fire_ticks: f32,
     /// horizontal collision this frame (any axis-0/2 move clamped) —
     /// drives the 1.13 surface hop out of water (vanilla's
     /// `horizontalCollision` flag in LivingEntity.aiStep)
@@ -307,6 +320,9 @@ impl Player {
             bubble_kind: 255,
             head_in_bubble: false,
             in_lava: false,
+            in_fire: false,
+            in_soul_fire: false,
+            fire_ticks: -20.0,
             on_vine: false,
             in_portal: false,
             portal_accum: 0.0,
@@ -666,6 +682,12 @@ impl Player {
         // owns the travel. VERIFIED Nether_portal §Behavior +
         // Nether_Portal_(block) §Usage, live 2026-09-26.
         let head_block = state_block(head_state);
+        // fire round: the fire-block contact — the feet OR head cell in a
+        // FIRE/SOUL_FIRE block (non-solid, the player stands inside it;
+        // VERIFIED w/Fire). The game layer applies the timed damage (the
+        // lava precedent) and the Fire-tag burn.
+        self.in_fire = feet_block == FIRE || head_block == FIRE;
+        self.in_soul_fire = feet_block == SOUL_FIRE || head_block == SOUL_FIRE;
         // fluids round (1.16): the bubble-column detection — the feet OR
         // head cell in a BUBBLE_COLUMN block; the kind scans down to the
         // column's base (soul sand = upward, magma = whirlpool). VERIFIED

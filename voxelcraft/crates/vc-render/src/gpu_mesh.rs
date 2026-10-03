@@ -309,7 +309,14 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
             // arm to the waterlogged/bubble above-cells
             let aw = (sb(above) == b) || (above == 874u) || (above == 875u) || (sb(above) == 538u);
             let wt = tint_packed(wt_b, false, biome_at(j, cell[0], cell[2]));
-            wmask[t] = 1u | (l << 1u) | (aw << 6u) | (bl << 7u) | (wt << 11u) | (wl << 19u);
+            // aw is a bool (the fluid_height_w signature) — the wmask bit
+            // needs the u32 select
+            wmask[t] = 1u
+                | (l << 1u)
+                | (select(0u, 1u, aw) << 6u)
+                | (bl << 7u)
+                | (wt << 11u)
+                | (wl << 19u);
         }
         // the waterlogged container's own faces still emit below (the
         // chest pair is a greedy cube — both quads coexist, vanilla
@@ -743,6 +750,9 @@ fn build_lut() -> Vec<u32> {
             BIRCH_LEAVES => 4,
             SPRUCE_LEAVES => 5,
             WATER => 6,
+            // fluids round: the bubble column renders as water (the biome
+            // tint row — vc-blocks' tint.rs packs KIND_WATER for it)
+            BUBBLE_COLUMN => 6,
             // Phase E2: lava — fixed slot in the WATER tint row
             LAVA => 7,
             // 1.7.2: acacia/dark-oak foliage follow the biome colormap

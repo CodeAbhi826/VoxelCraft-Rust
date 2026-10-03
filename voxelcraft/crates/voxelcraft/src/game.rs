@@ -15016,17 +15016,18 @@ impl GameApp {
             // unguarded first-update run placed no bed: the head resolved
             // to the wrong cell and 5 of 7 verdict flags failed silently
             // (the 2026-10-03 catch).
-            let (pcx, pcz) = (
-                self.player.pos.x.div_euclid(16),
-                self.player.pos.z.div_euclid(16),
+            let (px_f, pz_f) = (
+                self.player.pos.x.floor() as i32,
+                self.player.pos.z.floor() as i32,
             );
+            let (pcx, pcz) = (px_f.div_euclid(16), pz_f.div_euclid(16));
             let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
             let beds_ready = in_world
                 && self.world.chunks.contains_key(&(pcx, pcz))
                 && self
                     .world
                     .chunks
-                    .contains_key(&(pcx, (self.player.pos.z.floor() as i32 + 2).div_euclid(16)));
+                    .contains_key(&(pcx, (pz_f + 2).div_euclid(16)));
             if beds_ready {
                 self.e2e_beds();
                 self.e2e_beds_done = true;

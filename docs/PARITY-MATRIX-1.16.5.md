@@ -119,8 +119,8 @@ Engine counts: particles = 20 kinds (kinds.rs KINDS, 12 with live spawn sources,
 - Dropper | PARTIAL | shared dispenser path — edge + delay only | none | wiki /Dropper
 - Hopper | DONE | hopper_enabled + hopper_pass — one item per 8 gt (2.5/s) | phase3_constants_match_the_wiki | wiki /Hopper
 - Rails/minecarts | MISSING | none — no RAIL/MINECART ids or entities | none | wiki /Rail, /Minecart
-- TNT | MISSING | none — no TNT block id, no primed entity, no 80gt fuse | none | wiki /TNT
-- Explosions (terrain) | PARTIAL | game.rs explode() — probabilistic ragged sphere; creeper 3/charged 6; the DAMAGE FORMULA IS A SELF-DECLARED IN-CODE PLACEHOLDER (vanilla exposure-based unverified); no TNT chain-priming | none | wiki /TNT, /Creeper
+- TNT | DONE | vc-blocks TNT 533/state 863 + faces 794..796 (hardness 0, blast resistance 0 — VERIFIED w/TNT); vc-sim PrimedTntSystem (fuse 80gt, gravity 0.04/drag 0.98, hitbox 0.98, flash alternating every 0.5 s, explosion 4.0 at fuse 0 queued 0.06125 above the rested position); redstone + fire/lava contact ignition via ignition_sweep; chain-priming at the 10-30gt random fuse | tnt_fuse_is_80_ticks_and_explodes_at_zero, tnt_chain_fuse_rolls_between_10_and_30, tnt_flash_phase_alternates_every_10_ticks | wiki /TNT
+- Explosions (terrain) | DONE | game.rs explode() — the VERIFIED exposure-based damage/knockback (the bounding-box sample grid + the eye-vector impulse) replaces the old self-declared placeholder; 1/power drop chance; difficulty-scaled player damage; chain-priming ignites the TNT in radius | explosion_exposure + the vc-sim TNT tests | wiki /TNT, /Explosion
 - Slime/honey (redstone) | PARTIAL | movement physics only (HONEY_SLOW_FACTOR 0.58); no sticking group/flying machines | slime_bounce_and_sneak_damage | wiki /Slime_Block, /Honey_Block
 - Quasi-connectivity | DONE | redstone.rs:956 qc_powered + QC shadow scheduling | quasi_connectivity_powers_the_piston | wiki /Redstone_mechanics
 - Buttons | MISSING | none — no button block id | none | wiki /Button
@@ -169,7 +169,7 @@ Aspect rows:
 ## Domain 9 — Systems
 
 - Weather (rain/thunder/lightning) | DONE | weather.rs + weather_update + lightning_strike | clear_first_and_ranges, thunder_needs_rain, sky_factors_match_the_wiki | w/Weather: rain 12000-24000/12000-180000, thunder 3600-15600, 30s flash, lightning 5 HP
-- Sleep weather reset | PARTIAL | weather.rs sleep_reset() — implemented but never wired (beds deferred) | sleep_resets_flags_not_timers | w/Weather
+- Sleep weather reset | DONE | weather.rs sleep_reset() wired by the beds round's sleep flow (rain/snow → Clear on the skip; VERIFIED w/Weather + w/Bed §Passing the night: the Java cycle reset is the rain/snow row) | sleep_resets_flags_not_timers + the E2E_BEDS night-skip leg | w/Weather
 - Day/night/moon | DONE | DAY_LEN 1200s = 24000 ticks; moon = day % 8 | day_cycle_is_the_vanilla_20_minutes | w/Daylight_cycle
 - Fire spread | PARTIAL | burnout arm + lightning ignition; NO spread to neighbors, no flint & steel, no rain dousing | none | w/Fire
 - Farming/random ticks | DONE (behaviors) / PARTIAL (density) | random_plant_tick + grow_crop + RandomTicker | farm_growth_denominators_match_the_wiki_table | w/Farmland — engine samples 3/chunk vs vanilla 3/section (~1/16 density); sugarcane/cactus/cocoa absent
@@ -229,7 +229,7 @@ Aspect rows:
 
 - Overworld/Nether/End rules | DONE | travel_to_dimension + dimension-specific spawns (find_spawn/find_nether_spawn/end_arrival) | various | wiki /Dimension
 - Nether 8:1 scaling | DONE | "8:1 horizontal mapping (vanilla nether portals)" (game.rs:20513) | various | wiki /Nether_portal
-- Nether portal BLOCK | MISSING | no NETHER_PORTAL block — travel is menu/command-driven, no obsidian-frame validation, no flint-and-steel, no walk-in trigger | none | wiki /Nether_portal (Round K)
+- Nether portal BLOCK | DONE | vc-blocks NETHER_PORTAL 536/state 872 + tile 801 (the clean-room vortex animation, the mesh census pins 3 animated strips); vc-gameplay portal.rs — the obsidian-frame validation (2x3..21x21 interior, corners not required), the flint-and-steel ignition (FIRE placement path), the walk-in trigger (80gt survival/1gt creative), the 128/16 search radii, the build-spot scan + forced-Y clamp; the flint-and-steel item joins the Tools tab | valid_frame_minimum_2x3_interior, portal_search_finds_closest_within_radius, walk_in_waits_80_game_ticks_survival | wiki /Nether_portal (Round K)
 - End platform/exit | DONE | end_arrival (the 5x5 obsidian platform, x=100 z=0) + the exit portal | various | wiki /The_End
 - Dragon fight | DONE | dragon.rs (200 HP, 12000/500 XP, crystal heal 1/10t in 32-block cuboid) | dragon_health_and_fight_constants_match_the_wiki | wiki /Ender_Dragon
 - Wither | DONE | wither.rs (300 HP, nether star 100%, charge 220 gt) | constants_match_the_live_wiki | wiki /Wither
@@ -245,9 +245,9 @@ Aspect rows:
 ## Prioritized gap list (player visibility first, then dependencies)
 
 **Tier 1 — player-visible, blocks core gameplay (M):**
-1. Nether portal block + walk-in trigger (Round K) — the 8:1 scaling exists; the block/frame/flint-and-steel are missing.
-2. TNT + primed entity + chain-priming; the explosion damage formula is a self-declared placeholder — verify vs the wiki.
-3. Beds/sleeping (night skip, spawn point, the weather sleep_reset wiring, phantom reset).
+1. ~~Nether portal block + walk-in trigger (Round K)~~ DONE — commit 2dd2cd8 + the fix loop (the search's folded-block-id catch); all gates green, E2E green.
+2. ~~TNT + primed entity + chain-priming; the explosion damage formula~~ DONE — the exposure-based damage/knockback is VERIFIED (the placeholder is gone); the bottom-anchored probe + the flash-tick fold landed.
+3. ~~Beds/sleeping (night skip, spawn point, the weather sleep_reset wiring)~~ DONE — sleep.rs + the E2E_BEDS leg; the phantom reset stays with the mobs batch (no phantom MobKind yet).
 4. Waterlogging + bubble columns; infinite water source; lava+water products (obsidian/cobble/stone).
 5. Fire spread + flint & steel ignition; plain FIRE block damage.
 6. Sneak-walk slowdown 1.3 b/s; plain fire damage; the 16 missing status effects.

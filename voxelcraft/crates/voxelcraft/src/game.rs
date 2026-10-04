@@ -8385,6 +8385,56 @@ impl GameApp {
                     (GUNPOWDER, 2),
                     (SPIDER_EYE, 2),
                 ],
+                // ---- the mobs batch (VERIFIED infoboxes, live
+                // 2026-10-04): the 16 missing kinds' drop tables ----
+                // cat: raw cod/salmon (the tamed: the dye — trimmed, no
+                // tame state yet)
+                mobs::MobKind::Cat => &[(RAW_FISH, 1), (RAW_SALMON, 1)],
+                // wolf: drops nothing (VERIFIED w/Wolf)
+                mobs::MobKind::Wolf => &[],
+                // slime: slimeball 0-2 (the size classes: the small
+                // drops 0-2, the large splits — the split is the
+                // death-tuple's trim, disclosed); the slimeball item is
+                // ABSENT from the registry -> the fish-less stand-in is
+                // wrong — the empty table with the slimeball round as
+                // the blocks-breadth work
+                mobs::MobKind::Slime => &[],
+                // panda: bamboo 0-2 (100%)
+                mobs::MobKind::Panda => &[(BAMBOO, 2)],
+                // guardian: prismarine shards 0-2 (100%) + raw fish 0-1
+                // (50% — the fish roll rides the special-case pattern)
+                mobs::MobKind::Guardian => &[(PRISMARINE_SHARD, 2), (RAW_FISH, 1)],
+                // elder guardian: the guardian's rows + the crystals 0-1
+                // (50%)
+                mobs::MobKind::ElderGuardian => &[
+                    (PRISMARINE_SHARD, 2),
+                    (PRISMARINE_CRYSTALS, 1),
+                    (RAW_FISH, 1),
+                ],
+                // endermite: drops nothing (VERIFIED w/Endermite: "no
+                // drops other than 5 XP")
+                mobs::MobKind::Endermite => &[],
+                // shulker: shulker shell 0-1 (50% — the shell roll rides
+                // the special-case pattern)
+                mobs::MobKind::Shulker => &[(SHULKER_SHELL, 1)],
+                // pillager: drops nothing as the body (the crossbow's
+                // equipment drop is the trim — the equipped 8.5%)
+                mobs::MobKind::Pillager => &[],
+                // ravager: a saddle (100%) + emerald 0-1 (50%)
+                mobs::MobKind::Ravager => &[(SADDLE, 1), (EMERALD, 1)],
+                // wandering trader: drops nothing (the trades)
+                mobs::MobKind::WanderingTrader => &[],
+                // trader llama: drops nothing
+                mobs::MobKind::TraderLlama => &[],
+                // piglin brute: drops nothing as the body (the golden
+                // axe's equipment drop is the trim — no golden-axe item)
+                mobs::MobKind::PiglinBrute => &[],
+                // zoglin: the hoglin's rows (the rotten-porkchop stand-in
+                // is the rotten flesh — the rotten-porkchop item is
+                // absent, disclosed)
+                mobs::MobKind::Zoglin => &[(ROTTEN_FLESH, 4), (LEATHER, 1)],
+                // the skeleton/zombie horse: drops nothing (VERIFIED)
+                mobs::MobKind::SkeletonHorse | mobs::MobKind::ZombieHorse => &[],
                 // bat: drops nothing (VERIFIED w/Bat: empty drop table)
                 mobs::MobKind::Bat => &[],
                 // ---- Phase E3 (VERIFIED live 2026-09-06: w/Horse §Drops

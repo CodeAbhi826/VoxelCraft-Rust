@@ -2270,13 +2270,6 @@ impl MobSystem {
                 continue;
             }
             ai_tick(
-                rng,
-                m,
-                player,
-                invuln,
-                self.player_health,
-                hits,
-                arrows,
                 world,
                 &snapshot,
                 pending,
@@ -5492,7 +5485,7 @@ fn ai_tick(
                         let slowed = m.aux == 2;
                         let poisoned = m.aux == 19;
                         let weakened = m.aux == 18;
-                        let (dmg, rider) = if dist >= 8.0 && dist <= 10.0 && !slowed {
+                        let (dmg, rider) = if (8.0..=10.0).contains(&dist) && !slowed {
                             (0.0, Some((2u8, 0u8, 1800i32)))
                         } else if player_health >= 8.0 && !poisoned {
                             (0.0, Some((19u8, 0u8, 900i32)))
@@ -6835,10 +6828,7 @@ mod tests {
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
         ai_tick(
-            &mut rng,
-            &mut mob,
-            sys.player,
-            false,
+            20.0, // the anchored player's health (the witch's ladder)
             &mut sys.hits,
             &mut sys.arrows,
             &flat_world(),
@@ -6895,10 +6885,7 @@ mod tests {
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
         ai_tick(
-            &mut rng,
-            &mut mob,
-            sys.player,
-            false,
+            20.0, // the anchored player's health (the witch's ladder)
             &mut sys.hits,
             &mut sys.arrows,
             &world,
@@ -6923,10 +6910,7 @@ mod tests {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
-                &mut rng,
-                &mut mob,
-                sys.player,
-                false,
+                20.0, // the anchored player's health (the witch's ladder)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -6976,10 +6960,7 @@ mod tests {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
-                &mut rng,
-                &mut mob,
-                sys.player,
-                false,
+                20.0, // the anchored player's health (the witch's ladder)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -7289,10 +7270,7 @@ mod tests {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
-                &mut rng,
-                &mut mob,
-                sys.player,
-                false,
+                20.0, // the anchored player's health (the witch's ladder)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -7348,10 +7326,7 @@ mod tests {
         };
         for _ in 0..5 {
             ai_tick(
-                &mut rng,
-                &mut m,
-                None,
-                false,
+                20.0, // the anchored player's health (the witch's ladder)
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &desert,
@@ -7387,10 +7362,7 @@ mod tests {
             let mut mob = sys.list.remove(0);
             let before = sys.arrows.len();
             ai_tick(
-                &mut rng,
-                &mut mob,
-                sys.player,
-                false,
+                20.0, // the anchored player's health (the witch's ladder)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -7431,10 +7403,7 @@ mod tests {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
-                &mut rng,
-                &mut mob,
-                sys.player,
-                false,
+                20.0, // the anchored player's health (the witch's ladder)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -7478,10 +7447,7 @@ mod tests {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
-                &mut rng,
-                &mut mob,
-                sys.player,
-                false,
+                20.0, // the anchored player's health (the witch's ladder)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -7549,10 +7515,7 @@ mod tests {
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
         ai_tick(
-            &mut rng,
-            &mut mob,
-            sys.player,
-            false,
+            20.0, // the anchored player's health (the witch's ladder)
             &mut sys.hits,
             &mut sys.arrows,
             &world,
@@ -7579,10 +7542,7 @@ mod tests {
         let mut rng2 = std::mem::replace(&mut sys2.rng, Rng::new(1));
         let mut mob2 = sys2.list.remove(0);
         ai_tick(
-            &mut rng2,
-            &mut mob2,
-            sys2.player,
-            false,
+            20.0, // the anchored player's health (the witch's ladder)
             &mut sys2.hits,
             &mut sys2.arrows,
             &world2,
@@ -8364,10 +8324,7 @@ mod v112_tests {
             let mut summons = Vec::new();
             let mut fang = Vec::new();
             ai_tick(
-                &mut rng,
-                &mut mob,
-                ms.player,
-                false,
+                20.0, // the anchored player's health (the witch's ladder)
                 &mut hits,
                 &mut arrows,
                 &world,

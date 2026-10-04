@@ -316,6 +316,10 @@ pub struct Settings {
     /// walk-cycle camera + held-item sway; reference wiki /Options
     /// §Video: "view bobbing ... on by default")
     pub view_bobbing: bool,
+    /// vanilla "Subtitles" (Music & Sounds screen, default OFF) — the
+    /// Java 1.9 caption stack; visuals round: the overlay renderer is
+    /// live (the captions render bottom-right from play_event when on)
+    pub subtitles: bool,
     /// 2026-09-14 round: ENABLED resource packs, in Selected-list order
     /// (index 0 = TOP = HIGHEST priority; vanilla's options.txt
     /// `resourcePacks` analog — applied bottom-first so higher entries
@@ -410,6 +414,7 @@ impl Default for Settings {
             skin_hat: true,
             main_hand_left: false,           // Right (the vanilla default)
             view_bobbing: true,              // vanilla default ON
+            subtitles: false,                // vanilla default OFF
             resource_packs: Vec::new(),      // Default only, like vanilla
             saved_hotbars: [[(0, 0); 9]; 9], // all-empty (the paper rows)
             #[cfg(target_arch = "wasm32")]
@@ -1766,6 +1771,13 @@ pub struct GameApp {
     /// rolling (draw calls, buffer binds) per frame — Phase 9 §37 metric
     draw_calls_ring: std::collections::VecDeque<(u32, u32)>,
     item_toast: Option<(String, f32)>,
+    /// visuals round (the 3-G UI/feel): the Java 1.9 subtitles — the
+    /// caption stack (the text, the stereo pan, the ttl) pushed from
+    /// play_event when the subtitles setting is on; rendered bottom-right.
+    /// VERIFIED w/Options §Music & Sounds: "Shows sound events as
+    /// captions" — the toggle already exists, the overlay renderer is
+    /// this round's work.
+    captions: Vec<(String, f32, f32)>,
     /// held-item name display state: current (slot, block) key + the
     /// remaining fade seconds (vanilla HUD behavior)
     held_key: (usize, u16),
@@ -3009,6 +3021,7 @@ impl GameApp {
             frame_times: std::collections::VecDeque::new(),
             draw_calls_ring: std::collections::VecDeque::new(),
             item_toast: None,
+            captions: Vec::new(),
             held_key: (0, 0),
             held_name: String::new(),
             held_name_t: 0.0,
@@ -4953,6 +4966,33 @@ impl GameApp {
             self.sounds_played += 1;
             self.snd_window += 1; // F3 "Sounds:" 1 s window
             self.audio.play(&self.bank, r.recipe, vol, r.pitch, pan);
+            // visuals round: the Java 1.9 subtitles — the caption for
+            // every audible sound event (the setting gates; the music/UI
+            // events are non-positional and skip the arrow). The caption
+            // text is the clean-room display name: the event's last two
+            // path segments prettified ("entity.player.hurt" ->
+            // "player hurt"); the ASCII direction suffix from the stereo
+            // pan (">" = from the right, "<" = from the left — the font's
+            // glyph set is ASCII-safe).
+            if self.settings.subtitles && self.screen == Screen::Game {
+                let segs: Vec<&str> = event.split('.').collect();
+                let tail: Vec<&str> = segs.iter().rev().take(2).rev().copied().collect();
+                let mut text = tail.join(" ");
+                if pos.is_some() {
+                    if pan > 0.25 {
+                        text.push_str(" >");
+                    } else if pan < -0.25 {
+                        text.push_str(" <");
+                    }
+                }
+                // the newest at the bottom (the vanilla caption stack),
+                // capped at 5 — the oldest drops off the top
+                self.captions.push((text, pan, 2.0));
+                if self.captions.len() > 5 {
+                    self.captions.remove(0);
+                }
+                self.ui.dirty = true;
+            }
         }
     }
 
@@ -5296,7 +5336,7 @@ impl GameApp {
             ),
             ui::ID_ACC_SUBTITLES => l2(
                 "Shows sound events as captions (Java 1.9).",
-                "No subtitle overlay renderer in this engine yet.",
+                "The caption stack renders bottom-right (visuals round).",
             ),
             ui::ID_OPT_SKIN => l("Toggle the player model's overlay layers and main hand."),
             ui::ID_SKIN_CAPE => l("Toggles the cape (w/Options §Skin Customization)."),
@@ -5336,7 +5376,7 @@ impl GameApp {
             ui::ID_CHAT_DONE => l("Back to Options."),
             ui::ID_SND_SUBTITLES => l2(
                 "Shows sound events as captions (the Java 1.9 subtitle",
-                "toggle also lives on Music & Sounds). No overlay renderer yet.",
+                "toggle also lives on Music & Sounds). The overlay renders bottom-right.",
             ),
             _ => Vec::new(),
         }
@@ -9477,11 +9517,18 @@ impl GameApp {
             | ui::ID_CHAT_LINKS
             | ui::ID_CHAT_LINKSPROMPT
             | ui::ID_CHAT_HIDENAMES
-            | ui::ID_CHAT_NARRATOR
-            | ui::ID_SND_SUBTITLES => {
-                // grayed stubs (no chat / no narrator TTS / no subtitle
-                // overlay — registered with their reasons, the vanilla
-                // grayed-option treatment)
+            | ui::ID_CHAT_NARRATOR => {
+                // grayed stubs (no chat / no narrator TTS — registered
+                // with their reasons, the vanilla grayed-option
+                // treatment; the subtitles toggle is LIVE — visuals
+                // round)
+            }
+            ui::ID_SND_SUBTITLES => {
+                // vanilla "Subtitles" toggle (Music & Sounds, default
+                // OFF) — the Java 1.9 caption stack; visuals round: the
+                // overlay renderer is live
+                self.settings.subtitles = !self.settings.subtitles;
+                self.after_settings_change();
             }
             ID_OPT_BOB => {
                 // vanilla View Bobbing toggle (Options screen, default ON)
@@ -21450,6 +21497,16 @@ impl GameApp {
             .add(crate::bench::PHASE_SIM, crate::bench::micros() - t_sim);
 
         // toasts
+        // the captions' ttl decay (the toast pattern)
+        if !self.captions.is_empty() {
+            for c in self.captions.iter_mut() {
+                c.2 -= dt;
+            }
+            self.captions.retain(|c| c.2 > 0.0);
+            if self.screen == Screen::Game {
+                self.ui.dirty = true;
+            }
+        }
         if let Some((_, t)) = self.item_toast.as_mut() {
             *t -= dt;
             if *t <= 0.0 {
@@ -23747,6 +23804,30 @@ impl GameApp {
                 let period = combat::attack_cooldown_ticks(atk_speed) / 20.0;
                 let p = (self.swing_t / period).min(1.0);
                 self.ui.attack_indicator(p);
+            }
+            // visuals round: the Java 1.9 subtitles — the caption stack
+            // renders bottom-right when the setting is on (the vanilla
+            // treatment: the dark backing + the readable caption; the
+            // newest at the BOTTOM, growing up, 5 max; the ASCII direction
+            // suffix rides the text)
+            if self.settings.subtitles && !self.captions.is_empty() {
+                let n = self.captions.len();
+                for (i, (text, _, ttl)) in self.captions.iter().enumerate() {
+                    let w = UiCanvas::text_width(text, 1);
+                    let x = self.ui.live_w as i32 - 8 - w;
+                    let y = self.ui.live_h as i32 - 56 - (n - 1 - i) as i32 * 13;
+                    // the fade: the alpha decays with the ttl (the toast
+                    // pattern's 0..220 span)
+                    let a = ((*ttl / 2.0) * 255.0).clamp(40.0, 255.0) as u8;
+                    self.ui.rect(
+                        x - 3,
+                        y - 2,
+                        w + 6,
+                        11,
+                        [0, 0, 0, (a as i32 * 3 / 5).min(180)],
+                    );
+                    self.ui.text(x, y, text, [255, 255, 255, a], 1);
+                }
             }
             let toast = self
                 .item_toast

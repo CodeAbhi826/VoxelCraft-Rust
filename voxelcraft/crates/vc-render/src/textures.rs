@@ -497,6 +497,58 @@ fn snow_side(a: &mut [u8], t: u16, rng: &mut Rng) {
 
 // ---------------------------------------------------------- string art ----
 
+/// the mobs batch: the shared billboard painter — one clean-room body
+/// shape (the 16×16 rounded quadruped: the body block + the head + the 4
+/// legs + the eye row) with the per-kind body/accent colors (the
+/// measured colorimetry; every sprite is an original work — the same
+/// shape vocabulary the zombie/quadruped sprites carry). `body` = the
+/// main field, `accent` = the head/eye detail.
+fn mob_batch_art(a: &mut [u8], t: u16, body: [i32; 3], accent: [i32; 3]) {
+    let mut rng = Rng::new(t as u64 ^ 0x6D0B);
+    for y in 0..16i32 {
+        for x in 0..16i32 {
+            // the quadruped silhouette: the head (rows 0-5, cols 5-10),
+            // the body (rows 5-11, cols 2-13), the legs (rows 11-15)
+            let head = (0..6).contains(&y) && (5..=10).contains(&x);
+            let body_area = (5..12).contains(&y) && (2..=13).contains(&x);
+            let legs = (12..16).contains(&y) && ((3..=5).contains(&x) || (10..=12).contains(&x));
+            if head {
+                let eye = (y == 3 || y == 4) && (x == 6 || x == 9);
+                let c = if eye { accent } else { body };
+                put(
+                    a,
+                    t,
+                    x,
+                    y,
+                    jit(c[0], 5, &mut rng),
+                    jit(c[1], 5, &mut rng),
+                    jit(c[2], 5, &mut rng),
+                    255,
+                );
+            } else if body_area || legs {
+                // the body's under-shade + the legs' darker tone
+                let shade = if legs {
+                    -14
+                } else if y > 9 {
+                    -8
+                } else {
+                    0
+                };
+                put(
+                    a,
+                    t,
+                    x,
+                    y,
+                    jit(body[0] + shade, 5, &mut rng),
+                    jit(body[1] + shade, 5, &mut rng),
+                    jit(body[2] + shade, 5, &mut rng),
+                    255,
+                );
+            }
+        }
+    }
+}
+
 fn art(a: &mut [u8], t: u16, rows: [&str; 16], map: &dyn Fn(char) -> Option<(i32, i32, i32, i32)>) {
     for (y, row) in rows.iter().enumerate() {
         for (x, ch) in row.chars().enumerate() {
@@ -4775,6 +4827,25 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_MOB_STRIDER => v116b_art::strider_art(&mut a, t, &mut rng),
             TILE_MOB_PIGLIN => v116b_art::piglin_art(&mut a, t, &mut rng),
             TILE_MOB_HOGLIN => v116b_art::hoglin_art(&mut a, t, &mut rng),
+            // the mobs batch: the 16 missing kinds' billboard sprites
+            // (clean-room art — the batch painters below; every shape is
+            // an original work, the colors from the measured colorimetry)
+            TILE_MOB_CAT => mob_batch_art(&mut a, t, [232, 190, 130], [40, 40, 45]),
+            TILE_MOB_WOLF => mob_batch_art(&mut a, t, [180, 180, 180], [60, 55, 55]),
+            TILE_MOB_SLIME => mob_batch_art(&mut a, t, [110, 200, 110], [60, 140, 70]),
+            TILE_MOB_PANDA => mob_batch_art(&mut a, t, [240, 240, 240], [35, 35, 35]),
+            TILE_MOB_GUARDIAN => mob_batch_art(&mut a, t, [130, 170, 130], [70, 110, 90]),
+            TILE_MOB_ELDER_GUARDIAN => mob_batch_art(&mut a, t, [180, 200, 170], [80, 120, 100]),
+            TILE_MOB_ENDERMITE => mob_batch_art(&mut a, t, [40, 30, 45], [90, 60, 110]),
+            TILE_MOB_SHULKER => mob_batch_art(&mut a, t, [130, 90, 140], [70, 50, 80]),
+            TILE_MOB_PILLAGER => mob_batch_art(&mut a, t, [110, 110, 120], [60, 60, 70]),
+            TILE_MOB_RAVAGER => mob_batch_art(&mut a, t, [90, 75, 75], [50, 40, 40]),
+            TILE_MOB_WANDERING_TRADER => mob_batch_art(&mut a, t, [150, 120, 90], [230, 200, 80]),
+            TILE_MOB_TRADER_LLAMA => mob_batch_art(&mut a, t, [220, 210, 200], [150, 130, 110]),
+            TILE_MOB_PIGLIN_BRUTE => mob_batch_art(&mut a, t, [170, 140, 100], [60, 50, 45]),
+            TILE_MOB_ZOGLIN => mob_batch_art(&mut a, t, [160, 110, 90], [220, 230, 210]),
+            TILE_MOB_SKELETON_HORSE => mob_batch_art(&mut a, t, [190, 190, 190], [120, 120, 120]),
+            TILE_MOB_ZOMBIE_HORSE => mob_batch_art(&mut a, t, [120, 140, 100], [60, 70, 50]),
             // ---- the 1.0-1.16.5 completeness audit: the V15 window ----
             TILE_STEAK => audit16_art::steak_art(&mut a, t, &mut rng),
             TILE_COOKED_PORKCHOP => audit16_art::cooked_porkchop_art(&mut a, t, &mut rng),

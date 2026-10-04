@@ -5160,6 +5160,25 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 
 /// highest tile index the generator must draw. Phase 4 BUG FIX: this sat
 /// at 82 while Phase 2 (tiles 83–104) and Phase 3 (tiles 105–117) kept
+// ---- the mobs batch: the 16 missing kinds' billboard sprites
+// (803..818 — the clean-room art; the atlas loop 0..=TILE_MAX) ----
+pub const TILE_MOB_CAT: u16 = 803;
+pub const TILE_MOB_WOLF: u16 = 804;
+pub const TILE_MOB_SLIME: u16 = 805;
+pub const TILE_MOB_PANDA: u16 = 806;
+pub const TILE_MOB_GUARDIAN: u16 = 807;
+pub const TILE_MOB_ELDER_GUARDIAN: u16 = 808;
+pub const TILE_MOB_ENDERMITE: u16 = 809;
+pub const TILE_MOB_SHULKER: u16 = 810;
+pub const TILE_MOB_PILLAGER: u16 = 811;
+pub const TILE_MOB_RAVAGER: u16 = 812;
+pub const TILE_MOB_WANDERING_TRADER: u16 = 813;
+pub const TILE_MOB_TRADER_LLAMA: u16 = 814;
+pub const TILE_MOB_PIGLIN_BRUTE: u16 = 815;
+pub const TILE_MOB_ZOGLIN: u16 = 816;
+pub const TILE_MOB_SKELETON_HORSE: u16 = 817;
+pub const TILE_MOB_ZOMBIE_HORSE: u16 = 818;
+
 /// adding art arms ABOVE it — the atlas loop `for t in 0..=TILE_MAX`
 /// never reached them, so every mob sprite, mob-drop icon, and redstone
 /// component tile rendered BLANK since Phase 2. Now derived from the
@@ -5167,7 +5186,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 802;
+pub const TILE_MAX: u16 = 818; // + the mobs batch: the 16 missing kinds' sprites (803..818)
 /// Round K (the Nether portal): the purple animated portal-block tile —
 /// a clean-room translucent-violet vortex swirl. The wiki describes the
 /// block as "the translucent part of the Nether portal" that emits "a

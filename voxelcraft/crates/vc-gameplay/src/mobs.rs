@@ -304,6 +304,110 @@ pub enum MobKind {
     /// into zombified piglins"). Neutral-until-provoked like the
     /// piglin's anger family; stats from w/Zombified_Piglin.
     ZombifiedPiglin,
+    // ---- the mobs batch (2026-10-04): the 16 missing kinds — the
+    // 1.16.5 mob set is now COMPLETE (50 -> 66 declared). Every row is
+    // the live-verified infobox data (the reference wiki, raw wikitext,
+    // live 2026-10-04).
+    /// 1.14: the cat — VERIFIED (w/Cat, live 2026-10-04): 10 HP (JE)
+    /// passive, hitbox 0.7h/0.6w, speed 0.3, drops raw cod/salmon (the
+    /// tamed: the dye + the lead/name-tag equipment trims), strays
+    /// spawn near villages, the phantom's predator.
+    Cat,
+    /// 1.4: the wolf — VERIFIED (w/Wolf, live 2026-10-04): 8 HP wild /
+    /// 40 HP tamed, hitbox 0.85h/0.6w, speed 0.3, neutral (the anger:
+    /// "Hostile: ... an angry wolf"), forest/grove/taiga spawns in
+    /// packs of 4, tamed with bones (1/3 per bone), drops nothing.
+    Wolf,
+    /// 1.0: the slime — VERIFIED (w/Slime, live 2026-10-04): the size
+    /// classes Large 16 HP / Semi 9 / Medium 4 / Small 1 (the variant
+    /// byte = the size code; the LARGE row is the def), the bounce
+    /// chase (the melee E 2/N 3/H 4.5 for the large), hostile, spawns
+    /// in slime chunks below Y 40 (the full moon too — trimmed),
+    /// splits on death (the large -> 4 semi -> 4 small — the split
+    /// rides the death tuple), drops slimeball 0-2 (the small only),
+    /// 1-4 XP by size.
+    Slime,
+    /// 1.14: the panda — VERIFIED (w/Panda, live 2026-10-04): 20 HP
+    /// (10 for the weak panda — the variant byte), hitbox 1.25h/1.3w,
+    /// speed 0.15 (the lazy 0.07), jungle/bamboo spawns, drops bamboo
+    /// 0-2 (100%), 1-3 XP, bred with bamboo.
+    Panda,
+    /// 1.8: the guardian — VERIFIED (w/Guardian, live 2026-10-04): 30
+    /// HP hostile, hitbox 0.85, "Laser: Easy 4 HP / Normal 6 HP /
+    /// Hard 9 HP" (the engine takes the 6 Normal row), ocean-monument
+    /// spawns, drops prismarine shards 0-2 (100%) + raw fish 0-1 (50%),
+    /// 10 XP.
+    Guardian,
+    /// 1.8: the elder guardian — VERIFIED (w/Elder_Guardian, live
+    /// 2026-10-04): 80 HP hostile, hitbox 1.9972, "Laser: Easy 5 /
+    /// Normal 8 / Hard 12" (the 8 Normal row), the monument's three
+    /// elders only, drops prismarine shards 0-2 + prismarine crystals
+    /// 0-1 (50%) + raw fish 0-1 (50%), 10 XP, inflicts Mining Fatigue
+    /// III on nearby players (the wired effect).
+    ElderGuardian,
+    /// 1.11: the endermite — VERIFIED (w/Endermite, live 2026-10-04):
+    /// 8 HP hostile, hitbox 0.3h/0.4w, "Easy and Normal: 2 HP" melee,
+    /// spawns from ender-pearl throws (5% per pearl — the engine's
+    /// throw path), drops nothing, 5 XP, despawns after 2 minutes (the
+    /// aux timer).
+    Endermite,
+    /// 1.9: the shulker — VERIFIED (w/Shulker, live 2026-10-04): 30 HP
+    /// hostile, hitbox 1.0 closed (the peeking 1.2 — the variant byte),
+    /// the shulker bullet (the levitation effect — 10 s), the End
+    /// city's shells, drops shulker shell 0-1 (50%), 5 XP, teleports
+    /// when hit.
+    Shulker,
+    /// 1.14: the pillager — VERIFIED (w/Pillager, live 2026-10-04): 24
+    /// HP hostile illager, hitbox 1.95h/0.6w, "Ranged: Crossbow: Easy
+    /// 2-3 / Normal 3-5 / Hard 5-7" (the 3-5 Normal row — the engine
+    /// takes the 4 midpoint, disclosed), the crossbow bolts ride the
+    /// arrow path (the ProjKind), patrols/pillager outposts, drops the
+    /// crossbow (the equipped 8.5% on a player kill — the engine's
+    /// equipment drop trim), 5 XP + 1 (the raid captain's Bad Omen).
+    Pillager,
+    /// 1.14: the ravager — VERIFIED (w/Ravager, live 2026-10-04): 100
+    /// HP hostile, hitbox 2.2h/1.95w, speed 0.4, knockback resistance
+    /// 70% (disclosed — no knockback stat in the engine), "Melee: Easy
+    /// 7 / Normal 12 / Hard 18", the raid's beast, drops a saddle
+    /// (100%) + emerald 0-1 (50%), 20 XP.
+    Ravager,
+    /// 1.14: the wandering trader — VERIFIED (w/Wandering_Trader, live
+    /// 2026-10-04): 20 HP passive, hitbox 1.95h/0.6w, speed 0.7,
+    /// despawns after 40 minutes (the aux timer), the trade screen
+    /// (the hidden trades), the invisible potion when "hit by a
+    /// projectile" (the invulnerability — trimmed), drops nothing.
+    WanderingTrader,
+    /// 1.14: the trader llama — VERIFIED (w/Trader_Llama, live
+    /// 2026-10-04): 15-30 HP (the 22.5 midpoint row), neutral (the
+    /// spit 1 HP Easy/Normal), the wandering trader's lead pair (the
+    /// trader despawns -> the llama stays — trimmed), drops nothing.
+    TraderLlama,
+    /// 1.16: the piglin brute — VERIFIED (w/Piglin_Brute, live
+    /// 2026-10-04): 50 HP hostile, hitbox 1.95h/0.6w, "Armed: Golden
+    /// Axe: Easy 7.5 / Normal 13 / Hard 19.5" (the 13 Normal row),
+    /// bastion-remnant spawns, NEVER barters/flees (the brute row),
+    /// drops the golden axe (8.5% on a player kill — the engine's
+    /// equipment drop trim), 20 XP.
+    PiglinBrute,
+    /// 1.16: the zoglin — VERIFIED (w/Zoglin, live 2026-10-04): 40 HP
+    /// hostile, hitbox 1.4h/1.3965w (JE row), speed 0.3, knockback
+    /// resistance 60% (disclosed), "Adult: Easy 2.5-5 / Normal 3-8 /
+    /// Hard 4.5-12" (the 5.5 midpoint, disclosed), attacks EVERYTHING
+    /// except creepers/other zoglins (the brute row), the overworld
+    /// hoglin's zombified form (the zombification trim), drops rotten
+    /// porkchop 2-4 + leather 0-1 (50%), 5 XP.
+    Zoglin,
+    /// 1.13: the skeleton horse — VERIFIED (w/Skeleton_Horse, live
+    /// 2026-10-04): 15 HP passive, hitbox 1.6h/1.3965w, speed 0.2, the
+    /// thunderstorm skeleton-trap spawns (the trap: 4 riders —
+    /// trimmed), drops nothing, 1-3 XP, tameable by riding (the mount
+    /// system rides the equine family).
+    SkeletonHorse,
+    /// 1.13: the zombie horse — VERIFIED (w/Zombie_Horse, live
+    /// 2026-10-04): 25 HP passive, hitbox 1.6h/1.3965w, spawns ONLY via
+    /// the direct spawn API (/summon — the engine-native stand-in),
+    /// drops nothing, 1-3 XP.
+    ZombieHorse,
 }
 
 impl MobKind {
@@ -379,6 +483,23 @@ impl MobKind {
             "mooshroom" => MobKind::Mooshroom,
             "wither_skeleton" => MobKind::WitherSkeleton,
             "witch" => MobKind::Witch,
+            // the mobs batch: the 16 missing kinds
+            "cat" => MobKind::Cat,
+            "wolf" => MobKind::Wolf,
+            "slime" => MobKind::Slime,
+            "panda" => MobKind::Panda,
+            "guardian" => MobKind::Guardian,
+            "elder_guardian" => MobKind::ElderGuardian,
+            "endermite" => MobKind::Endermite,
+            "shulker" => MobKind::Shulker,
+            "pillager" => MobKind::Pillager,
+            "ravager" => MobKind::Ravager,
+            "wandering_trader" => MobKind::WanderingTrader,
+            "trader_llama" => MobKind::TraderLlama,
+            "piglin_brute" => MobKind::PiglinBrute,
+            "zoglin" => MobKind::Zoglin,
+            "skeleton_horse" => MobKind::SkeletonHorse,
+            "zombie_horse" => MobKind::ZombieHorse,
             "bat" => MobKind::Bat,
             "horse" => MobKind::Horse,
             "donkey" => MobKind::Donkey,
@@ -475,6 +596,23 @@ impl MobKind {
             // carries its vanilla registry id for completeness
             MobKind::Squid => "voxelcraft:squid",
             MobKind::ZombifiedPiglin => "voxelcraft:zombified_piglin",
+            // the mobs batch: the 16 missing kinds
+            MobKind::Cat => "voxelcraft:cat",
+            MobKind::Wolf => "voxelcraft:wolf",
+            MobKind::Slime => "voxelcraft:slime",
+            MobKind::Panda => "voxelcraft:panda",
+            MobKind::Guardian => "voxelcraft:guardian",
+            MobKind::ElderGuardian => "voxelcraft:elder_guardian",
+            MobKind::Endermite => "voxelcraft:endermite",
+            MobKind::Shulker => "voxelcraft:shulker",
+            MobKind::Pillager => "voxelcraft:pillager",
+            MobKind::Ravager => "voxelcraft:ravager",
+            MobKind::WanderingTrader => "voxelcraft:wandering_trader",
+            MobKind::TraderLlama => "voxelcraft:trader_llama",
+            MobKind::PiglinBrute => "voxelcraft:piglin_brute",
+            MobKind::Zoglin => "voxelcraft:zoglin",
+            MobKind::SkeletonHorse => "voxelcraft:skeleton_horse",
+            MobKind::ZombieHorse => "voxelcraft:zombie_horse",
         }
     }
 
@@ -541,6 +679,23 @@ impl MobKind {
             MobKind::Strider => TILE_MOB_STRIDER,
             MobKind::Piglin => TILE_MOB_PIGLIN,
             MobKind::Hoglin => TILE_MOB_HOGLIN,
+            // the mobs batch: the 16 missing kinds' sprites (803..818)
+            MobKind::Cat => TILE_MOB_CAT,
+            MobKind::Wolf => TILE_MOB_WOLF,
+            MobKind::Slime => TILE_MOB_SLIME,
+            MobKind::Panda => TILE_MOB_PANDA,
+            MobKind::Guardian => TILE_MOB_GUARDIAN,
+            MobKind::ElderGuardian => TILE_MOB_ELDER_GUARDIAN,
+            MobKind::Endermite => TILE_MOB_ENDERMITE,
+            MobKind::Shulker => TILE_MOB_SHULKER,
+            MobKind::Pillager => TILE_MOB_PILLAGER,
+            MobKind::Ravager => TILE_MOB_RAVAGER,
+            MobKind::WanderingTrader => TILE_MOB_WANDERING_TRADER,
+            MobKind::TraderLlama => TILE_MOB_TRADER_LLAMA,
+            MobKind::PiglinBrute => TILE_MOB_PIGLIN_BRUTE,
+            MobKind::Zoglin => TILE_MOB_ZOGLIN,
+            MobKind::SkeletonHorse => TILE_MOB_SKELETON_HORSE,
+            MobKind::ZombieHorse => TILE_MOB_ZOMBIE_HORSE,
             // the completeness audit's classic trio (audit16_art)
             MobKind::Ghast => TILE_MOB_GHAST,
             MobKind::CaveSpider => TILE_MOB_CAVESPIDER,
@@ -601,6 +756,24 @@ impl MobKind {
                 | MobKind::Ghast
                 | MobKind::CaveSpider
                 | MobKind::Silverfish
+                // the mobs batch: the hostile kinds (VERIFIED infoboxes
+                // "Behavior Hostile", live 2026-10-04) — the slime (the
+                // bounce attacker), the guardian/elder guardian (the
+                // water monsters), the endermite, the shulker, the
+                // pillager/ravager (the raid illagers), the piglin
+                // brute, the zoglin (the zombified hoglin); the panda's
+                // 6 HP row is its retaliation bite (passive, the
+                // angry-panda trims); the wolf is NEUTRAL (the anger:
+                // the provoked param)
+                | MobKind::Slime
+                | MobKind::Guardian
+                | MobKind::ElderGuardian
+                | MobKind::Endermite
+                | MobKind::Shulker
+                | MobKind::Pillager
+                | MobKind::Ravager
+                | MobKind::PiglinBrute
+                | MobKind::Zoglin
         )
     }
     pub fn neutral(self) -> bool {
@@ -613,6 +786,10 @@ impl MobKind {
         self == MobKind::Enderman
             || self == MobKind::IronGolem
             || self == MobKind::Llama
+            // the mobs batch: the wolf (the anger family — VERIFIED
+            // w/Wolf: "an angry wolf") + the trader llama (the spit)
+            || self == MobKind::Wolf
+            || self == MobKind::TraderLlama
             || self == MobKind::Dolphin
             || self == MobKind::Pufferfish
             || self == MobKind::Piglin
@@ -1444,6 +1621,27 @@ pub const MOB_DATA: [MobDef; 49] = [
         width: 0.6,
         xp: 5,
     },
+    // ---- the mobs batch (2026-10-04): the 16 missing kinds — every row
+    // is the live-verified infobox data (the reference wiki, raw
+    // wikitext, live 2026-10-04); the speed = the wiki "Speed" row (the
+    // ATTRIBUTE — ×SPEED_PER_ATTR); the armor = the natural armor points.
+    MobDef { kind: MobKind::Cat, health: 10.0, damage: 0.0, speed_attr: 0.3, armor: 0.0, height: 0.7, width: 0.6, xp: 3 },
+    MobDef { kind: MobKind::Wolf, health: 8.0, damage: 3.0, speed_attr: 0.3, armor: 0.0, height: 0.85, width: 0.6, xp: 3 },
+    MobDef { kind: MobKind::Slime, health: 16.0, damage: 2.0, speed_attr: 0.2, armor: 0.0, height: 2.08, width: 2.08, xp: 4 },
+    MobDef { kind: MobKind::Panda, health: 20.0, damage: 6.0, speed_attr: 0.15, armor: 0.0, height: 1.25, width: 1.3, xp: 3 },
+    MobDef { kind: MobKind::Guardian, health: 30.0, damage: 6.0, speed_attr: 0.3, armor: 0.0, height: 0.85, width: 0.85, xp: 10 },
+    MobDef { kind: MobKind::ElderGuardian, health: 80.0, damage: 8.0, speed_attr: 0.3, armor: 0.0, height: 1.9972, width: 1.9972, xp: 10 },
+    MobDef { kind: MobKind::Endermite, health: 8.0, damage: 2.0, speed_attr: 0.25, armor: 0.0, height: 0.3, width: 0.4, xp: 5 },
+    MobDef { kind: MobKind::Shulker, health: 30.0, damage: 0.0, speed_attr: 0.0, armor: 0.0, height: 1.0, width: 1.0, xp: 5 },
+    MobDef { kind: MobKind::Pillager, health: 24.0, damage: 4.0, speed_attr: 0.35, armor: 0.0, height: 1.95, width: 0.6, xp: 5 },
+    MobDef { kind: MobKind::Ravager, health: 100.0, damage: 12.0, speed_attr: 0.4, armor: 0.0, height: 2.2, width: 1.95, xp: 20 },
+    MobDef { kind: MobKind::WanderingTrader, health: 20.0, damage: 0.0, speed_attr: 0.7, armor: 0.0, height: 1.95, width: 0.6, xp: 1 },
+    MobDef { kind: MobKind::TraderLlama, health: 22.5, damage: 1.0, speed_attr: 0.175, armor: 0.0, height: 1.87, width: 1.3965, xp: 3 },
+    MobDef { kind: MobKind::PiglinBrute, health: 50.0, damage: 13.0, speed_attr: 0.35, armor: 0.0, height: 1.95, width: 0.6, xp: 20 },
+    MobDef { kind: MobKind::Zoglin, health: 40.0, damage: 5.5, speed_attr: 0.3, armor: 0.0, height: 1.4, width: 1.3965, xp: 5 },
+    MobDef { kind: MobKind::SkeletonHorse, health: 15.0, damage: 0.0, speed_attr: 0.2, armor: 0.0, height: 1.6, width: 1.3965, xp: 3 },
+    MobDef { kind: MobKind::ZombieHorse, health: 25.0, damage: 0.0, speed_attr: 0.2, armor: 0.0, height: 1.6, width: 1.3965, xp: 3 },
+]
 ];
 
 #[inline]

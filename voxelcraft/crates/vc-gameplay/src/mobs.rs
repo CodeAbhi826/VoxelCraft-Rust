@@ -2270,6 +2270,13 @@ impl MobSystem {
                 continue;
             }
             ai_tick(
+                rng,
+                m,
+                player,
+                invuln,
+                self.player_health,
+                hits,
+                arrows,
                 world,
                 &snapshot,
                 pending,
@@ -6828,7 +6835,11 @@ mod tests {
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
         ai_tick(
-            20.0, // the anchored player's health (the witch's ladder)
+            &mut rng,
+            &mut mob,
+            sys.player,
+            false,
+            20.0, // the anchored player's health (the witch's health gates)
             &mut sys.hits,
             &mut sys.arrows,
             &flat_world(),
@@ -6885,7 +6896,11 @@ mod tests {
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
         ai_tick(
-            20.0, // the anchored player's health (the witch's ladder)
+            &mut rng,
+            &mut mob,
+            sys.player,
+            false,
+            20.0, // the anchored player's health (the witch's health gates)
             &mut sys.hits,
             &mut sys.arrows,
             &world,
@@ -6910,7 +6925,11 @@ mod tests {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
-                20.0, // the anchored player's health (the witch's ladder)
+                &mut rng,
+                &mut mob,
+                sys.player,
+                false,
+                20.0, // the anchored player's health (the witch's health gates)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -6960,7 +6979,11 @@ mod tests {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
-                20.0, // the anchored player's health (the witch's ladder)
+                &mut rng,
+                &mut mob,
+                sys.player,
+                false,
+                20.0, // the anchored player's health (the witch's health gates)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -7270,7 +7293,11 @@ mod tests {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
-                20.0, // the anchored player's health (the witch's ladder)
+                &mut rng,
+                &mut mob,
+                sys.player,
+                false,
+                20.0, // the anchored player's health (the witch's health gates)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -7326,7 +7353,11 @@ mod tests {
         };
         for _ in 0..5 {
             ai_tick(
-                20.0, // the anchored player's health (the witch's ladder)
+                &mut rng,
+                &mut m,
+                None,
+                false,
+                20.0, // the anchored player's health (the witch's health gates)
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &desert,
@@ -7362,7 +7393,11 @@ mod tests {
             let mut mob = sys.list.remove(0);
             let before = sys.arrows.len();
             ai_tick(
-                20.0, // the anchored player's health (the witch's ladder)
+                &mut rng,
+                &mut mob,
+                sys.player,
+                false,
+                20.0, // the anchored player's health (the witch's health gates)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -7403,7 +7438,11 @@ mod tests {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
-                20.0, // the anchored player's health (the witch's ladder)
+                &mut rng,
+                &mut mob,
+                sys.player,
+                false,
+                20.0, // the anchored player's health (the witch's health gates)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -7447,7 +7486,11 @@ mod tests {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
-                20.0, // the anchored player's health (the witch's ladder)
+                &mut rng,
+                &mut mob,
+                sys.player,
+                false,
+                20.0, // the anchored player's health (the witch's health gates)
                 &mut sys.hits,
                 &mut sys.arrows,
                 &world,
@@ -7515,7 +7558,11 @@ mod tests {
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
         ai_tick(
-            20.0, // the anchored player's health (the witch's ladder)
+            &mut rng,
+            &mut mob,
+            sys.player,
+            false,
+            20.0, // the anchored player's health (the witch's health gates)
             &mut sys.hits,
             &mut sys.arrows,
             &world,
@@ -7542,7 +7589,11 @@ mod tests {
         let mut rng2 = std::mem::replace(&mut sys2.rng, Rng::new(1));
         let mut mob2 = sys2.list.remove(0);
         ai_tick(
-            20.0, // the anchored player's health (the witch's ladder)
+            &mut rng2,
+            &mut mob2,
+            sys2.player,
+            false,
+            20.0, // the anchored player's health (the witch's health gates)
             &mut sys2.hits,
             &mut sys2.arrows,
             &world2,
@@ -8324,7 +8375,11 @@ mod v112_tests {
             let mut summons = Vec::new();
             let mut fang = Vec::new();
             ai_tick(
-                20.0, // the anchored player's health (the witch's ladder)
+                &mut rng,
+                &mut mob,
+                ms.player,
+                false,
+                20.0, // the anchored player's health (the witch's health gates)
                 &mut hits,
                 &mut arrows,
                 &world,

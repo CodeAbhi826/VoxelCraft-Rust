@@ -11482,6 +11482,12 @@ impl GameApp {
                 }
             }
             match c {
+                Container::Dispenser { .. } => {
+                    // visuals round: the dispenser/dropper's 9-slot storage
+                    // persists in the Containers registry on close (the
+                    // breaking spills it — the game layer's registry
+                    // drain)
+                }
                 Container::Inventory => {
                     for s in self.craft_grid.iter_mut().take(4) {
                         if !s.is_empty() {
@@ -12594,15 +12600,7 @@ impl GameApp {
                 // visuals round: the 3x3 storage grid's live slots (the
                 // Containers registry — the grid rides ContainerView's
                 // craft cells for the click routing)
-                let slots = self
-                    .sim
-                    .containers
-                    .map
-                    .get(pos)
-                    .cloned()
-                    .map(|c| c.slots)
-                    .unwrap_or_default();
-                (ContainerKind::Dispenser, Some(slots), None, None, None)
+                (ContainerKind::Dispenser, None, None, None, None)
             }
             Some(Container::Furnace { pos }) => {
                 // live slots + progress fractions for the flame/arrow;

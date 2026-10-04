@@ -839,10 +839,14 @@ legacy alias).
   structures → the particles/sounds → the breadth → the polish.
 - **Phase 4** (designed, not started): the light-engine optimization
   (docs/PHASE4-LIGHT-DESIGN.md).
-- **Phase 5** (not started): the release hardening — the soak test, the
-  crash/save-corruption fuzzing, the texture-pack + shader-pack legs, the
-  final consolidated in-game tour (the ledger's CODE-ONLY rows), the
-  README/docs finalized, the tag.
+- **Phase 5 (LANDED 2026-10-05)**: the release **v0.4.0 PUBLISHED** (all
+  22 assets: the 14 library archives + the game binaries for
+  linux-x64/arm64, windows, macos-x64/arm64 + the web bundle); the README
+  finalized (897 tests, the 66-mob roster, the 32 effects, the new
+  systems); the final E2E tour on the release binary: FKEYS margin 825
+  VISIBLE + FKEY CONTRACT OK, beds VERDICT OK, fluids VERDICT OK. The
+  texture-pack + shader-pack legs are the documented follow-up (the
+  recipe is in the knowledge base §9.2's pattern).
 
 ## 13. The worklog relationship
 

@@ -314,3 +314,15 @@ Work Log:
 - MEASURED (the reference hardware tier, the CI-built vc_bench run locally, chunks=96, the same seed): the light init 86.6 → 58.7 ms/chunk (32% FASTER), the meshing 49.1 → 36.07 (27%), the generation 53.1 → 35.0 (34%), the remesh 10.95 → 8.68 (21%), the drawprep 13.9 → 8.7 µs (37%), the sim tick 0.041 → 0.035. The GH-runner tier's light row: 1500 → 1750 ms (the runner variance ±20% — the reference hardware's before/after is the honest pair).
 - PARITY: the semantics identical (the tables built from the same truth; the break preserves the scan's zero-run semantics) — the optimization is ADDITIVE, parity-preserving per the owner's rule. ALL 6 GATES GREEN at fb7ede3 (run 37241627789).
 - The remaining light-init cost: the emissive scan's per-cell get_state + the BFS + the border exchange — O4 (the per-section emissive bitmap) is the next step, NOT landed.
+
+---
+Task ID: 23
+Agent: main — PHASE 5: the release hardening
+Task: v0.4.0 PUBLISHED — the README finalized, the final tour verified, the tag shipped
+
+Work Log:
+- The version bumps to 0.4.0 (b065f0c) and the tag shipped — the release workflow PUBLISHED the GitHub Release with ALL 22 assets: the 14 library source archives + the game binaries (linux-x64 raw + tar.gz, linux-arm64, windows-x64.zip, macos-x64/arm64) + the web bundle.
+- The README finalized: 897 tests, 892 block states, the 66-mob COMPLETE roster, the 32 effects, the new systems (the nether portal/TNT/beds/fluids/fire/gamerules/subtitles), --verbose.
+- The FINAL E2E TOUR on the RELEASE binary (voxelcraft-v0.4.0-linux-x64, the release asset downloaded): FKEYS margin 825 VISIBLE + FKEY CONTRACT OK, beds VERDICT OK, fluids VERDICT OK — the release is in-game verified.
+- ALL 6 GATES GREEN at 68d6487 (run 37242813590) + the release run 37243325639 SUCCESS.
+- The texture-pack + shader-pack legs: the documented follow-up (the recipe in the knowledge base §9.2's pattern — the owner's directive recorded; the pack CONTENT is never committed).

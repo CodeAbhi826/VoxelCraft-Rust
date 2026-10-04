@@ -217,3 +217,14 @@ Work Log:
 - feat(game) 44118d6: the sneak-walk slowdown — the 1.3 m/s straight cap + the 1.8 diagonal (the jump height/vertical speed unaffected).
 - The CI fix loop (6 commits): the effects.rs brace, the input param field fix, the dragon site's Weakness, the empty-line/doc-quote lints, the paint-ink census pin (16 -> 32). ALL 6 GATES GREEN at 075c582 (run 37173868199).
 - DISCLOSED: the Levitation float is a documented approximation (the wiki publishes no scalar); the Luck/Bad Luck loot modifier, the Bad Omen raid trigger, and the Hero trade discount are registered with disclosed future hooks (the systems/mobs rounds).
+
+---
+Task ID: 15
+Agent: main — the repo knowledge base + the witch/skull round's CI loop
+Task: docs/REPO-KNOWLEDGE-BASE.md — the complete source-code-level knowledge transfer (the owner's directive: a living file with the FULL architecture and details of everything, updated in place, unlike the append-only worklog)
+
+Work Log:
+- docs/REPO-KNOWLEDGE-BASE.md created (1051 lines, 18 sections): the overview + the exact build/run/test recipes; the crate map in dependency order (every crate's actual file map + internals); the World/chunk/state-registry data model (the lifecycle, the edit path, the light regions, the biomes); the 20 Hz sim (the Sim struct, the fixed-step loop, the determinism); the game loop's full order (the 8 stages + the 5 measured phases); the gameplay systems IN DEPTH (the mobs/ai_tick, the player's update, the 32 effects, the combat math, the fluids' full mechanics, the entities, the block entities, the sleep/portal/weather, the redstone); the greedy mesher + the GPU compute + the assets; the performance baselines + the Phase-4 design; the save format; the 10 cross-crate integration rules; the E2E/CI infrastructure; the legal policy; the known gaps + the disclosed trims (the full list); the chronology (the worklog cross-referenced); the recovery procedures; the glossary; the feature-adding recipe.
+- The re-sequencing decision recorded: THE VISUALS UPDATE comes NEXT (re-sequenced earlier by the owner's 2026-10-04 directive — the GUI batch + the 3-G UI/feel round before the mobs/systems/structures batches; nothing breaks — the visuals work on the render layer and unblocks the mobs' entity-model rendering).
+- The file UPDATES IN PLACE (a section whose fact changes gets edited, never left stale) — the worklog records THAT the change happened, this file IS the current truth. Everything in it is code-read/verified this era (never stale research dumps).
+- The witch/skull round's CI loop: the aux type fix (7fbb915), the CORRUPTED commit a69f0b1 repaired (the script deleted the ai_tick call sites' arg lines — restored from 7fbb915, the range lint re-applied, the 12 test callers take the player-health arg properly — 7425296). ALL 6 GATES GREEN at 7425296 (run 37180705953).

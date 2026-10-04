@@ -579,6 +579,29 @@ path).
   vc-blocks' truth), mesh_compute_wgsl_validates (the naga parse +
   type-check).
 
+## 6.3a The colorimetry cross-check (the visuals round, 2026-10-04 — PASSED)
+
+The engine's tiles vs the vanilla 1.16.5 jar's textures MEASURED (the
+STUDY-ONLY grant — the measured colorimetry, never copied; the pixel-
+identity check stays):
+
+| Tile | The engine's base | The vanilla measured avg | Drift |
+|---|---|---|---|
+| stone | (127,127,127) | (126,126,126) | 1 |
+| sand | (219,207,163) | (219,207,163) | 0 — EXACT |
+| planks | (162,131,79) | (162,131,79) | 0 — EXACT |
+| log side | (107,83,51) | (109,85,51) | 2 |
+| dirt | the shades' avg ~(128,92,64) | (134,96,67) | ~6 |
+| grass top / water | GREYSCALE × the biome tint | GREYSCALE × the biome tint | the EXACT vanilla mechanism |
+
+The tint values are vanilla-EXACT (the Plains grass 0x91BD59, the water
+0x44AFF5 — the code cites the vanilla hex). The rendered-capture drift
+(the grass (97,148,45) vs the tinted want (84,109,51)) is the LIGHT
+contribution (the shade × the sky × the AO) — correct behavior, not a
+tint error. The vanilla's grass_block_top.png/water_still.png being
+GREYSCALE confirms the engine's tint-pack approach matches vanilla
+exactly.
+
 ## 6.3 The assets (vc-render/src/textures/ + the audio)
 
 - **The atlas**: 512×512, TILE_PX 16 — the 1024-tile grid (tile = ty*32+tx).

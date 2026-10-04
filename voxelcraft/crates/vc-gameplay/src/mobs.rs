@@ -2826,6 +2826,23 @@ impl MobSystem {
 
     // --------------------------------------------------------- spawning --
 
+    /// the mobs batch: is this chunk a slime chunk? (VERIFIED w/Slime
+    /// §Spawning: "slimes spawn in slime chunks below Y 40" — vanilla's
+    /// seeded 10%-of-chunks rule; the engine's deterministic hash of the
+    /// chunk coords: every 10th chunk by the mixed hash — the same 10%
+    /// share, the seed mixing documented)
+    /// the mixed seed accessor (the slime chunk's hash input)
+    pub fn rng_seed(&self) -> u64 {
+        self.rng.state
+    }
+
+    pub fn slime_chunk(&self, cx: i32, cz: i32) -> bool {
+        let h = (cx as u64).wrapping_mul(0x2545_F491_4F6C_DD1D)
+            ^ (cz as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            ^ self.rng_seed();
+        (h >> 33) % 10 == 0
+    }
+
     /// hostile spawn attempt (VERIFIED 1.16.5 rules): block light ≤ 7 AND
     /// sky light ≤ 7, solid floor with 2 air, packs up to 4 (vanilla
     /// monster pack size), cap 70 × chunks/289 (single-player worst case
@@ -2978,10 +2995,13 @@ impl MobSystem {
                     },
                 }
             } else {
-                // Phase E2: witches join the monster pool at their verified
-                // ~0.97% share (w/Witch spawn table: weight 5/515, group 1
-                // — the engine rolls 1/100, disclosed)
-                if self.rng.next_range(100) == 0 {
+                // the mobs batch: the slime's chunk rule (VERIFIED
+                // w/Slime §Spawning: "slimes spawn in slime chunks below
+                // Y 40" — the deterministic seeded chunk flag, 10% of
+                // chunks; the full-moon rule is the trimmed half)
+                if y < 40 && self.slime_chunk(cx, cz) {
+                    MobKind::Slime
+                } else if self.rng.next_range(100) == 0 {
                     MobKind::Witch
                 } else {
                     // 1.10 biome-variant conversion (VERIFIED, wiki /w/Stray

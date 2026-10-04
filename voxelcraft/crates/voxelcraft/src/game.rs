@@ -8324,8 +8324,8 @@ impl GameApp {
                 // ---- Phase E2 (VERIFIED 2026-09-06,
                 // docs/research/phase2-1.3-1.4-research.md) ----
                 // wither skeleton: coal 0-1 @ 33%, bone 0-2 @ 67%, skull
-                // 0-1 @ 2.5% (the skull roll rides the special-cased path
-                // below — it is NOT a guaranteed drop)
+                // 0-1 @ 2.5% (the skull roll IS the special-cased case
+                // below — the fire/sneak round landed it)
                 mobs::MobKind::WitherSkeleton => &[(COAL, 1), (BONE, 2)],
                 // witch: the verified per-item 0-2 rolls (redstone,
                 // glowstone, gunpowder, spider eye, sugar, glass bottle,
@@ -8582,6 +8582,24 @@ impl GameApp {
                         0,
                     );
                 }
+            }
+            // fire/sneak round: the wither-skeleton's skull 2.5%
+            // (VERIFIED w/Wither_Skeleton's drop table, live 2026-10-03:
+            // "Wither Skeleton Skull ... dropchance 0.025, lootingchance
+            // 0.01" — the player-kill requirement rides the death drain;
+            // the kill-credit trim: the death tuple carries no killer,
+            // disclosed; the Looting +1%/level is the disclosed future
+            // hook — the Looting enchant is unwired)
+            if kind == mobs::MobKind::WitherSkeleton && self.audio_rng.next_f32() < 0.025 {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    WITHER_SKELETON_SKULL,
+                    2,
+                    15,
+                    0,
+                );
             }
             // Phase 4 §26: spiders additionally have a 1/3 chance to drop
             // one spider eye (VERIFIED, 1.16.5-era Spider page — only when

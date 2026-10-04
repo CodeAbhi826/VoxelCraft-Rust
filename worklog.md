@@ -241,3 +241,14 @@ Work Log:
 - The corrupted commit a69f0b1 repaired (7425296: the script had deleted the ai_tick call sites' arg lines — restored from 7fbb915, the range lint re-applied, the 12 test callers take the player-health arg properly). ALL 6 GATES GREEN at 26e128a (run 37183004646).
 - DISCLOSED: the witch's drinkable-potion defense (the drink side is future work); the splash AoE (the throw hits the player directly); the kill-credit trim (the death tuple carries no killer); the Looting +1%/level hook.
 - NEXT: THE VISUALS UPDATE (re-sequenced earlier — the GUI batch: smoker/blast/stonecutter/loom/smithing/cartography/lectern/dispenser/dropper GUIs + the 3-G UI/feel round: the HUDs/textures/GUIs polish).
+
+---
+Task ID: 17
+Agent: main — the visuals round: the SUBTITLES overlay (verified in-game)
+Task: The Java 1.9 subtitles — the caption stack renders bottom-right; the Subtitles toggle is LIVE
+
+Work Log:
+- feat(game) c830b76: the captions (the Java 1.9 subtitles) — the caption stack pushed from play_event when the setting is on (the clean-room display name: the event's last two path segments prettified; the ASCII direction suffix ">" / "<" from the stereo pan), rendered bottom-right (the dark backing + the white text, the newest at the bottom, 5 max, the ttl fade); the Subtitles toggle is LIVE (the grayed stub is replaced — the settings.subtitles field + the flip wiring); the accessibility/Music descriptions update.
+- feat(game) ea7f10a: the E2E_SUBTITLES capture override (the env-var settings pattern).
+- The alpha type fix 782cab4. ALL 6 GATES GREEN at 782cab4 + ea7f10a (runs 37188130812, 37190014713).
+- VERIFIED IN-GAME (run 37190587026): the bottom-right caption "grass step" with the dark backing — the capture CONFIRMED (the full-frame read + the 2x crop: white text on the dark backing, the exact vanilla treatment); the captions populate from the boot's sound events; FKEYS margin 2046 VISIBLE + FKEY CONTRACT OK; beds/fluids VERDICT OK on the same build lineage.

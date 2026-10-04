@@ -175,8 +175,9 @@ pub struct Player {
     /// 20-tick grace: 1 s inside a fire, leave, and immediately stop
     /// taking damage); in fire the tag holds at >= 160 (the 8 s
     /// after-burn floor); decremented per tick outside the source; while
-    /// > 0 the player burns at 1 HP per second. Water/rain extinguish
-    /// the tag resets to -20). VERIFIED w/Fire, live 2026-10-03.
+    /// the tag is above zero the player burns at 1 HP per second.
+    /// Water/rain extinguish (the tag resets to -20). VERIFIED w/Fire,
+    /// live 2026-10-03.
     pub fire_ticks: f32,
     /// horizontal collision this frame (any axis-0/2 move clamped) —
     /// drives the 1.13 surface hop out of water (vanilla's

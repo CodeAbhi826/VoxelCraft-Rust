@@ -12596,7 +12596,7 @@ impl GameApp {
             }
             Some(Container::Mount { .. }) => (ContainerKind::Mount, None, None, None, None),
             Some(Container::Hopper { pos: _ }) => (ContainerKind::Hopper, None, None, None, None),
-            Some(Container::Dispenser { pos }) => {
+            Some(Container::Dispenser { pos: _ }) => {
                 // visuals round: the 3x3 storage grid's live slots (the
                 // Containers registry — the grid rides ContainerView's
                 // craft cells for the click routing)

@@ -412,9 +412,12 @@ impl Default for Settings {
             skin_lpants: true,
             skin_rpants: true,
             skin_hat: true,
-            main_hand_left: false,           // Right (the vanilla default)
-            view_bobbing: true,              // vanilla default ON
-            subtitles: false,                // vanilla default OFF
+            main_hand_left: false, // Right (the vanilla default)
+            view_bobbing: true,    // vanilla default ON
+            subtitles: false,      // vanilla default OFF
+            // E2E_SUBTITLES: the capture leg's override — the captions
+            // populate from the boot's sound events (the env-var
+            // settings pattern; set AFTER the struct literal below)
             resource_packs: Vec::new(),      // Default only, like vanilla
             saved_hotbars: [[(0, 0); 9]; 9], // all-empty (the paper rows)
             #[cfg(target_arch = "wasm32")]
@@ -15303,6 +15306,12 @@ impl GameApp {
         // the vanilla-grey 9-slice panel on the GPU quad layer, dumps the
         // canvas fallback PNGs, and exits 0. Verified by the
         // "e2e: containers" boot lines in linux-game.yml.
+        // visuals round: E2E_SUBTITLES — the capture leg's settings
+        // override (the env-var pattern): the captions populate from the
+        // boot's sound events and the F2 capture shows the overlay
+        if std::env::var("E2E_SUBTITLES").is_ok() && !self.settings.subtitles {
+            self.settings.subtitles = true;
+        }
         if std::env::var("E2E_CONTAINERS").is_ok() && !self.e2e_containers_done {
             self.e2e_containers();
             self.e2e_containers_done = true;

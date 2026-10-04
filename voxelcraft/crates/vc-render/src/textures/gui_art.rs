@@ -859,7 +859,6 @@ const PAL_HERO: [(char, Px); 3] = [
 /// the effect-icon (mask, palette) pairs, index order matching
 /// vc_gameplay::effects::EffectKind's declaration order (32: the 16
 /// original + the fire/sneak round's 16 missing effects)
-
 const EFFECT_ICONS: [EffectIcon; EFFECT_ICON_COUNT] = [
     (&EFF_WITHER, &PAL_WITHER),
     (&EFF_POISON, &PAL_POISON),

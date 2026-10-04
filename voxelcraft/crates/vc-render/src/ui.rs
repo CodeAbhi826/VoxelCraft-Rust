@@ -4187,6 +4187,11 @@ impl UiCanvas {
             // content row instead of three (2×40px shorter than the chest)
             ContainerKind::Hopper => 52,   // 1 row of 5 slots
             ContainerKind::Furnace => 128, // input / flame / fuel + arrow + output
+            // the smoker/blast share the furnace's layout (the same
+            // input/flame/fuel + arrow + output — VERIFIED: "the same
+            // GUI as the furnace")
+            ContainerKind::Smoker => 128,
+            ContainerKind::BlastFurnace => 128,
             ContainerKind::Brewing => 150, // ingredient / bubbles / fuel + 3 bottles
             ContainerKind::Enchant => 160, // item + lapis + 3 option buttons
             // Phase 5: two 5-row columns + the career header
@@ -4249,6 +4254,10 @@ impl UiCanvas {
             // VERIFIED vanilla GUI label: "Item Hopper"
             ContainerKind::Hopper => "ITEM HOPPER",
             ContainerKind::Furnace => "FURNACE",
+            // visuals round: the distinct vanilla titles (the shared
+            // furnace layout, own label)
+            ContainerKind::Smoker => "SMOKER",
+            ContainerKind::BlastFurnace => "BLAST FURNACE",
             ContainerKind::Brewing => "BREWING STAND",
             ContainerKind::Enchant => "ENCHANT  (needs book + lapis + levels)",
             ContainerKind::Trade => "VILLAGER",
@@ -4506,8 +4515,10 @@ impl UiCanvas {
                     }
                 }
             }
-            ContainerKind::Furnace => {
+            ContainerKind::Furnace | ContainerKind::Smoker | ContainerKind::BlastFurnace => {
                 // left column: input above flame above fuel; arrow → output
+                // (the smoker/blast share the furnace's rendering — the
+                // same layout, the kind's own title above)
                 let cx = x0 + (grid_w - 240) / 2;
                 let cy = y0 + 8;
                 let (input, fuel, output, burn, cook) =
@@ -6003,6 +6014,12 @@ pub enum ContainerKind {
     Crafting,
     /// furnace: input / fuel / output with live progress
     Furnace,
+    /// 1.14 (part 2): the smoker — the same GUI as the furnace, own
+    /// title (VERIFIED w/Smoker §Usage: "the same GUI as the furnace")
+    Smoker,
+    /// 1.14 (part 2): the blast furnace — the same GUI, own title
+    /// (VERIFIED w/Blast_Furnace §Usage)
+    BlastFurnace,
     /// brewing stand: ingredient / fuel / 3 bottles with bubble progress
     Brewing,
     /// enchanting table: item + lapis + 3 option rows (§29)

@@ -12586,16 +12586,27 @@ impl GameApp {
             Some(Container::Mount { .. }) => (ContainerKind::Mount, None, None, None, None),
             Some(Container::Hopper { pos: _ }) => (ContainerKind::Hopper, None, None, None, None),
             Some(Container::Furnace { pos }) => {
-                // live slots + progress fractions for the flame/arrow
+                // live slots + progress fractions for the flame/arrow;
+                // visuals round: the kind rides the title (the smoker/
+                // blast share the furnace's layout with their own label —
+                // VERIFIED w/Smoker + w/Blast_Furnace: "the same GUI as
+                // the furnace")
                 let f = self.sim.furnaces.map.get(&pos).cloned().unwrap_or_default();
                 let burn = if f.burn_max > 0 {
                     f.burn_left as f32 / f.burn_max as f32
                 } else {
                     0.0
                 };
-                let cook = f.cook_left as f32 / vc_gameplay::furnace::COOK_TICKS as f32;
+                let cook = f.cook_left as f32
+                    / vc_gameplay::furnace::FurnaceKind::from_block(pos, &self.world).cook_ticks()
+                        as f32;
+                let kind = match vc_gameplay::furnace::FurnaceKind::from_block(pos, &self.world) {
+                    vc_gameplay::furnace::FurnaceKind::Smoker => ContainerKind::Smoker,
+                    vc_gameplay::furnace::FurnaceKind::Blast => ContainerKind::BlastFurnace,
+                    _ => ContainerKind::Furnace,
+                };
                 (
-                    ContainerKind::Furnace,
+                    kind,
                     Some((f.input, f.fuel, f.output, burn, cook)),
                     None,
                     None,

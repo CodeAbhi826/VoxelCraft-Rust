@@ -31,6 +31,19 @@ pub enum FurnaceKind {
 }
 
 impl FurnaceKind {
+    /// which smelter sits at this position (the block id's kind — the
+    /// FURNACE/BLAST_FURNACE/SMOKER block ids; the furnace block entity's
+    /// kind rides the BLOCK, so the GUI title and the cook rate derive
+    /// from the same source)
+    pub fn from_block(pos: [i32; 3], world: &vc_world::world::World) -> FurnaceKind {
+        use vc_blocks::blocks::{BLAST_FURNACE, SMOKER};
+        match world.get_block(pos[0], pos[1], pos[2]) {
+            b if b == BLAST_FURNACE => FurnaceKind::Blast,
+            b if b == SMOKER => FurnaceKind::Smoker,
+            _ => FurnaceKind::Furnace,
+        }
+    }
+
     /// cook ticks for one item at this kind's speed.
     pub fn cook_ticks(self) -> i32 {
         match self {

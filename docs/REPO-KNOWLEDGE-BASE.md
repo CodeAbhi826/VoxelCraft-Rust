@@ -898,7 +898,7 @@ Regeneration/Poison; the wither-skeletons immune to Wither too; the
 spiders/cave-spiders immune to Poison; the ender dragon/the wither immune
 to ALL; the witches take 85% less EFFECT damage (JE).
 
-## 14.2 The 50 MobKinds (current)
+## 14.2 The 66 MobKinds (current — the 1.16.5 set COMPLETE)
 
 DONE (41): zombie, drowned, husk, skeleton, stray, wither-skeleton,
 creeper, spider, cave-spider, enderman, witch (the attack DONE), zombie

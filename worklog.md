@@ -277,3 +277,19 @@ Work Log:
 - THE VISUALS ROUND COMPLETE: the SUBTITLES overlay (in-game verified — the "grass step" capture CONFIRMED), the smoker/blast furnace GUIs (the distinct titles), the dispenser/dropper GUI (the 3x3 grid + the arrow + the live slots through the Containers registry), the COLORIMETRY CROSS-CHECK PASSED (the engine's tiles vs the vanilla measured — the sand/planks EXACT, the tints vanilla-exact, the greyscale mechanism matches), and the F3 combos (F3+H) + the skin layers (the model-part toggles) verified ALREADY WIRED (the code-read).
 - The remaining GUIs (stonecutter/loom/smithing/cartography/lectern) MOVE to the blocks-breadth round — their BLOCKS are missing from the registry (539/764; the GUIs need the blocks first).
 - The knowledge-base GUI row updated (the visuals round COMPLETE).
+
+---
+Task ID: 20
+Agent: main — the mobs batch COMPLETE
+Task: The 16 missing MobKinds — the 1.16.5 mob set is COMPLETE (66 declared), landed and CI green
+
+Work Log:
+- Live-verified the 16 mob pages (raw wikitext, live 2026-10-04): the infobox stats (health/damage/speed/hitbox/size) + the drops (cat: cod/salmon; wolf: nothing; slime: the size classes + the slimeball; panda: bamboo; guardian 30 HP laser 6 Normal; elder 80 HP laser 8; endermite 8 HP; shulker 30 HP + the shell; pillager 24 HP crossbow; ravager 100 HP melee 12; the trader 20 HP; the trader llama 22.5; the brute 50 HP axe 13; the zoglin 40 HP; the horses 15/25 HP).
+- feat(game) 3e349b9 + a47f1f2: the 16 MobKind variants (the verified doc comments), the names, the from_name, the sprite tiles, the MOB_DATA rows, the hostile/neutral classification.
+- feat(render,blocks) c660719: the 16 billboard-sprite tiles (803..818, TILE_MAX 818) + the shared clean-room quadruped painter (the per-kind body/accent colors from the measured colorimetry).
+- fix(game) 7ead73a: the egg-id table + from_egg (49..=64), the MOB_DATA pin (65), the 4 census pins.
+- feat(game) 3757d86: the 16 kinds' drop tables (the verified infobox drops; the slimeball/rotten-porkchop/golden-axe items are absent — the blocks-breadth work, disclosed).
+- feat(game) 9af4da1: the dedicated AI arms — the hostile chase + the melee for the slime/guardian/elder/endermite/pillager/ravager/brute/zoglin, and the shulker's stationary shell + the bullet (the Levitation 10 s payload).
+- feat(game) 85d3c7c + 9ce8843: the slime's chunk spawn rule (slime chunks below Y 40 — the deterministic 10%-of-chunks hash).
+- ALL 6 GATES GREEN at 9ce8843 (the runs 37235252514 → 37238581085).
+- DISCLOSED: the slime's split (the death-tuple trim), the pillager's crossbow bolts (the ProjKind future work), the guardian/elder's monument spawns (the structures round), the shulker's teleport-on-hit, the slimeball/rotten-porkchop/golden-axe items (the blocks-breadth), the wolves'/cats' biome spawns ride the catch-all wander (the dedicated packs are the polish).

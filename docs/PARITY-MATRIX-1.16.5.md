@@ -14,7 +14,7 @@ mineable/ subdirectory (mineable/axe.json etc. absent — generated at runtime,
 not shipped in the client jar).
 
 **Engine headline counts (measured from the code today):** 533 blocks
-(STATE_COUNT 863), 50 MobKinds, 28 biomes, 863 tests.
+(STATE_COUNT 863), 50 MobKinds, 28 biomes, 863 tests. [UPDATE 2026-10-04: STATE_COUNT 892, 66 MobKinds, the visuals round landed — see the matrix rows.]
 
 ---
 ## Domain 10 — UI and rendering
@@ -155,7 +155,7 @@ Engine counts: particles = 20 kinds (kinds.rs KINDS, 12 with live spawn sources,
 
 ## Domain 3 — Mobs (70 1.16.5 mobs: 41 DONE, 12 PARTIAL, 17 MISSING)
 
-Reference counts: jar loot_tables/entities = 72 per-mob JSONs (+16 sheep variants); the 1.16.5 roster ends at 1.16.2's piglin brutes. Engine: 50 MobKinds (49 MOB_DATA rows; Squid is a classification-only stub), 12 entity-model rigs.
+Reference counts: jar loot_tables/entities = 72 per-mob JSONs (+16 sheep variants); the 1.16.5 roster ends at 1.16.2's piglin brutes. Engine: 66 MobKinds (65 MOB_DATA rows; Squid is a classification-only stub) — THE 1.16.5 SET COMPLETE (the mobs batch 2026-10-04: the 16 missing kinds + the verified stats/tiles/drops/AI + the slime-chunk spawn rule), 12 entity-model rigs.
 
 DONE mobs: zombie, skeleton, creeper, spider, cow, pig, chicken, magma_cube, blaze, ocelot, zombie_villager, horse, donkey, mule, rabbit, stray, husk, illusioner, vex, drowned, phantom, dolphin, cod, salmon, pufferfish, tropical_fish, turtle, fox, bee, cave_spider, silverfish, zombified_piglin, villager, wither, ender_dragon.
 PARTIAL: enderman (no teleport-on-damage/water), sheep (no wool colors/dye/shear), snow_golem (no trail), iron_golem (drops IRON_BLOCK 1 vs 3-5 ingots), mooshroom (no shear/stew), wither_skeleton (2.5% skull drop MISSING — stale comment game.rs:8004), witch (NO ATTACK ARM — hostile with damage 6 but no ai_tick case), polar_bear (no cub-defense), llama (no carpet), parrot (no perch/mimicry), evoker (fangs = particle adaptation), strider (no riding), piglin (no gold-armor pacification; barter trimmed), hoglin (no zoglin), ghast (no explosion radius), squid (stub, never spawns).

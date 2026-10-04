@@ -228,3 +228,16 @@ Work Log:
 - The re-sequencing decision recorded: THE VISUALS UPDATE comes NEXT (re-sequenced earlier by the owner's 2026-10-04 directive — the GUI batch + the 3-G UI/feel round before the mobs/systems/structures batches; nothing breaks — the visuals work on the render layer and unblocks the mobs' entity-model rendering).
 - The file UPDATES IN PLACE (a section whose fact changes gets edited, never left stale) — the worklog records THAT the change happened, this file IS the current truth. Everything in it is code-read/verified this era (never stale research dumps).
 - The witch/skull round's CI loop: the aux type fix (7fbb915), the CORRUPTED commit a69f0b1 repaired (the script deleted the ai_tick call sites' arg lines — restored from 7fbb915, the range lint re-applied, the 12 test callers take the player-health arg properly — 7425296). ALL 6 GATES GREEN at 7425296 (run 37180705953).
+
+---
+Task ID: 16
+Agent: main — Phase 3: the witch/skull round COMPLETE + the visuals update begins
+Task: The witch's splash-potion attack + the wither-skeleton's skull 2.5% drop — landed and CI green; THE VISUALS UPDATE is the next round (re-sequenced earlier by the owner's directive)
+
+Work Log:
+- Live-verified the Witch/Slowness/Weakness/Wither_Skeleton pages (raw wikitext, live 2026-10-03): the witch's potion-choice ladder (the Slowness splash I 1:30 = 1800t at 8/9/10 blocks; Poison I 1 HP/1.25s max 45s = 900t at health >= 8; the 25% Weakness splash 1:30 at < 3 blocks + health <= 8 or poisoned; default Harming 6 HP magical), the pursue-within-16 (JE), the 3-second interval, the skull dropchance 0.025 + the Looting 0.01.
+- feat(game) ea50aa5: the witch's ai_tick arm — the VERIFIED ladder (the anchored player's health rides the MobSystem for the health gates), the potion_effect rider through PlayerHit (all 14 construction sites), the throw tracker (the "not already" gates via the aux last-rider kind — the disclosed simplification of vanilla's effect-instance check); the game layer's rider application (the Slowness/Weakness kinds).
+- feat(game) 26e128a: the wither-skeleton's skull 2.5% drop (the special case after the generic drop loop) — the Phase-2 finding (the stale comment claimed a path that did not exist) is FIXED; the kill-credit trim + the Looting hook disclosed.
+- The corrupted commit a69f0b1 repaired (7425296: the script had deleted the ai_tick call sites' arg lines — restored from 7fbb915, the range lint re-applied, the 12 test callers take the player-health arg properly). ALL 6 GATES GREEN at 26e128a (run 37183004646).
+- DISCLOSED: the witch's drinkable-potion defense (the drink side is future work); the splash AoE (the throw hits the player directly); the kill-credit trim (the death tuple carries no killer); the Looting +1%/level hook.
+- NEXT: THE VISUALS UPDATE (re-sequenced earlier — the GUI batch: smoker/blast/stonecutter/loom/smithing/cartography/lectern/dispenser/dropper GUIs + the 3-G UI/feel round: the HUDs/textures/GUIs polish).

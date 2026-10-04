@@ -191,7 +191,7 @@ Aspect rows:
 
 ### Domains 3/9 gaps (S/M/L)
 - 17 missing mobs (L); raids (L); advancements (L); slash commands + command-block bridge (L); A* pathfinding (L); 3D multi-part models for the 48 billboard kinds (L)
-- Mob drops not datapack-driven + the Looting enchant unwired (M); witch attack (M); random-tick density + missing behaviors (M); fire spread (M); gamerules (M); scoreboard (M); beds/sleeping (M); piglin pacification (M); per-mob sounds (M); strider riding (M); sheep wool variants (M)
+- Mob drops not datapack-driven + the Looting enchant unwired (M); random-tick density + missing behaviors (M); gamerules (M); scoreboard (M); piglin pacification (M); per-mob sounds (M); strider riding (M); sheep wool variants (M). (The witch attack + the wither-skeleton skull 2.5% + the fire spread + the beds/sleeping are DONE — the witch/skull, fire, and beds rounds.)
 - Wither-skeleton skull stale comment (S); fixed-min-1 drops vs jar uniform-0 rows (S); enderman teleport (S); polar bear cub-defense (S); turtle easter egg (S); bat cap 10 vs 15 (S); evoker fangs (S); enchanted-gear drops (S); stale DEFERRED_ENTITIES comment mobs.rs:1425 (S)
 
 ## Domain 1 — Blocks and items (audited directly)
@@ -255,7 +255,7 @@ Aspect rows:
 4. ~~Waterlogging + bubble columns; infinite water source; lava+water products (obsidian/cobble/stone)~~ DONE — the fluids round (564ab2c + fb1f6f0 + 9af843f + the GPU parity + the player wiring): the waterlogging states (the chest pair 874/875, the overlay renders both the block and the water), the BUBBLE_COLUMN block (538, the 20gt create / 5gt destroy, the verified 11/4.9 b/s transport + the air-provide), the infinite water source (2+ adjacent sources + support, or one horizontal + one above), the mixing products (lava source + water = obsidian, flowing lava + water = cobble, lava downward onto water = stone) — all VERIFIED live (Water + Fluid + Bubble_column, raw wikitext 2026-09-25/2026-10-03) and CROSS-CHECKED (the Water §Water and lava section vs the Fluid §Mixing rules agree; the WATER arm now culls against the column — the column IS water). Slab/stairs/fence waterlogging is a disclosed trim (the JSON-model dispatch).
 5. Fire spread + flint & steel ignition; plain FIRE block damage.
 6. ~~Sneak-walk slowdown 1.3 b/s; plain fire damage; the 16 missing status effects~~ DONE — the fire/sneak round (bde9c25 + 99ce7ca + 44118d6): the 1.16.5 effect set is COMPLETE (32 of 32) with the verified behaviors wired, the sneak caps verified, the fire round landed. The luck/bad-luck loot modifier + the Bad Omen raid trigger + the Hero trade discount are disclosed future hooks (the systems/mobs rounds).
-7. Witch attack (hostile, no attack arm); wither-skeleton skull 2.5% drop (stale comment).
+7. ~~Witch attack (hostile, no attack arm); wither-skeleton skull 2.5% drop (stale comment)~~ DONE — the witch/skull round (ea50aa5 + 26e128a): the VERIFIED splash-potion ladder (Slowness I 1800t at 8-10 blocks, Poison I 900t at health ≥ 8, the 25% Weakness 1800t at < 3 blocks + health ≤ 8 or poisoned, default Harming 6 HP magical), the 3 s interval, the pursue-within-16, the anchored player's health for the gates; the skull drop dropchance 0.025 landed. The witch's drinkable-potion defense + the splash AoE are disclosed trims.
 
 **Tier 2 — content breadth (M-L):**
 8. The 17 missing mobs (cat, wolf, slime, panda, guardian/elder, endermite, shulker, pillager, ravager, wandering trader, trader_llama, piglin_brute, zoglin, skeleton/zombie horse) — batched by family.

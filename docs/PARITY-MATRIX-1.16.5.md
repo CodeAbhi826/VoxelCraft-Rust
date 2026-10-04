@@ -72,7 +72,7 @@ Engine counts: particles = 20 kinds (kinds.rs KINDS, 12 with live spawn sources,
 
 - Movement — walk 4.317 b/s | DONE | player.rs:8 WALK_SPEED | walk_speed_converges_to_vanilla | wiki /Transportation
 - Movement — sprint 5.612 b/s | DONE | player.rs:9 SPRINT_SPEED | sprint_speed_converges_to_vanilla | wiki /Transportation
-- Movement — sneak 1.3 b/s | MISSING | none — sneaking drives water sink/vine hang/slime-magma immunity/fly descent but does NOT slow walking | none | wiki /Transportation
+- Movement — sneak 1.3 b/s | DONE | SNEAK_SPEED 1.3 / SNEAK_DIAGONAL_SPEED 1.8 (VERIFIED w/Sneaking, live 2026-10-03: "the player moves slower, at a speed of about 1.3 m/s" + "two movement keys... diagonally at a faster 1.8 m/s"; the jump height/vertical speed are unaffected); sneaking still drives water sink/vine hang/slime-magma immunity/fly descent | the sneak caps in the walk-speed selection | wiki /Transportation
 - Movement — swim 2.20/1.97 b/s | DONE | player.rs:29-30 + the exact per-tick travel() substep (1158-1171) | water_slows_and_buoys | wiki /Transportation
 - Movement — sprint-swim 3.918 b/s | DONE | player.rs:31 SPRINT_SWIM_SPEED | water_slows_and_buoys | wiki /Transportation
 - Movement — crawl | MISSING | none — no crawl mechanic, no 1-block-gap pose | none | wiki /Swimming §Crawling
@@ -254,7 +254,7 @@ Aspect rows:
 3. ~~Beds/sleeping (night skip, spawn point, the weather sleep_reset wiring)~~ DONE — sleep.rs + the E2E_BEDS leg; the phantom reset stays with the mobs batch (no phantom MobKind yet).
 4. ~~Waterlogging + bubble columns; infinite water source; lava+water products (obsidian/cobble/stone)~~ DONE — the fluids round (564ab2c + fb1f6f0 + 9af843f + the GPU parity + the player wiring): the waterlogging states (the chest pair 874/875, the overlay renders both the block and the water), the BUBBLE_COLUMN block (538, the 20gt create / 5gt destroy, the verified 11/4.9 b/s transport + the air-provide), the infinite water source (2+ adjacent sources + support, or one horizontal + one above), the mixing products (lava source + water = obsidian, flowing lava + water = cobble, lava downward onto water = stone) — all VERIFIED live (Water + Fluid + Bubble_column, raw wikitext 2026-09-25/2026-10-03) and CROSS-CHECKED (the Water §Water and lava section vs the Fluid §Mixing rules agree; the WATER arm now culls against the column — the column IS water). Slab/stairs/fence waterlogging is a disclosed trim (the JSON-model dispatch).
 5. Fire spread + flint & steel ignition; plain FIRE block damage.
-6. Sneak-walk slowdown 1.3 b/s; the 16 missing status effects. (The plain fire damage is DONE — the fire round, 559f2d0.)
+6. ~~Sneak-walk slowdown 1.3 b/s; plain fire damage; the 16 missing status effects~~ DONE — the fire/sneak round (bde9c25 + 99ce7ca + 44118d6): the 1.16.5 effect set is COMPLETE (32 of 32) with the verified behaviors wired, the sneak caps verified, the fire round landed. The luck/bad-luck loot modifier + the Bad Omen raid trigger + the Hero trade discount are disclosed future hooks (the systems/mobs rounds).
 7. Witch attack (hostile, no attack arm); wither-skeleton skull 2.5% drop (stale comment).
 
 **Tier 2 — content breadth (M-L):**

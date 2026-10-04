@@ -5508,7 +5508,7 @@ fn ai_tick(
                         // the throw tracker: the rider's kind for the
                         // "not already" gates (0 = the Harming default —
                         // no effect to re-check)
-                        m.aux = rider.map(|(k, _, _)| k).unwrap_or(0);
+                        m.aux = i32::from(rider.map(|(k, _, _)| k).unwrap_or(0));
                         hits.push(PlayerHit {
                             damage: dmg,
                             source: m.kind,

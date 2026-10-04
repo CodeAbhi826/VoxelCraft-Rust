@@ -2840,7 +2840,7 @@ impl MobSystem {
         let h = (cx as u64).wrapping_mul(0x2545_F491_4F6C_DD1D)
             ^ (cz as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
             ^ self.rng_seed();
-        (h >> 33) % 10 == 0
+        (h >> 33).is_multiple_of(10)
     }
 
     /// hostile spawn attempt (VERIFIED 1.16.5 rules): block light ≤ 7 AND

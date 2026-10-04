@@ -6108,6 +6108,78 @@ fn ai_tick(
                 wander(rng, m, speed * 0.4);
             }
         }
+        // ---- the mobs batch: the hostile kinds' shared chase + the
+        // melee (VERIFIED infoboxes, live 2026-10-04): the slime (the
+        // bounce chase — the horizontal hop cadence), the guardian/elder
+        // guardian (the water chase; the laser is the ranged attack —
+        // the engine's melee row is the contact simplification,
+        // disclosed), the endermite, the pillager (the crossbow rides
+        // the arrow path — the ProjKind's bolt is future work, the
+        // melee row stands), the ravager (the big melee), the piglin
+        // brute (the axe melee), the zoglin. The per-kind damage rides
+        // the def row (d.damage — the verified Normal values).
+        MobKind::Slime | MobKind::Guardian | MobKind::ElderGuardian
+        | MobKind::Endermite | MobKind::Pillager | MobKind::Ravager
+        | MobKind::PiglinBrute | MobKind::Zoglin => {
+            if let Some(p) = player {
+                let dx = p[0] - m.pos[0];
+                let dz = p[2] - m.pos[2];
+                let dist = (dx * dx + dz * dz).sqrt();
+                if dist <= 16.0 {
+                    face_player(m);
+                    if dist > MOB_MELEE_REACH * 0.8 {
+                        m.vel[0] += (dx / dist * speed - m.vel[0]) * 0.3;
+                        m.vel[2] += (dz / dist * speed - m.vel[2]) * 0.3;
+                    } else {
+                        m.vel[0] *= 0.7;
+                        m.vel[2] *= 0.7;
+                    }
+                    if dist < MOB_MELEE_REACH && m.attack_cd == 0 {
+                        m.attack_cd = MOB_MELEE_TICKS;
+                        m.attack_anim = 6;
+                        hits.push(PlayerHit {
+                            damage: d.damage,
+                            source: m.kind,
+                            knockback_dir: [dx / dist, dz / dist],
+                            wither_effect: None,
+                            poison_effect: None,
+                            potion_effect: None,
+                        });
+                    }
+                } else {
+                    wander(rng, m, speed * 0.5);
+                }
+            } else {
+                wander(rng, m, speed * 0.5);
+            }
+        }
+        // ---- the shulker: the stationary shell + the bullet (VERIFIED
+        // w/Shulker: "the shulker bullet" applies the levitation effect
+        // — 10 s; the shell never moves, the teleport-on-hit is the
+        // trimmed half, disclosed)
+        MobKind::Shulker => {
+            if let Some(p) = player {
+                let dx = p[0] - m.pos[0];
+                let dz = p[2] - m.pos[2];
+                let dist = (dx * dx + dz * dz).sqrt();
+                if dist <= 16.0 {
+                    face_player(m);
+                    if dist <= 12.0 && m.attack_cd == 0 {
+                        m.attack_cd = 60; // the vanilla 3 s volley cadence
+                        m.attack_anim = 6;
+                        hits.push(PlayerHit {
+                            damage: 0.0, // the bullet carries the effect
+                            source: m.kind,
+                            knockback_dir: [dx / dist, dz / dist],
+                            wither_effect: None,
+                            poison_effect: None,
+                            potion_effect: Some((25, 0, 200)), // Levitation 10 s
+                        });
+                    }
+                }
+            }
+            // the shell never wanders (the stationary row)
+        }
         _ => {
             if m.hurt_t > 0 {
                 m.yaw = (-dz).atan2(-dx) - std::f32::consts::FRAC_PI_2;

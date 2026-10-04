@@ -8154,6 +8154,8 @@ impl GameApp {
                 let ek = match kind {
                     2 => Some(vc_gameplay::effects::EffectKind::Slowness),
                     18 => Some(vc_gameplay::effects::EffectKind::Weakness),
+                    // the shulker bullet's payload (the mobs batch)
+                    25 => Some(vc_gameplay::effects::EffectKind::Levitation),
                     _ => None,
                 };
                 if let Some(ek) = ek {

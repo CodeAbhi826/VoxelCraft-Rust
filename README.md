@@ -11,7 +11,7 @@ One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browse
 [![Releases](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/release.yml/badge.svg)](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/release.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-**861 tests · clippy clean (0 warnings) · WGSL validated · E2E-screenshot verified**
+**897 tests · clippy clean (0 warnings) · WGSL validated · E2E-screenshot verified**
 
 </div>
 
@@ -30,10 +30,11 @@ One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browse
 
 VoxelCraft replicates the **gameplay rules, world and boot/menu flow of the 1.16.5-era reference game** — from published documentation only (the reference wiki, live-verified at implementation time, **1,913 `VERIFIED` citations in code**). It is **not** a port, contains **zero third-party assets** (every texture, sound, glyph and the title panorama is synthesized procedurally at startup), and is a from-scratch Rust/WGSL engine, not a wrapper.
 
-- **533** registered block/item entries (**863** block states), **27 biomes** (overworld families + the five 1.16 the Hollow biomes + the End), caves, trees, **10 structure families**
+- **539** registered block/item entries (**892** block states), **28 biomes** (overworld families + the five 1.16 the Hollow biomes + the End), caves, trees, **10 structure families**
 - **20 Hz deterministic simulation** with vanilla constants: drag `v1 = (v0 − 0.08) × 0.98`, 7.127 b/s sprint-jump cap, dimension-aware lava spread (Overworld/End 3 blocks/30 ticks, the Hollow 7 blocks/10 ticks)
-- Full **survival loop**: game modes, hunger/exhaustion/saturation model, mobs + combat (attack cooldown, armour, crits, status effects), XP orbs, death & respawn
-- Deep systems: **fluxstone** (repeaters, comparators, pistons, weighted plates), **crafting/furnace/brewing/enchanting** (38 entries), **villager trading** (15 professions, 5 tiers), dungeons & spawners, **weather** state machine, **farming**
+- Full **survival loop**: game modes, hunger/exhaustion/saturation model, **66 mob kinds — the 1.16.5 roster complete** (the witch's splash-potion ladder, the shulker's levitation bullets, the guardian lasers, the ravager, the pillager, the zoglin, the slime chunks), combat (attack cooldown, armour, crits), **all 32 status effects**, XP orbs, death & respawn
+- Deep systems: **fluxstone** (repeaters, comparators, pistons, weighted plates), **crafting/furnace/smoker/blast/brewing/enchanting** (38 entries), **villager trading** (15 professions, 5 tiers), dungeons & spawners, **weather** state machine, **farming**
+- **Nether portal** (the 8:1 coordinates, the obsidian-frame validation, the 80-tick walk-in), **TNT** (the primed entity, the exposure-based explosion, chain-priming), **beds/sleeping** (the night skip, the spawn point), **fluids** (waterlogging, bubble columns, the infinite water source, the lava/water mixing products), **fire spread** (the age property, the flammable-blocks table, rain dousing), **gamerules** (doFireTick, doDaylightCycle, keepInventory, mobGriefing...), **subtitles** (the Java 1.9 caption stack)
 - Bosses: **Ender Dragon** (200 HP, crystal healing, 154/200-tick death timeline) and **Blight** (220-tick invulnerable charge, passive regen)
 - The complete **vanilla menu flow**: boot intro → panorama title → world select/create (seed, mode, world type incl. Superflat) → loading → gameplay; vanilla-parity Options tree (Video/Music & Sound/Controls/Language/Chat/Accessibility/Skin/Resource Packs)
 
@@ -154,7 +155,7 @@ The Next.js app at the root is only a thin preview wrapper — the game itself i
 - **Browser**: needs WebGPU (Chromium 113+) or WebGL2 — the engine auto-falls back and both paths are E2E-verified. Append `?debug` to the page URL to mirror the boot log into the JS console.
 - **Linux mouse/pointer**: look-around uses a three-rung capture ladder `Locked → Confined → delta-look`, auto-negotiated at every capture and logged via the `pointer:` line (`--debug`). If your compositor grants no lock, delta-look keeps the game playable with a visible cursor. Details: [voxelcraft/BUILD.md](voxelcraft/BUILD.md).
 - **No sound on Linux**: install ALSA headers and rebuild, or run the no-audio build (`--no-default-features`).
-- **GPU chunk meshing stalls**: the 2-strike watchdog automatically switches to CPU meshing and logs it — file the `--debug` log.
+- **GPU chunk meshing stalls**: the 2-strike watchdog automatically switches to CPU meshing and logs it — file the `--verbose` log.
 
 ## Rebuilding the browser bundle
 
@@ -173,7 +174,7 @@ CI does exactly this on every engine change and commits the bundle back to `publ
 
 ## Verification
 
-- **861/861 tests green** (`cargo test --release --no-default-features --workspace`, plus the `bench-bin`-featured CI gate at 80/80) — including WGSL parse+validation of every shader via naga, drift-guard tests for every historical bug fix (texture-seam quartet, flat water, FSR identity-at-1×, …), and per-subsystem constant checks against the wiki values
+- **897/897 tests green** (`cargo test --release --no-default-features --workspace`, plus the `bench-bin`-featured CI gate at 80/80) — including WGSL parse+validation of every shader via naga, drift-guard tests for every historical bug fix (texture-seam quartet, flat water, FSR identity-at-1×, …), and per-subsystem constant checks against the wiki values
 - **clippy: 0 warnings** across the workspace, all targets
 - **CI on every push**: native tests, wasm32 compile-check, headless benchmark, single-file Linux build, wasm bundle rebuild
 - **E2E screenshot verification** of the live bundle: boot → title → world create → gameplay → F3/inventory/pause (the screenshots above are those captures)

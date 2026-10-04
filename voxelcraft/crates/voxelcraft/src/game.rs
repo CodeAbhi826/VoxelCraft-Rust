@@ -23824,7 +23824,7 @@ impl GameApp {
                         y - 2,
                         w + 6,
                         11,
-                        [0, 0, 0, (a as i32 * 3 / 5).min(180)],
+                        [0, 0, 0, ((a as i32 * 3 / 5).min(180)) as u8],
                     );
                     self.ui.text(x, y, text, [255, 255, 255, a], 1);
                 }

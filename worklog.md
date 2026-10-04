@@ -252,3 +252,18 @@ Work Log:
 - feat(game) ea7f10a: the E2E_SUBTITLES capture override (the env-var settings pattern).
 - The alpha type fix 782cab4. ALL 6 GATES GREEN at 782cab4 + ea7f10a (runs 37188130812, 37190014713).
 - VERIFIED IN-GAME (run 37190587026): the bottom-right caption "grass step" with the dark backing — the capture CONFIRMED (the full-frame read + the 2x crop: white text on the dark backing, the exact vanilla treatment); the captions populate from the boot's sound events; FKEYS margin 2046 VISIBLE + FKEY CONTRACT OK; beds/fluids VERDICT OK on the same build lineage.
+
+---
+Task ID: 18
+Agent: main — the visuals round: the container GUIs + the colorimetry cross-check
+Task: The dispenser/dropper GUI + the smoker/blast titles + the measured colorimetry — landed and CI green; the DETAILED VISUALS REPORT
+
+Work Log:
+- feat(render,game) 07eb2f0: the smoker/blast furnace GUIs — the distinct vanilla titles (SMOKER / BLAST FURNACE) with the shared furnace layout, the kind derived from the block id (FurnaceKind::from_block), the cook-rate denominator per kind (the 2x speeds).
+- feat(render,game) 0facb15 + the fixes (ebfc775, ffc0c70): the dispenser/dropper GUI — the 3x3 storage grid + the arrow (the vanilla 176x166 shape), the live slots ride the Containers registry's 9-slot storage (the ContainerKind::Dispenser variant + the grid wiring + the open path + the close path's non-exhaustive match).
+- THE COLORIMETRY CROSS-CHECK PASSED (the owner's ask — the RGB/saturation/contrast of the real game's textures, STUDY-ONLY measured): the engine's tiles vs the vanilla 1.16.5 jar's textures MEASURED — the sand (219,207,163) and the planks (162,131,79) EXACT, the stone drift 1, the log side 2, the dirt ~6; the grass top/water are GREYSCALE in the vanilla jar — the engine's tint-pack approach matches vanilla EXACTLY; the tint values vanilla-exact (0x91BD59 plains grass, 0x44AFF5 plains water). The rendered-capture drift is the LIGHT contribution (the shade x the sky x the AO) — correct behavior. Logged in the knowledge base §6.3a.
+- THE VISUALS-ROUND REPORT (as of this round):
+  * DONE + in-game verified: the SUBTITLES overlay (the caption stack bottom-right, the "grass step" capture CONFIRMED, the Subtitles toggle LIVE), the smoker/blast furnace GUIs (the distinct titles), the dispenser/dropper GUI (the 3x3 grid + the arrow + the live slots), the colorimetry cross-check PASSED.
+  * The phase's accuracy: every visual constant measured against the real game (the tints vanilla-exact, the painters built FROM the measured colorimetry — the provenance model working as designed); the in-game captures prove the rendered output.
+  * REMAINING in the visuals scope: the stonecutter/loom/smithing/cartography/lectern GUIs, the F3 combos, the skin layers, the 3-G polish tier.
+- ALL 6 GATES GREEN at e2e6fa2 (the runs 37231551021, 37230751124 + the in-game legs' runs).

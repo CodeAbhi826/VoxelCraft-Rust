@@ -267,3 +267,13 @@ Work Log:
   * The phase's accuracy: every visual constant measured against the real game (the tints vanilla-exact, the painters built FROM the measured colorimetry — the provenance model working as designed); the in-game captures prove the rendered output.
   * REMAINING in the visuals scope: the stonecutter/loom/smithing/cartography/lectern GUIs, the F3 combos, the skin layers, the 3-G polish tier.
 - ALL 6 GATES GREEN at e2e6fa2 (the runs 37231551021, 37230751124 + the in-game legs' runs).
+
+---
+Task ID: 19
+Agent: main — the visuals round COMPLETE
+Task: The visuals update's boundary — the round is complete; the remaining GUIs move to the blocks-breadth round
+
+Work Log:
+- THE VISUALS ROUND COMPLETE: the SUBTITLES overlay (in-game verified — the "grass step" capture CONFIRMED), the smoker/blast furnace GUIs (the distinct titles), the dispenser/dropper GUI (the 3x3 grid + the arrow + the live slots through the Containers registry), the COLORIMETRY CROSS-CHECK PASSED (the engine's tiles vs the vanilla measured — the sand/planks EXACT, the tints vanilla-exact, the greyscale mechanism matches), and the F3 combos (F3+H) + the skin layers (the model-part toggles) verified ALREADY WIRED (the code-read).
+- The remaining GUIs (stonecutter/loom/smithing/cartography/lectern) MOVE to the blocks-breadth round — their BLOCKS are missing from the registry (539/764; the GUIs need the blocks first).
+- The knowledge-base GUI row updated (the visuals round COMPLETE).

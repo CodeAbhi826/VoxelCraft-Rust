@@ -7,6 +7,14 @@ use vc_sim::fluids::{BUBBLE_DOWN_SPEED, BUBBLE_UP_SPEED};
 use vc_world::world::World;
 
 pub const WALK_SPEED: f32 = 4.317;
+/// fire/sneak round (VERIFIED w/Sneaking, live 2026-10-03 raw wikitext:
+/// "The player moves slower, at a speed of about 1.3 m/s" — the sneak
+/// cap; "If two movement keys are pressed at once, the player sneaks
+/// diagonally at a faster 1.8 m/s" — the diagonal cap). Jump height
+/// and the vertical speed are unaffected (VERIFIED: "players can still
+/// jump up to the same heights and at the same vertical speed").
+pub const SNEAK_SPEED: f32 = 1.3;
+pub const SNEAK_DIAGONAL_SPEED: f32 = 1.8;
 pub const SPRINT_SPEED: f32 = 5.612;
 pub const FLY_SPEED: f32 = 10.9;
 pub const FLY_SPRINT: f32 = 21.8;
@@ -904,6 +912,16 @@ impl Player {
                 }
             } else if sprinting {
                 SPRINT_SPEED
+            } else if self.input.sneak {
+                // the sneak cap (VERIFIED w/Sneaking): the straight 1.3
+                // m/s, the diagonal 1.8 — the diagonal is FASTER (two
+                // movement keys)
+                let diagonal = wish.x != 0.0 && wish.z != 0.0;
+                if diagonal {
+                    SNEAK_DIAGONAL_SPEED
+                } else {
+                    SNEAK_SPEED
+                }
             } else {
                 WALK_SPEED
             } * stat_mult;

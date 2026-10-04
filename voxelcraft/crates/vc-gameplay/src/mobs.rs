@@ -910,6 +910,23 @@ impl MobKind {
             47 => MobKind::Silverfish,
             // the backlog round's weather-conversion mob — kind 48
             48 => MobKind::ZombifiedPiglin,
+            // the mobs batch: the 16 missing kinds' eggs (kinds 49..=64)
+            49 => MobKind::Cat,
+            50 => MobKind::Wolf,
+            51 => MobKind::Slime,
+            52 => MobKind::Panda,
+            53 => MobKind::Guardian,
+            54 => MobKind::ElderGuardian,
+            55 => MobKind::Endermite,
+            56 => MobKind::Shulker,
+            57 => MobKind::Pillager,
+            58 => MobKind::Ravager,
+            59 => MobKind::WanderingTrader,
+            60 => MobKind::TraderLlama,
+            61 => MobKind::PiglinBrute,
+            62 => MobKind::Zoglin,
+            63 => MobKind::SkeletonHorse,
+            64 => MobKind::ZombieHorse,
             // T10 fix (2026-10-01): unknown eggs (the wither-egg stub and
             // any other unmapped id) spawn NOTHING — the old catch-all
             // spawned a Chicken
@@ -994,6 +1011,27 @@ impl MobKind {
             MobKind::Squid => 255,
             // the backlog round's weather-conversion mob (kind 48)
             MobKind::ZombifiedPiglin => 48,
+            // the mobs batch: the 16 missing kinds' eggs — the V15/1.14
+            // egg windows' next kinds (49..=64; the squid's 255 sentinel
+            // pattern: the horses' eggs are the 1.13 brackets'
+            // command-spawn class — the eggs register at the next free
+            // kinds for the creative picker)
+            MobKind::Cat => 49,
+            MobKind::Wolf => 50,
+            MobKind::Slime => 51,
+            MobKind::Panda => 52,
+            MobKind::Guardian => 53,
+            MobKind::ElderGuardian => 54,
+            MobKind::Endermite => 55,
+            MobKind::Shulker => 56,
+            MobKind::Pillager => 57,
+            MobKind::Ravager => 58,
+            MobKind::WanderingTrader => 59,
+            MobKind::TraderLlama => 60,
+            MobKind::PiglinBrute => 61,
+            MobKind::Zoglin => 62,
+            MobKind::SkeletonHorse => 63,
+            MobKind::ZombieHorse => 64,
         }
     }
 }
@@ -1018,7 +1056,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 49] = [
+pub const MOB_DATA: [MobDef; 65] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -7568,7 +7606,7 @@ mod tests {
         // [merge] the kinds resolve in/out of names + eggs (16 E1 + 3
         // E2 + 3 E3 horse/donkey/mule + 4 F-series: rabbit 1.8, stray +
         // polar bear + husk 1.10)
-        assert_eq!(MOB_DATA.len(), 49); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox + 1.16 three + the audit trio + the backlog zombified piglin
+        assert_eq!(MOB_DATA.len(), 65); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox + 1.16 three + the audit trio + the backlog zombified piglin
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("voxelcraft:").unwrap()),
@@ -8326,7 +8364,7 @@ mod v111_tests {
         assert_eq!(MobKind::Llama.egg_id(), 23);
         assert_eq!(MobKind::Evoker.egg_id(), 25);
         // 1.12 (World of Color): parrot + illusioner — 32 kinds
-        assert_eq!(MOB_DATA.len(), 49, "+ the 1.13 aquatic eight + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
+        assert_eq!(MOB_DATA.len(), 65, "+ the 1.13 aquatic eight + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
         assert_eq!(MobKind::from_egg(30).unwrap(), MobKind::Parrot);
         assert_eq!(MobKind::Parrot.egg_id(), 30);
         assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
@@ -8893,7 +8931,7 @@ mod v113_tests {
     /// aquatic() swim-physics gate + the V9 spawn-egg kinds.
     #[test]
     fn v113_registry_rows_and_flags() {
-        assert_eq!(MOB_DATA.len(), 49, "32 prior + 8 aquatic + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
+        assert_eq!(MOB_DATA.len(), 65, "32 prior + 8 aquatic + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
         // drowned: 20 HP zombie-parity, N 3, armor 2, 5 XP, hostile
         let d = def(MobKind::Drowned);
         assert_eq!(d.health as i32, 20);
@@ -9388,7 +9426,7 @@ mod v114_tests {
     /// the V10 registry row + egg/tile mappings (VERIFIED w/Fox)
     #[test]
     fn v114_fox_registry_row() {
-        assert_eq!(MOB_DATA.len(), 49, "32 + 8 aquatic + the fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
+        assert_eq!(MOB_DATA.len(), 65, "32 + 8 aquatic + the fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
         let d = def(MobKind::Fox);
         assert_eq!(d.health as i32, 10, "10 HP (VERIFIED infobox)");
         assert!((d.damage - 2.0).abs() < 1e-6, "Easy/Normal 2 HP");

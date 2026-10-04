@@ -31,6 +31,21 @@ per the plan's Phase 1: date, commit, hardware, and the measurement method.
 | paletted-section memory | 10.3 KiB/chunk | 10.2 KiB/chunk |
 | geometry | 212 932 verts / 106 466 tris | same |
 
+## POST-PHASE-4 MEASUREMENT (2026-10-05: O2+O3 landed — the measured payoff)
+
+The reference hardware tier (the CI-built vc_bench binary run locally, chunks=96, the
+same seed): the light init 86.6 → **58.7 ms/chunk (32% FASTER)**, the
+meshing 49.1 → 36.07 (27%), the generation 53.1 → 35.0 (34%), the remesh
+10.95 → 8.68 (21%), the drawprep 13.9 → 8.7 µs (37%), the sim tick
+0.041 → 0.035. The GH-runner tier: the light init 1500 → 1750 ms (the
+runner variance ±20% — the reference hardware's before/after is the honest pair).
+The Phase-4 work: O2 (the sky scan's heightmap break — the semantics
+identical) + O3 (the static per-state lookup tables built from the SAME
+truth — Chunk::get's fold + the emissive scan became indexed loads; the
+gen/mesh paths speed up through Chunk::get too). The remaining light-init
+cost: the emissive scan's per-cell get_state + the BFS + the border
+exchange (O4's per-section emissive bitmap is the next step, not landed).
+
 ## What the numbers say (the optimization ranking, Phase 4 input)
 
 1. **The light engine's INIT is the #1 cost** — 86.6 ms/chunk on the reference hardware

@@ -293,3 +293,13 @@ Work Log:
 - feat(game) 85d3c7c + 9ce8843: the slime's chunk spawn rule (slime chunks below Y 40 — the deterministic 10%-of-chunks hash).
 - ALL 6 GATES GREEN at 9ce8843 (the runs 37235252514 → 37238581085).
 - DISCLOSED: the slime's split (the death-tuple trim), the pillager's crossbow bolts (the ProjKind future work), the guardian/elder's monument spawns (the structures round), the shulker's teleport-on-hit, the slimeball/rotten-porkchop/golden-axe items (the blocks-breadth), the wolves'/cats' biome spawns ride the catch-all wander (the dedicated packs are the polish).
+
+---
+Task ID: 21
+Agent: main — the systems round: the GAMERULES
+Task: The Gamerules struct + the flags wired — landed and CI green
+
+Work Log:
+- feat(game) 4d187c2: the Gamerules struct (the vanilla defaults, VERIFIED w/Game_rule live 2026-10-04) + the set_gamerule /gamerule stand-in (the name→flag mapping, the unknown names a no-op); the flags wired: doFireTick (the sim's fire_tick_enabled gate — "fire ceases to be updated" but the damage still applies, VERIFIED), doDaylightCycle (the day clock freezes), doWeatherCycle, naturalRegeneration (the hunger's regen gate), keepInventory (the death drops keep), mobGriefing (the mob explosions' terrain gate — the TNT's own blast unaffected), doMobSpawning (the natural spawn gate on the MobSystem).
+- The fixes: the derive split (the insert landed between the Settings derive and the struct — 00e8844). ALL 6 GATES GREEN at 00e8844 (run 37240283165).
+- DISCLOSED: the slash-command PARSER is the systems round's remaining work (the /gamerule stand-in is the direct API).

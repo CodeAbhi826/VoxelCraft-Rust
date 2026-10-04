@@ -18184,8 +18184,10 @@ impl GameApp {
                         // player (the biome precip + the sky exposure)
                         if in_fire_src || self.player.fire_ticks > 0.0 {
                             let wet = self.player.in_water;
+                            // the sim's rain flag (the game layer sets it
+                            // from the weather machine each update)
                             let rain_hit = !wet
-                                && raining
+                                && self.sim.rain
                                 && (0..=255i32).all(|yy| {
                                     !vc_blocks::blocks::is_opaque(vc_blocks::blocks::state_block(
                                         self.world.get_state(

@@ -191,3 +191,16 @@ Work Log:
 - The [sim] heartbeat VERIFIED in-game: "[t+62.0s][sim] ticks 90 sched 0 | items 0 orbs 0 tnt 0 ... | player w0 bfalse(255) p0 l0 day 7.29h Clear" — the ticks at 20/s, the scheduler 0, the day clock consistent; the raw stream is CLEAN (no hidden quirks found in this pass).
 - ALL 6 GATES GREEN at fdd68ab (run 37150707875) and the linux-game build+smoke green (37151410074).
 - The FKEYS leg re-verified on the same binary: margin 828 — VISIBLE, FKEY CONTRACT OK.
+
+---
+Task ID: 13
+Agent: main — Phase 3: the fire round (takeover)
+Task: The fire-age property + the fire tick + the player's fire damage + the Fire tag — landed and CI green
+
+Work Log:
+- Live-verified the Fire page (raw wikitext via the MediaWiki API, live 2026-10-03): the age property 0-15, the extinguish rules (water contact; rain 20% + 3%/age; age>3 + nothing flammable adjacent OR no solid top below -> out; the 1/4 chance at 15), the spread (the ignition degree (i+7d+40)/(a+30) against the base 100/200/300/400, the rain-blocked spread, the increased_fire_burnout halving), the burn odds table, the Fire tag (-20 start, the 160 after-burn floor), the damage (1 HP per half-second inside, soul fire 2, 1 HP/s outside).
+- feat(blocks) 3128f36 + 42d4a6e: the fire-age window (877..=891, age 1..15 — FIRE 805 is age 0, the state-space persistence), the fold, fire_age/fire_age_state/is_fire_block, the flammability table (the wiki's verified ignite/burn odds for the engine's blocks: logs 5/5, planks 5/20, bookshelf 30/20, leaves/wool 30/60, hay 60/20, TNT/vines 15/100, grass/flowers 60/100), the audit chain + the never-model window, STATE_COUNT 892.
+- feat(sim) bde9c25 + the fixes (b905d2d, 0654d26, 6316b8d): the fire tick — the age increment at the deterministic random-tick cadence (FIRE_TICK_RATE 1365 = the 4096/3 mean, the documented adaptation of the nondeterministic random tick), the extinguish rules, the burn-away at burn_odds/300 (no drops; TNT ignites via the sweep), the spread (the degree formula, the rain-blocked spread, the jungle/swamp halving via from_u8), the sim's rain/fire_difficulty fields wired by the game layer.
+- feat(game) 559f2d0 + the fixes (d9de67b, 0c66f7f, bdfd246): the player's fire damage + the Fire tag — inside a fire block 1 HP per 10 sim ticks (soul fire 2), the after-burn floor 160, the outside burn 1 HP per 20 sim ticks, the water/rain extinguish; the in_fire/in_soul_fire/fire_ticks fields + the detection in the player update.
+- The CI fix loop (9 commits): the u8/u16 fire-age math, the WATER import (an aborted edit's missing piece), the FIRE_TICK_RATE const, the humid-biome from_u8 decode, the 11 STATE_COUNT census pins (877 -> 892), the unnecessary casts, the WGSL LUT offsets (892/1431/1970 + the clamp 891), the rain flag scope, the two doc-quote-marker lints. ALL 6 GATES GREEN at bdfd246 (run 37165546944).
+- DISCLOSED: the ignite-degree's i reads the TARGET's own ignite odds (the Java getFlammability reading — the wiki's "max adjacent flammability" wording is ambiguous, the cross-check resolved it); the missing flammable blocks (the slabs/fences/lectern/scaffolding/bamboo/cave-vines/dripleaf sets) are a documented trim.

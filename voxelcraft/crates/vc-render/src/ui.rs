@@ -4187,6 +4187,9 @@ impl UiCanvas {
             // content row instead of three (2×40px shorter than the chest)
             ContainerKind::Hopper => 52,   // 1 row of 5 slots
             ContainerKind::Furnace => 128, // input / flame / fuel + arrow + output
+            // the dispenser/dropper: the 3x3 grid + the arrow (the
+            // vanilla 176x166 shape — the crafting's grid + the arrow)
+            ContainerKind::Dispenser => 140,
             // the smoker/blast share the furnace's layout (the same
             // input/flame/fuel + arrow + output — VERIFIED: "the same
             // GUI as the furnace")
@@ -4254,6 +4257,9 @@ impl UiCanvas {
             // VERIFIED vanilla GUI label: "Item Hopper"
             ContainerKind::Hopper => "ITEM HOPPER",
             ContainerKind::Furnace => "FURNACE",
+            // visuals round: the vanilla labels (w/Dispenser + w/Dropper
+            // GUI captions)
+            ContainerKind::Dispenser => "DISPENSER",
             // visuals round: the distinct vanilla titles (the shared
             // furnace layout, own label)
             ContainerKind::Smoker => "SMOKER",
@@ -4381,6 +4387,32 @@ impl UiCanvas {
                 let oy = cy + 14;
                 self.slot_well(ox, oy, &view.craft_out, atlas);
                 geom.craft_out = (ox, oy);
+            }
+            ContainerKind::Dispenser => {
+                // visuals round: the 3x3 storage grid + the arrow, centered
+                // (the vanilla dispenser GUI: the crafting's grid + the
+                // arrow, NO output slot — the arrow points right; the
+                // grid cells ride geom.craft for the click routing)
+                let total = 3 * 40 + 50;
+                let cx = x0 + (grid_w - total) / 2;
+                let cy = y0 + 8;
+                for r in 0..3 {
+                    for c in 0..3 {
+                        let x = cx + c as i32 * 40;
+                        let y = cy + r as i32 * 40;
+                        self.slot_well(x, y, &view.grid[r * 3 + c], atlas);
+                        geom.craft.push((x, y));
+                    }
+                }
+                self.arrow(
+                    cx + 124,
+                    cy + 32,
+                    if view.grid.iter().any(|s| !s.is_empty()) {
+                        1.0
+                    } else {
+                        0.0
+                    },
+                );
             }
             ContainerKind::Crafting => {
                 // 3x3 grid + arrow + output, centered
@@ -6038,6 +6070,11 @@ pub enum ContainerKind {
     /// same as a single chest"; shares the chest grid geometry, own
     /// title)
     Barrel,
+    /// visuals round: the dispenser/dropper screen — the 3x3 storage
+    /// grid + the arrow (VERIFIED w/Dispenser + w/Dropper GUI: the same
+    /// 176x166-shaped panel; the dropper's arrow points down, the
+    /// dispenser's right)
+    Dispenser,
     /// hopper container: 5 slots in one row — the verdict-corrected
     /// 176×133 vanilla screen (research doc's blanket 176×166 was
     /// confirmed wrong; see docs/research/research-verdicts.md — a hopper

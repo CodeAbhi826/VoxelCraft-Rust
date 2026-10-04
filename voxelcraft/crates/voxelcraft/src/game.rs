@@ -917,6 +917,11 @@ pub enum Container {
     /// verdict-corrected 176×133 vanilla hopper screen (NOT the research
     /// doc's blanket 176×166; see docs/research/research-verdicts.md)
     Hopper { pos: [i32; 3] },
+    /// visuals round: the dispenser/dropper screen — the 3x3 storage
+    /// grid rides the Containers registry (9 slots, VERIFIED
+    /// w/Dispenser + w/Dropper: the same 176x166-shaped GUI; the eject
+    /// is the rising-edge redstone path)
+    Dispenser { pos: [i32; 3] },
     /// Phase 3: chest container screen (27 slots)
     Chest { pos: [i32; 3] },
     /// Round 12: the double chest — two horizontally adjacent chest
@@ -12585,6 +12590,20 @@ impl GameApp {
             }
             Some(Container::Mount { .. }) => (ContainerKind::Mount, None, None, None, None),
             Some(Container::Hopper { pos: _ }) => (ContainerKind::Hopper, None, None, None, None),
+            Some(Container::Dispenser { pos }) => {
+                // visuals round: the 3x3 storage grid's live slots (the
+                // Containers registry — the grid rides ContainerView's
+                // craft cells for the click routing)
+                let slots = self
+                    .sim
+                    .containers
+                    .map
+                    .get(pos)
+                    .cloned()
+                    .map(|c| c.slots)
+                    .unwrap_or_default();
+                (ContainerKind::Dispenser, Some(slots), None, None, None)
+            }
             Some(Container::Furnace { pos }) => {
                 // live slots + progress fractions for the flame/arrow;
                 // visuals round: the kind rides the title (the smoker/
@@ -12732,8 +12751,25 @@ impl GameApp {
             _ => Vec::new(),
         };
         let size = self.craft_grid_size();
+        // visuals round: the dispenser/dropper screen's grid = the
+        // Containers registry's 9 live slots (the registry's storage;
+        // the craft-grid path is the crafting table's)
         let grid: Vec<vc_inventory::inventory::ItemStack> =
-            self.craft_grid.iter().take(size * size).copied().collect();
+            if matches!(self.container, Some(Container::Dispenser { pos: _ })) {
+                let dpos = match self.container {
+                    Some(Container::Dispenser { pos }) => pos,
+                    _ => [0, 0, 0],
+                };
+                self.sim
+                    .containers
+                    .map
+                    .get(&dpos)
+                    .cloned()
+                    .map(|c| c.slots)
+                    .unwrap_or_else(|| vec![vc_inventory::inventory::ItemStack::EMPTY; 9])
+            } else {
+                self.craft_grid.iter().take(size * size).copied().collect()
+            };
         let craft_out = self
             .craft_result(&grid, size)
             .unwrap_or(vc_inventory::inventory::ItemStack::EMPTY);
@@ -19751,6 +19787,16 @@ impl GameApp {
                         let e = self.sim.furnaces.map.entry(tpos).or_default();
                         e.kind = vc_gameplay::furnace::FurnaceKind::Smoker;
                         self.open_container(Container::Furnace { pos: tpos });
+                        self.place_timer = 0.3;
+                    } else if tb == DISPENSER || tb == DROPPER {
+                        // visuals round: right-click opens the
+                        // dispenser/dropper screen; the 9-slot container
+                        // entity is created on first use (the Containers
+                        // registry — VERIFIED w/Dispenser + w/Dropper:
+                        // the same GUI as the crafting grid + the arrow;
+                        // the eject is the rising-edge redstone path)
+                        self.sim.containers.entry(tpos, tb);
+                        self.open_container(Container::Dispenser { pos: tpos });
                         self.place_timer = 0.3;
                     } else if tb == BREWING_STAND {
                         // §29: right-click opens the brewing screen; the

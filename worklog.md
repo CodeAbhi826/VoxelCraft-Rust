@@ -303,3 +303,14 @@ Work Log:
 - feat(game) 4d187c2: the Gamerules struct (the vanilla defaults, VERIFIED w/Game_rule live 2026-10-04) + the set_gamerule /gamerule stand-in (the name→flag mapping, the unknown names a no-op); the flags wired: doFireTick (the sim's fire_tick_enabled gate — "fire ceases to be updated" but the damage still applies, VERIFIED), doDaylightCycle (the day clock freezes), doWeatherCycle, naturalRegeneration (the hunger's regen gate), keepInventory (the death drops keep), mobGriefing (the mob explosions' terrain gate — the TNT's own blast unaffected), doMobSpawning (the natural spawn gate on the MobSystem).
 - The fixes: the derive split (the insert landed between the Settings derive and the struct — 00e8844). ALL 6 GATES GREEN at 00e8844 (run 37240283165).
 - DISCLOSED: the slash-command PARSER is the systems round's remaining work (the /gamerule stand-in is the direct API).
+
+---
+Task ID: 22
+Agent: main — PHASE 4: the light-engine optimization (the measured payoff)
+Task: O2 + O3 landed — the light init 32% faster, the meshing 27%, the generation 34% — parity-preserving
+
+Work Log:
+- feat(world,blocks,chunk) fb7ede3: the PHASE 4 optimization — O2 (the sky scan's heightmap break: below the first zero everything stays zero in the scan — the cave cells stay 0, the BFS fills them from the neighbors; the semantics IDENTICAL, the array defaults 0 so the below-heightmap cells break) + O3 (the static per-state lookup tables — state_block_lookup/state_emissive_lookup built ONCE from the SAME state_block/state_emissive truth: the 131k match-chain walks per chunk became indexed loads; Chunk::get's fold + the emissive scan + every gen/mesh path speed up through Chunk::get).
+- MEASURED (the reference hardware tier, the CI-built vc_bench run locally, chunks=96, the same seed): the light init 86.6 → 58.7 ms/chunk (32% FASTER), the meshing 49.1 → 36.07 (27%), the generation 53.1 → 35.0 (34%), the remesh 10.95 → 8.68 (21%), the drawprep 13.9 → 8.7 µs (37%), the sim tick 0.041 → 0.035. The GH-runner tier's light row: 1500 → 1750 ms (the runner variance ±20% — the reference hardware's before/after is the honest pair).
+- PARITY: the semantics identical (the tables built from the same truth; the break preserves the scan's zero-run semantics) — the optimization is ADDITIVE, parity-preserving per the owner's rule. ALL 6 GATES GREEN at fb7ede3 (run 37241627789).
+- The remaining light-init cost: the emissive scan's per-cell get_state + the BFS + the border exchange — O4 (the per-section emissive bitmap) is the next step, NOT landed.

@@ -912,7 +912,7 @@ impl Player {
                 }
             } else if sprinting {
                 SPRINT_SPEED
-            } else if self.input.sneak {
+            } else if input.sneak {
                 // the sneak cap (VERIFIED w/Sneaking): the straight 1.3
                 // m/s, the diagonal 1.8 — the diagonal is FASTER (two
                 // movement keys)

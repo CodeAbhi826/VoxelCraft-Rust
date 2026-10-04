@@ -2039,6 +2039,24 @@ pub(crate) fn effect_icon_index(kind: vc_gameplay::effects::EffectKind) -> usize
         EffectKind::SlowFalling => 13,
         EffectKind::ConduitPower => 14,
         EffectKind::DolphinsGrace => 15,
+        // fire/sneak round: the 16 missing effects (the declaration
+        // order — the icons' table grew to 32)
+        EffectKind::MiningFatigue => 16,
+        EffectKind::InstantHealth => 17,
+        EffectKind::InstantDamage => 18,
+        EffectKind::Nausea => 19,
+        EffectKind::FireResistance => 20,
+        EffectKind::Invisibility => 21,
+        EffectKind::NightVision => 22,
+        EffectKind::Weakness => 23,
+        EffectKind::Saturation => 24,
+        EffectKind::HealthBoost => 25,
+        EffectKind::Glowing => 26,
+        EffectKind::Levitation => 27,
+        EffectKind::Luck => 28,
+        EffectKind::BadLuck => 29,
+        EffectKind::BadOmen => 30,
+        EffectKind::HeroOfTheVillage => 31,
     }
 }
 

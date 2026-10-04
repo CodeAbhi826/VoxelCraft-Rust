@@ -313,7 +313,7 @@ const BUBBLE_GONE_MASK: [&str; 9] = [
 // different art at a different size (24x24).
 
 /// number of effect-icon tiles in the sheet (16 kinds × 9x9 = 144x9)
-pub const EFFECT_ICON_COUNT: usize = 16;
+pub const EFFECT_ICON_COUNT: usize = 32; // + the fire/sneak round: the 16 missing effects' icons
 
 // CLEAN-ROOM — hand-drawn from scratch (wither: ash-grey skull)
 const EFF_WITHER: [&str; 9] = [
@@ -604,6 +604,262 @@ type EffectIcon = (&'static [&'static str], &'static [(char, Px)]);
 
 /// the 16 effect-icon (mask, palette) pairs, index order matching
 /// vc_gameplay::effects::EffectKind's declaration order
+
+// ---- fire/sneak round: the 16 missing effects' icons (clean-room 9x9
+// original art — the same O/F/A mask vocabulary as the existing set) ----
+
+// Mining Fatigue: a pickaxe head arc over the diagonal handle
+const EFF_MININGF: [&str; 9] = [
+    "..FFFF...",
+    ".FF..FF..",
+    "FF....FF.",
+    "F..O...F.",
+    "...O.....",
+    "..O......",
+    ".O.......",
+    "O........",
+    ".........",
+];
+const PAL_MININGF: [(char, Px); 2] = [('F', [46, 106, 106, 255]), ('O', [24, 56, 56, 255])];
+
+// Instant Health: a heart with a small cross accent
+const EFF_INSTH: [&str; 9] = [
+    "..O...O..",
+    ".OFO.OFO.",
+    "OFFFFOFO.",
+    "OFFFFFFO.",
+    ".OFFFFO..",
+    "..OFFO...",
+    "...OO....",
+    "....A....",
+    "...AAA...",
+];
+const PAL_INSTH: [(char, Px); 3] = [
+    ('O', [122, 12, 30, 255]),
+    ('F', [227, 27, 13, 255]),
+    ('A', [255, 236, 236, 255]),
+];
+
+// Instant Damage: a dark heart with a crack
+const EFF_INSTD: [&str; 9] = [
+    "..O...O..",
+    ".OFO.OFO.",
+    "OFFOF.FO.",
+    "OFF.FFFO.",
+    ".OF.FFO..",
+    "..OFFO...",
+    "...OFO...",
+    "....O....",
+    ".........",
+];
+const PAL_INSTD: [(char, Px); 2] = [('O', [40, 10, 10, 255]), ('F', [110, 20, 20, 255])];
+
+// Nausea: a spiral
+const EFF_NAUSEA: [&str; 9] = [
+    "..OOOO...",
+    ".O....O..",
+    "O.OFFO.O.",
+    "O.O...O.O",
+    "O.O.O.O.O",
+    "O.OOOO.O.",
+    "O......O.",
+    ".OOOOOO..",
+    ".........",
+];
+const PAL_NAUSEA: [(char, Px); 2] = [('O', [106, 44, 140, 255]), ('F', [180, 90, 210, 255])];
+
+// Fire Resistance: a flame over a shield bar
+const EFF_FIRERES: [&str; 9] = [
+    "....A....",
+    "...AA....",
+    "..AAAA...",
+    ".OAFAO...",
+    "OAAFAAO..",
+    ".OAAAO...",
+    "..OOO....",
+    ".OOOOOO..",
+    "OOOOOOOO.",
+];
+const PAL_FIRERES: [(char, Px); 3] = [
+    ('O', [150, 60, 10, 255]),
+    ('A', [255, 140, 20, 255]),
+    ('F', [255, 210, 90, 255]),
+];
+
+// Invisibility: a dashed ghost outline
+const EFF_INVIS: [&str; 9] = [
+    "..OOOO...",
+    ".O....O..",
+    "O..OO..O.",
+    "O......O.",
+    "O..OO..O.",
+    "O......O.",
+    ".O....O..",
+    "..O..O...",
+    ".........",
+];
+const PAL_INVIS: [(char, Px); 2] = [('O', [150, 150, 170, 255]), ('F', [200, 200, 215, 255])];
+
+// Night Vision: an eye with rays
+const EFF_NIGHTV: [&str; 9] = [
+    "A...A...A",
+    ".O.OOO.O.",
+    "..OFAFO..",
+    ".OFAAFO..",
+    "..OFAFO..",
+    ".O.OOO.O.",
+    "A...A...A",
+    ".........",
+    ".........",
+];
+const PAL_NIGHTV: [(char, Px); 3] = [
+    ('O', [30, 40, 120, 255]),
+    ('F', [90, 110, 220, 255]),
+    ('A', [240, 240, 160, 255]),
+];
+
+// Weakness: a broken sword (two halves)
+const EFF_WEAK: [&str; 9] = [
+    ".....AA..",
+    "....AFF..",
+    "...AFF...",
+    "..AFF....",
+    ".OAF.....",
+    "O.O......",
+    "O.OO.....",
+    ".O..O....",
+    ".........",
+];
+const PAL_WEAK: [(char, Px); 2] = [('F', [150, 150, 160, 255]), ('O', [90, 80, 70, 255])];
+
+// Saturation: a drumstick with a plus
+const EFF_SATUR: [&str; 9] = [
+    ".....OAO.",
+    "....OAFO.",
+    "...OAFO..",
+    "..OFFO...",
+    ".OFFO....",
+    "OFFO.....",
+    "OFO......",
+    "OO.......",
+    ".........",
+];
+const PAL_SATUR: [(char, Px); 3] = [
+    ('O', [110, 60, 20, 255]),
+    ('F', [200, 120, 60, 255]),
+    ('A', [248, 36, 33, 255]),
+];
+
+// Health Boost: a double-outline heart
+const EFF_HEALTHB: [&str; 9] = [
+    "..OO.OO..",
+    ".O.OO.O..",
+    "O.OFFOFO.",
+    "OFFFFFFO.",
+    ".OFFFFO..",
+    "..OFFO...",
+    "...OO....",
+    ".........",
+    ".........",
+];
+const PAL_HEALTHB: [(char, Px); 3] = [
+    ('O', [122, 12, 30, 255]),
+    ('F', [255, 90, 90, 255]),
+    ('A', [255, 236, 236, 255]),
+];
+
+// Glowing: a radiant diamond
+const EFF_GLOW: [&str; 9] = [
+    "....A....",
+    "...AFA...",
+    "..AFFFA..",
+    ".AFFAFFA.",
+    "..AFFFA..",
+    "...AFA...",
+    "....A....",
+    ".........",
+    ".........",
+];
+const PAL_GLOW: [(char, Px); 2] = [('F', [150, 255, 150, 255]), ('A', [90, 200, 90, 255])];
+
+// Levitation: an up chevron pair
+const EFF_LEVIT: [&str; 9] = [
+    "....A....",
+    "...AAF...",
+    "..AFFAF..",
+    ".A....A..",
+    "....A....",
+    "...AAF...",
+    "..AFFAF..",
+    ".A....A..",
+    ".........",
+];
+const PAL_LEVIT: [(char, Px); 2] = [('F', [200, 160, 255, 255]), ('A', [140, 90, 200, 255])];
+
+// Luck: a clover
+const EFF_LUCK: [&str; 9] = [
+    ".OO..OO..",
+    "OFFO.OFFO",
+    "OFFFFOFFO",
+    ".OFFFFO..",
+    "..OFFO...",
+    "...OO....",
+    "..O.O....",
+    ".O...O...",
+    ".........",
+];
+const PAL_LUCK: [(char, Px); 2] = [('O', [30, 100, 30, 255]), ('F', [70, 200, 70, 255])];
+
+// Bad Luck: an inverted dark clover
+const EFF_BADLUCK: [&str; 9] = [
+    ".........",
+    ".O...O...",
+    "..O.O....",
+    "...OO....",
+    "..OFFO...",
+    "OFFFFOFFO",
+    "OFFO.OFFO",
+    ".OO..OO..",
+    ".........",
+];
+const PAL_BADLUCK: [(char, Px); 2] = [('O', [20, 50, 20, 255]), ('F', [40, 110, 40, 255])];
+
+// Bad Omen: a raid-captain banner
+const EFF_BADOMEN: [&str; 9] = [
+    "O.......O",
+    "OFFFFFFFO",
+    "OFFAAFFO.",
+    "OFAAAFO..",
+    "OFAAFO...",
+    "OFFFO....",
+    "OFO......",
+    "O........",
+    ".........",
+];
+const PAL_BADOMEN: [(char, Px); 3] = [
+    ('O', [60, 50, 70, 255]),
+    ('F', [110, 90, 130, 255]),
+    ('A', [30, 24, 36, 255]),
+];
+
+// Hero of the Village: a banner with a star
+const EFF_HERO: [&str; 9] = [
+    "O.......O",
+    "OFFFFFFFO",
+    "OFAAFAFO.",
+    "OFAAAFO..",
+    "OFAAFAFO.",
+    "OFAFAFO..",
+    "OFFOFO...",
+    "O.O......",
+    ".........",
+];
+const PAL_HERO: [(char, Px); 3] = [
+    ('O', [90, 70, 20, 255]),
+    ('F', [230, 200, 80, 255]),
+    ('A', [255, 240, 180, 255]),
+];
+
 const EFFECT_ICONS: [EffectIcon; EFFECT_ICON_COUNT] = [
     (&EFF_WITHER, &PAL_WITHER),
     (&EFF_POISON, &PAL_POISON),
@@ -621,6 +877,23 @@ const EFFECT_ICONS: [EffectIcon; EFFECT_ICON_COUNT] = [
     (&EFF_FEATHER, &PAL_FEATHER),
     (&EFF_CONDUIT, &PAL_CONDUIT),
     (&EFF_DOLPHIN, &PAL_DOLPHIN),
+    // fire/sneak round: the 16 missing effects (the EffectKind order)
+    (&EFF_MININGF, &PAL_MININGF),
+    (&EFF_INSTH, &PAL_INSTH),
+    (&EFF_INSTD, &PAL_INSTD),
+    (&EFF_NAUSEA, &PAL_NAUSEA),
+    (&EFF_FIRERES, &PAL_FIRERES),
+    (&EFF_INVIS, &PAL_INVIS),
+    (&EFF_NIGHTV, &PAL_NIGHTV),
+    (&EFF_WEAK, &PAL_WEAK),
+    (&EFF_SATUR, &PAL_SATUR),
+    (&EFF_HEALTHB, &PAL_HEALTHB),
+    (&EFF_GLOW, &PAL_GLOW),
+    (&EFF_LEVIT, &PAL_LEVIT),
+    (&EFF_LUCK, &PAL_LUCK),
+    (&EFF_BADLUCK, &PAL_BADLUCK),
+    (&EFF_BADOMEN, &PAL_BADOMEN),
+    (&EFF_HERO, &PAL_HERO),
 ];
 
 /// effect-icon registry names (matches vc_gameplay EffectKind order;
@@ -643,6 +916,23 @@ pub fn effect_icon_name(idx: usize) -> &'static str {
         "slow_falling",
         "conduit_power",
         "dolphins_grace",
+        // fire/sneak round: the 16 missing effects (the EffectKind order)
+        "mining_fatigue",
+        "instant_health",
+        "instant_damage",
+        "nausea",
+        "fire_resistance",
+        "invisibility",
+        "night_vision",
+        "weakness",
+        "saturation",
+        "health_boost",
+        "glowing",
+        "levitation",
+        "luck",
+        "bad_luck",
+        "bad_omen",
+        "hero_of_the_village",
     ];
     NAMES[idx.min(EFFECT_ICON_COUNT - 1)]
 }

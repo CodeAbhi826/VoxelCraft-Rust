@@ -116,6 +116,10 @@ pub struct Sim {
     /// the fire, depending on the fire's age: 20 percent plus 3
     /// percentage points per age of the fire")
     pub rain: bool,
+    /// the systems round: doFireTick (default true — the fire tick's
+    /// gate; VERIFIED w/Game_rule: "fire spreads, destroys blocks,
+    /// extinguishes, and generates more fire")
+    pub fire_tick_enabled: bool,
     /// fire round: the difficulty scalar d 0-3 for the spread degree
     /// (set by the game layer from the mode: the engine's Survival maps
     /// Normal → 2, Hardcore → Hard → 3; Peaceful 0 / Easy 1 fold away —
@@ -192,6 +196,7 @@ impl Sim {
             hives: vc_gameplay::bees::HiveSystem::new(seed ^ 0xBE_E5),
             is_day: true,
             rain: false,
+            fire_tick_enabled: true,
             fire_difficulty: 2,
             sky_factor: 1.0,
             dragon: vc_gameplay::dragon::DragonSystem::new(seed ^ 0xDA60_0005),
@@ -655,6 +660,13 @@ impl Sim {
     ///   getFlammability reading; the wiki's "max adjacent flammability"
     ///   wording is ambiguous — the cross-check resolved it).
     pub fn fire_tick(&mut self, world: &mut vc_world::world::World, pos: [i32; 3], age: u8) {
+        // the systems round: doFireTick=false skips the tick entirely —
+        // "fire ceases to be updated" (VERIFIED w/Game_rule; the fire
+        // still DEALS damage to entities without being updated — the
+        // player's fire path is the game layer's, unaffected)
+        if !self.fire_tick_enabled {
+            return;
+        }
         use vc_blocks::blocks::{
             fire_age_state, flammability, is_fire_block, is_opaque, is_waterlogged_state,
             state_block, AIR, FIRE_AGE_MAX, TNT, WATER,

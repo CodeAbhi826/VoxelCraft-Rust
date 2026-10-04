@@ -2225,6 +2225,9 @@ pub struct MobSystem {
     /// the target's health has to be at 8 HP or less, or the target has
     /// to have the Poison effect")
     pub player_health: f32,
+    /// the systems round: doMobSpawning (default true — the natural
+    /// spawn gate; VERIFIED w/Game_rule: "mobs spawn naturally")
+    pub do_mob_spawning: bool,
     /// queued hits on the player (drained each frame by game.rs)
     pub hits: Vec<PlayerHit>,
     /// 1.11 evoker spells, consumed by the game layer: (evoker id, vex
@@ -2316,6 +2319,7 @@ impl MobSystem {
             player: None,
             player_invulnerable: false,
             player_health: 20.0,
+            do_mob_spawning: true,
             hits: Vec::new(),
             deaths: Vec::new(),
             pending_summons: Vec::new(),
@@ -2852,6 +2856,11 @@ impl MobSystem {
     /// w/Zombie_Villager); the Nether rolls magma cubes (VERIFIED
     /// w/Magma_Cube — all light levels; Nether Wastes weight 2/168 ≈ rare)
     fn try_spawn_hostile(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
+        // the systems round: doMobSpawning=false blocks the natural
+        // spawns (VERIFIED w/Game_rule: "mobs spawn naturally")
+        if !self.do_mob_spawning {
+            return;
+        }
         if self.hostiles_alive() as f32 >= MONSTER_CAP {
             return;
         }

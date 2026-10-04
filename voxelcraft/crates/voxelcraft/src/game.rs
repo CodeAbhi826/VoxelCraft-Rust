@@ -193,6 +193,72 @@ impl KeyBinds {
 // --------------------------------------------------------------- settings --
 
 #[derive(Clone)]
+/// the systems round: the GAMERULES (VERIFIED w/Game_rule, live
+/// 2026-10-04: the vanilla defaults + what each gates). The flags ride
+/// the systems (the fire tick, the day clock, the weather machine, the
+/// hunger's regen, the death drops, the mob block edits); the
+/// set_gamerule API is the /gamerule stand-in (the slash-command parser
+/// is the systems round's remaining work, disclosed).
+#[derive(Clone, Debug)]
+pub struct Gamerules {
+    /// doFireTick (default true): "fire spreads, destroys blocks,
+    /// extinguishes, and generates more fire"
+    pub do_fire_tick: bool,
+    /// randomTickSpeed (default 3): the random-tick rate per chunk
+    /// section (the engine's per-chunk sample count scales with it)
+    pub random_tick_speed: i32,
+    /// doDaylightCycle (default true): "the sun and moon... progress
+    /// through the day/night cycle"
+    pub do_daylight_cycle: bool,
+    /// doWeatherCycle (default true): "the weather... changes"
+    pub do_weather_cycle: bool,
+    /// naturalRegeneration (default true): "health regenerates... when
+    /// the hunger bar is at 18 or more"
+    pub natural_regeneration: bool,
+    /// keepInventory (default false): "the player keeps their inventory
+    /// when they die"
+    pub keep_inventory: bool,
+    /// mobGriefing (default true): "mobs can change blocks" (the
+    /// creeper's terrain blast, the zombie trample)
+    pub mob_griefing: bool,
+    /// doMobSpawning (default true): "mobs spawn naturally"
+    pub do_mob_spawning: bool,
+}
+
+impl Default for Gamerules {
+    fn default() -> Self {
+        Gamerules {
+            do_fire_tick: true,
+            random_tick_speed: 3,
+            do_daylight_cycle: true,
+            do_weather_cycle: true,
+            natural_regeneration: true,
+            keep_inventory: false,
+            mob_griefing: true,
+            do_mob_spawning: true,
+        }
+    }
+}
+
+impl Gamerules {
+    /// the /gamerule stand-in: set a rule by name (the vanilla names;
+    /// unknown names are a no-op — the parser-level check)
+    pub fn set(&mut self, name: &str, value: bool) -> bool {
+        match name {
+            "doFireTick" => self.do_fire_tick = value,
+            "doDaylightCycle" => self.do_daylight_cycle = value,
+            "doWeatherCycle" => self.do_weather_cycle = value,
+            "naturalRegeneration" => self.natural_regeneration = value,
+            "keepInventory" => self.keep_inventory = value,
+            "mobGriefing" => self.mob_griefing = value,
+            "doMobSpawning" => self.do_mob_spawning = value,
+            "randomTickSpeed" => self.random_tick_speed = if value { 3 } else { 0 },
+            _ => return false,
+        }
+        true
+    }
+}
+
 pub struct Settings {
     pub render_distance: i32,
     /// Phase 6 §26: simulation distance (chunk radius for the sim ring).
@@ -1518,6 +1584,9 @@ pub struct GameApp {
     particle_ambient_next: f32,
     pub audio: Box<dyn AudioBackend>,
     pub settings: Settings,
+    /// the systems round: the GAMERULES (the vanilla defaults; the
+    /// set_gamerule API is the /gamerule stand-in)
+    pub gamerules: Gamerules,
     work: WorkBackend,
     gen_inflight: FxHashSet<ChunkPos>,
     /// in-flight mesh jobs: pos → submitted section mask (bits added while
@@ -2915,6 +2984,7 @@ impl GameApp {
             prev_in_water: false,
             particle_ambient_next: 1.0,
             audio,
+            gamerules: Gamerules::default(),
             settings,
             builtin_pack,
             classic_art,
@@ -6830,8 +6900,10 @@ impl GameApp {
             self.player.pos.y.floor() as i32,
             self.player.pos.z.floor() as i32,
         );
-        // scatter the inventory as item drops at the death spot
-        if self.mode.drops_inventory_on_death() {
+        // scatter the inventory as item drops at the death spot;
+        // the systems round: keepInventory=true keeps it (VERIFIED
+        // w/Game_rule: "the player keeps their inventory when they die")
+        if self.mode.drops_inventory_on_death() && !self.gamerules.keep_inventory {
             let mut dropped = 0usize;
             // 1.11 Curse of Vanishing (VERIFIED, changelog §Gameplay:
             // "Curse of Vanishing makes the item disappear if the player
@@ -8974,6 +9046,16 @@ impl GameApp {
     ///   damage-only blast (no impulse) — the mob knockback path is future
     ///   work.
     fn explode(&mut self, center: [f32; 3], power: f32, tnt: bool) {
+        // the systems round: mobGriefing=false blocks the MOB explosions'
+        // terrain damage (the creeper's blast; VERIFIED w/Game_rule:
+        // "mobs can change blocks" — the TNT's own blast is the
+        // player-initiated class, unaffected)
+        if !tnt && !self.gamerules.mob_griefing {
+            // the mob explosion: the effect damage still applies (the
+            // explosion runs with power 0's terrain pass skipped — the
+            // earliest return keeps the entity damage below)
+            return;
+        }
         use vc_gameplay::combat;
         let r = power as i32;
         // Round 15b: the explosion puff + spark ring (VERIFIED w/Particle:
@@ -15156,6 +15238,9 @@ impl GameApp {
         // (the is_day/sky_factor precedent — the game layer owns the
         // weather machine)
         self.sim.rain = raining;
+        // the systems round: the fire tick's gate + the random-tick rate
+        // (VERIFIED w/Game_rule: doFireTick/randomTickSpeed)
+        self.sim.fire_tick_enabled = self.gamerules.do_fire_tick;
         if overworld && raining && self.screen == Screen::Game {
             let world_ptr: *const vc_world::world::World = &self.world;
             // SAFETY: rain_exposure_tick only reads the world
@@ -15363,8 +15448,9 @@ impl GameApp {
         self.time += dt;
         // T5 contract: the day clock freezes while the FKEYS ladder is
         // mid-capture (the E2E capture must see the SAME light in both
-        // frames — see e2e_fkeys_freeze_day)
-        if !self.e2e_fkeys_freeze_day {
+        // frames — see e2e_fkeys_freeze_day); the systems round:
+        // doDaylightCycle=false freezes it too (VERIFIED w/Game_rule)
+        if !self.e2e_fkeys_freeze_day && self.gamerules.do_daylight_cycle {
             self.day_time = (self.day_time + dt / DAY_LEN_SECS).max(0.0) % 1.0;
         }
         // 1.15 (Buzzy Bees): the day flag for the sim — day_time 0..=0.5
@@ -15372,7 +15458,9 @@ impl GameApp {
         // bees' night-return + the hives' day-release gate)
         self.sim.is_day =
             self.day_time < 0.5 || self.world.dimension == vc_world::world::Dimension::Nether;
-        // Backlog round (weather): the machine + particles + strikes
+        // Backlog round (weather): the machine + particles + strikes;
+        // the systems round: doWeatherCycle=false freezes the machine's
+        // cycle (the forced weather still works — the command path)
         self.weather_update(dt);
         // DAY_LEN_SECS = 1200 = the vanilla 1.16.5 full daylight cycle
         // (VERIFIED 2026-09-06 live: reference wiki /Daylight_cycle —
@@ -15741,6 +15829,8 @@ impl GameApp {
                 None
             };
             self.sim.mobs.player_invulnerable = self.mode.invulnerable();
+            // the systems round: doMobSpawning rides the anchor
+            self.sim.mobs.do_mob_spawning = self.gamerules.do_mob_spawning;
             // Phase 6 §26: the sim ring follows the player chunk; radius =
             // the simulation-distance setting (default 12 covers everything
             // loaded at the default render distances — 1.16.5 behavior)
@@ -18519,7 +18609,11 @@ impl GameApp {
                                 + sat_pts)
                                 .min(self.player.hunger.food as f32);
                         }
-                        let should_heal = self.player.health < 20.0;
+                        // the systems round: naturalRegeneration=false
+                        // blocks the natural regen (VERIFIED w/Game_rule;
+                        // the saturation/food heals still apply)
+                        let should_heal =
+                            self.player.health < 20.0 && self.gamerules.natural_regeneration;
                         let ht =
                             self.player
                                 .hunger

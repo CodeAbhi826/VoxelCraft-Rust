@@ -601,10 +601,6 @@ const PAL_DOLPHIN: [(char, Px); 3] = [
 /// one effect icon: (mask rows, palette) — the alias keeps the sheet
 /// table's type readable (clippy type_complexity)
 type EffectIcon = (&'static [&'static str], &'static [(char, Px)]);
-
-/// the 16 effect-icon (mask, palette) pairs, index order matching
-/// vc_gameplay::effects::EffectKind's declaration order
-
 // ---- fire/sneak round: the 16 missing effects' icons (clean-room 9x9
 // original art — the same O/F/A mask vocabulary as the existing set) ----
 
@@ -859,6 +855,10 @@ const PAL_HERO: [(char, Px); 3] = [
     ('F', [230, 200, 80, 255]),
     ('A', [255, 240, 180, 255]),
 ];
+
+/// the effect-icon (mask, palette) pairs, index order matching
+/// vc_gameplay::effects::EffectKind's declaration order (32: the 16
+/// original + the fire/sneak round's 16 missing effects)
 
 const EFFECT_ICONS: [EffectIcon; EFFECT_ICON_COUNT] = [
     (&EFF_WITHER, &PAL_WITHER),
@@ -1305,10 +1305,11 @@ mod tests {
     /// Sub-round 1: every effect-icon tile paints real ink at both the
     /// 9x9 sheet size and a 20x20 zoom (the coverage-guard pattern — a
     /// blank icon is a missing painter), the count matches the engine's
-    /// 16 effect kinds, and out-of-range indices are a no-op.
+    /// 32 effect kinds (the fire/sneak round: 16 original + 16 missing),
+    /// and out-of-range indices are a no-op.
     #[test]
     fn effect_icons_all_paint_ink() {
-        assert_eq!(EFFECT_ICON_COUNT, 16, "one tile per engine effect kind");
+        assert_eq!(EFFECT_ICON_COUNT, 32, "one tile per engine effect kind");
         for idx in 0..EFFECT_ICON_COUNT {
             let mut buf = [0u8; 9 * 9 * 4];
             draw_effect_icon(&mut buf, 9, idx);

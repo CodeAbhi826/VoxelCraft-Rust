@@ -246,24 +246,25 @@ impl GuiTextureSet {
             tile_h: 9,
         };
 
-        // Sub-round 1: the 16 status-effect icons — 16 tiles of 9x9 in
-        // one 144x9 strip (tile i = effect-icon index i)
-        let mut effects_px = vec![0u8; 144 * 9 * 4];
+        // Sub-round 1: the status-effect icons — EFFECT_ICON_COUNT tiles
+        // of 9x9 in one strip (tile i = effect-icon index i; the
+        // fire/sneak round: 32 tiles = a 288x9 strip — the old hardwired
+        // 144 silently clipped the tiles past 16)
+        let strip_w = crate::textures::gui_art::EFFECT_ICON_COUNT * 9;
+        let mut effects_px = vec![0u8; strip_w * 9 * 4];
         for i in 0..crate::textures::gui_art::EFFECT_ICON_COUNT {
             let mut tile = [0u8; 9 * 9 * 4];
             crate::textures::gui_art::draw_effect_icon(&mut tile, 9, i);
             let off = i * 9 * 4;
             for row in 0..9usize {
-                let dst = row * 144 * 4 + off;
+                let dst = row * strip_w * 4 + off;
                 let src = row * 9 * 4;
-                if dst + 9 * 4 <= effects_px.len() {
-                    effects_px[dst..dst + 9 * 4].copy_from_slice(&tile[src..src + 9 * 4]);
-                }
+                effects_px[dst..dst + 9 * 4].copy_from_slice(&tile[src..src + 9 * 4]);
             }
         }
         let effects = SpriteSheet {
             px: effects_px,
-            w: 144,
+            w: strip_w,
             h: 9,
             tile_w: 9,
             tile_h: 9,

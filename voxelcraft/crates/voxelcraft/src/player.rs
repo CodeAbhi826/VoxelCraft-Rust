@@ -456,9 +456,12 @@ impl Player {
             || self.offhand.block == vc_blocks::blocks::SHIELD
     }
 
-    /// clamp-to-max healing (§29 potions)
+    /// clamp-to-max healing (§29 potions). fire/sneak round: Health
+    /// Boost raises the max by 4 HP (2 hearts) per level
+    /// (w/Health_Boost, VERIFIED live 2026-10-03).
     pub fn heal(&mut self, amount: f32) {
-        self.health = (self.health + amount).min(20.0);
+        let max = 20.0 + vc_gameplay::effects::health_boost_bonus(&self.effects);
+        self.health = (self.health + amount).min(max);
     }
 
     /// Sub-round 1 (2026-09-14): the hurt-flash span in seconds
@@ -1236,7 +1239,14 @@ impl Player {
                 self.tick_accum -= TICK_DT;
                 ticks += 1;
                 let v_bpt = self.vel.y / TPS;
-                let v1 = if self.in_water || self.in_lava {
+                // fire/sneak round: Levitation floats the player upward
+                // (w/Levitation — the 0.9 x (amplifier+1) b/s is a
+                // DOCUMENTED APPROXIMATION; the wiki publishes no
+                // scalar) — the float overrides the gravity form
+                let lev = vc_gameplay::effects::levitation_velocity(&self.effects);
+                let v1 = if lev > 0.0 {
+                    v_bpt + ((lev / TPS) - v_bpt).min(0.04)
+                } else if self.in_water || self.in_lava {
                     let drag = if self.in_lava { 0.5 } else { 0.8 };
                     let mut t = v_bpt * drag - 0.02;
                     if input.jump {

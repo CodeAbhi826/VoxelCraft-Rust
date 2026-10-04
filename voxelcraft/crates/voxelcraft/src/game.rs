@@ -7191,7 +7191,7 @@ impl GameApp {
                             || self.input.back
                             || self.input.left
                             || self.input.right);
-                    let outcome = combat::player_melee(
+                    let mut outcome = combat::player_melee(
                         self.player.held().block,
                         p,
                         falling,
@@ -7199,6 +7199,12 @@ impl GameApp {
                         0.0,
                         0.0,
                     );
+
+                    // fire/sneak round: Weakness reduces the melee damage by 4 HP x
+                    // level (w/Weakness, VERIFIED live 2026-10-03); the attack fails
+                    // to connect entirely at <= 0 (no knockback — VERIFIED)
+                    let weak = vc_gameplay::effects::weakness_bonus(&self.player.effects);
+                    outcome.damage = (outcome.damage + weak).max(0.0);
                     let (applied, _) = self.sim.wither.damage(outcome.damage);
                     // VERIFIED: on taking damage the wither breaks blocks
                     // in a 3×4×3 box around itself
@@ -7280,7 +7286,7 @@ impl GameApp {
                                 || self.input.back
                                 || self.input.left
                                 || self.input.right);
-                        let outcome = combat::player_melee(
+                        let mut outcome = combat::player_melee(
                             self.player.held().block,
                             p,
                             falling,
@@ -7348,8 +7354,14 @@ impl GameApp {
         let falling = !self.player.on_ground && self.player.vel.y < 0.0;
         let sprinting = self.input.sprint
             && (self.input.fwd || self.input.back || self.input.left || self.input.right);
-        let outcome =
+        let mut outcome =
             combat::player_melee(self.player.held().block, p, falling, sprinting, armor, 0.0);
+        // fire/sneak round: Weakness reduces the melee damage by 4 HP x
+        // level (w/Weakness, VERIFIED live 2026-10-03); the attack fails
+        // to connect entirely at <= 0 (no knockback — VERIFIED)
+        let weak = vc_gameplay::effects::weakness_bonus(&self.player.effects);
+        outcome.damage = (outcome.damage + weak).max(0.0);
+
         let applied = self.sim.mobs.damage(id, outcome.damage);
         // 1.15 (Buzzy Bees): "All bees nearby are angered when an
         // individual bee is attacked (unless the bee attacked is
@@ -7413,7 +7425,7 @@ impl GameApp {
         let falling = !self.player.on_ground && self.player.vel.y < 0.0;
         let sprinting = self.input.sprint
             && (self.input.fwd || self.input.back || self.input.left || self.input.right);
-        let outcome = combat::player_melee(
+        let mut outcome = combat::player_melee(
             self.player.held().block,
             p,
             falling,
@@ -7421,6 +7433,10 @@ impl GameApp {
             0.0, // villagers: no natural armor (VERIFIED)
             0.0,
         );
+        // fire/sneak round: Weakness reduces the melee damage by 4 HP x
+        // level (w/Weakness, VERIFIED live 2026-10-03)
+        let weak = vc_gameplay::effects::weakness_bonus(&self.player.effects);
+        outcome.damage = (outcome.damage + weak).max(0.0);
         let (applied, kill_pos) = self.sim.villagers.damage(vid, outcome.damage);
         if applied > 0.0 {
             // Round 17: a landed attack costs 0.1 exhaustion (VERIFIED
@@ -18140,9 +18156,15 @@ impl GameApp {
                     // it ~3x too often at 60 fps; round-17 audit §9);
                     // creative is immune. Fire (300-tick burn after
                     // leaving) is deferred — no fire system.
+                    // Fire Resistance negates the lava damage too
+                    // (w/Fire_Resistance: "the fire and lava damage is
+                    // negated" — the fire/sneak round's wiring)
+                    let lava_immune =
+                        vc_gameplay::effects::fire_resistance_active(&self.player.effects);
                     if self.player.in_lava
                         && sim_tick.is_multiple_of(10)
                         && !self.mode.invulnerable()
+                        && !lava_immune
                     {
                         let applied = self.player.damage(4.0);
                         if applied > 0.0 {
@@ -18203,8 +18225,12 @@ impl GameApp {
                         }
                         // the fire damage: inside the source — 1 HP (fire)
                         // / 2 HP (soul) per 10 sim ticks; outside — 1 HP
-                        // per 20 sim ticks (the burn)
-                        if !self.mode.invulnerable() {
+                        // per 20 sim ticks (the burn). Fire Resistance
+                        // negates the fire/lava damage (w/Fire_Resistance,
+                        // VERIFIED — the fire/sneak round's wiring)
+                        let fire_immune =
+                            vc_gameplay::effects::fire_resistance_active(&self.player.effects);
+                        if !self.mode.invulnerable() && !fire_immune {
                             let (dmg, every) = if self.player.in_soul_fire {
                                 (2.0, 10u64)
                             } else if self.player.in_fire {
@@ -18270,6 +18296,20 @@ impl GameApp {
                             self.player
                                 .hunger
                                 .add_exhaustion(0.005 * (amp as f32 + 1.0));
+                        }
+                        // fire/sneak round: Saturation's per-tick restore
+                        // — 1 hunger point + 2 saturation points per tick
+                        // per level (w/Saturation, VERIFIED live
+                        // 2026-10-03; the effect lasting longer than one
+                        // tick keeps gaining on each tick)
+                        let (sat_food, sat_pts) =
+                            vc_gameplay::effects::saturation_restore(&self.player.effects);
+                        if sat_food > 0.0 {
+                            self.player.hunger.food =
+                                (self.player.hunger.food + sat_food.round() as i32).min(20);
+                            self.player.hunger.saturation = (self.player.hunger.saturation
+                                + sat_pts)
+                                .min(self.player.hunger.food as f32);
                         }
                         let should_heal = self.player.health < 20.0;
                         let ht =
@@ -18723,7 +18763,11 @@ impl GameApp {
                     if b == BEDROCK {
                         self.mining = None;
                     } else {
-                        let total = vc_blocks::blocks::break_time_secs(b);
+                        // fire/sneak round: Mining Fatigue's mining-speed
+                        // factor (the 0.3^min(level,4) form — VERIFIED
+                        // w/Mining_Fatigue, live 2026-10-03)
+                        let total = vc_blocks::blocks::break_time_secs(b)
+                            * vc_gameplay::effects::mining_fatigue_factor(&self.player.effects);
                         let instant = self.mode.picks_creative() || total <= 0.0;
                         // (re)start when the crosshair moved to a new block
                         let fresh =

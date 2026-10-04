@@ -79,6 +79,81 @@ pub enum EffectKind {
     /// 2026-09-07). The wiki publishes no scalar for the boost — the
     /// engine's ×2 swim multiplier is a documented approximation.
     DolphinsGrace,
+    // ---- the fire/sneak round (2026-10-03): the 16 missing effects —
+    // the 1.16.5 set is now COMPLETE (32 of 32; Darkness 33 and the
+    // 1.21 omens/charging effects are POST-1.16.5 — excluded). Every
+    // rule is the live-verified wiki behavior (the reference wiki
+    // /Effect + each effect's own page, raw wikitext, live 2026-10-03).
+    /// Java effect id 4 (the elder guardian's default level III):
+    /// "the mining speed is reduced to 0.3^min(level, 4) times the
+    /// normal mining speed. For the in-game default level III, mining
+    /// speed decreases by 97.3%" (w/Mining_Fatigue); "the effect
+    /// decreases attack speed by 10% per level" (JE). The
+    /// mining/attack-speed hooks read the factor.
+    MiningFatigue,
+    /// Java effect id 6: "Instantly heals 2 HP x 2^level" (the
+    /// amplifier+1 form: I = 4 HP = 2 hearts, II = 8 — the standard
+    /// hearts); "Undead mobs (including the wither) are damaged as if
+    /// with Instant Damage instead" (w/Instant_Health). Instant on
+    /// apply (no period).
+    InstantHealth,
+    /// Java effect id 7: "Instant Damage inflicts magic damage of
+    /// 3 HP x 2^level" (I = 6 HP = 3 hearts, II = 12); "As this is
+    /// magic damage, it can be decreased only via Resistance and
+    /// Protection"; "Undead mobs are healed as if with Instant Health
+    /// instead" (w/Instant_Damage). Instant on apply.
+    InstantDamage,
+    /// Java effect id 9: the wobbly view (the render layer's screen
+    /// warp). No per-tick action.
+    Nausea,
+    /// Java effect id 12: "the fire and lava damage is negated" (the
+    /// fire/lava damage paths gate on it). VERIFIED w/Fire_Resistance.
+    FireResistance,
+    /// Java effect id 14: the player's model hidden from other viewers
+    /// (the render layer). No per-tick action. VERIFIED w/Invisibility.
+    Invisibility,
+    /// Java effect id 16: the brightness (the render layer's night
+    /// vision). No per-tick action. VERIFIED w/Night_Vision.
+    NightVision,
+    /// Java effect id 18: "Melee damage inflicted by the affected
+    /// entity is reduced by 4 HP x level" (I = -4, II = -8; JE —
+    /// w/Weakness). The melee path reads the bonus.
+    Weakness,
+    /// Java effect id 23: "instantly replenishes 1 hunger x level and
+    /// 2 x level points of saturation"; "If the effect lasts longer
+    /// than one tick, the player continues gaining 1 hunger point and
+    /// 2 saturation points on each tick" (w/Saturation — the particle
+    /// color #F82421 red). The food path reads the per-tick restore.
+    Saturation,
+    /// Java effect id 21: "+4 HP (2 hearts) per level" — the max-health
+    /// increase (the game layer's max-health hook). VERIFIED
+    /// w/Health_Boost.
+    HealthBoost,
+    /// Java effect id 24 (Java-only): the glowing outline (the render
+    /// layer). No per-tick action. VERIFIED w/Glowing.
+    Glowing,
+    /// Java effect id 25: "causes the affected entity to float upward"
+    /// (w/Levitation — the wiki publishes no scalar on the page; the
+    /// engine's 0.9 x (amplifier+1) b/s float is a DOCUMENTED
+    /// APPROXIMATION, the Shulker-bullet float reading).
+    Levitation,
+    /// Java effect id 26 (Java-only): the loot-table luck modifier (the
+    /// drop rolls' future work — the engine's loot is the mined-drop
+    /// path; the modifier is a disclosed future hook).
+    Luck,
+    /// Java effect id 27 (Java-only): the negative loot modifier (the
+    /// same disclosed hook).
+    BadLuck,
+    /// Java effect id 31: the raid trigger (VERIFIED w/Effect +
+    /// w/Raid: "Bad Omen triggers a raid when a player with the effect
+    /// enters a village" — the raids are MISSING; the trigger is
+    /// registered and disclosed as future work).
+    BadOmen,
+    /// Java effect id 32: the villager trade discounts (VERIFIED
+    /// w/Hero_of_the_Village; the discount's exact curve is the
+    /// trading-depth detail — the effect registers, the discount is a
+    /// disclosed future hook).
+    HeroOfTheVillage,
 }
 
 impl EffectKind {
@@ -100,6 +175,63 @@ impl EffectKind {
             EffectKind::SlowFalling => "voxelcraft:slow_falling",
             EffectKind::ConduitPower => "voxelcraft:conduit_power",
             EffectKind::DolphinsGrace => "voxelcraft:dolphins_grace",
+            EffectKind::MiningFatigue => "voxelcraft:mining_fatigue",
+            EffectKind::InstantHealth => "voxelcraft:instant_health",
+            EffectKind::InstantDamage => "voxelcraft:instant_damage",
+            EffectKind::Nausea => "voxelcraft:nausea",
+            EffectKind::FireResistance => "voxelcraft:fire_resistance",
+            EffectKind::Invisibility => "voxelcraft:invisibility",
+            EffectKind::NightVision => "voxelcraft:night_vision",
+            EffectKind::Weakness => "voxelcraft:weakness",
+            EffectKind::Saturation => "voxelcraft:saturation",
+            EffectKind::HealthBoost => "voxelcraft:health_boost",
+            EffectKind::Glowing => "voxelcraft:glowing",
+            EffectKind::Levitation => "voxelcraft:levitation",
+            EffectKind::Luck => "voxelcraft:luck",
+            EffectKind::BadLuck => "voxelcraft:bad_luck",
+            EffectKind::BadOmen => "voxelcraft:bad_omen",
+            EffectKind::HeroOfTheVillage => "voxelcraft:hero_of_the_village",
+        }
+    }
+
+    /// the Java numeric id (1.16.5's 1..32; Darkness 33 is post-1.16.5).
+    /// The ids are the removed-numeric-id registry order (VERIFIED
+    /// w/Effect History 1.20.2: "the effects' numeral IDs were 1 (Speed)
+    /// through 33 (Darkness)" — 1.16.5 ends at 32).
+    pub fn java_id(self) -> u8 {
+        match self {
+            EffectKind::Speed => 1,
+            EffectKind::Slowness => 2,
+            EffectKind::Haste => 3,
+            EffectKind::MiningFatigue => 4,
+            EffectKind::Strength => 5,
+            EffectKind::InstantHealth => 6,
+            EffectKind::InstantDamage => 7,
+            EffectKind::JumpBoost => 8,
+            EffectKind::Nausea => 9,
+            EffectKind::Regeneration => 10,
+            EffectKind::Resistance => 11,
+            EffectKind::FireResistance => 12,
+            EffectKind::WaterBreathing => 13,
+            EffectKind::Invisibility => 14,
+            EffectKind::Blindness => 15,
+            EffectKind::NightVision => 16,
+            EffectKind::Hunger => 17,
+            EffectKind::Weakness => 18,
+            EffectKind::Poison => 19,
+            EffectKind::Wither => 20,
+            EffectKind::HealthBoost => 21,
+            EffectKind::Absorption => 22,
+            EffectKind::Saturation => 23,
+            EffectKind::Glowing => 24,
+            EffectKind::Levitation => 25,
+            EffectKind::Luck => 26,
+            EffectKind::BadLuck => 27,
+            EffectKind::SlowFalling => 28,
+            EffectKind::ConduitPower => 29,
+            EffectKind::DolphinsGrace => 30,
+            EffectKind::BadOmen => 31,
+            EffectKind::HeroOfTheVillage => 32,
         }
     }
 }
@@ -132,6 +264,13 @@ pub fn period_ticks(kind: EffectKind, amplifier: u8) -> i32 {
         EffectKind::Regeneration => 50 >> (amplifier as i32).min(1),
         // 1.11 Absorption: no periodic action (buffer effect)
         EffectKind::Absorption => i32::MAX,
+        // fire/sneak round: Saturation's restore runs EVERY tick (1
+        // hunger + 2 saturation per tick per level — w/Saturation,
+        // VERIFIED live 2026-10-03); the food path reads the restore
+        EffectKind::Saturation => 1,
+        // the instant effects (InstantHealth/InstantDamage) apply their
+        // amount ONCE at the apply site — no period (the game layer's
+        // apply path)
         _ => i32::MAX, // stat effects are continuous, no period
     }
 }
@@ -337,6 +476,117 @@ pub fn dolphins_grace_multiplier(effects: &Effects) -> f32 {
     } else {
         1.0
     }
+}
+
+// ---- the fire/sneak round: the 16 missing effects' accessors ----
+
+/// Mining Fatigue: "the mining speed is reduced to 0.3^min(level, 4)
+/// times the normal mining speed" (w/Mining_Fatigue, VERIFIED live
+/// 2026-10-03) — the level is the HUMAN level (amplifier+1: I = 0.3,
+/// III = 0.027, the 97.3% decrease). The break-time path multiplies.
+pub fn mining_fatigue_factor(effects: &Effects) -> f32 {
+    match effects.amplifier(EffectKind::MiningFatigue) {
+        Some(a) => 0.3_f32.powi((i32::from(a) + 1).min(4)),
+        None => 1.0,
+    }
+}
+
+/// Mining Fatigue's attack-speed half (JE): "the effect decreases
+/// attack speed by 10% per level" (w/Mining_Fatigue).
+pub fn mining_fatigue_attack_speed(effects: &Effects) -> f32 {
+    match effects.amplifier(EffectKind::MiningFatigue) {
+        Some(a) => 1.0 - 0.1 * f32::from(a + 1),
+        None => 1.0,
+    }
+}
+
+/// Fire Resistance: the fire/lava damage is negated (w/Fire_Resistance).
+pub fn fire_resistance_active(effects: &Effects) -> bool {
+    effects.amplifier(EffectKind::FireResistance).is_some()
+}
+
+/// Invisibility: the model hidden (w/Invisibility).
+pub fn invisibility_active(effects: &Effects) -> bool {
+    effects.amplifier(EffectKind::Invisibility).is_some()
+}
+
+/// Night Vision: the brightness (w/Night_Vision).
+pub fn night_vision_active(effects: &Effects) -> bool {
+    effects.amplifier(EffectKind::NightVision).is_some()
+}
+
+/// Nausea: the wobbly view (w/Nausea).
+pub fn nausea_active(effects: &Effects) -> bool {
+    effects.amplifier(EffectKind::Nausea).is_some()
+}
+
+/// Glowing: the outline (w/Glowing).
+pub fn glowing_active(effects: &Effects) -> bool {
+    effects.amplifier(EffectKind::Glowing).is_some()
+}
+
+/// Weakness: "Melee damage inflicted by the affected entity is reduced
+/// by 4 HP x level" (w/Weakness, VERIFIED live 2026-10-03; I = -4,
+/// II = -8). The melee path adds this (negative) bonus.
+pub fn weakness_bonus(effects: &Effects) -> f32 {
+    match effects.amplifier(EffectKind::Weakness) {
+        Some(a) => -4.0 * f32::from(a + 1),
+        None => 0.0,
+    }
+}
+
+/// Saturation: "the player continues gaining 1 hunger point and 2
+/// saturation points on each tick" per level (w/Saturation, VERIFIED
+/// live 2026-10-03) — the food path applies the per-tick restore.
+pub fn saturation_restore(effects: &Effects) -> (f32, f32) {
+    match effects.amplifier(EffectKind::Saturation) {
+        Some(a) => {
+            let l = f32::from(a + 1);
+            (l, 2.0 * l)
+        }
+        None => (0.0, 0.0),
+    }
+}
+
+/// Health Boost: "+4 HP (2 hearts) per level" (w/Health_Boost) — the
+/// max-health increase.
+pub fn health_boost_bonus(effects: &Effects) -> f32 {
+    match effects.amplifier(EffectKind::HealthBoost) {
+        Some(a) => 4.0 * f32::from(a + 1),
+        None => 0.0,
+    }
+}
+
+/// Levitation: the float-up velocity (w/Levitation — the wiki publishes
+/// no scalar; the 0.9 x (amplifier+1) b/s is a DOCUMENTED APPROXIMATION,
+/// the Shulker-bullet float reading). The gravity path overrides.
+pub fn levitation_velocity(effects: &Effects) -> f32 {
+    match effects.amplifier(EffectKind::Levitation) {
+        Some(a) => 0.9 * f32::from(a + 1),
+        None => 0.0,
+    }
+}
+
+/// Luck / Bad Luck: the loot-table modifier's amplifier (the drop
+/// rolls' disclosed future hook).
+pub fn luck_amplifier(effects: &Effects) -> i32 {
+    if let Some(a) = effects.amplifier(EffectKind::Luck) {
+        i32::from(a) + 1
+    } else if let Some(a) = effects.amplifier(EffectKind::BadLuck) {
+        -(i32::from(a) + 1)
+    } else {
+        0
+    }
+}
+
+/// Bad Omen / Hero of the Village active (the raid trigger / the trade
+/// discounts — the hooks are disclosed future work).
+pub fn bad_omen_active(effects: &Effects) -> bool {
+    effects.amplifier(EffectKind::BadOmen).is_some()
+}
+
+pub fn hero_of_the_village_active(effects: &Effects) -> bool {
+    effects.amplifier(EffectKind::HeroOfTheVillage).is_some()
 }
 
 #[cfg(test)]

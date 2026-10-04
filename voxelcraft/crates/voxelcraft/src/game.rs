@@ -7312,6 +7312,10 @@ impl GameApp {
                             0.0,
                             0.0,
                         );
+                        // fire/sneak round: Weakness reduces the melee
+                        // damage by 4 HP x level (w/Weakness, VERIFIED)
+                        let weak = vc_gameplay::effects::weakness_bonus(&self.player.effects);
+                        outcome.damage = (outcome.damage + weak).max(0.0);
                         let applied = self.sim.dragon.damage(outcome.damage);
                         if applied > 0.0 {
                             // Round 17: a landed attack costs 0.1

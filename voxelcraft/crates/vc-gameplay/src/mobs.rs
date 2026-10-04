@@ -1743,6 +1743,12 @@ pub struct PlayerHit {
     /// 3 s semi-puffed; the engine's one-tier poison is the I form,
     /// disclosed)
     pub poison_effect: Option<i32>,
+    /// fire/sneak round: the witch's splash-potion rider — Some((kind,
+    /// amplifier, ticks)) applies the potion's effect on the splash
+    /// landing (the Slowness/Weakness payload; the poison/wither
+    /// riders stay their own fields). VERIFIED w/Witch, live
+    /// 2026-10-03: the witch's potion-choice ladder.
+    pub potion_effect: Option<(u8, u8, i32)>,
 }
 
 /// An arrow projectile (skeleton): ballistic point. Phase E1 adds
@@ -1834,6 +1840,12 @@ pub struct MobSystem {
     pub player: Option<[f32; 3]>,
     /// creative flight / invulnerability — mobs hold fire
     pub player_invulnerable: bool,
+    /// fire/sneak round: the anchored player's health (the witch's
+    /// potion-choice ladder's health gates read it — VERIFIED w/Witch:
+    /// "Poison if the target's health is at least 8 HP"; "Weakness...
+    /// the target's health has to be at 8 HP or less, or the target has
+    /// to have the Poison effect")
+    pub player_health: f32,
     /// queued hits on the player (drained each frame by game.rs)
     pub hits: Vec<PlayerHit>,
     /// 1.11 evoker spells, consumed by the game layer: (evoker id, vex
@@ -1924,6 +1936,7 @@ impl MobSystem {
             next_id: 1,
             player: None,
             player_invulnerable: false,
+            player_health: 20.0,
             hits: Vec::new(),
             deaths: Vec::new(),
             pending_summons: Vec::new(),
@@ -2261,6 +2274,7 @@ impl MobSystem {
                 m,
                 player,
                 invuln,
+                self.player_health,
                 hits,
                 arrows,
                 world,
@@ -4093,6 +4107,7 @@ fn ai_tick(
     m: &mut Mob,
     player: Option<[f32; 3]>,
     invuln: bool,
+    player_health: f32,
     hits: &mut Vec<PlayerHit>,
     arrows: &mut Vec<Arrow>,
     world: &World,
@@ -4344,6 +4359,7 @@ fn ai_tick(
                                 knockback_dir: [dx * k, dz * k],
                                 wither_effect: None,
                                 poison_effect: Some(200),
+                                potion_effect: None,
                             });
                             // one sting per bee ("Bees attack only
                             // once") — the stinger is spent
@@ -4618,6 +4634,7 @@ fn ai_tick(
                     knockback_dir: [dx / dist, dz / dist],
                     wither_effect: None,
                     poison_effect: None,
+                    potion_effect: None,
                 });
             }
             if m.aux <= 0 {
@@ -4655,6 +4672,7 @@ fn ai_tick(
                 wither_effect: None,
                 // 3 s semi / 6 s fully puffed (VERIFIED Java rows)
                 poison_effect: Some(if m.variant >= 2 { 120 } else { 60 }),
+                potion_effect: None,
             });
         }
         if m.aux > 0 {
@@ -4691,6 +4709,7 @@ fn ai_tick(
                 knockback_dir: [dx / dist, dz / dist],
                 wither_effect: None,
                 poison_effect: None,
+                potion_effect: None,
             });
             return;
         }
@@ -4808,6 +4827,7 @@ fn ai_tick(
                 knockback_dir: [dx / dist, dz / dist],
                 wither_effect: None,
                 poison_effect: None,
+                potion_effect: None,
             });
             return;
         }
@@ -4974,6 +4994,7 @@ fn ai_tick(
                     knockback_dir: [dx / dist, dz / dist],
                     wither_effect: None,
                     poison_effect: None,
+                    potion_effect: None,
                 });
             }
         } else {
@@ -5055,6 +5076,7 @@ fn ai_tick(
                     knockback_dir: [dx / dist, dz / dist],
                     wither_effect: None,
                     poison_effect: None,
+                    potion_effect: None,
                 });
             }
         } else {
@@ -5212,6 +5234,7 @@ fn ai_tick(
                     knockback_dir: [dx / dist, dz / dist],
                     wither_effect: None,
                     poison_effect: None,
+                    potion_effect: None,
                 });
             }
         } else {
@@ -5297,6 +5320,7 @@ fn ai_tick(
                 knockback_dir: [dx / dist, dz / dist],
                 wither_effect: None,
                 poison_effect: None,
+                potion_effect: None,
             });
         }
         return;
@@ -5384,7 +5408,118 @@ fn ai_tick(
                         knockback_dir: [dx / dist, dz / dist],
                         wither_effect: None,
                         poison_effect: None,
+                        potion_effect: None,
                     });
+                }
+            } else {
+                wander(rng, m, speed * 0.5);
+            }
+        }
+        // ---- fire/sneak round: WITCH — the splash-potion attacker
+        // (the Phase-2 finding: hostile with damage 6 but no ai_tick
+        // case). VERIFIED w/Witch, live 2026-10-03 raw wikitext:
+        // "A witch pursues the player within 16 blocks and uses potions
+        // of the first level in combat, throwing splash potions
+        // offensively and drinking potions defensively... thrown within
+        // ten blocks and in a three-second interval." The
+        // potion-choice ladder:
+        // * "a splash potion of Slowness if the target is eight, nine or
+        //   ten blocks away and does not already have the Slowness
+        //   effect" (the Splash Potion of Slowness I = 1:30 = 1800 ticks,
+        //   VERIFIED w/Slowness's table: "Witches may throw this potion
+        //   if their target is at least 8 blocks away")
+        // * "a splash potion of Poison if the target's health is at
+        //   least 8 HP and is not already poisoned" (Poison I: 1 HP per
+        //   1.25 s, max 45 s = 900 ticks — VERIFIED w/Witch's row)
+        // * "a 25% chance of throwing a splash potion of Weakness if a
+        //   target is less than three blocks away and does not already
+        //   have the Weakness effect. Also, the target's health has to
+        //   be at 8 HP or less, or the target has to have the Poison
+        //   effect" (the Splash Potion of Weakness I = 1:30 = 1800
+        //   ticks, VERIFIED w/Weakness's table)
+        // * default: "a splash potion of Harming, which does 6 HP
+        //   magical damage" (magic: bypasses armor — the game layer's
+        //   PlayerHit applies it difficulty-scaled; the HARMING potion's
+        //   magic class rides the damage-only path — the armor-bypass
+        //   trim is disclosed with the Harming rider)
+        // DOCUMENTED TRIM: the drinkable-potion defense (the witch
+        // drinks Healing/Fire Resistance/Swiftness/Water Breathing when
+        // hurt — the engine's witch heals via the game layer's generic
+        // path? no — the drink side is future work, disclosed); the
+        // splash AoE (the potion's splash radius hits every entity in
+        // range — the engine's throw hits the player directly).
+        MobKind::Witch => {
+            if let Some(p) = player {
+                let dx = p[0] - m.pos[0];
+                let dz = p[2] - m.pos[2];
+                let dist = (dx * dx + dz * dz).sqrt();
+                // pursue within 16 blocks (JE); the throw within 10, the
+                // 3-second interval (60 ticks)
+                if dist <= 16.0 {
+                    face_player(m);
+                    if dist > 3.0 {
+                        m.vel[0] += (dx / dist * speed - m.vel[0]) * 0.3;
+                        m.vel[2] += (dz / dist * speed - m.vel[2]) * 0.3;
+                    } else {
+                        m.vel[0] *= 0.7;
+                        m.vel[2] *= 0.7;
+                    }
+                    if dist <= 10.0 && m.attack_cd == 0 {
+                        m.attack_cd = 60; // the 3-second interval (VERIFIED)
+                        m.attack_anim = 6;
+                        // the potion-choice ladder — the VERIFIED form
+                        // (the health gates read the anchored player's
+                        // health):
+                        // 1. "Slowness if the target is eight, nine or
+                        //    ten blocks away and does not already have
+                        //    the Slowness effect"
+                        // 2. "Poison if the target's health is at least
+                        //    8 HP and is not already poisoned"
+                        // 3. "a 25% chance of Weakness if a target is
+                        //    less than three blocks away and does not
+                        //    already have the Weakness effect. Also, the
+                        //    target's health has to be at 8 HP or less,
+                        //    or the target has to have the Poison
+                        //    effect"
+                        // 4. default: "a splash potion of Harming, which
+                        //    does 6 HP magical damage"
+                        // "does not already have the effect": the
+                        // witch's own throw tracker (m.aux holds the
+                        // last rider's kind — the re-thrown same-effect
+                        // is skipped; the effect expiring re-arms the
+                        // arm — the disclosed simplification of
+                        // vanilla's effect-instance check)
+                        let slowed = m.aux == 2;
+                        let poisoned = m.aux == 19;
+                        let weakened = m.aux == 18;
+                        let (dmg, rider) = if dist >= 8.0 && dist <= 10.0 && !slowed {
+                            (0.0, Some((2u8, 0u8, 1800i32)))
+                        } else if player_health >= 8.0 && !poisoned {
+                            (0.0, Some((19u8, 0u8, 900i32)))
+                        } else if dist < 3.0
+                            && !weakened
+                            && (player_health <= 8.0 || poisoned)
+                            && rng.next_f32() < 0.25
+                        {
+                            (0.0, Some((18u8, 0u8, 1800i32)))
+                        } else {
+                            (6.0, None)
+                        };
+                        // the throw tracker: the rider's kind for the
+                        // "not already" gates (0 = the Harming default —
+                        // no effect to re-check)
+                        m.aux = rider.map(|(k, _, _)| k).unwrap_or(0);
+                        hits.push(PlayerHit {
+                            damage: dmg,
+                            source: m.kind,
+                            knockback_dir: [dx / dist, dz / dist],
+                            wither_effect: None,
+                            poison_effect: None,
+                            potion_effect: rider,
+                        });
+                    }
+                } else {
+                    wander(rng, m, speed * 0.5);
                 }
             } else {
                 wander(rng, m, speed * 0.5);
@@ -5465,6 +5600,7 @@ fn ai_tick(
                         knockback_dir: [dx / dist, dz / dist],
                         wither_effect: None,
                         poison_effect: None,
+                        potion_effect: None,
                     });
                 }
             } else {
@@ -5515,6 +5651,7 @@ fn ai_tick(
                 } else {
                     None
                 },
+                potion_effect: None,
             });
                 }
             } else {
@@ -6091,6 +6228,7 @@ fn tick_arrows(
                         // 1.13: the pufferfish contact poison rides the
                         // contact-hit path, not projectiles — None here
                         poison_effect: None,
+                        potion_effect: None,
                     });
                     arrows.remove(i);
                     continue;

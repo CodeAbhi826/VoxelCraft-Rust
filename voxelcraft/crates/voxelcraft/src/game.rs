@@ -8098,6 +8098,21 @@ impl GameApp {
                     .apply(vc_gameplay::effects::EffectKind::Slowness, 0, 20 * 30);
                 self.ui.dirty = true;
             }
+            // fire/sneak round: the witch's splash-potion rider — the
+            // potion's effect applies on the splash landing (the
+            // Slowness/Weakness payload; VERIFIED w/Witch, live
+            // 2026-10-03: the potion-choice ladder)
+            if let Some((kind, amplifier, ticks)) = h.potion_effect {
+                let ek = match kind {
+                    2 => Some(vc_gameplay::effects::EffectKind::Slowness),
+                    18 => Some(vc_gameplay::effects::EffectKind::Weakness),
+                    _ => None,
+                };
+                if let Some(ek) = ek {
+                    self.player.effects.apply(ek, amplifier, ticks);
+                    self.ui.dirty = true;
+                }
+            }
             if h.source == mobs::MobKind::Husk {
                 let rd = match difficulty {
                     Difficulty::Hard => 3.0,

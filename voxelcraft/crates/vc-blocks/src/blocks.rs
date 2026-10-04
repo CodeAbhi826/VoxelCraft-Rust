@@ -4259,6 +4259,28 @@ pub fn prop_state_encode(block: u16, set: &[(&str, &str)]) -> Option<u16> {
 
 /// state id → owning block id (property variants fold to their parent)
 #[inline]
+/// Phase 4: the static per-state lookup table — the hot paths' match
+/// chains become indexed loads (the light engine's init_chunk: 131k
+/// state_block walks per chunk -> indexed reads). Built ONCE on first
+/// use by the SAME state_block truth (the semantics identical — the
+/// optimization is additive, parity-preserving). The index clamps to
+/// the registry (the WGSL's sb clamp mirrors).
+pub fn state_block_lookup(s: u16) -> u16 {
+    use std::sync::OnceLock;
+    static TABLE: OnceLock<Vec<u16>> = OnceLock::new();
+    let t = TABLE.get_or_init(|| (0..STATE_COUNT).map(|i| state_block(i as u16)).collect());
+    t[s.min(STATE_COUNT as u16 - 1) as usize]
+}
+
+/// Phase 4: the static emissive lookup (the same truth — the init's
+/// 65k state_emissive walks per chunk -> indexed reads)
+pub fn state_emissive_lookup(s: u16) -> u8 {
+    use std::sync::OnceLock;
+    static TABLE: OnceLock<Vec<u8>> = OnceLock::new();
+    let t = TABLE.get_or_init(|| (0..STATE_COUNT).map(|i| state_emissive(i as u16)).collect());
+    t[s.min(STATE_COUNT as u16 - 1) as usize]
+}
+
 pub fn state_block(s: u16) -> u16 {
     if is_water_flow(s) {
         return WATER;

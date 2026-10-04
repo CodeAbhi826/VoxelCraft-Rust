@@ -212,6 +212,15 @@ impl LightEngine {
                         l = l.saturating_sub(1);
                     }
                     sky[y * 256 + lz * 16 + lx] = l;
+                    // Phase 4 (O2): below the first zero everything stays
+                    // zero in the scan (the cave cells stay 0 — the BFS
+                    // fills them from the neighbors; the semantics
+                    // IDENTICAL) — the array defaults 0, so the rest of
+                    // the column can break (the below-heightmap cells
+                    // skip the per-cell fold)
+                    if l == 0 {
+                        break;
+                    }
                 }
             }
         }
@@ -223,7 +232,9 @@ impl LightEngine {
                     // the RAW state accessor — our 1.7.2 Chunk::get folds
                     // states to block ids, so state_emissive needs
                     // get_state here
-                    let e = state_emissive(chunk.get_state(lx, y, lz));
+                    // Phase 4 (O3): the static emissive lookup (the
+                    // match chain -> an indexed load)
+                    let e = vc_blocks::blocks::state_emissive_lookup(chunk.get_state(lx, y, lz));
                     if e == 0 {
                         continue;
                     }

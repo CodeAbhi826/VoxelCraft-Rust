@@ -378,7 +378,9 @@ impl Chunk {
             // high states onto low block ids. FOLD through state_block so
             // every return is the owning BLOCK id, whatever the state.
             // [merge] block ids are u16 now (276 ids > u8 at the E3 merge)
-            Some(s) => vc_blocks::blocks::state_block(s.get(x, y & 15, z)),
+            // Phase 4 (O3): the static lookup (the match chain -> an
+            // indexed load; the SAME truth — parity-preserving)
+            Some(s) => vc_blocks::blocks::state_block_lookup(s.get(x, y & 15, z)),
             None => 0,
         }
     }

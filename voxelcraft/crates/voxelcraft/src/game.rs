@@ -192,7 +192,6 @@ impl KeyBinds {
 
 // --------------------------------------------------------------- settings --
 
-#[derive(Clone)]
 /// the systems round: the GAMERULES (VERIFIED w/Game_rule, live
 /// 2026-10-04: the vanilla defaults + what each gates). The flags ride
 /// the systems (the fire tick, the day clock, the weather machine, the
@@ -259,6 +258,7 @@ impl Gamerules {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Settings {
     pub render_distance: i32,
     /// Phase 6 §26: simulation distance (chunk radius for the sim ring).

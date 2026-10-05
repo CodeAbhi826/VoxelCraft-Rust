@@ -6840,7 +6840,7 @@ pub fn take_landings(sys: &mut MobSystem) -> Vec<(ProjKind, [f32; 3])> {
 /// per kind, cached process-wide (models are code-generated constants;
 /// building each once is the whole point of the cache).
 fn model_for(kind: MobKind) -> Option<&'static crate::entity_model::EntityModel> {
-    use crate::entity_model::{creeper, enderman, humanoid, spider};
+    use crate::entity_model::{creeper, enderman, humanoid, quadruped, spider};
     use std::collections::HashMap;
     use std::sync::OnceLock;
     static MODELS: OnceLock<HashMap<MobKind, &'static crate::entity_model::EntityModel>> =
@@ -6880,6 +6880,43 @@ fn model_for(kind: MobKind) -> Option<&'static crate::entity_model::EntityModel>
         put(&mut m, MobKind::Spider, spider(TILE_SPIDER));
         put(&mut m, MobKind::CaveSpider, spider(TILE_MOB_CAVESPIDER));
         put(&mut m, MobKind::Enderman, enderman(TILE_ENDERMAN));
+        // the mobs batch's visual half: the classic farm animals as REAL
+        // quadruped/bird rigs (the vanilla proportions in model px; the
+        // auto-scale fits the kind's hitbox) — the cow (the body
+        // 18x12x10, the legs 12), the pig (16x8x10, the legs 6), the
+        // sheep (16x10x8, the legs 12), the horse family (18x12x10, the
+        // legs 16), the donkey/mule (the horse's shape, the smaller
+        // scale via the hitbox auto-fit)
+        put(
+            &mut m,
+            MobKind::Cow,
+            quadruped(TILE_COW, [18.0, 12.0, 10.0], 12.0, [6.0, 8.0, 6.0]),
+        );
+        put(
+            &mut m,
+            MobKind::Pig,
+            quadruped(TILE_PIG, [16.0, 8.0, 10.0], 6.0, [8.0, 8.0, 8.0]),
+        );
+        put(
+            &mut m,
+            MobKind::Sheep,
+            quadruped(TILE_SHEEP, [16.0, 10.0, 8.0], 12.0, [6.0, 8.0, 6.0]),
+        );
+        put(
+            &mut m,
+            MobKind::Horse,
+            quadruped(TILE_MOB_HORSE, [18.0, 12.0, 10.0], 16.0, [6.0, 8.0, 6.0]),
+        );
+        put(
+            &mut m,
+            MobKind::Donkey,
+            quadruped(TILE_MOB_DONKEY, [18.0, 12.0, 10.0], 16.0, [6.0, 8.0, 6.0]),
+        );
+        put(
+            &mut m,
+            MobKind::Mule,
+            quadruped(TILE_MOB_MULE, [18.0, 12.0, 10.0], 16.0, [6.0, 8.0, 6.0]),
+        );
         m
     });
     map.get(&kind).copied()

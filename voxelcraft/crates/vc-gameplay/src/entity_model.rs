@@ -770,6 +770,143 @@ pub fn humanoid(tile: u16, arms_forward: bool) -> EntityModel {
 
 /// the 44-px enderman: long thin limbs, narrow torso, glowing-eye
 /// head — the sprite's K/V columns map to the limbs.
+/// the mobs batch's visual half: the QUADRUPED factory — the vanilla
+/// proportions (the body's horizontal box + the head at the front-top +
+/// the 4 legs), the walk anim = the legs' counter-swing (the classic
+/// quadruped gait: the front-left/back-right swing together, the other
+/// pair counter). Every parameter is in model px (1 px = 1/16 block at
+/// the authored size); the rig auto-scales to the kind's hitbox via
+/// px_height (the humanoid's auto-fit precedent). `body` = [L, H, W]
+/// (the length along X, the height, the width along Z), `leg_h` = the
+/// leg height, `head` = [L, H, W].
+pub fn quadruped(tile: u16, body: [f32; 3], leg_h: f32, head: [f32; 3]) -> EntityModel {
+    // sprite sub-rects: the head/face rows 1-5, the torso rows 6-11, the
+    // legs rows 12-14 (the same tile sampling the humanoid carries)
+    let head_tex_r = head_tex(tile, [4, 1, 6, 5], [4, 1, 3, 3]);
+    let torso = FaceTex::uniform(tile, [4, 6, 8, 6]);
+    let leg = FaceTex::uniform(tile, [3, 12, 3, 3]);
+    let body_y = leg_h; // the body sits on the legs
+    let head_pivot_y = body_y + body[1] - head[1] * 0.5; // the body's top-front
+    let hw = body[2] / 2.0;
+    let parts = vec![
+        PartDef {
+            name: "root",
+            parent: 0,
+            pivot: [0.0, 0.0, 0.0],
+            base_rot: [0.0; 3],
+            boxes: Vec::new(),
+        },
+        PartDef {
+            name: "body",
+            parent: 0,
+            pivot: [0.0, body_y, 0.0],
+            base_rot: [0.0; 3],
+            boxes: vec![BoxDef {
+                off: [-body[0] / 2.0, 0.0, -hw],
+                size: [body[0], body[1], body[2]],
+                tex: torso,
+            }],
+        },
+        PartDef {
+            name: "head",
+            parent: 1,
+            pivot: [body[0] / 2.0, head_pivot_y, 0.0], // the body's top-front
+            base_rot: [0.0; 3],
+            boxes: vec![BoxDef {
+                off: [-head[2] / 2.0, -head[1] / 2.0, -head[0]],
+                size: [head[2], head[1], head[0]],
+                tex: head_tex_r,
+            }],
+        },
+        PartDef {
+            name: "leg_fl",
+            parent: 0,
+            pivot: [body[0] / 2.0 - 2.0, body_y, -hw + 1.0],
+            base_rot: [0.0; 3],
+            boxes: vec![BoxDef {
+                off: [-1.5, -leg_h, -1.5],
+                size: [3.0, leg_h, 3.0],
+                tex: leg,
+            }],
+        },
+        PartDef {
+            name: "leg_fr",
+            parent: 0,
+            pivot: [body[0] / 2.0 - 2.0, body_y, hw - 1.0],
+            base_rot: [0.0; 3],
+            boxes: vec![BoxDef {
+                off: [-1.5, -leg_h, -1.5],
+                size: [3.0, leg_h, 3.0],
+                tex: leg,
+            }],
+        },
+        PartDef {
+            name: "leg_bl",
+            parent: 0,
+            pivot: [-body[0] / 2.0 + 2.0, body_y, -hw + 1.0],
+            base_rot: [0.0; 3],
+            boxes: vec![BoxDef {
+                off: [-1.5, -leg_h, -1.5],
+                size: [3.0, leg_h, 3.0],
+                tex: leg,
+            }],
+        },
+        PartDef {
+            name: "leg_br",
+            parent: 0,
+            pivot: [-body[0] / 2.0 + 2.0, body_y, hw - 1.0],
+            base_rot: [0.0; 3],
+            boxes: vec![BoxDef {
+                off: [-1.5, -leg_h, -1.5],
+                size: [3.0, leg_h, 3.0],
+                tex: leg,
+            }],
+        },
+    ];
+    // walk: the quadruped gait — the FL/BR pair swings +0.5 rad, the
+    // FR/BL pair counter-swings; the parts' indices: 0 root, 1 body,
+    // 2 head, 3 leg_fl, 4 leg_fr, 5 leg_bl, 6 leg_br
+    let swing = 0.5f32;
+    let leg_track = |sign: f32| -> Vec<Key> {
+        vec![
+            Key {
+                t: 0.0,
+                rot: [0.0, 0.0, 0.0],
+            },
+            Key {
+                t: 0.25,
+                rot: [swing * sign, 0.0, 0.0],
+            },
+            Key {
+                t: 0.5,
+                rot: [0.0, 0.0, 0.0],
+            },
+            Key {
+                t: 0.75,
+                rot: [-swing * sign, 0.0, 0.0],
+            },
+            Key {
+                t: 1.0,
+                rot: [0.0, 0.0, 0.0],
+            },
+        ]
+    };
+    let anims = vec![AnimRange {
+        name: "walk",
+        tracks: vec![
+            (3, leg_track(1.0)),  // leg_fl
+            (6, leg_track(1.0)),  // leg_br (the diagonal pair)
+            (4, leg_track(-1.0)), // leg_fr
+            (5, leg_track(-1.0)), // leg_bl
+        ],
+    }];
+    EntityModel {
+        parts,
+        anims,
+        px_height: body_y + body[1],
+    }
+}
+
 pub fn enderman(tile: u16) -> EntityModel {
     let head = head_tex(tile, [4, 0, 6, 4], [4, 0, 3, 4]);
     let torso = FaceTex::uniform(tile, [5, 5, 6, 5]);

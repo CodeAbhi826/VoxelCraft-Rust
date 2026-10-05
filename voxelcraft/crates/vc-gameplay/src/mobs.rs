@@ -6905,17 +6905,17 @@ fn model_for(kind: MobKind) -> Option<&'static crate::entity_model::EntityModel>
         put(
             &mut m,
             MobKind::Horse,
-            quadruped(TILE_MOB_HORSE, [18.0, 12.0, 10.0], 16.0, [6.0, 8.0, 6.0]),
+            quadruped(TILE_HORSE, [18.0, 12.0, 10.0], 16.0, [6.0, 8.0, 6.0]),
         );
         put(
             &mut m,
             MobKind::Donkey,
-            quadruped(TILE_MOB_DONKEY, [18.0, 12.0, 10.0], 16.0, [6.0, 8.0, 6.0]),
+            quadruped(TILE_DONKEY, [18.0, 12.0, 10.0], 16.0, [6.0, 8.0, 6.0]),
         );
         put(
             &mut m,
             MobKind::Mule,
-            quadruped(TILE_MOB_MULE, [18.0, 12.0, 10.0], 16.0, [6.0, 8.0, 6.0]),
+            quadruped(TILE_MULE, [18.0, 12.0, 10.0], 16.0, [6.0, 8.0, 6.0]),
         );
         m
     });

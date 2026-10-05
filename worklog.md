@@ -335,3 +335,14 @@ Task: docs/FINAL-REPORT-2026-10-05.md — the one final report the plan called f
 Work Log:
 - The final report committed: the phases end to end (0-5), the shipped release v0.4.0 (22 assets), the headline numbers (897 tests, the 1,913+ VERIFIED citations, 539/892/28/66/32), the infrastructure (the 6-gate CI, the in-game E2E legs, --verbose, the knowledge base), the honest follow-up plan (the L-tier breadth: the structures, the particles/sounds, the breadth, the polish, the O4, the pack legs, the open findings), the rules honored.
 - THE JOB IS ENDED: the plan's phases executed, the release shipped and in-game verified, the report delivered.
+
+---
+Task ID: 25
+Agent: main — the releases deleted (the building stage)
+Task: ALL releases + tags deleted per the owner's directive — the project is in BUILDING, not production
+
+Work Log:
+- DELETED: the v0.4.0 release (the 22 assets), the v0.3.0/v0.2.0 releases, and the v0.4.0/v0.3.0/v0.2.0 tags (GitHub + local) — 0 releases, 0 tags remain. The version stays 0.4.0 as the DEV version (no tag).
+- The docs corrected: the final report §1 + the knowledge base §12 (the tag/release step DEFERRED to production).
+- THE LEGAL STATUS (the owner's question, live-checked): EVERYTHING IS LEGAL — the audit green on every push (the trademark scanner); zero third-party assets (every texture/sound/glyph synthesized procedurally — the pixel-identity check); the reference sets (the versions jars, the mods, the saves) STUDY-ONLY, never copied, outside the repo; the citations live-verified; the game mechanics/data are facts (free to replicate from published documentation); the assets are original works (Apache-2.0/the font MIT). The releases THEMSELVES were legal (the original assets + the nominative mechanics), but deleting them is the CONSERVATIVE move — less exposure while building.
+- THE WARN MECHANISM (the owner's directive): whenever a legal-gray question arises during the work, WARN in the worklog + continue. No warnings needed so far — nothing gray encountered.

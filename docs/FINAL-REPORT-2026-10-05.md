@@ -6,10 +6,13 @@
 
 ## 1. What shipped
 
-**Release v0.4.0** — the GitHub Release with 22 assets: the 14 library
-source archives, the game binaries (linux-x64 raw + tar.gz, linux-arm64,
-windows-x64.zip, macos-x64/arm64), and the web bundle. Tag `v0.4.0`
-(b065f0c, run 37243325639).
+**NO RELEASES** — the owner's 2026-10-05 directive: the project is in the
+BUILDING stage, not production; the v0.4.0 release and the v0.2.0/v0.3.0
+releases were DELETED (the GitHub Releases + the tags removed). The
+build-state is the deliverable: the CI-verified tree (897 tests green,
+the 6 gates) + the CI-built binaries verified via the artifact route
+under Xvfb. The tag/release step is DEFERRED to production (the recipe:
+the version bump + the tag push — recorded in the worklog).
 
 **The headline numbers (all gate-verified):**
 - **897/897 tests green** — `cargo test --release --no-default-features

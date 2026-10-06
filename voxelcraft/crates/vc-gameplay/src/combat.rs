@@ -159,17 +159,28 @@ pub fn held_attack(held_block: u16) -> (f32, f32) {
     melee_profile(held_block)
 }
 
-/// Phase 6: the single table that turns a held item into vanilla's two
-/// melee numbers. Exhaustive today because no block is a weapon.
 #[inline]
 fn melee_profile(held_block: u16) -> (f32, f32) {
     // VERIFIED w/Item §Attack damage: "Other Items" = 1 damage, and the
     // attack-speed attribute for a bare hand is 4.0 (2.5 ticks of cooldown
     // is applied separately by the caller).
-    match held_block {
-        // no weapon blocks exist — every held block is a fist hit
-        _ => (1.0, 4.0),
+    match tool_profile(held_block) {
+        Some(profile) => profile,
+        None => FIST,
     }
+}
+
+/// The "Other Items" melee profile: 1 damage, attack speed 4.0.
+const FIST: (f32, f32) = (1.0, 4.0);
+
+/// Phase 6: the one table that turns a held item into vanilla's two melee
+/// numbers (a wooden sword is 4 HP at 1.6, a diamond axe 7 HP at 1.0, and
+/// so on). It returns `None` for every input today — tool ITEMS do not
+/// exist yet, and the argument here is a *block* id, which is never a
+/// weapon — but the lookup is real and this is where the item arms land.
+#[inline]
+fn tool_profile(_held_block: u16) -> Option<(f32, f32)> {
+    None
 }
 
 /// One melee hit resolution (player → mob), all modifiers applied.

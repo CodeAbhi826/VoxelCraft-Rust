@@ -293,27 +293,6 @@ promises. Neither approach is "more correct"; they are different bets, and the
 comparison is most useful as a checklist of *process* rules (§5.1 items 9–22)
 rather than of features.
 
-### 6a. Non-obvious learnings this session produced
-(What `learn` would persist to `AGENTS.md`; recorded here because its SKILL.md body was not supplied.)
-
-1. `cargo clippy --workspace --all-targets -D warnings` **fails** on pre-existing
-   test-code lints; CI runs bare `cargo clippy -- -D warnings` (lib only). Match CI
-   exactly or you will chase warnings that are not gated.
-2. A manual `gh workflow run` collides with the push-triggered run of the same
-   commit under the concurrency group — the push run gets `cancelled`. Dispatch
-   once and wait; don't re-dispatch on a cancelled status.
-3. `.gitignore` has `/scripts/`, but those files were tracked before the rule.
-   After any script is deleted and restored, `git add` silently fails — use
-   `git add -f`.
-4. `scripts/legal_audit.py` (not `ci/legal_audit.py`) is the gate, and it
-   flags trademark terms in **docs** too. Any new doc containing the rights-holder
-   or product name fails the build.
-5. `build.rs` embeds `voxelcraft/builtin-packs/classic-art/` resolved from the
-   cargo workspace root — not the repo root. Touch `build.rs` to force a re-run;
-   a `cargo check` alone reports "Finished" from cache and proves nothing.
-6. A Section index is packed `(y << 8) | (z << 4) | x` with x/z **unmasked**, so
-   out-of-range local coords alias silently (x=32 -> local x=0; z=18 carries into
-   y). This is the trap `LocalXZ` exists to close.
 
 ---
 

@@ -33,7 +33,9 @@ xvfb-run -a -s "-screen 0 1280x720x24" env WGPU_BACKEND=Vulkan \
 
 Stats window: the engine's rolling 240-frame ring
 (`FramePhases::new(240)`), so every run reports exactly 240 measured frames —
-the last 240 of the 300 measured. Deterministic scripted orbit camera, fixed
+the last 240 of the 300 measured. Effective surface: **1280×696** (the xvfb
+window is 720 px minus decoration height); identical across all six configs,
+so the comparison is internally consistent. Deterministic scripted orbit camera, fixed
 seed 12648430. Raw JSON per config: [`docs/bench/1a3-2026-10-06/`](bench/1a3-2026-10-06).
 
 ## Results (all times in ms; fps = 1000 / avg)

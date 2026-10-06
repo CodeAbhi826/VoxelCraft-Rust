@@ -210,12 +210,37 @@ def audit_reference_identity(reference):
 
 
 # --- L2 guard: no script may read a reference archive, point outside the
-# repo, or emit per-pixel data. The reference corpus is off-limits to the
-# public tree; regeneration must run from the committed aggregate spec only.
+# repo, or emit/read per-pixel data. The reference corpus is off-limits to
+# the public tree; regeneration must run from the committed aggregate spec
+# only. 1A.5 extends this to per-pixel WRITERS: painting an image one
+# pixel at a time (putpixel/getpixel/getdata/PIL PixelAccess) is
+# per-pixel authorship, not aggregate-statistics art. The sanctioned
+# pattern — numpy canvas built from aggregate stats + slice fills +
+# Image.fromarray(...).save — stays legal (self-test proves it).
 _SCRIPT_GUARD_EXEMPT = {"legal_audit.py"}  # the auditor owns the sanctioned --reference flag
 _ARCHIVE_PATTERNS = ("ZipFile", "zipfile.ZipFile", "tarfile.open", "py7zr")
 _PIXELDUMP_PATTERNS = ("np.save(", "np.savez", "numpy.save", ".tofile(",
-                       "frombuffer(", ".npy", ".npz")
+                       "frombuffer(", ".npy", ".npz",
+                       "putpixel(", "getpixel(", ".load()[", "getdata(")
+
+
+def scan_script_for_violations(fn, body):
+    """Pure per-script scanner (1A.5): returns the reasons `fn` violates
+    the L2/L7 script guard. Unit-checked by _self_test on every run."""
+    reasons = []
+    for pat in _ARCHIVE_PATTERNS:
+        if pat in body:
+            reasons.append(f"opens an archive ({pat!r}) — the reference "
+                           "corpus must never be reachable from the public tree")
+    for pat in _PIXELDUMP_PATTERNS:
+        if pat in body:
+            reasons.append(f"emits or reads per-pixel data ({pat!r}) — "
+                           "procedural art is driven by aggregate statistics "
+                           "only (L2)")
+    for m in re.finditer(r'["\'](/(?:home|Users|mnt|media)/[^"\']*)["\']', body):
+        reasons.append(f"hardcoded path outside the repo {m.group(1)!r} — "
+                       "committed tools must resolve paths relative to __file__")
+    return reasons
 
 
 def audit_reference_scripts():
@@ -232,21 +257,40 @@ def audit_reference_scripts():
             body = open(path, encoding="utf-8", errors="replace").read()
         except OSError:
             continue
-        for pat in _ARCHIVE_PATTERNS:
-            if pat in body:
-                print(f"[FAIL] {fn}: opens an archive ({pat!r}) — the reference "
-                      f"corpus must never be reachable from the public tree")
-                fails += 1
-        for pat in _PIXELDUMP_PATTERNS:
-            if pat in body:
-                print(f"[FAIL] {fn}: emits raw per-pixel data ({pat!r}) — the "
-                      f"spec carries aggregate stats only")
-                fails += 1
-        for m in re.finditer(r'["\'](/(?:home|Users|mnt|media)/[^"\']*)["\']', body):
-            print(f"[FAIL] {fn}: hardcoded path outside the repo {m.group(1)!r} — "
-                  f"committed tools must resolve paths relative to __file__")
+        for reason in scan_script_for_violations(fn, body):
+            print(f"[FAIL] {fn}: {reason}")
             fails += 1
     return fails
+
+
+def _self_test():
+    """Negative test, wired into EVERY audit run (1A.5): the guard must
+    fire on per-pixel writers, per-pixel readers, raw pixel dumps, archive
+    readers and outside paths — and stay silent on the sanctioned
+    aggregate-painting pattern (numpy canvas + slice fill + fromarray)."""
+    bad = [
+        ("bad_putpixel.py", "img.putpixel((x, y), (255, 0, 0))"),
+        ("bad_getpixel.py", "c = img.getpixel((x, y))"),
+        ("bad_getdata.py", "for px in img.getdata():\n    total += px"),
+        ("bad_loadidx.py", "px = img.load()[x, y]"),
+        ("bad_zip.py", "with zipfile.ZipFile(ref) as z:\n    data = z.read('a.png')"),
+        ("bad_npy.py", "np.save('out.npy', arr)"),
+        ('bad_path.py', 'src = "/home/z/reference/textures"'),
+    ]
+    for name, body in bad:
+        reasons = scan_script_for_violations(name, body)
+        assert reasons, f"self-test: {name} must be flagged"
+    clean = (
+        "import numpy as np\n"
+        "from PIL import Image\n"
+        "c = np.zeros((16, 16, 4), np.uint8)\n"
+        "c[0:8, 0:8] = (120, 40, 40, 255)  # aggregate fill\n"
+        "img = Image.fromarray(c, 'RGBA')\n"
+        "img.save('block/sand.png')\n"
+    )
+    reasons = scan_script_for_violations("clean.py", clean)
+    assert not reasons, f"self-test: aggregate painting must pass, got {reasons}"
+    return 0
 
 
 def main():
@@ -255,6 +299,12 @@ def main():
                     help="EXTERNAL reference set (zip or dir) for the "
                          "byte/pixel identity check; never inside the repo")
     args = ap.parse_args()
+
+    try:
+        _self_test()
+    except AssertionError as e:
+        print(f"[FAIL] script-guard self-test: {e}")
+        sys.exit(1)
 
     fails = audit_terms()
     fails += audit_forbidden_files()
@@ -266,7 +316,8 @@ def main():
         print(f"\n[FAIL] {fails} violation(s) — see above")
         sys.exit(1)
     print("[PASS] legal audit clean: no trademark terms, no forbidden "
-          "files, no reference-reading scripts" + (" , zero reference-identity copies"
+          "files, no reference-reading scripts, no per-pixel writers "
+          "(self-test ok)" + (" , zero reference-identity copies"
                      if args.reference else ""))
 
 

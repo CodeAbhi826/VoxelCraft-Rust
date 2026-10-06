@@ -498,9 +498,9 @@ Read 2026-10-06 from Codeberg — the surveyed community project actual home (it
 
 - **Licence:** GPLv3+; by submitting you agree your change becomes GPLv3.
 - **Inclusion criteria:** contributions must align with the project goal — "a
-  stable and performant clone of the reference game" (their words; they name the original wiki as the reference)
-  reference for implementation; minor deviations only when motivated by engine
-  limits; **bonus features not in the original game are generally rejected** (put them
+  stable and performant clone of the reference game" (their words); the original
+  game's wiki is their named reference for implementation; minor deviations only
+  when motivated by engine limits; **bonus features not in the original game are generally rejected** (put them
   in a separate mod); bug fixes and complete vanilla features welcome;
   incomplete features not accepted.
 - **Assets:** must come from licensed sources; Pixel-Perfection-lineage packs

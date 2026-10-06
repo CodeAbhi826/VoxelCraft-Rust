@@ -25,8 +25,8 @@ the 1.16.5-era block game. The parity target: the 1.16.5 mechanics set (the
 simulation constants, the block behaviors, the mob AI, the recipes — every
 constant carries a live-verified citation from the reference wiki, read as
 raw wikitext through the MediaWiki API). Every asset (textures, sounds,
-font) is procedurally synthesized IN-PROJECT from measured values — no
-Mojang material, the binding legal policy in docs/LEGAL-COMPLIANCE.md.
+font) is procedurally synthesized IN-PROJECT from measured values — none of the
+reference game's material, the binding legal policy in docs/LEGAL-COMPLIANCE.md.
 (Corrected 2026-10-06: the ACTIVE font is Monocraft, IdreesInc, SIL OFL 1.1,
 shipped with its licence; Voxelfont is the in-repo original spare. The old
 “zero third-party material” wording was inaccurate.)

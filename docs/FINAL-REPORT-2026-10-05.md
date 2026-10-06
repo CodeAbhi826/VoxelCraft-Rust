@@ -144,7 +144,7 @@ The L-tier content breadth the plan listed (the low-priority tail):
 - **The live-verified citations** — never stale research dumps; the
   cross-check rule (two sources must agree).
 - **Zero-unsafe (exactly one sanctioned block), zero placeholders, zero
-  Mojang assets, zero trademark terms** — the legal audit green on
+  reference-game assets, zero trademark terms** — the legal audit green on
   every push. (Corrected 2026-10-06: the engine ships one third-party
   component, the Monocraft font under SIL OFL 1.1 with its licence; the
   original “zero third-party assets” wording overstated it. See

@@ -31,7 +31,7 @@ pass/fail number comes from the Actions run, not from this line.
 
 ## What this is
 
-VoxelCraft replicates the **gameplay rules, world and boot/menu flow of the 1.16.5-era reference game** — from published documentation only (the reference wiki, live-verified at implementation time, **1,913 `VERIFIED` citations in code**). It is **not** a port, contains **no Mojang assets** (every texture, sound and the title panorama is synthesized procedurally at startup), and is a from-scratch Rust/WGSL engine, not a wrapper. The one third-party component is the embedded font, **Monocraft** (IdreesInc, SIL OFL 1.1), shipped with its licence — see [LEGAL-COMPLIANCE.md](docs/LEGAL-COMPLIANCE.md).
+VoxelCraft replicates the **gameplay rules, world and boot/menu flow of the 1.16.5-era reference game** — from published documentation only (the reference wiki, live-verified at implementation time, **1,913 `VERIFIED` citations in code**). It is **not** a port, contains **none of the reference game's assets** (every texture, sound and the title panorama is synthesized procedurally at startup), and is a from-scratch Rust/WGSL engine, not a wrapper. The one third-party component is the embedded font, **Monocraft** (IdreesInc, SIL OFL 1.1), shipped with its licence — see [LEGAL-COMPLIANCE.md](docs/LEGAL-COMPLIANCE.md).
 
 - **539** registered block/item entries (**892** block states), **28 biomes** (overworld families + the five 1.16 the Hollow biomes + the End), caves, trees, **10 structure families**
 - **20 Hz deterministic simulation** with vanilla constants: drag `v1 = (v0 − 0.08) × 0.98`, 7.127 b/s sprint-jump cap, dimension-aware lava spread (Overworld/End 3 blocks/30 ticks, the Hollow 7 blocks/10 ticks)
@@ -195,7 +195,7 @@ CI does exactly this on every engine change and commits the bundle back to `publ
 
 ## License
 
-Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE). In short: use, copy, modify and distribute (including commercially), retaining the license notice and stating significant changes. Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* are independently authored and contain no Mojang material. The embedded Monocraft font is third-party under SIL OFL 1.1 and the Voxelfont spare keeps its own MIT notice.
+Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE). In short: use, copy, modify and distribute (including commercially), retaining the license notice and stating significant changes. Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* are independently authored and contain none of the reference game's material. The embedded Monocraft font is third-party under SIL OFL 1.1 and the Voxelfont spare keeps its own MIT notice.
 
 ## Documentation index
 

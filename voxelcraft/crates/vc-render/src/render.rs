@@ -2141,7 +2141,14 @@ fn build_scene_pipes(
 }
 
 impl Renderer {
-    pub async fn new(window: &'static winit::window::Window, atlas: &[u8]) -> Self {
+    /// Fails instead of panicking when the platform gives us no usable GPU:
+    /// a missing adapter or a rejected device request is an environment
+    /// problem the player can act on (different driver, headless box), not
+    /// a bug. The message is already routed to the boot-error channel.
+    pub async fn new(
+        window: &'static winit::window::Window,
+        atlas: &[u8],
+    ) -> Result<Self, String> {
         // Backend selection: probe for a *working* WebGPU adapter first,
         // mirroring EXACTLY the requestAdapter() options wgpu will use.
         // (navigator.gpu existing is not enough — headless Chromium exposes
@@ -2175,8 +2182,10 @@ impl Renderer {
         {
             Some(a) => a,
             None => {
-                report_boot_error("no suitable GPU adapter (WebGPU and WebGL2 both unavailable)");
-                panic!("no suitable GPU adapter");
+                let msg = "no suitable GPU adapter (WebGPU and WebGL2 both unavailable)"
+                    .to_string();
+                report_boot_error(&msg);
+                return Err(msg);
             }
         };
 
@@ -2223,10 +2232,11 @@ impl Renderer {
                 {
                     Ok(dq) => dq,
                     Err(second_err) => {
-                        report_boot_error(&format!(
+                        let msg = format!(
                             "GPU device request failed: {first_err:?} / {second_err:?}"
-                        ));
-                        panic!("request device (downlevel)");
+                        );
+                        report_boot_error(&msg);
+                        return Err(msg);
                     }
                 }
             }
@@ -3542,7 +3552,7 @@ impl Renderer {
             gpu_mesh,
         };
         report_boot_log("renderer ready (pipelines + atlas + clouds + post chain)");
-        renderer
+        Ok(renderer)
     }
 
     fn single_tex_bg(

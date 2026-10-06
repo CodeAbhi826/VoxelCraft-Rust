@@ -2656,7 +2656,17 @@ impl GameApp {
         vc_render::textures::draw_missing_tile(&mut atlas);
         let t_pack = t_boot.elapsed();
 
-        let mut renderer = Renderer::new(window, &atlas).await;
+        // Phase 0: a machine with no usable GPU is an environment problem the
+        // player can act on (headless box, missing driver), not a crash. The
+        // reason is already on the boot-error channel; exit(1) with it rather
+        // than unwinding a panic + backtrace.
+        let mut renderer = match Renderer::new(window, &atlas).await {
+            Ok(r) => r,
+            Err(msg) => {
+                eprintln!("voxelcraft: cannot start the renderer: {msg}");
+                std::process::exit(1);
+            }
+        };
         // 2026-09-14: seed the GUI-Scale-AUTO height hint with the actual
         // initial window size (resize events keep it fresh afterwards)
         // Round 10: the width joins (the vanilla integer scale resolves

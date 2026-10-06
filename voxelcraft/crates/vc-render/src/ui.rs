@@ -1023,6 +1023,18 @@ pub fn layout_video() -> Vec<Widget> {
     ]
 }
 
+/// Round B: the shader-row geometry, derived from the LIVE canvas so
+/// the 660-wide authored rows fit every rung of the GUI-scale ladder —
+/// identity at the 960 reference (ref_x(148), 660 wide); on narrower
+/// canvases the row shrinks to the 2px margins and stays on the
+/// midline (it was x=-12 at the 640 canvas — off the left edge).
+pub fn shdr_row_geom() -> (i32, i32) {
+    let lw = live_ui_w() as i32;
+    let row_w = 660.min(lw - 4).max(60);
+    let l = ref_x(148).clamp(2, lw - 2 - row_w);
+    (l, row_w)
+}
+
 /// 2026-09-20 round: the Shader Packs screen — the OptiFine/Iris-style
 /// pack selector. Rows top to bottom:
 /// * "(none)" — the vanilla post pipeline (pinned first, like Iris's
@@ -1039,12 +1051,12 @@ pub fn layout_video() -> Vec<Widget> {
 pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> Vec<Widget> {
     let mut v = Vec::new();
     // the pinned "(none)" row — value shows the live selection
-    let l = ref_x(148);
+    let (l, row_w) = shdr_row_geom();
     v.push(btn_h(
         ID_SHDR_NONE,
         l,
         86,
-        660,
+        row_w,
         30,
         "(NONE)",
         if active.is_none() { "SELECTED" } else { "" },
@@ -1055,7 +1067,7 @@ pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> V
             ID_SHDR_BASE + i as u16,
             l,
             124 + i as i32 * 34,
-            660,
+            row_w,
             30,
             name,
             if active == Some(name.as_str()) {
@@ -1071,7 +1083,7 @@ pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> V
         ID_SHDR_LABPBR,
         l,
         376,
-        660,
+        row_w,
         30,
         "LABPBR MATERIALS",
         if labpbr { "ON" } else { "OFF" },
@@ -1168,20 +1180,45 @@ pub fn layout_engine() -> Vec<Widget> {
 ///   pinned DEFAULT row at the bottom. Click a row to deselect; the ▲▼
 ///   arrows reorder within the list.
 ///
+/// Round B: the two-pane geometry, derived from the LIVE canvas. The
+/// authored 960-reference composition — avail 30..450, sel 510..862,
+/// up arrow 866..896, down arrow 898..928 — rides ref_x, which keeps
+/// its center on the canvas midline (exact identity at 960, centered
+/// group at wider rungs). On canvases too narrow for the whole
+/// composition the arrows pin to the right edge, the Selected pane
+/// right-aligns against them, and Available fills what remains (it
+/// ran off BOTH edges at ≤911px canvases, the arrows hardcoded at
+/// 866/898). Returns (avail_x, avail_w, sel_x, sel_w, up_x, down_x).
+pub fn rpack_geometry() -> (i32, i32, i32, i32, i32, i32) {
+    let lw = live_ui_w() as i32;
+    let la = ref_x(30);
+    if la >= 2 && la + 898 <= lw {
+        (la, 420, ref_x(510), 352, ref_x(866), ref_x(898))
+    } else {
+        let down_x = lw - 62;
+        let up_x = down_x - 32;
+        let sel_right = up_x - 4;
+        let sw = 352.min(sel_right - 4 - 2 - 120).max(60);
+        let ls = sel_right - sw;
+        let aw = 420.min(ls - 4 - 2).max(60);
+        (2, aw, ls, sw, up_x, down_x)
+    }
+}
+
 /// The pane backgrounds + headers are painted by
 /// `UiCanvas::resource_pack_screen`; the DONE button applies the edits.
 pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
     let mut v = Vec::new();
-    // 2026-09-25 centering fix: derive both columns from the LIVE width
-    // (authored at the 960 reference: avail 30..450, sel 510..862)
-    let la = ref_x(30);
-    let ls = ref_x(510);
+    // Round B: both columns + the reorder arrows derive from the LIVE
+    // width (see rpack_geometry — authored at the 960 reference: avail
+    // 30..450, sel 510..862, arrows 866/898)
+    let (la, aw, ls, sw, up_x, down_x) = rpack_geometry();
     for (i, name) in avail.iter().take(MAX_RPACK_ENTRIES).enumerate() {
         v.push(btn_h(
             ID_RPACK_AVAIL_BASE + i as u16,
             la,
             92 + i as i32 * 34,
-            420,
+            aw,
             28,
             name,
             "",
@@ -1193,7 +1230,7 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
             ID_RPACK_SEL_BASE + i as u16,
             ls,
             92 + i as i32 * 34,
-            352,
+            sw,
             28,
             name,
             "",
@@ -1203,7 +1240,7 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
         // passes Default inside `sel`; it gets its own immovable row)
         v.push(btn_h(
             ID_RPACK_UP_BASE + i as u16,
-            866,
+            up_x,
             92 + i as i32 * 34,
             30,
             28,
@@ -1213,7 +1250,7 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
         ));
         v.push(btn_h(
             ID_RPACK_DOWN_BASE + i as u16,
-            898,
+            down_x,
             92 + i as i32 * 34,
             30,
             28,
@@ -1228,7 +1265,7 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
         ID_RPACK_DEFAULT,
         ls,
         dy,
-        352,
+        sw,
         28,
         "DEFAULT",
         "(REQUIRED)",
@@ -1573,9 +1610,12 @@ pub fn layout_music_sound() -> Vec<Widget> {
 /// 180.. (ID_CTRL_BIND_BASE..); the caller patches the key labels.
 pub fn layout_controls(labels: &[(bool, &str, &str)]) -> Vec<Widget> {
     // (is_header, action, key) — headers are non-button category rows
-    // 2026-09-25 centering fix: the 130-left block was authored at the
-    // 960 reference — derive it from the LIVE width
-    let l = ref_x(130);
+    // Round B: the 430-wide block (300 name + 10 gap + 120 key) was
+    // authored left of the midline (x=130 at 960 — its center sat 135px
+    // left, the same left-hug the options round fixed) and crossed the
+    // left edge at narrow rungs (x=-30 at 640). Center it on the LIVE
+    // canvas — vanilla centers its bind list — clamped to the 2px margin
+    let l = ((live_ui_w() as i32 - 430) / 2).max(2);
     let name_w = 300;
     let key_w = 120;
     let r = l + name_w + 10;
@@ -1645,7 +1685,10 @@ pub fn layout_controls(labels: &[(bool, &str, &str)]) -> Vec<Widget> {
 /// support other languages).
 pub fn layout_language() -> Vec<Widget> {
     vec![
-        btn_h(ID_CTRL_DONE, 248, 150, 465, 30, "ENGLISH (US)", "*", true),
+        // Round B: was hardcoded x=248 (the 960 reference) — ref_x keeps
+        // the 248 identity at 960 and centers/contains the row everywhere
+        // else (it ran off the right edge at 640)
+        btn_h(ID_CTRL_DONE, ref_x(248), 150, 465, 30, "ENGLISH (US)", "*", true),
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
@@ -3132,20 +3175,17 @@ impl UiCanvas {
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
         }
-        // pane headers
-        let aw = Self::text_width("AVAILABLE", 2);
-        self.text((450 - aw) / 2, 62, "AVAILABLE", [255, 255, 255, 255], 2);
-        let sw = Self::text_width("SELECTED", 2);
-        self.text(
-            (720 - sw) / 2 + 210,
-            62,
-            "SELECTED",
-            [255, 255, 255, 255],
-            2,
-        );
+        // Round B: headers + inset panels follow the LIVE pane geometry
+        // (rpack_geometry) — they sat at fixed 960-reference coords and
+        // detached from the rows on smaller canvases
+        let (la, aw, ls, sw, _up_x, _down_x) = rpack_geometry();
+        let tw = Self::text_width("AVAILABLE", 2);
+        self.text(la + (aw - tw) / 2, 62, "AVAILABLE", [255, 255, 255, 255], 2);
+        let tw = Self::text_width("SELECTED", 2);
+        self.text(ls + (sw - tw) / 2, 62, "SELECTED", [255, 255, 255, 255], 2);
         // dark inset panels behind the rows (the modern list look)
-        self.rect(26, 86, 428, 348, [0, 0, 0, 150]);
-        self.rect(506, 86, 428, 348, [0, 0, 0, 150]);
+        self.rect(la - 4, 86, aw + 8, 348, [0, 0, 0, 150]);
+        self.rect(ls - 4, 86, sw + 8, 348, [0, 0, 0, 150]);
         self.draw_widgets(ws, hover);
     }
 
@@ -3169,8 +3209,10 @@ impl UiCanvas {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
         }
         // sunken list backdrop behind the pack rows (the modern
-        // list-background family, full width) — LIVE-width centered
-        self.rect(ref_x(140), 80, 676, 304, [0, 0, 0, 150]);
+        // list-background family) — follows shdr_row_geom (Round B) so
+        // it hugs the rows at every ladder rung
+        let (sl, sw) = shdr_row_geom();
+        self.rect(sl - 8, 80, sw + 16, 304, [0, 0, 0, 150]);
         self.draw_widgets(ws, hover);
     }
 
@@ -8703,7 +8745,179 @@ mod round12b_mount_screen_tests {
         // all 9 hit-test
         for i in 0..9 {
             let (x, y) = g.chest[i];
-            assert_eq!(g.slot_at(x + 4, y + 4), Some(SlotRef::Chest(i)));
+            assert_eq!(g.slot_at(x + 4, y + 4),                Some(SlotRef::Chest(i))
+            );
         }
+    }
+
+}
+
+/// Round B: the live-canvas menu ladder — the ui_ladder pixel rules
+/// enforced in-unit so a layout regression fails `cargo test` before
+/// it ever reaches the CI vision audit.
+#[cfg(test)]
+mod roundb_ladder_tests {
+    use super::*;
+
+    // ---- Round B: the live-canvas menu ladder (the ui_ladder rules,
+    // enforced in-unit) ----
+
+    /// the ui_ladder pixel rules, in-unit: every widget on-canvas,
+    /// non-degenerate, and every wide (>40% canvas width) SINGLE-band
+    /// row centered ±2. A wide widget is exempt when it (a) shares its
+    /// y-band with another widget — a multi-column composition (the
+    /// controls name|key rows; vanilla centers the column GROUP, never
+    /// each cell) — or (b) belongs to the resource-pack PANE family
+    /// (the two-pane manager's rows/arrows/DEFAULT: vanilla anchors
+    /// those to the panes, not the canvas midline). Rules 1+2 still
+    /// bind every one of them.
+    fn audit_widgets(ws: &[Widget], w: i32, h: i32, screen: &str) {
+        for (i, wi) in ws.iter().enumerate() {
+            assert!(
+                wi.x >= 0 && wi.y >= 0 && wi.x + wi.w <= w && wi.y + wi.h <= h,
+                "{screen} @{w}x{h}: id {} at ({},{}) {}x{} crosses the canvas",
+                wi.id,
+                wi.x,
+                wi.y,
+                wi.w,
+                wi.h
+            );
+            assert!(
+                wi.w > 0 && wi.h > 0,
+                "{screen} @{w}x{h}: id {} degenerate",
+                wi.id
+            );
+            let shares_band = ws
+                .iter()
+                .enumerate()
+                .any(|(j, o)| j != i && o.y < wi.y + wi.h && wi.y < o.y + o.h);
+            let pane_family = wi.id >= ID_RPACK_AVAIL_BASE
+                && wi.id < ID_RPACK_DOWN_BASE + MAX_RPACK_ENTRIES as u16;
+            if wi.w * 5 >= w * 2 && !shares_band && !pane_family {
+                let center = wi.x + wi.w / 2;
+                assert!(
+                    (center - w / 2).abs() <= 2,
+                    "{screen} @{w}x{h}: wide widget id {} off-center by {}",
+                    wi.id,
+                    center - w / 2
+                );
+            }
+        }
+    }
+
+    /// live canvases the game's GUI-scale resolution actually produces
+    /// (refresh_gui_scale math) — the narrow ladder tail, the 960
+    /// authored reference, and the scale-1 extremes.
+    const LADDER_CANVASES: [(usize, usize); 7] = [
+        (640, 512),   // 1280x1024 @ scale 4 (the letterbox tail)
+        (854, 480),   // 1280x720 / 2560x1440 @ scale 3/6
+        (911, 512),   // 1366x768 @ scale 3 (the primary window)
+        (960, 540),   // 1920x1080 @ scale 4 (the authored reference)
+        (1280, 720),  // 2560x1440 @ scale 4
+        (2732, 1536), // 1366x768 @ scale 1
+        (5120, 2880), // 2560x1440 @ scale 1
+    ];
+
+    #[test]
+    fn menu_layouts_survive_the_gui_scale_ladder() {
+        let avail = ["napp-1.16.zip".to_string(), "Classic Art".to_string()];
+        let sel = ["Default".to_string(), "napp-1.16.zip".to_string()];
+        let screens: Vec<(&str, Vec<Widget>)> = vec![
+            ("packs", layout_resource_packs(&avail, &sel)),
+            (
+                "controls",
+                layout_controls(&[
+                    (true, "MOVEMENT", ""),
+                    (false, "Forward", "W"),
+                    (false, "Back", "S"),
+                    (false, "Creative Item Picker", "B"),
+                ]),
+            ),
+            ("language", layout_language()),
+            (
+                "shaders",
+                layout_shaders(
+                    &["BSL-v8".to_string(), "SEUS-Renewed".to_string()],
+                    Some("BSL-v8"),
+                    false,
+                ),
+            ),
+            ("title", layout_title(false)),
+            ("options", layout_options()),
+            ("video", layout_video()),
+            ("pause", layout_pause()),
+        ];
+        for &(w, h) in &LADDER_CANVASES {
+            set_live_ui_size(w, h);
+            for (name, ws) in &screens {
+                audit_widgets(ws, w as i32, h as i32, name);
+            }
+        }
+        set_live_ui_size(960, 540);
+    }
+
+    /// the 960 reference keeps the authored packs composition EXACTLY
+    /// (the identity rule of the centering rounds); the narrow tail
+    /// packs everything on-canvas in non-overlapping columns.
+    #[test]
+    fn rpack_geometry_is_identity_at_960_and_fits_at_640() {
+        set_live_ui_size(960, 540);
+        assert_eq!(
+            rpack_geometry(),
+            (30, 420, 510, 352, 866, 898),
+            "authored 960 composition"
+        );
+        set_live_ui_size(640, 512);
+        let (la, aw, ls, sw, up_x, down_x) = rpack_geometry();
+        assert!(la >= 2 && la + aw <= ls, "avail pane left of sel pane");
+        assert!(ls + sw <= up_x, "sel pane left of the arrows");
+        assert!(down_x + 30 <= 640, "arrows on-canvas at 640");
+        set_live_ui_size(960, 540);
+    }
+
+    /// controls: the 430px bind block centers at every width (was
+    /// left-hugging at 960 and off-canvas at 640).
+    #[test]
+    fn controls_layout_centers_the_bind_block() {
+        for &(w, h) in &[(640usize, 512usize), (960, 540), (2732, 1536)] {
+            set_live_ui_size(w, h);
+            let ws = layout_controls(&[(false, "Forward", "W")]);
+            let name = &ws[0];
+            assert_eq!(name.x, (w as i32 - 430) / 2, "block centers @{w}");
+            assert_eq!(name.w, 300);
+            let key = &ws[1];
+            assert_eq!(key.x, name.x + 310, "the key column rides the block");
+            assert_eq!(key.w, 120);
+            audit_widgets(&ws, w as i32, h as i32, "controls");
+        }
+        set_live_ui_size(960, 540);
+    }
+
+    /// language: the 465px row centers on the live canvas (was
+    /// hardcoded x=248 — off the right edge at 640).
+    #[test]
+    fn language_row_centers_on_every_canvas() {
+        for &(w, h) in &[(640usize, 512usize), (854, 480), (960, 540), (2732, 1536)] {
+            set_live_ui_size(w, h);
+            let row = &layout_language()[0];
+            assert_eq!(row.w, 465);
+            assert_eq!(row.x + row.w / 2, w as i32 / 2, "centered @{w}");
+            assert!(row.x >= 0 && row.x + row.w <= w as i32, "on-canvas @{w}");
+        }
+        set_live_ui_size(960, 540);
+        assert_eq!(layout_language()[0].x, 248, "960 identity");
+    }
+
+    /// shaders: the 660px authored rows shrink + clamp at narrow rungs
+    /// (x=-12 at 640 before) and keep the 960 identity.
+    #[test]
+    fn shader_rows_fit_and_center_every_canvas() {
+        set_live_ui_size(960, 540);
+        assert_eq!(shdr_row_geom(), (148, 660), "960 identity");
+        set_live_ui_size(640, 512);
+        assert_eq!(shdr_row_geom(), (2, 636), "640: shrunk to the margins");
+        let ws = layout_shaders(&["BSL-v8".to_string()], None, false);
+        audit_widgets(&ws, 640, 512, "shaders");
+        set_live_ui_size(960, 540);
     }
 }

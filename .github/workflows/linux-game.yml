@@ -310,10 +310,31 @@ jobs:
 
           echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 
+      - name: Round B menu ladder audit (every resolution × GUI scale)
+        working-directory: voxelcraft
+        run: |
+          set -euo pipefail
+          # the headless vision audit: every ladder resolution (1280x720 →
+          # 2560x1440 + the 1280x1024 letterbox) × every available GUI
+          # scale, pixel rules on the produced widget sets (on-canvas,
+          # non-degenerate, primary rows centered), flattened PNG dumps
+          # for human review. The exit code is the contract (0 = every
+          # rung clean, "LADDER DONE: ... — CLEAN").
+          cargo run --release -p vc-render --bin ui_ladder -- ci-ladder
+          echo "ladder dumps written: $(ls ci-ladder | wc -l)"
+
       - name: Upload artifact (the raw executable, no archive)
         uses: actions/upload-artifact@v4
         with:
           name: voxelcraft-linux-single-file
           path: voxelcraft-*-linux-x64
           retention-days: 90
+          if-no-files-found: error
+
+      - name: Upload ladder dumps (vision review)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-ladder-dumps
+          path: voxelcraft/ci-ladder
+          retention-days: 14
           if-no-files-found: error

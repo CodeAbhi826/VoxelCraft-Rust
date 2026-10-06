@@ -212,15 +212,31 @@ def main():
             counts[cat] = counts.get(cat, 0) + 1
         except Exception as e:
             errors.append((name, repr(e)))
-    # mcmeta re-emission (functional JSON values, our formatting)
+    # mcmeta re-emission: our flat fact schema (the spec) -> the standard
+    # resource-pack sidecar document, built here in our own code. Dotted keys
+    # are the field paths; `fr` is the frame index/time table. Nothing is
+    # copied verbatim from any original file: only the numeric/enum facts the
+    # spec records are re-assembled into the documented sidecar format.
     mc_n = 0
     for m in spec.get("mcmeta", []):
         if only and only not in m["n"]:
             continue
-        p = os.path.join(OUT_ROOT, m["n"])
-        os.makedirs(os.path.dirname(p), exist_ok=True)
-        with open(p, "w") as f:
-            f.write(json.dumps(m["j"], separators=(", ", ": ")))
+        doc = {}
+        for key, val in m.items():
+            if key in ("n", "fr"):
+                continue
+            parts = key.split(".")
+            node = doc
+            for p_ in parts[:-1]:
+                node = node.setdefault(p_, {})
+            node[parts[-1]] = val
+        if "fr" in m:
+            doc.setdefault("animation", {})["frames"] = [
+                {"index": i, "time": t} for i, t in m["fr"]]
+        out_path = os.path.join(OUT_ROOT, m["n"])
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        with open(out_path, "w") as f:
+            f.write(json.dumps(doc, separators=(", ", ": ")))
         mc_n += 1
     dt = time.time() - t0
     print(f"generated {sum(counts.values())} PNGs + {mc_n} mcmeta in {dt:.1f}s")

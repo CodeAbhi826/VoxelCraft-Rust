@@ -1880,16 +1880,22 @@ pub struct GameApp {
     dbg_widget_dump_screen: Option<Screen>,
     fps: f32,
     frames: u32,
-    fps_t: f32,
+    /// wall-clock µs stamp of the last fps-window close — 1A.1: the window
+    /// runs on the WALL CLOCK, never game time (dt clamps to 100 ms, which
+    /// credited slow frames at up to double speed)
+    fps_wall_us: u64,
     /// --verbose: 1 Hz cadence accumulator for the [perf] summary line
     dbg_t: f32,
-    /// rolling 100-frame window: min / avg / max fps + last frame ms
-    fps_min: f32,
+    /// rolling 180-frame WALL-CLOCK history (1A.1): avg fps / 1%-low fps /
+    /// worst frame ms. Every frame enters the history — stalls included,
+    /// nothing discarded (the old >500 ms filter hid the very hitches a
+    /// weak-GPU bug report is about)
     fps_avg: f32,
-    fps_max: f32,
+    fps_p1_low: f32,
+    worst_frame_ms: f32,
     frame_ms: f32,
-    /// game-time of the previous draw() (for the frame-time history)
-    draw_game_t: f32,
+    /// wall µs of the previous draw() (for the frame-time history)
+    draw_wall_us: u64,
     stats: RenderStats,
     spawn_snapped: bool,
     faced_land: bool,
@@ -3121,13 +3127,13 @@ impl GameApp {
             dbg_widget_dump_screen: None,
             fps: 0.0,
             frames: 0,
-            fps_t: now_secs(),
+            fps_wall_us: crate::bench::micros(),
             dbg_t: 1.0,
-            fps_min: 0.0,
             fps_avg: 0.0,
-            fps_max: 0.0,
+            fps_p1_low: 0.0,
+            worst_frame_ms: 0.0,
             frame_ms: 0.0,
-            draw_game_t: 0.0,
+            draw_wall_us: crate::bench::micros(),
             stats: RenderStats::default(),
             spawn_snapped: false,
             faced_land: false,
@@ -5547,11 +5553,11 @@ impl GameApp {
         // Phase 1: the FULL per-frame phase breakdown (the bench module's
         // five phases: sim / stream / results = the mesh upload / ui / draw)
         format!(
-            "fps {:.0} (avg {:.0} min {:.0} max {:.0}) frame {:.1}ms phases s{:.1}/st{:.1}/r{:.1}/u{:.1}/d{:.1}ms sim {:.1}ms | chunks meshed {} loaded {} drawn {} gen-queue {} mesh-queue {} | mobs {} edits {} | icons {} (h/m/e {}/{}/{}) gui-quads {} icon-quads {}",
+            "fps {:.0} (avg {:.0}, 1%-low {:.0}, worst {:.1} ms) frame {:.1}ms phases s{:.1}/st{:.1}/r{:.1}/u{:.1}/d{:.1}ms sim {:.1}ms | chunks meshed {} loaded {} drawn {} gen-queue {} mesh-queue {} | mobs {} edits {} | icons {} (h/m/e {}/{}/{}) gui-quads {} icon-quads {}",
             self.fps,
             self.fps_avg,
-            self.fps_min,
-            self.fps_max,
+            self.fps_p1_low,
+            self.worst_frame_ms,
             self.frame_ms,
             self.phases.phase_ms(crate::bench::PHASE_SIM),
             self.phases.phase_ms(crate::bench::PHASE_STREAM),
@@ -5658,7 +5664,12 @@ impl GameApp {
             "exit",
             &format!(
                 "uptime {:.0}s, {} frames, fps avg {:.0} (min {:.0} max {:.0}), {} edits",
-                self.time, self.frames, self.fps_avg, self.fps_min, self.fps_max, self.edits
+                self.time,
+                self.frames,
+                self.fps_avg,
+                self.fps_p1_low,
+                self.worst_frame_ms,
+                self.edits
             ),
         );
     }
@@ -24270,47 +24281,45 @@ impl GameApp {
         // Phase-0 instrumentation: frame phases (§44)
         self.phases.begin_frame();
         let t_draw0 = crate::bench::micros();
-        // fps = real RENDERED frame rate (draws ride RAF on the web)
+        // fps = real RENDERED frame rate (draws ride RAF on the web).
+        // 1A.1 FIX: the window now closes on the WALL CLOCK (bench::micros).
+        // It previously divided by GAME time — game dt is clamped to 100 ms,
+        // so on a slow machine (200 ms real frames) the credited time was
+        // half the real elapsed time and the meter reported ~2x the true
+        // fps. The instantaneous number now matches the exit-summary's
+        // frames/wall-second contract.
         self.frames += 1;
-        // rolling frame-time history (Sodium-style F3 graph + min/avg/max).
-        // Uses the GAME-TIME delta between draws: the wall-clock
-        // `last_draw_t` is stamped after the last `self.time` advance in the
-        // same RAF tick, so time - last_draw_t reads ≈ 0 on wasm.
-        let t_draw = self.time;
-        self.frame_ms = (t_draw - self.draw_game_t).max(0.0) * 1000.0;
-        if self.frame_ms > 1.0 && self.frame_ms < 500.0 {
+        // rolling WALL-CLOCK frame-time history (1A.1): avg fps, 1%-low,
+        // worst frame ms — same stats the benchmark reports, so the F3
+        // number and the bench number can finally be compared directly.
+        // EVERY frame enters the history: no discard filter (the old
+        // >500 ms filter removed the loading hitches exactly when they
+        // matter for a weak-GPU bug report). First draw is the epoch
+        // (draw_wall_us == init stamp) and records nothing.
+        let now_us = crate::bench::micros();
+        self.frame_ms = (now_us.saturating_sub(self.draw_wall_us)) as f32 / 1000.0;
+        if self.draw_wall_us != 0 || self.frame_ms > 0.0 {
             self.frame_times.push_back(self.frame_ms);
             while self.frame_times.len() > 180 {
                 self.frame_times.pop_front();
             }
         }
-        // Phase 9: draw-call/bind history (F3 + benchmark §37)
-        self.draw_calls_ring
-            .push_back((self.stats.draws, self.stats.binds));
-        while self.draw_calls_ring.len() > 64 {
-            self.draw_calls_ring.pop_front();
-        }
-        self.draw_game_t = t_draw;
-        if self.time - self.fps_t > 0.5 {
-            self.fps = self.frames as f32 / (self.time - self.fps_t);
+        self.draw_wall_us = now_us;
+        // close the fps window on the WALL CLOCK (0.5 s cadence, unchanged)
+        let win_us = now_us.saturating_sub(self.fps_wall_us);
+        if win_us >= 500_000 {
+            self.fps = (self.frames as f64 * 1_000_000.0 / win_us as f64) as f32;
             self.frames = 0;
-            self.fps_t = self.time;
+            self.fps_wall_us = now_us;
             self.ui.dirty = true;
-        }
-        // recompute the rolling min/avg/max once per FPS window
-        if !self.frame_times.is_empty() {
-            let n = self.frame_times.len() as f32;
-            let total: f32 = self.frame_times.iter().sum();
-            self.fps_avg = 1000.0 / (total / n);
-            // BLOCKING-BUG FIX (user report — F3 showed "max 2147483547
-            // fps"): the folds had swapped initializers — fold(0.0, min)
-            // collapses to 0.0 (fps_max = 1000/0 = inf → saturates to
-            // i32::MAX in the overlay) and fold(INF, max) collapses to INF
-            // (fps_min = 0). Max frame time folds up from 0.0; min frame
-            // time folds down from INFINITY.
-            let (lo, hi) = fps_min_max(&self.frame_times);
-            self.fps_min = lo;
-            self.fps_max = hi;
+            // 1A.1: rolling stats from the SAME FrameStats the benchmark
+            // uses — avg fps / 1%-low fps / worst frame ms, from the
+            // unfiltered wall-clock history (see fps_meter_stats below)
+            if let Some((avg, low1, worst)) = fps_meter_stats(&self.frame_times) {
+                self.fps_avg = avg;
+                self.fps_p1_low = low1;
+                self.worst_frame_ms = worst;
+            }
         }
         // Only log the first frames of each actual game instance — the FPS
         // window counter (`self.frames`) resets every 0.5 s, so without the
@@ -26675,12 +26684,20 @@ pub(crate) fn physics_frozen(world: &vc_world::world::World, pos: Vec3) -> bool 
 
 /// Rolling min/max FPS from the frame-time history (ms). Max frame time
 /// folds UP from 0.0 (→ the minimum FPS); min frame time folds DOWN from
-/// INFINITY (→ the maximum FPS). REGRESSION guard for the F3 overlay bug
-/// (the swapped initializers printed "max" as i32::MAX = 2147483547 fps).
-pub(crate) fn fps_min_max(times: &std::collections::VecDeque<f32>) -> (f32, f32) {
-    let max_ms = times.iter().cloned().fold(0.0_f32, f32::max);
-    let min_ms = times.iter().cloned().fold(f32::INFINITY, f32::min);
-    (1000.0 / max_ms, 1000.0 / min_ms)
+/// 1A.1: the pure core of the F3 metering, unit-tested below. Given the
+/// unfiltered WALL-CLOCK frame-time history (ms, oldest → newest), returns
+/// (avg fps, 1%-low fps, worst frame ms) — the same FrameStats contract the
+/// benchmark reports, so F3 and bench numbers are directly comparable.
+pub(crate) fn fps_meter_stats(
+    frame_times_ms: &std::collections::VecDeque<f32>,
+) -> Option<(f32, f32, f32)> {
+    crate::bench::FrameStats::from_us(
+        &frame_times_ms
+            .iter()
+            .map(|&ms| (ms * 1000.0) as u64)
+            .collect::<Vec<_>>(),
+    )
+    .map(|fs| (fs.fps(), fs.one_pct_low(), fs.worst_ms))
 }
 
 #[cfg(test)]
@@ -26962,26 +26979,32 @@ mod tests {
     }
 
     #[test]
-    fn fps_min_max_orders_the_folds() {
-        // 8 / 16 / 33 ms frames → slowest 33 ms = 30.3 fps min,
-        // fastest 8 ms = 125 fps max
-        let mut t = std::collections::VecDeque::new();
-        t.push_back(8.0);
-        t.push_back(16.0);
-        t.push_back(33.0);
-        let (lo, hi) = fps_min_max(&t);
+    fn slow_frames_are_not_credited_double() {
+        // 1A.1 regression: the old meter divided rendered frames by GAME
+        // time, whose dt clamps at 100 ms — a run of real 200 ms frames was
+        // reported as ~10 fps instead of 5. The wall-clock stats must say 5.
+        let t: std::collections::VecDeque<f32> = [200.0f32; 10].into_iter().collect();
+        let (avg, low1, worst) = fps_meter_stats(&t).expect("stats");
+        assert!((avg - 5.0).abs() < 0.01, "avg fps {avg}, want 5.0");
+        assert!((low1 - 5.0).abs() < 0.01, "1%-low {low1}, uniform frames");
+        assert!((worst - 200.0).abs() < 0.01, "worst ms {worst}");
+    }
+
+    #[test]
+    fn stalls_are_not_discarded_from_the_history() {
+        // 1A.1 regression: the old history filter dropped every frame over
+        // 500 ms, so two 900 ms hitches vanished and the meter showed a
+        // healthy steady state. They must pull the 1%-low down and set worst.
+        let mut v = vec![16.7f32; 98];
+        v.push(900.0);
+        v.push(900.0);
+        let t: std::collections::VecDeque<f32> = v.into_iter().collect();
+        let (avg, low1, worst) = fps_meter_stats(&t).expect("stats");
+        assert!(worst >= 899.0, "worst ms {worst} — the stall must show");
         assert!(
-            (lo - 1000.0 / 33.0).abs() < 0.01,
-            "min FPS must come from the SLOWEST frame, got {lo}"
+            low1 < avg * 0.5,
+            "1%-low {low1} must sit far below avg {avg} when 2% of frames stall"
         );
-        assert!(
-            (hi - 1000.0 / 8.0).abs() < 0.01,
-            "max FPS must come from the FASTEST frame, got {hi}"
-        );
-        // the old swapped-init bug: hi would be inf (→ i32::MAX in F3),
-        // lo would be 0
-        assert!(hi.is_finite() && hi < 1000.0);
-        assert!(lo > 0.0);
     }
 }
 

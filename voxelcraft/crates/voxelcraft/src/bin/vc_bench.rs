@@ -178,7 +178,9 @@ fn main() {
                     },
                     inputs,
                 );
-                let done = mesher.wait_done(&device, &queue);
+                let done = mesher
+                    .wait_done(&device, &queue)
+                    .expect("gpu mesh readback failed; the measurement is invalid");
                 if gpu_ok {
                     let got = &done[0].mesh;
                     parity &= got.solid.0 == want.solid.0

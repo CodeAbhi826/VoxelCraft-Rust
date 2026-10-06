@@ -942,6 +942,12 @@ fn compute_offsets(counts: &[u32], n: usize) -> (Vec<u32>, usize, usize, usize, 
     (offsets, svr, sir, wvr, wir)
 }
 
+/// The jobs a blocking readback could not recover, as
+/// `(chunk pos, sub-mask)`. Returned instead of panicked on: a failed
+/// readback is a lost frame of meshing, not a broken engine, and the frame
+/// loop must be able to carry on and re-mesh.
+pub type LostJobs = Vec<(ChunkPos, u16)>;
+
 impl GpuMesher {
     /// Create the mesher. Basic compute is core wgpu on Vulkan/DX12/Metal/
     /// WebGPU — the renderer only constructs this when the device reports
@@ -1210,9 +1216,15 @@ impl GpuMesher {
     }
 
     /// native/test helper: block until the current batch completes
-    /// (drives the device with `Maintain::Wait`). Returns completed jobs;
-    /// panics if a readback fails (test contract: no silent degradation).
-    pub fn wait_done(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<GpuMeshDone> {
+    /// (drives the device with `Maintain::Wait`). Returns completed jobs,
+    /// or the jobs whose readback failed. Phase 0: this used to panic; the
+    /// only callers were the tests and `vc_bench`, but as a `pub` API it
+    /// could take down the game the moment a readback hiccupped.
+    pub fn wait_done(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<Vec<GpuMeshDone>, LostJobs> {
         // blocking mode: the watchdog stands down (poll(Wait) guarantees
         // the readbacks complete; a slow software-GPU run must not strike)
         self.blocking = true;
@@ -1223,11 +1235,12 @@ impl GpuMesher {
             let (mut done, lost) = self.advance(device, queue);
             all.append(&mut done);
             if !lost.is_empty() {
-                panic!("gpu mesh readback failed for {} jobs", lost.len());
+                self.blocking = false;
+                return Err(lost);
             }
         }
         self.blocking = false;
-        all
+        Ok(all)
     }
 
     // ------------------------------------------------------------- batch --
@@ -1924,7 +1937,9 @@ mod tests {
                     },
                     inputs,
                 );
-                let done = mesher.wait_done(&device, &queue);
+                let done = mesher
+                    .wait_done(&device, &queue)
+                    .expect("gpu mesh readback failed in a parity test");
                 assert_eq!(done.len(), 1, "one job per batch");
                 let got = &done[0].mesh;
                 assert_eq!(
@@ -2037,7 +2052,9 @@ mod tests {
             },
             inputs,
         );
-        let done = mesher.wait_done(&device, &queue);
+        let done = mesher
+            .wait_done(&device, &queue)
+            .expect("gpu mesh readback failed in a parity test");
         assert_eq!(done.len(), 1, "one job per batch");
         let got = &done[0].mesh;
         assert_eq!(

@@ -347,6 +347,40 @@ pub struct Chunk {
     pub biome: Box<[u8; 256]>,
 }
 
+/// The x/z of a block, LOCAL to its chunk.
+///
+/// Phase 0: `Chunk::get(x, y, z)` folds `y` (`y >> 4`, `y & 15`) but
+/// indexes `x`/`z` raw. A world x/z therefore silently aliases into the
+/// wrong cell instead of failing to compile — the "double fold" trap.
+/// Wrapping the local pair in its own type means a world coordinate
+/// cannot reach the accessor by accident: you have to name the
+/// localization to build one.
+///
+/// The `y` stays absolute by design — it is the one axis that is NOT
+/// chunk-local, so `get_local` takes it separately.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct LocalXZ(u8, u8);
+
+impl LocalXZ {
+    /// Build from LOCAL x and z. Both must already be in `0..16`;
+    /// out-of-range input is clamped rather than truncated so a bad
+    /// caller degrades to the edge cell, never to a wrapped one.
+    #[inline]
+    pub fn new(x: usize, z: usize) -> Self {
+        LocalXZ(x.min(15) as u8, z.min(15) as u8)
+    }
+
+    #[inline]
+    pub fn x(self) -> usize {
+        self.0 as usize
+    }
+
+    #[inline]
+    pub fn z(self) -> usize {
+        self.1 as usize
+    }
+}
+
 impl Chunk {
     pub fn empty() -> Self {
         Chunk {
@@ -394,6 +428,14 @@ impl Chunk {
             Some(s) => s.get(x, y & 15, z),
             None => 0,
         }
+    }
+
+    /// The TYPE-SAFE door into a chunk: local x/z by construction, absolute
+    /// y. Identical result to `get(lx, y, lz)`, but it cannot be called
+    /// with world coordinates.
+    #[inline]
+    pub fn get_local(&self, xz: LocalXZ, y: usize) -> u16 {
+        self.get(xz.x(), y, xz.z())
     }
 
     /// copy-on-write at SECTION granularity: `Arc::make_mut` clones only the
@@ -476,6 +518,65 @@ mod tests {
 
     fn entry_idx(x: usize, y: usize, z: usize) -> usize {
         (y << 8) | (z << 4) | x
+    }
+
+    // ---- Phase 0: the Chunk::get double-fold guard ----
+    //
+    // `get(x, y, z)` folds y but indexes x/z raw, so world coordinates are
+    // accepted by the compiler and read the wrong cell. get_local makes the
+    // local pair a distinct type; these tests prove (a) the typed door
+    // returns exactly what the raw call returns, so it is a safe drop-in,
+    // and (b) the hazard it exists for is real, not theoretical.
+
+    #[test]
+    fn get_local_agrees_with_the_raw_accessor() {
+        let mut c = Chunk::empty();
+        // a distinct id in every 8-block neighbourhood we probe
+        c.set(3, 40, 5, 101);
+        c.set(12, 40, 9, 102);
+        c.set(0, 200, 15, 103); // y in the top section
+        for (x, y, z) in [(3usize, 40usize, 5usize), (12, 40, 9), (0, 200, 15), (7, 0, 7)] {
+            assert_eq!(
+                c.get(x, y, z),
+                c.get_local(LocalXZ::new(x, z), y),
+                "typed door must match the raw accessor at ({x},{y},{z})"
+            );
+        }
+    }
+
+    #[test]
+    fn local_xz_clamps_instead_of_wrapping() {
+        // A world x/z that overflows the 16-wide local grid must land on the
+        // edge cell, not wrap to 0 -- `new` is the one place that can turn a
+        // bad coordinate into a good-looking one, so its policy is pinned.
+        assert_eq!(LocalXZ::new(16, 16).x(), 15);
+        assert_eq!(LocalXZ::new(16, 16).z(), 15);
+        assert_eq!(LocalXZ::new(99, 0).x(), 15);
+        assert_eq!(LocalXZ::new(0, 5).z(), 5);
+    }
+
+    #[test]
+    fn world_coordinates_silently_alias_which_is_why_the_typed_door_exists() {
+        // Documents the hazard with real numbers. A Section entry is packed
+        // as (y << 8) | (z << 4) | x with x/z NOT masked, so an x of 32
+        // lands on entry 32 -- which is local (x 0, z 2). No panic, no air:
+        // a real neighbouring cell, silently.
+        let mut c = Chunk::empty();
+        c.set(0, 64, 2, 88); // the cell local x=32 will alias onto
+        assert_eq!(c.get(32, 64, 0), 88, "x=32 aliases onto local (0,64,2)");
+        assert_eq!(c.get(0, 64, 2), 88, "the intended cell holds it too");
+        // z is worse: (z << 4) carries OUT of the 12-bit x/z field into y.
+        // entry = (y&15)<<8 | z<<4 | x, so z=18 at y=64 is entry 288 =
+        // (1<<8)|(2<<4)|0 -- world (0, 65, 2), one section-row UP and across.
+        c.set(0, 65, 2, 99);
+        assert_eq!(
+            c.get(0, 64, 18),
+            99,
+            "z=18 carries into y: reads world (0,65,2)"
+        );
+        // The typed door cannot express either mistake: LocalXZ::new clamps
+        // 32 to 15, which is a DIFFERENT, visible cell.
+        assert_ne!(c.get_local(LocalXZ::new(32, 0), 64), 88);
     }
 
     #[test]

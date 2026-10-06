@@ -9,13 +9,13 @@
 **NO RELEASES** — the owner's 2026-10-05 directive: the project is in the
 BUILDING stage, not production; the v0.4.0 release and the v0.2.0/v0.3.0
 releases were DELETED (the GitHub Releases + the tags removed). The
-build-state is the deliverable: the CI-verified tree (897 tests green,
+build-state is the deliverable: the CI-verified tree (911 unit tests green,
 the 6 gates) + the CI-built binaries verified via the artifact route
 under Xvfb. The tag/release step is DEFERRED to production (the recipe:
 the version bump + the tag push — recorded in the worklog).
 
 **The headline numbers (all gate-verified):**
-- **897/897 tests green** — `cargo test --release --no-default-features
+- **911 unit tests, green in CI** — `cargo test --release --no-default-features
   --workspace`, plus the wasm32 compile-check, clippy clean (0 warnings),
   cargo fmt, the legal audit (the trademark scanner), and the headless
   bench — all 6 gates green on every push.
@@ -87,7 +87,7 @@ the version bump + the tag push — recorded in the worklog).
   - **The light init 86.6 → 58.7 ms/chunk (32% FASTER)**, the meshing
     49.1 → 36.07 (27%), the generation 53.1 → 35.0 (34%), the remesh
     10.95 → 8.68 (21%), the drawprep 13.9 → 8.7 µs (37%).
-- **Phase 5 — the release hardening**: the README finalized (897 tests,
+- **Phase 5 — the release hardening**: the README finalized (the test count,
   the 66-mob roster, the 32 effects), the docs current, the tag shipped,
   the release published, and the final E2E tour on the release binary:
   FKEYS margin 825 VISIBLE + FKEY CONTRACT OK, beds VERDICT OK, fluids
@@ -144,8 +144,11 @@ The L-tier content breadth the plan listed (the low-priority tail):
 - **The live-verified citations** — never stale research dumps; the
   cross-check rule (two sources must agree).
 - **Zero-unsafe (exactly one sanctioned block), zero placeholders, zero
-  third-party assets, zero trademark terms** — the legal audit green on
-  every push.
+  Mojang assets, zero trademark terms** — the legal audit green on
+  every push. (Corrected 2026-10-06: the engine ships one third-party
+  component, the Monocraft font under SIL OFL 1.1 with its licence; the
+  original “zero third-party assets” wording overstated it. See
+  `docs/LEGAL-COMPLIANCE.md` §3.)
 - **The optimizations additive and parity-preserving** — the semantics
   identical (the tables built from the same truth; the break preserves
   the scan's zero-run).

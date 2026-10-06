@@ -11,7 +11,10 @@ One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browse
 [![Releases](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/release.yml/badge.svg)](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/release.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-**897 tests · clippy clean (0 warnings) · WGSL validated · E2E-screenshot verified**
+**911 unit tests* · clippy clean (0 warnings) · WGSL validated · E2E-screenshot verified**
+
+\* `#[test]` attribute count across `voxelcraft/crates`, counted 2026-10-06. The
+pass/fail number comes from the Actions run, not from this line.
 
 </div>
 
@@ -28,7 +31,7 @@ One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browse
 
 ## What this is
 
-VoxelCraft replicates the **gameplay rules, world and boot/menu flow of the 1.16.5-era reference game** — from published documentation only (the reference wiki, live-verified at implementation time, **1,913 `VERIFIED` citations in code**). It is **not** a port, contains **zero third-party assets** (every texture, sound, glyph and the title panorama is synthesized procedurally at startup), and is a from-scratch Rust/WGSL engine, not a wrapper.
+VoxelCraft replicates the **gameplay rules, world and boot/menu flow of the 1.16.5-era reference game** — from published documentation only (the reference wiki, live-verified at implementation time, **1,913 `VERIFIED` citations in code**). It is **not** a port, contains **no Mojang assets** (every texture, sound and the title panorama is synthesized procedurally at startup), and is a from-scratch Rust/WGSL engine, not a wrapper. The one third-party component is the embedded font, **Monocraft** (IdreesInc, SIL OFL 1.1), shipped with its licence — see [LEGAL-COMPLIANCE.md](docs/LEGAL-COMPLIANCE.md).
 
 - **539** registered block/item entries (**892** block states), **28 biomes** (overworld families + the five 1.16 the Hollow biomes + the End), caves, trees, **10 structure families**
 - **20 Hz deterministic simulation** with vanilla constants: drag `v1 = (v0 − 0.08) × 0.98`, 7.127 b/s sprint-jump cap, dimension-aware lava spread (Overworld/End 3 blocks/30 ticks, the Hollow 7 blocks/10 ticks)
@@ -95,7 +98,7 @@ The engine is split into **14 independent crates** (`vc-nbt`, `vc-blocks`, `vc-w
 | Math / parallelism | glam 0.29, rayon 1.10 (native) |
 | WASM | wasm-bindgen 0.2.127 (pinned, CLI-matched), wasm32-unknown-unknown |
 | Persistence | vanilla-format Anvil saves (`.mca` + `level.dat`), resource packs & datapacks (folder/zip) |
-| CI | 4 workflows: tests (861), wasm bundle auto-rebuild, single-file Linux build, releases |
+| CI | 4 workflows: tests (workspace `cargo test`), wasm bundle auto-rebuild, single-file Linux build, releases |
 
 ## Rendering highlights
 
@@ -174,7 +177,7 @@ CI does exactly this on every engine change and commits the bundle back to `publ
 
 ## Verification
 
-- **897/897 tests green** (`cargo test --release --no-default-features --workspace`, plus the `bench-bin`-featured CI gate at 80/80) — including WGSL parse+validation of every shader via naga, drift-guard tests for every historical bug fix (texture-seam quartet, flat water, FSR identity-at-1×, …), and per-subsystem constant checks against the wiki values
+- **911 unit tests, all green in CI** (`cargo test --release --no-default-features --workspace`, plus the `bench-bin`-featured CI gate at 80/80) — 911 is the `#[test]` attribute count measured 2026-10-06; the green claim is the Actions result at that commit — including WGSL parse+validation of every shader via naga, drift-guard tests for every historical bug fix (texture-seam quartet, flat water, FSR identity-at-1×, …), and per-subsystem constant checks against the wiki values
 - **clippy: 0 warnings** across the workspace, all targets
 - **CI on every push**: native tests, wasm32 compile-check, headless benchmark, single-file Linux build, wasm bundle rebuild
 - **E2E screenshot verification** of the live bundle: boot → title → world create → gameplay → F3/inventory/pause (the screenshots above are those captures)
@@ -188,11 +191,11 @@ CI does exactly this on every engine change and commits the bundle back to `publ
 - **Trademark**: this project brands itself **"VoxelCraft"** everywhere user-facing — title screen, window title, file formats, and the asset namespace (`voxelcraft:`). It is not affiliated with, endorsed by, or connected to any game company.
 - **Clean-room assets**: every texture, sound, UI glyph, logo and the title panorama is **procedurally synthesized in code** (`v113_art.rs` … `v116b_art.rs`, 19 modules). No third-party asset file was ever copied, sampled or distributed — the repo contains **zero binary asset files from any rights-holder**.
 - **Mechanics, not code**: game rules, formulas, timings and recipe/loot schemas are facts replicated from published documentation, never from decompiled code. Namespaced ids in save/pack code use this project's own `voxelcraft:` namespace; a read-side compatibility alias accepts the wider ecosystem's legacy namespace when loading user-supplied packs and older saves (the same interop convention third-party world editors use), never in-game branding.
-- **Font**: the embedded **Voxelfont** pixel font (`voxelcraft/crates/vc-render/assets/Voxelfont.ttf`) is an original work of this project — generated programmatically from our own clean-room bitmap glyph table (`scripts/make_voxelfont.py`), **MIT licensed**, see [`VOXELFONT-NOTICE.txt`](voxelcraft/crates/vc-render/assets/VOXELFONT-NOTICE.txt).
+- **Font**: the ACTIVE engine font is **Monocraft** (IdreesInc, **SIL OFL 1.1**), shipped with its licence at [`OFL-Monocraft.txt`](voxelcraft/crates/vc-render/assets/OFL-Monocraft.txt). The **Voxelfont** pixel font (`voxelcraft/crates/vc-render/assets/Voxelfont.ttf`) remains in-repo as the original-work spare — generated from our own clean-room bitmap glyph table (`scripts/make_voxelfont.py`), MIT, see [`VOXELFONT-NOTICE.txt`](voxelcraft/crates/vc-render/assets/VOXELFONT-NOTICE.txt).
 
 ## License
 
-Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE). In short: use, copy, modify and distribute (including commercially), retaining the license notice and stating significant changes. Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* are independently authored and contain no third-party rights-holder material. The Voxelfont keeps its own MIT notice.
+Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE). In short: use, copy, modify and distribute (including commercially), retaining the license notice and stating significant changes. Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* are independently authored and contain no Mojang material. The embedded Monocraft font is third-party under SIL OFL 1.1 and the Voxelfont spare keeps its own MIT notice.
 
 ## Documentation index
 

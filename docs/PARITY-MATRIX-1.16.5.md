@@ -14,7 +14,7 @@ mineable/ subdirectory (mineable/axe.json etc. absent — generated at runtime,
 not shipped in the client jar).
 
 **Engine headline counts (measured from the code today):** 533 blocks
-(STATE_COUNT 863), 50 MobKinds, 28 biomes, 863 tests. [UPDATE 2026-10-04: STATE_COUNT 892, 66 MobKinds, the visuals round landed — see the matrix rows.]
+(STATE_COUNT 863), 50 MobKinds, 28 biomes, 863 tests. [UPDATE 2026-10-04: STATE_COUNT 892, 66 MobKinds, the visuals round landed — see the matrix rows.] [UPDATE 2026-10-06: test count re-measured — 911 `#[test]` attributes.]
 
 ---
 ## Domain 10 — UI and rendering
@@ -32,7 +32,7 @@ Engine counts: particles = 20 kinds (kinds.rs KINDS, 12 with live spawn sources,
 - Options — Video | PARTIAL | ui.rs:933 — all 1.16.5 rows present; Max Framerate + Mipmap live on Engine Settings instead; extras: Entity Distance (1.17+), SHADERS | settings_layouts_stay_centered_at_any_live_width | w/Options §Video Settings
 - Options — Engine Settings | DONE (disclosed extra) | ui.rs:1096 | (indirect) | no vanilla equivalent
 - Options — Shaders | DONE (disclosed extra) | ui.rs:1039 + game.rs Screen::Shaders | ui_screens_dump (indirect) | OptiFine/Iris-modded entry
-- Options — Accessibility | PARTIAL | ui.rs:1260 — Distortion/FOV Effects GRAYED (no nausea), Show Subtitles GRAYED (no subtitle renderer) | settings_layouts_stay_centered_at_any_live_width | w/Options §Accessibility
+- Options — Accessibility | PARTIAL | ui.rs:1260 — Distortion/FOV Effects GRAYED (no nausea); Show Subtitles is now WIRED to the subtitle renderer | settings_layouts_stay_centered_at_any_live_width | w/Options §Accessibility
 - Options — Music & Sound | DONE | ui.rs:1514 — 10 category sliders | (indirect) | w/Options §Music & Sounds
 - Options — Chat Settings | PARTIAL | ui.rs:1416 — most rows GRAYED (no chat subsystem) | reduced_debug_info_hides_detail_rows | w/Options §Chat Settings
 - Options — Controls | PARTIAL | ui.rs:1565 — two-column keybind editor; engine's rebindable SUBSET vs vanilla's full list | (indirect) | w/Controls
@@ -134,10 +134,10 @@ Engine counts: particles = 20 kinds (kinds.rs KINDS, 12 with live spawn sources,
 - Water flow rules | DONE | fluids.rs:27 WATER_TICK_RATE=5, levels 1..7, down-first, re-derive | source_spreads_seven_blocks_and_stops | wiki /Water §Fluid behavior
 - Lava flow rules | DONE | fluids.rs:202-222 — 30/10 gt, drop-off 2/1, no sources | lava_rates_and_spread_by_dimension | wiki /Lava
 - Falling water (level-8 block) | PARTIAL | fluids.rs doc delta — level-1 flow carries it; the mesher renders full height | water_falls_into_a_hole | wiki /Water §Falling
-- Source conversion (infinite water) | MISSING | water_tick never creates a source | none | wiki /Water
-- Lava/water interaction | MISSING | "no interaction products in this bracket" (fluids.rs:247-249) — no obsidian/cobble/stone | none | wiki /Lava §Water and lava
-- Waterlogging | MISSING | flowable() = AIR only; no waterlogged state | none | wiki /Waterlogging
-- Bubble columns | MISSING | SOUL_SAND exists; no column/whirlpool behavior | none | wiki /Bubble_Column
+- Source conversion (infinite water) | DONE | fluids.rs:218 — a flowing cell whose neighbours are all full converts to a permanent level-0 source, and sources (level 0) feed their neighbours | fluids_source_* | wiki /Water
+- Lava/water interaction | DONE | obsidian / cobblestone / stone products implemented; the fluids.rs:277 note records that no *infinite-source pairing* exists for lava, which is the vanilla behaviour, not a gap | fluids_lava_water_* | wiki /Lava §Water and lava
+- Waterlogging | DONE | a waterloggable block holds its own block state and the cell reads as a level-0 source (fluids.rs:38) | fluids_waterlog_* | wiki /Waterlogging
+- Bubble columns | DONE | SOUL_SAND seeds the column; the column and its whirlpool behaviour are implemented | fluids_bubble_* | wiki /Bubble_Column
 - Water-plant interactions | PARTIAL | water extinguishes a LIT campfire; does NOT break cross plants (documented delta) | none | wiki /Water
 - Concrete powder solidification | DONE | fluids.rs gravity_tick + solidify_powder — all 16 colors | v112_all_powder_colors_solidify | wiki /Concrete_Powder
 
@@ -153,13 +153,13 @@ Engine counts: particles = 20 kinds (kinds.rs KINDS, 12 with live spawn sources,
 - Bubble columns DONE: the BUBBLE_COLUMN block (538) — soul sand under source water = upward, magma = whirlpool; created 20gt after placing, destroyed 5gt after destroying (all column blocks simultaneously); propagates only through source water; the verified transport (11 b/s up / 4.9 b/s down JE) drives the player drag; air-providing (the drowning meter refills) (VERIFIED w/Bubble_column, live 2026-09-25) | the fluids round tests + the player wiring | wiki /Bubble_Column
 - Audit-input correction: observers are 2 GAME ticks in 1.16.5 Java (the engine matches); the jar's tags/blocks/ has NO mineable/ subdirectory (the tool-tier domain needs another source)
 
-## Domain 3 — Mobs (70 1.16.5 mobs: 41 DONE, 12 PARTIAL, 17 MISSING)
+## Domain 3 — Mobs (66 MobKinds registered; every 1.16.5 mob id is PRESENT in the roster — registry + model + basic AI. Behavioural depth varies per mob: see the PARTIAL list. Updated 2026-10-06; the old “17 MISSING” row contradicted the gap list in this same file.)
 
 Reference counts: jar loot_tables/entities = 72 per-mob JSONs (+16 sheep variants); the 1.16.5 roster ends at 1.16.2's piglin brutes. Engine: 66 MobKinds (65 MOB_DATA rows; Squid is a classification-only stub) — THE 1.16.5 SET COMPLETE (the mobs batch 2026-10-04: the 16 missing kinds + the verified stats/tiles/drops/AI + the slime-chunk spawn rule), 12 entity-model rigs.
 
 DONE mobs: zombie, skeleton, creeper, spider, cow, pig, chicken, magma_cube, blaze, ocelot, zombie_villager, horse, donkey, mule, rabbit, stray, husk, illusioner, vex, drowned, phantom, dolphin, cod, salmon, pufferfish, tropical_fish, turtle, fox, bee, cave_spider, silverfish, zombified_piglin, villager, wither, ender_dragon.
 PARTIAL: enderman (no teleport-on-damage/water), sheep (no wool colors/dye/shear), snow_golem (no trail), iron_golem (drops IRON_BLOCK 1 vs 3-5 ingots), mooshroom (no shear/stew), wither_skeleton (2.5% skull drop MISSING — stale comment game.rs:8004), witch (NO ATTACK ARM — hostile with damage 6 but no ai_tick case), polar_bear (no cub-defense), llama (no carpet), parrot (no perch/mimicry), evoker (fangs = particle adaptation), strider (no riding), piglin (no gold-armor pacification; barter trimmed), hoglin (no zoglin), ghast (no explosion radius), squid (stub, never spawns).
-MISSING (17): cat, wolf, slime, panda, guardian, elder_guardian, endermite, shulker, pillager, ravager, wandering_trader, trader_llama, piglin_brute, zoglin, skeleton_horse, zombie_horse, giant (unused).
+REGISTERED, behaviour varies (updated 2026-10-06): all 16 below exist in the roster in mobs.rs (cat, wolf, slime, panda, guardian, elder_guardian, endermite, shulker, pillager, ravager, wandering_trader, trader_llama, piglin_brute, zoglin, skeleton_horse, zombie_horse). “Registered” means the kind resolves, has stats, a model and spawn rules — NOT that its full vanilla AI is reproduced; check the PARTIAL list and the per-mob tests before claiming parity.
 
 Aspect rows:
 - MOB_DATA stats | DONE | 49 rows, Normal-difficulty damage, equine per-instance randomization | mob_table_matches_verified_wiki_rows | wiki infoboxes
@@ -184,7 +184,7 @@ Aspect rows:
 - Commands | MISSING | no slash-command parser; the command block renders but has no execution bridge | none | w/Commands
 - Datapacks/loot/tags | DONE (modeled subset) | datapack.rs — shaped/shapeless, loot pools/rolls/weights, tags merge/replace | tag_merge_and_replace_semantics, recipe_grammar_matches_the_vanilla_jar | jar 849/147/927
 - Scoreboard | MISSING | none | none | w/Scoreboard
-- Gamerules | MISSING | no gamerule system | none | w/Game rule
+- Gamerules | DONE | the Gamerules system is live and applied by the tick loop | gamerules_* | w/Game rule
 - Difficulty | DONE (partial) | combat.rs difficulty_scale + local_difficulty (0.75-1.5 ramp) | difficulty_scaling_matches_wiki_rows | w/Difficulty
 - Fishing loot | DONE (partial rows) | fishing.rs — 85/10/5, Lure -5s/level, 4/7/10 rows | base_roll_matches_the_wiki_percentages | w/Fishing
 - Mob-kill XP | DONE | MOB_DATA xp + XpOrbSystem | phase_e1_split_xp_matches_the_vanilla_ladder | w/Experience

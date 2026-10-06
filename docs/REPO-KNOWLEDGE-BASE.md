@@ -25,9 +25,11 @@ the 1.16.5-era block game. The parity target: the 1.16.5 mechanics set (the
 simulation constants, the block behaviors, the mob AI, the recipes — every
 constant carries a live-verified citation from the reference wiki, read as
 raw wikitext through the MediaWiki API). Every asset (textures, sounds,
-font) is procedurally synthesized IN-PROJECT from measured values — zero
-third-party material, the binding legal policy in
-docs/LEGAL-COMPLIANCE.md.
+font) is procedurally synthesized IN-PROJECT from measured values — no
+Mojang material, the binding legal policy in docs/LEGAL-COMPLIANCE.md.
+(Corrected 2026-10-06: the ACTIVE font is Monocraft, IdreesInc, SIL OFL 1.1,
+shipped with its licence; Voxelfont is the in-repo original spare. The old
+“zero third-party material” wording was inaccurate.)
 
 The numbers (current):
 - 14 `vc-*` crates + the `voxelcraft` app — ~145,000 lines of Rust.
@@ -697,7 +699,8 @@ The 6 gates (all must be green — nothing is done until they are):
 1. The legal audit (the trademark scanner) — every push.
 2. cargo fmt --check (rustfmt 1.9.0).
 3. cargo test --release --no-default-features --workspace (14 libraries +
-   the app; ~200 tests: the parity/roundtrip/census/E2E-sim suites).
+   the app; 911 unit tests: the parity/roundtrip/census/E2E-sim suites,
+   counted 2026-10-06 — the old “~200” figure predated the later rounds).
 4. The wasm32 check (the headless-safe subset — --no-run, honestly named
    compile-check).
 5. cargo clippy -- -D warnings (ALSA headers on the full-audio leg).
@@ -843,7 +846,7 @@ legacy alias).
   2026-10-05 directive: the project is in the BUILDING stage, not
   production; all 3 releases (v0.2.0/v0.3.0/v0.4.0) and their tags were
   DELETED (the releases' binaries/assets removed from GitHub; the tags
-  pushed down). The README finalized (897 tests, the 66-mob roster, the
+  pushed down). The README finalized (the 66-mob roster, the
   32 effects, the new systems); the final E2E tour was verified on the
   release-asset binary (FKEYS margin 825 + beds/fluids VERDICT OK — the
   same code the tree carries). The tag/release step is DEFERRED to

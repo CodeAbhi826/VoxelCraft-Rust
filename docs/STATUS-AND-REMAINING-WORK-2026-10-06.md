@@ -34,7 +34,7 @@ Everything below should be read against those two.
 |---|---|---|
 | Rust lines | **149,975** | `Verified` (wc -l, excl. target) |
 | Crates | **15** (14 `vc-*` + `voxelcraft`) | `Verified` |
-| Tests (CI) | **909 passed, 0 failed, 2 ignored** | `Tested` — [run 37414947052](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/runs/37414947052) |
+| Tests (CI) | **909 passed, 0 failed, 2 ignored** | `Tested` — [run 37419355553](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/runs/37419355553) at `614c877`, the current HEAD; 6/6 gates green |
 | CI gates | **6, all green** | `Tested` |
 | `BLOCK_COUNT` | **539** | `Tested` — asserted `blocks.rs:13723, 14694` |
 | `STATE_COUNT` | **892** | `Tested` — asserted `blocks.rs:14695` |
@@ -356,7 +356,9 @@ the rule working, not the rule being ignored.
    so its process rules are less completely documented here than the established voxel engine.
 5. **Unknown: the reference ZIP contents.** With the reading analyzer deleted,
    what the corpus actually held cannot be established.
-6. **CI numbers are for `bcc47ff` only.** `game.rs` behaviour under real play is untested here.
+6. **CI is green at the current HEAD** — run 37419355553 at `614c877`, 909 passed /
+   0 failed / 2 ignored, 6/6 gates. `game.rs` behaviour under *real play* is
+   still untested here: no gate launches the engine on a display.
 ---
 
 ## 8. Four-dimension audit of this session's work (Phase 0 FIX batch)

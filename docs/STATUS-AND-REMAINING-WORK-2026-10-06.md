@@ -359,9 +359,12 @@ the rule working, not the rule being ignored.
    so its process rules are less completely documented here than the established voxel engine.
 5. **Unknown: the reference ZIP contents.** With the reading analyzer deleted,
    what the corpus actually held cannot be established.
-6. **CI is green at the current HEAD** — run 37419355553 at `614c877`, 909 passed /
-   0 failed / 2 ignored, 6/6 gates. `game.rs` behaviour under *real play* is
-   still untested here: no gate launches the engine on a display.
+6. **CI is green at the report's content** — run 37429816472 (all six gates
+   success) covers this report's claims; the runtime caveat in the old
+   version of this item was wrong and is retracted in §9.1: in-engine E2E
+   runs under Xvfb+Vulkan on this branch (CI) AND locally on real hardware
+   (§9.1a). Remaining real limit: no *interactive human* session has been
+   played; every automated scenario passes.
 ---
 
 ## 8. Four-dimension audit of this session's work (Phase 0 FIX batch)

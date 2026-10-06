@@ -7558,7 +7558,7 @@ impl GameApp {
                 p,
                 if outcome.critical { " CRIT" } else { "" },
                 outcome.damage,
-                kind.name()
+                kind.display_name()
             ));
         }
         // every swing resets the recovery clock (weak spam allowed —
@@ -18027,7 +18027,7 @@ impl GameApp {
                             }
                             vc_render::render::report_boot_log(&format!(
                                 "e2e: spawned {spawned} x {} (alive {})",
-                                kind.name(),
+                                kind.display_name(),
                                 self.sim.mobs.len()
                             ));
                         }
@@ -20203,7 +20203,7 @@ impl GameApp {
                                 );
                                 vc_render::render::report_boot_log(&format!(
                                     "e2e: spawn egg → {} at {sx},{sy},{sz}",
-                                    kind.name()
+                                    kind.display_name()
                                 ));
                             }
                         }

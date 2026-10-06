@@ -625,6 +625,82 @@ impl MobKind {
         self.name()
     }
 
+    /// Human display name — the ONE mob name table (1A.7, the lang-key
+    /// precursor: Phase 12's lang layer will read from here; internal ids
+    /// and [`MobKind::name`]/[`MobKind::registry_id`] are unchanged).
+    /// Invariant (unit-tested): snake_case of the display name equals the
+    /// registry id, so the two tables cannot drift apart.
+    pub fn display_name(self) -> &'static str {
+        match self {
+            MobKind::Zombie => "Zombie",
+            MobKind::Skeleton => "Skeleton",
+            MobKind::Creeper => "Creeper",
+            MobKind::Spider => "Spider",
+            MobKind::Enderman => "Enderman",
+            MobKind::Cow => "Cow",
+            MobKind::Pig => "Pig",
+            MobKind::Sheep => "Sheep",
+            MobKind::Chicken => "Chicken",
+            MobKind::SnowGolem => "Snow Golem",
+            MobKind::MagmaCube => "Magma Cube",
+            MobKind::Blaze => "Blaze",
+            MobKind::Ocelot => "Ocelot",
+            MobKind::IronGolem => "Iron Golem",
+            MobKind::ZombieVillager => "Zombie Villager",
+            MobKind::Mooshroom => "Mooshroom",
+            MobKind::WitherSkeleton => "Wither Skeleton",
+            MobKind::Witch => "Witch",
+            MobKind::Bat => "Bat",
+            MobKind::Horse => "Horse",
+            MobKind::Donkey => "Donkey",
+            MobKind::Mule => "Mule",
+            MobKind::Rabbit => "Rabbit",
+            MobKind::PolarBear => "Polar Bear",
+            MobKind::Stray => "Stray",
+            MobKind::Husk => "Husk",
+            MobKind::Llama => "Llama",
+            MobKind::Vindicator => "Vindicator",
+            MobKind::Evoker => "Evoker",
+            MobKind::Vex => "Vex",
+            MobKind::Parrot => "Parrot",
+            MobKind::Illusioner => "Illusioner",
+            MobKind::Drowned => "Drowned",
+            MobKind::Phantom => "Phantom",
+            MobKind::Dolphin => "Dolphin",
+            MobKind::Cod => "Cod",
+            MobKind::Salmon => "Salmon",
+            MobKind::Pufferfish => "Pufferfish",
+            MobKind::TropicalFish => "Tropical Fish",
+            MobKind::Turtle => "Turtle",
+            MobKind::Fox => "Fox",
+            MobKind::Bee => "Bee",
+            MobKind::Strider => "Strider",
+            MobKind::Piglin => "Piglin",
+            MobKind::Hoglin => "Hoglin",
+            MobKind::Ghast => "Ghast",
+            MobKind::CaveSpider => "Cave Spider",
+            MobKind::Silverfish => "Silverfish",
+            MobKind::Squid => "Squid",
+            MobKind::ZombifiedPiglin => "Zombified Piglin",
+            MobKind::Cat => "Cat",
+            MobKind::Wolf => "Wolf",
+            MobKind::Slime => "Slime",
+            MobKind::Panda => "Panda",
+            MobKind::Guardian => "Guardian",
+            MobKind::ElderGuardian => "Elder Guardian",
+            MobKind::Endermite => "Endermite",
+            MobKind::Shulker => "Shulker",
+            MobKind::Pillager => "Pillager",
+            MobKind::Ravager => "Ravager",
+            MobKind::WanderingTrader => "Wandering Trader",
+            MobKind::TraderLlama => "Trader Llama",
+            MobKind::PiglinBrute => "Piglin Brute",
+            MobKind::Zoglin => "Zoglin",
+            MobKind::SkeletonHorse => "Skeleton Horse",
+            MobKind::ZombieHorse => "Zombie Horse",
+        }
+    }
+
     pub fn sprite_tile(self) -> u16 {
         match self {
             MobKind::Zombie => TILE_ZOMBIE,
@@ -7173,6 +7249,37 @@ pub fn build_arrow_vertices(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 1A.7: the display-name table is the lang-key precursor. The
+    /// invariant that keeps the TWO name tables from drifting: snake_case
+    /// of every display name IS the registry id, and every kind has a
+    /// unique, non-empty human name. Coverage is compile-enforced —
+    /// `display_name` is an exhaustive match — so the runtime list here is
+    /// MOB_DATA's 65 kinds plus the one registry kind that is not a
+    /// spawn-table entry (Squid).
+    #[test]
+    fn display_names_snake_case_to_registry_ids_and_are_unique() {
+        let all = MOB_DATA
+            .iter()
+            .map(|d| d.kind)
+            .chain(std::iter::once(MobKind::Squid));
+        let mut seen = std::collections::HashSet::new();
+        let mut n = 0usize;
+        for kind in all {
+            n += 1;
+            let dn = kind.display_name();
+            assert!(!dn.is_empty(), "{kind:?} has an empty display name");
+            let snake = dn.to_lowercase().replace(' ', "_");
+            assert_eq!(
+                kind.registry_id(),
+                format!("voxelcraft:{snake}"),
+                "{kind:?}: display name {dn:?} and registry id {:?} have drifted",
+                kind.registry_id()
+            );
+            assert!(seen.insert(dn), "duplicate display name {dn:?}");
+        }
+        assert_eq!(n, 66, "all 66 kinds must be visited");
+    }
 
     /// The bed bracket's monster-gate table (VERIFIED w/Bed §Sleeping,
     /// live 2026-09-22 — the wiki's JE prevent-sleep table filtered to

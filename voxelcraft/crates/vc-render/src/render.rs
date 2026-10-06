@@ -2145,10 +2145,7 @@ impl Renderer {
     /// a missing adapter or a rejected device request is an environment
     /// problem the player can act on (different driver, headless box), not
     /// a bug. The message is already routed to the boot-error channel.
-    pub async fn new(
-        window: &'static winit::window::Window,
-        atlas: &[u8],
-    ) -> Result<Self, String> {
+    pub async fn new(window: &'static winit::window::Window, atlas: &[u8]) -> Result<Self, String> {
         // Backend selection: probe for a *working* WebGPU adapter first,
         // mirroring EXACTLY the requestAdapter() options wgpu will use.
         // (navigator.gpu existing is not enough — headless Chromium exposes
@@ -2182,8 +2179,8 @@ impl Renderer {
         {
             Some(a) => a,
             None => {
-                let msg = "no suitable GPU adapter (WebGPU and WebGL2 both unavailable)"
-                    .to_string();
+                let msg =
+                    "no suitable GPU adapter (WebGPU and WebGL2 both unavailable)".to_string();
                 report_boot_error(&msg);
                 return Err(msg);
             }
@@ -2232,9 +2229,8 @@ impl Renderer {
                 {
                     Ok(dq) => dq,
                     Err(second_err) => {
-                        let msg = format!(
-                            "GPU device request failed: {first_err:?} / {second_err:?}"
-                        );
+                        let msg =
+                            format!("GPU device request failed: {first_err:?} / {second_err:?}");
                         report_boot_error(&msg);
                         return Err(msg);
                     }

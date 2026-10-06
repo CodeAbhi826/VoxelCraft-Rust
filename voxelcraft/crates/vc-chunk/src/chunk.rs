@@ -535,7 +535,12 @@ mod tests {
         c.set(3, 40, 5, 101);
         c.set(12, 40, 9, 102);
         c.set(0, 200, 15, 103); // y in the top section
-        for (x, y, z) in [(3usize, 40usize, 5usize), (12, 40, 9), (0, 200, 15), (7, 0, 7)] {
+        for (x, y, z) in [
+            (3usize, 40usize, 5usize),
+            (12, 40, 9),
+            (0, 200, 15),
+            (7, 0, 7),
+        ] {
             assert_eq!(
                 c.get(x, y, z),
                 c.get_local(LocalXZ::new(x, z), y),

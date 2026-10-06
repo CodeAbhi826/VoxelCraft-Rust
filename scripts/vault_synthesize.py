@@ -6,7 +6,7 @@ Usage: python3 scripts/vault_synthesize.py [--only NAME_SUBSTR]
 
 Output tree (NOT referenced by the engine — a library for future
 versions, per the owner's directive):
-  voxelcraft/assets-vault/assets/the reference game/textures/**.png (+ .mcmeta)
+  voxelcraft/assets-vault/textures/**.png (+ .mcmeta)
 
 Clean-room chain: spec (measurements) + procedural rules -> pixels.
 The reference zip is never read here.
@@ -24,7 +24,10 @@ import vault_synth_special as X
 from voxel_synth_shim import Pal, canvas, fill, disc, rng_for, fbm
 
 SPEC = os.path.join(_ROOT, "voxelcraft/assets-vault/spec/spec.json")
-OUT_ROOT = os.path.join(_ROOT, "voxelcraft/assets-vault/assets/the reference game/textures")
+# 2026-10-06: this pointed at a path that does not exist, so running the
+# synthesizer wrote a fresh bogus tree instead of updating the vault that
+# build.rs and the engine actually read.
+OUT_ROOT = os.path.join(_ROOT, "voxelcraft/assets-vault/textures")
 
 # ------------------------------------------------------------------ font pages
 def synth_font_page(rec, name):

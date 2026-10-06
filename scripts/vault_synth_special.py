@@ -76,31 +76,33 @@ def gen_fictional_page(rec, name):
 
 # ------------------------------------------------------------------ colormap
 def gen_colormap(rec, name):
+    """Clean-room colormap — AGGREGATE FACTS ONLY (L2/L8).
+
+    The only inputs are this texture's measured palette histogram (the
+    top-N colours + fractional coverage) and its dimensions. No pixel
+    position, no mask and no sampled grid from any original image is used:
+    the 7x7 `lut` that was previously sampled straight out of the
+    reference artwork has been REMOVED from the spec. The arrangement
+    below is our own smooth vertical gradient built from the palette's
+    aggregate extremes and mean, plus our own deterministic jitter.
+    """
     w, h = rec["w"], rec["h"]
-    lut = rec.get("lut")
     c = np.zeros((h, w, 4), np.uint8)
-    if not lut:
-        fill_col = rec["pal"][0] if rec["pal"] else [120, 200, 120, 255]
-        c[:] = fill_col
+    if not rec["pal"]:
+        c[:] = (120, 200, 120, 255)
         return c
-    gh, gw = len(lut), len(lut[0])
-    grid = np.array(lut, np.float32)  # (gh, gw, 3)
-    gy = np.linspace(0, gh - 1, h)[:, None].repeat(w, 1)
-    gx = np.linspace(0, gw - 1, w)[None, :].repeat(h, 0)
-    y0 = np.clip(np.floor(gy).astype(int), 0, gh - 2)
-    x0 = np.clip(np.floor(gx).astype(int), 0, gw - 2)
-    fy = (gy - y0)[..., None]
-    fx = (gx - x0)[..., None]
-    a = grid[y0, x0]
-    b = grid[y0, x0 + 1]
-    cc = grid[y0 + 1, x0]
-    dd = grid[y0 + 1, x0 + 1]
-    out = (a * (1 - fy) * (1 - fx) + b * (1 - fy) * fx
-           + cc * fy * (1 - fx) + dd * fy * fx)
-    # subtle own jitter
+    pal = __import__("voxel_synth_shim", fromlist=["Pal"]).Pal(
+        rec["pal"], rec["pc"], name)
+    top = np.array(pal.rgba(pal.extreme(True))[:3], np.float32)[None, :]
+    bot = np.array(pal.rgba(pal.extreme(False))[:3], np.float32)[None, :]
+    mean = np.array(pal.rgba(pal.mid())[:3], np.float32)[None, :]
+    t = np.linspace(0.0, 1.0, h, dtype=np.float32)[:, None]
+    grad = top * (1.0 - t) + bot * t
+    # our own shaping: ease the midpoint toward the measured mean colour
+    grad = grad + (mean - grad) * (0.35 * np.sin(np.pi * t))
+    out = np.repeat(grad[:, None, :], w, axis=1)
     jitter = np.random.default_rng(1234).integers(-2, 3, size=(h, w, 3))
-    out = np.clip(out + jitter, 0, 255).astype(np.uint8)
-    c[..., :3] = out
+    c[..., :3] = np.clip(out + jitter, 0, 255).astype(np.uint8)
     c[..., 3] = 255
     return c
 

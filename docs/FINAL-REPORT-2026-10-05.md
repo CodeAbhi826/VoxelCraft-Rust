@@ -9,13 +9,13 @@
 **NO RELEASES** — the owner's 2026-10-05 directive: the project is in the
 BUILDING stage, not production; the v0.4.0 release and the v0.2.0/v0.3.0
 releases were DELETED (the GitHub Releases + the tags removed). The
-build-state is the deliverable: the CI-verified tree (911 unit tests green,
+build-state is the deliverable: the CI-verified tree (909 unit tests pass, 0 fail, 2 ignored,
 the 6 gates) + the CI-built binaries verified via the artifact route
 under Xvfb. The tag/release step is DEFERRED to production (the recipe:
 the version bump + the tag push — recorded in the worklog).
 
 **The headline numbers (all gate-verified):**
-- **911 unit tests, green in CI** — `cargo test --release --no-default-features
+- **909 unit tests pass, 0 fail, 2 ignored in CI** (run 37414381192 at f70c56d) — `cargo test --release --no-default-features
   --workspace`, plus the wasm32 compile-check, clippy clean (0 warnings),
   cargo fmt, the legal audit (the trademark scanner), and the headless
   bench — all 6 gates green on every push.

@@ -11,10 +11,11 @@ One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browse
 [![Releases](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/release.yml/badge.svg)](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/release.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-**911 unit tests* · clippy clean (0 warnings) · WGSL validated · E2E-screenshot verified**
+**909 unit tests pass* · clippy clean (0 warnings) · WGSL validated · E2E-screenshot verified**
 
-\* `#[test]` attribute count across `voxelcraft/crates`, counted 2026-10-06. The
-pass/fail number comes from the Actions run, not from this line.
+\* Actual CI result at commit f70c56d: **909 passed, 0 failed, 2 ignored**
+(Actions run 37414381192). The `#[test]` attribute count is 911 — the 2-test
+gap is the ignored ones.
 
 </div>
 
@@ -177,7 +178,7 @@ CI does exactly this on every engine change and commits the bundle back to `publ
 
 ## Verification
 
-- **911 unit tests, all green in CI** (`cargo test --release --no-default-features --workspace`, plus the `bench-bin`-featured CI gate at 80/80) — 911 is the `#[test]` attribute count measured 2026-10-06; the green claim is the Actions result at that commit — including WGSL parse+validation of every shader via naga, drift-guard tests for every historical bug fix (texture-seam quartet, flat water, FSR identity-at-1×, …), and per-subsystem constant checks against the wiki values
+- **909 unit tests pass, 0 fail, 2 ignored in CI** (`cargo test --release --no-default-features --workspace`, plus the `bench-bin`-featured CI gate at 80/80) — measured from the Actions log at f70c56d (run 37414381192), not from an attribute count — including WGSL parse+validation of every shader via naga, drift-guard tests for every historical bug fix (texture-seam quartet, flat water, FSR identity-at-1×, …), and per-subsystem constant checks against the wiki values
 - **clippy: 0 warnings** across the workspace, all targets
 - **CI on every push**: native tests, wasm32 compile-check, headless benchmark, single-file Linux build, wasm bundle rebuild
 - **E2E screenshot verification** of the live bundle: boot → title → world create → gameplay → F3/inventory/pause (the screenshots above are those captures)

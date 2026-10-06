@@ -699,8 +699,8 @@ The 6 gates (all must be green — nothing is done until they are):
 1. The legal audit (the trademark scanner) — every push.
 2. cargo fmt --check (rustfmt 1.9.0).
 3. cargo test --release --no-default-features --workspace (14 libraries +
-   the app; 911 unit tests: the parity/roundtrip/census/E2E-sim suites,
-   counted 2026-10-06 — the old “~200” figure predated the later rounds).
+   the app; 909 unit tests pass, 0 fail, 2 ignored (Actions run
+   37414381192 at f70c56d): the parity/roundtrip/census/E2E-sim suites — the old “~200” figure predated the later rounds).
 4. The wasm32 check (the headless-safe subset — --no-run, honestly named
    compile-check).
 5. cargo clippy -- -D warnings (ALSA headers on the full-audio leg).

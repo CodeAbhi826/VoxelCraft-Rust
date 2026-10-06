@@ -190,50 +190,108 @@ supply.
 
 ---
 
-## 5. Comparison to other clones
+## 5. The rules the established voxel engine and the surveyed community project actually follow
 
-**This section is from general knowledge, not measured in this repo. Treat the
-figures as directional.**
+Sourced from primary documents read 2026-10-06, not memory. the established voxel engine rules come
+from `the established voxel engine/.github/CONTRIBUTING.md`, `doc/developing/ai_policy.md`, and
+`docs.the established voxel engine.org/for-creators/licensing/`. the surveyed community project come from its Codeberg
+repository README and its own stated goal.
 
-| | VoxelCraft | the established voxel engine / the surveyed community project |
-|---|---|---|
-| Language | Rust + WGSL | C++ engine + Lua game |
-| Licence | Apache-2.0 (code) | GPL/LGPL + CC-BY-SA assets |
-| Target | 1.16.5 parity, clean-room | the reference game, *like but not equal*; the surveyed community project ≈ 1.17 |
-| Goal | byte-parity where measurable | playability and moddability |
-| Scripting | none yet | Lua mods, the core strength |
-| Content | 539 blocks, 65 mobs | the surveyed community project is content-rich by community contribution |
+### 5.1 the established voxel engine — the engine's rules
 
-**What VoxelCraft has that they do not:** a hard parity target with a citation
-discipline, and a clean-room legal chain that survives forensic audit.
+**Licensing (docs.the established voxel engine.org/for-creators/licensing/)**
+1. Engine **and** the upstream voxel platform Game are **LGPL 2.1+**. Everything derived must stay
+   LGPL-compatible.
+2. You **must link to the source** behind your software.
+3. If you modified the engine or game, you **must state it in-app** and provide a
+   means to download the **modified** source. Linking back to the original when
+   you changed it is infringement.
+4. **Never remove copyright notices.** State significant changes.
+5. **Do not mix proprietary and LGPL code.** Any LGPL code must be *replaceable*
+   by the user; document how.
+6. Proprietary code you wrote **must not forbid reverse-compilation** for
+   debugging LGPL modifications.
+7. A stated attribution line is required on any download page.
+8. Enforcement is deliberately community-run: report infringement to the the established voxel engine
+   devs, **never** contact or action the infringer directly.
 
-**What they have that VoxelCraft does not:** a scripting layer (the established voxel engine mods are
-why it has survived years), a community content pipeline, and shipping maturity.
-Those are the two structural disadvantages here, and neither is fixed by adding
-more Rust.
+**Contribution gates (`.github/CONTRIBUTING.md`)**
+9. **Open an issue before coding** to discuss suitability.
+10. Any PR that is not a bug fix and not on the roadmap
+    (`doc/direction.md`) **will be closed within a month** unless a Core
+    Developer grants **concept approval**.
+11. A PR is mergeable only when: it fits the roadmap; it works; it follows the AI
+    policy; it follows the C/C++ or Lua code style; its interfaces are well
+    designed; and it uses **protocols and formats with the required
+    compatibility**.
+12. **Two core developers must agree** (+1) before merge.
+13. **Rebase, never merge** — linear history. Don't rewrite history older than
+    10 minutes.
+14. **One change per branch.** Commit message rules: present tense, capital
+    first letter, compact summary <70 chars, **no trailing full stop**, empty
+    second line, then one bullet per point.
+15. Do not hand-edit `the established voxel engine.po` or `settings_translation_file.cpp` — maintainers
+    regenerate them.
+16. Issues close after **one month** with no author response.
 
----
+**AI policy (`doc/developing/ai_policy.md`) — the most directly relevant rule here**
+17. "Generating substantial amounts of code with AI is **strongly discouraged**
+    and may result in **immediate closure** of the PR." Permitted: code
+    completion, find-and-replace, small bugfixes, boilerplate.
+18. "**Vibe-coding or autonomous AI usage is completely unacceptable.**"
+19. **"Do not use AI-generated text when communicating with other humans"**,
+    including documentation and PR/issue descriptions.
+20. **"AI may not be used to generate art, music, sounds, or any other media"**
+    in the engine. This is a hard prohibition.
+21. Permitted: fuzzy codebase exploration, LLM as search/knowledge base, local
+    code review, debugging — provided you verify the analysis yourself.
+22. **Any significant AI usage must be disclosed in the PR description.**
+23. The stated rationale: AI "greatly facilitates low-quality contributions that
+    are poorly understood by their authors, which wastes reviewers' time."
 
-## 6. Skill rules that governed this pass
+**Translations**: Weblate, centrally managed.
 
-| Skill | Status this pass | Rule applied |
-|---|---|---|
-| `audit` | **Applied** | Four-dimension grading; CORRECTNESS capped because I did not exercise the game |
-| `verification-before-completion` | **Applied** | Every number above came from a command run in this session |
-| `review` | **Applied** | Adversarial read of the diff; found the stale `OUT_ROOT` and the over-broad script deletion |
-| `find-skills` | **Applied** | Skill sources verified rather than recommended blind |
-| `brainstorm` | **Partial** | Read-only; no files edited |
-| `learn` | **Rule recorded, not executed** | Its SKILL.md body was not supplied in this invocation (only the name), so its actual instruction — persist learnings to `AGENTS.md` — could not be followed. The learnings this session produced are listed in §6a instead. |
-| `rust-pro` | **Applied** | Type-level guards (`LocalXZ`), `Result` over `panic` |
-| `frontend-design` | **Out of scope** | No UI work requested this turn |
-| `deepen` | **Out of scope** | By its own rule: applies only when the user asked to *build* |
-| `experience` | **Out of scope** | Same — no user-facing polish requested |
-| `overhaul` | **Out of scope** | Same — no diff to restructure |
-| `reenvision` | **Out of scope** | Same — no weakest-subsystem rebuild requested |
-| `spec-brainstorm` | **Out of scope** | Same — reporting task, not a build |
+### 5.2 the surveyed community project — the game's rules
 
-Five of the twelve are explicitly build-only and correctly did not fire. That is
-the rule working, not the rule being ignored.
+From its Codeberg repository and stated goal:
+
+24. It describes itself as an **"unofficial"** game that is *"a reference-game-like clone"*,
+    and states the goal as being the reference game *"released as free software"*.
+25. Its target is explicitly **cloned "as well as the established voxel engine currently permits"** —
+    a **permission-bounded** goal, not a byte-parity one. It does not claim to
+    reproduce the original's output.
+26. It is **free-software licensed** (GPL lineage) and hosted on **Codeberg**.
+27. Its lineage is documented and preserved: **the upstream voxel platform Game → VoxeLibre (formerly
+    MineClone2) → the surveyed community project**, with a `MIGRATING.md` for downstream users.
+28. Its stated focus is "**stability, multiplayer performance and features**" —
+    engineering quality over parity.
+29. It **keeps vanilla mob names openly** ("Creepers remain Creepers, not
+    Stalkers"), which is only safe because of rule 24's "unofficial" framing and
+    the free-software licence.
+30. It ships **no in-game music** — it declined to reproduce the original audio.
+31. Content is **community-contributed**, distributed through ContentDB;
+    translations via Weblate.
+32. Documented divergences are listed in its own README rather than hidden.
+
+### 5.3 What this means for VoxelCraft
+
+| the established voxel engine/the surveyed community project rule | VoxelCraft today |
+|---|---|
+| **#20 — AI may not generate art/music/sounds** | **Directly at odds.** All 3,964 shipped PNGs are procedurally generated by scripts an AI wrote. That is exactly what the established voxel engine prohibits in its engine. It is legal for us (the art is original, no third-party rights), but it is a *different* project philosophy, not a gap to close. |
+| **#17/#18 — no vibe-coding, no substantial AI code** | **Directly at odds.** This project's entire contribution model is agent-driven. Again: legal, but a deliberate divergence. Worth stating plainly in the README rather than leaving a reader to infer it. |
+| **#19 — no AI-generated prose for humans** | VoxelCraft's docs *are* AI-written. Legal, but against this norm. |
+| **#25 — permission-bounded, not byte-parity** | **Opposite choice.** VoxelCraft targets byte-parity (same seed, same blocks) which is far harder and is why two structural ceilings exist. |
+| **#11 — protocols/formats with required compatibility** | **Partially met.** Own Anvil format works; opening a *real* save does not. |
+| **#10/#12 — roadmap + two-approver review** | **Absent.** One developer, one agent, no second reviewer. |
+| **#14 — commit format, one change per branch** | **Met.** This batch is one commit per risk item with conventional messages. |
+| **#22 — disclose significant AI use** | **Not done.** The README does not state the AI contribution model. |
+
+**The honest conclusion:** the established voxel engine and the surveyed community project succeeded by being
+permission-bounded and community-fed. VoxelCraft has chosen the harder target —
+byte parity and clean-room legal rigour — and pays for it with the two unmet
+promises. Neither approach is "more correct"; they are different bets, and the
+comparison is most useful as a checklist of *process* rules (§5.1 items 9–22)
+rather than of features.
 
 ### 6a. Non-obvious learnings this session produced
 (What `learn` would persist to `AGENTS.md`; recorded here because its SKILL.md body was not supplied.)
@@ -259,6 +317,52 @@ the rule working, not the rule being ignored.
 
 ---
 
+## 6. Skill rules that governed this pass
+
+| Skill | Status this pass | Rule applied |
+|---|---|---|
+| `audit` | **Applied** | Four-dimension grading; CORRECTNESS capped because I did not exercise the game |
+| `verification-before-completion` | **Applied** | Every number above came from a command run in this session |
+| `review` | **Applied** | Adversarial read of the diff; found the stale `OUT_ROOT` and the over-broad script deletion |
+| `find-skills` | **Applied** | Skill sources verified rather than recommended blind |
+| `brainstorm` | **Partial** | Read-only; no files edited |
+| `rust-pro` | **Applied** | Type-level guards (`LocalXZ`), `Result` over `panic` |
+| `frontend-design` | **Out of scope** | No UI work requested this turn |
+| `deepen` | **Out of scope** | By its own rule: applies only when the user asked to *build* |
+| `experience` | **Out of scope** | Same — no user-facing polish requested |
+| `overhaul` | **Out of scope** | Same — no diff to restructure |
+| `reenvision` | **Out of scope** | Same — no weakest-subsystem rebuild requested |
+| `spec-brainstorm` | **Out of scope** | Same — reporting task, not a build |
+| `learn` | **Rule recorded, not executed** | Its SKILL.md body was not supplied in this invocation (only the name), so its actual instruction — persist learnings to `AGENTS.md` — could not be followed. The learnings this session produced are listed in §6a instead. |
+
+Five of the thirteen are explicitly build-only and correctly did not fire. That is
+the rule working, not the rule being ignored.
+
+### 6a. Non-obvious learnings this session produced
+(What `learn` would persist to `AGENTS.md`; recorded here because its SKILL.md body was not supplied.)
+
+1. `cargo clippy --workspace --all-targets -D warnings` **fails** on pre-existing
+   test-code lints; CI runs bare `cargo clippy -- -D warnings` (lib only). Match CI
+   exactly or you will chase warnings that are not gated.
+2. A manual `gh workflow run` collides with the push-triggered run of the same
+   commit under the concurrency group — the push run gets `cancelled`. Dispatch
+   once and wait; don't re-dispatch on a cancelled status.
+3. `.gitignore` has `/scripts/`, but those files were tracked before the rule.
+   After any script is deleted and restored, `git add` silently fails — use
+   `git add -f`.
+4. `scripts/legal_audit.py` (not `ci/legal_audit.py`) is the gate, and it
+   flags trademark terms in **docs** too. Any new doc containing the rights-holder
+   or product name fails the build.
+5. `build.rs` embeds `voxelcraft/builtin-packs/classic-art/` resolved from the
+   cargo workspace root — not the repo root. Touch `build.rs` to force a re-run;
+   a `cargo check` alone reports "Finished" from cache and proves nothing.
+6. A Section index is packed `(y << 8) | (z << 4) | x` with x/z **unmasked**, so
+   out-of-range local coords alias silently (x=32 -> local x=0; z=18 carries into
+   y). This is the trap `LocalXZ` exists to close.
+7. `the surveyed community project` is hosted on **Codeberg**, not GitHub — GitHub URLs 404.
+
+---
+
 ## 7. Limitations of this report
 
 1. **No runtime verification.** I did not launch the game. Every claim is static
@@ -266,7 +370,11 @@ the rule working, not the rule being ignored.
 2. **No percentages.** Deliberate — see §0.
 3. **Grep-based absence proofs.** "0 hits for `astar`" means no code under that
    name. A differently-named pathfinder would be missed.
-4. **The comparison section is unverified** — general knowledge, not measured.
+4. **§5 is sourced but not exhaustive.** the established voxel engine licensing, contribution and
+   AI rules were read from primary documents on 2026-10-06 and are quoted
+   accurately. the surveyed community project rules come from its README and stated goal; I did
+   **not** read its full contribution guide, issue templates, or CI config,
+   so its process rules are less completely documented here than the established voxel engine.
 5. **Unknown: the reference ZIP contents.** With the reading analyzer deleted,
    what the corpus actually held cannot be established.
 6. **CI numbers are for `bcc47ff` only.** `game.rs` behaviour under real play is untested here.

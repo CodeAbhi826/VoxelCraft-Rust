@@ -141,13 +141,35 @@ pub fn explosion_drop_chance(power: f32, tnt: bool) -> f32 {
     }
 }
 
-/// Player melee damage for a held item. Fists (or any non-weapon block —
-/// we have no sword items yet) are VERIFIED vanilla "Other Items": 1 HP
-/// base at attack speed 4.0.
+/// The melee profile of whatever the player is holding, as
+/// `(damage HP, attack_speed attribute)`.
+///
+/// VANILLA: the held *item* decides both numbers — a wooden sword is 4 HP at
+/// attack speed 1.6, a diamond axe 7 HP at 1.0, a netherite sword 8 HP at
+/// 1.6, and anything else is "Other Items" at 1 HP / 4.0.
+///
+/// Phase 0: the engine has no tool ITEMS yet — `held_block` is a *block* id
+/// from `player.held()`, and no block id is a weapon — so every block
+/// resolves to FIST. The argument is matched explicitly rather than
+/// discarded, so the tool arms are the one place to extend when Phase 6 adds
+/// items; before this, the parameter was dropped with `let _ =` and any
+/// caller passing anything at all silently got the same 1.0 HP.
 #[inline]
 pub fn held_attack(held_block: u16) -> (f32, f32) {
-    let _ = held_block; // swords arrive with tool items; fists until then
-    (1.0, 4.0) // (damage HP, attack_speed attribute)
+    melee_profile(held_block)
+}
+
+/// Phase 6: the single table that turns a held item into vanilla's two
+/// melee numbers. Exhaustive today because no block is a weapon.
+#[inline]
+fn melee_profile(held_block: u16) -> (f32, f32) {
+    // VERIFIED w/Item §Attack damage: "Other Items" = 1 damage, and the
+    // attack-speed attribute for a bare hand is 4.0 (2.5 ticks of cooldown
+    // is applied separately by the caller).
+    match held_block {
+        // no weapon blocks exist — every held block is a fist hit
+        _ => (1.0, 4.0),
+    }
 }
 
 /// One melee hit resolution (player → mob), all modifiers applied.
@@ -264,7 +286,31 @@ mod tests {
         // zombie natural armor 2: 1 HP → max(0.4, 2−0.5) = 1.5 pts
         // → 1 × (1 − 0.06) = 0.94
         let o = player_melee(0, 1.0, false, false, 2.0, 0.0);
+
         assert!((o.damage - 0.94).abs() < 1e-4);
+    }
+
+    // Phase 0: held_attack must CONSUME its argument, not drop it. These pin
+    // the contract so a future tool table cannot be added silently-wrong.
+    #[test]
+    fn held_attack_is_fists_for_every_block_and_never_panics() {
+        // a real block id, the max block id, and an id past the end of the
+        // registry: all must resolve, none may panic or index.
+        for id in [0u16, 1, 539, u16::MAX] {
+            let (dmg, spd) = held_attack(id);
+            assert_eq!(dmg, 1.0, "id {id} should be a 1.0 HP fist hit");
+            assert_eq!(spd, 4.0, "id {id} should have attack speed 4.0");
+        }
+    }
+
+    #[test]
+    fn player_melee_reads_its_damage_from_held_attack() {
+        // the two must never disagree about what is being held
+        for id in [0u16, 7, 539] {
+            let (dmg, _) = held_attack(id);
+            let o = player_melee(id, 1.0, false, false, 0.0, 0.0);
+            assert_eq!(o.damage, dmg, "id {id}: player_melee must use held_attack");
+        }
     }
 
     #[test]

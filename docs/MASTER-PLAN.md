@@ -194,3 +194,38 @@ per-vertex AO, culling). Round M-class audits fold into H/F/O as encountered:
 occlusion/entity culling, Starlight-class light queue, Lithium-class tick
 batching, FerriteCore-class blockstate dedup — each ends "already optimal"
 or gets fixed, bench-guardrailed.
+
+---
+
+# Part IV — Phase 2B: pack compatibility completeness (added 2026-10-06)
+
+**Status: NOT STARTED. Folded into the plan only — no work begun.**
+Owner instruction: plan it, do not start it.
+
+**Principle.** Implement the pack *FORMAT* (paths, UV regions, schemas) from
+public pack-making documentation. Never copy or ship the art. Asset mode
+(per rule L4): (A) built-in original procedural art is the default and the
+only art shipped; (B) optional import from the user's own legitimately owned
+game files at runtime, stored locally, never bundled or committed; (C)
+third-party packs under their own licences, mode C only.
+
+| # | Slice | Depends on | Notes |
+|---|---|---|---|
+| 2B.1 | **Asset-path contract table** — every 1.16.5 resource path we read (`textures/block\|item\|entity\|gui\|environment\|colormap\|particle\|painting\|misc`, `font`, `models`, `blockstates`, `sounds.json`, `lang`, `pack.mcmeta`, `pack.png`): expected size, UV region / atlas layout, fallback, and our mode A replacement. **One public citation per row.** | — | Documentation-first; the table is the contract every later slice tests against. |
+| 2B.2 | **GUI/HUD** — widgets, icons, hotbar, hearts/hunger/armor/bubbles/XP, boss bars, crosshair, container backgrounds, tooltips, advancement frames, recipe book, button states, GUI scale. Pack textures at vanilla coordinates must render correctly; built-in art uses the same coordinates. | 2B.1 | Round B (menu vision audit) work is parked and unlanded — resolve first. |
+| 2B.3 | **Blocks/items** — atlas stitching, mipmaps, `.mcmeta` animation (frametime, frame order, interpolate, width/height), tintindex + overlay faces for grass/leaves, colormap lookup from packs, model/item overrides, missing-texture behaviour. | 2B.1, Phase 2 (colours) | Our own flat `.mcmeta` fact schema already landed in Phase 0 (176 records, lossless round-trip). |
+| 2B.4 | **Fonts / lang / sounds** — font providers (bitmap, ttf, `legacy_unicode`), lang JSON, `sounds.json` + `.ogg`, pack_format 6 warnings, pack ordering. | 2B.1 | Ships our own original sounds/music; no reference audio. |
+| 2B.5 | **Entities** — player skin layout is **mandatory**. Mob layouts default to our own; the owner decides per mob later. | 2B.1 | Player skins already original-named (nova/cedar/pioneer/ash/maple/sage) — verified in the vault. |
+| 2B.6 | **Optional compat layer (separate toggle)** — OptiFine-*style* properties from public documentation only: connected textures, custom items, custom entity models, random entities, emissive, custom colours, custom sky. Ship with a **Supported / Partial / Unsupported** matrix. | 2B.1–2B.5 | Public docs only. Flag any source that looks derived from decompiled code and ask first. |
+| 2B.7 | **Shader packs** — staged: composite/final, then shadow, then gbuffers. Uniform/define list. GLSL→WGSL errors must be readable. Test 5 packs the owner chooses (kept **outside** the repo). Correctness on CI, **not** fps. | 2B.6 | naga translator already exists; the gap is feature coverage. |
+| 2B.8 | **V1 screenshots per feature; commit only the compat-matrix numbers.** | all | Standing Rule V1: report exactly which images were viewed; never claim visual correctness for an unviewed image. |
+
+**Dependency notes.** 2B.1 blocks everything. 2B.2 should follow the parked
+Round B menu work. 2B.3 needs Phase 2's colour/lightmap placement decided
+first. 2B.7 is the longest pole and depends on the compat layer's feature
+list being stable. Nothing in 2B may ship art; every artifact is a matrix
+cell or a number.
+
+**Legal gate.** Every row of 2B.1's table needs a public citation. Any
+reference-texture input, per-pixel derivation, or bundled third-party pack
+fails rule L2/L6/L7 and `scripts/legal_audit.py`.

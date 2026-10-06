@@ -1,0 +1,1 @@
+{"benchmark":{"frame":{"frames":240,"avg_ms":90.434,"median_ms":92.894,"low1_avg_ms":159.457,"low01_avg_ms":160.638,"p99_ms":152.899,"worst_ms":160.638},"phases":{"frames":240,"phases_ms":{"sim":0.000,"stream":0.000,"results":0.000,"ui":0.000,"draw":90.433}},"draw":{"calls_avg":0,"binds_avg":0,"path":"MDI (multi-draw-indirect)"}}}

@@ -23,8 +23,8 @@ import vault_synth_entity as E
 import vault_synth_special as X
 from voxel_synth_shim import Pal, canvas, fill, disc, rng_for, fbm
 
-SPEC = "/home/z/my-project/voxelcraft/assets-vault/spec/spec.json"
-OUT_ROOT = "/home/z/my-project/voxelcraft/assets-vault/assets/the reference game/textures"
+SPEC = os.path.join(_ROOT, "voxelcraft/assets-vault/spec/spec.json")
+OUT_ROOT = os.path.join(_ROOT, "voxelcraft/assets-vault/assets/the reference game/textures")
 
 # ------------------------------------------------------------------ font pages
 def synth_font_page(rec, name):
@@ -230,7 +230,7 @@ def main():
         print(f"\n{len(errors)} ERRORS:")
         for n, e in errors[:40]:
             print(f"  {n}: {e}")
-        with open("/home/z/my-project/voxelcraft/assets-vault/spec/synth_errors.txt", "w") as f:
+        with open(os.path.join(_ROOT, "voxelcraft/assets-vault/spec/synth_errors.txt"), "w") as f:
             for n, e in errors:
                 f.write(f"{n}: {e}\n")
         sys.exit(1)

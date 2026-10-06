@@ -209,6 +209,46 @@ def audit_reference_identity(reference):
     return fails
 
 
+# --- L2 guard: no script may read a reference archive, point outside the
+# repo, or emit per-pixel data. The reference corpus is off-limits to the
+# public tree; regeneration must run from the committed aggregate spec only.
+_SCRIPT_GUARD_EXEMPT = {"legal_audit.py"}  # the auditor owns the sanctioned --reference flag
+_ARCHIVE_PATTERNS = ("ZipFile", "zipfile.ZipFile", "tarfile.open", "py7zr")
+_PIXELDUMP_PATTERNS = ("np.save(", "np.savez", "numpy.save", ".tofile(",
+                       "frombuffer(", ".npy", ".npz")
+
+
+def audit_reference_scripts():
+    """Fail if any committed script can reach a reference set (L2/L7)."""
+    fails = 0
+    sdir = os.path.join(ROOT, "scripts")
+    if not os.path.isdir(sdir):
+        return 0
+    for fn in sorted(os.listdir(sdir)):
+        if not fn.endswith(".py") or fn in _SCRIPT_GUARD_EXEMPT:
+            continue
+        path = os.path.join(sdir, fn)
+        try:
+            body = open(path, encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        for pat in _ARCHIVE_PATTERNS:
+            if pat in body:
+                print(f"[FAIL] {fn}: opens an archive ({pat!r}) — the reference "
+                      f"corpus must never be reachable from the public tree")
+                fails += 1
+        for pat in _PIXELDUMP_PATTERNS:
+            if pat in body:
+                print(f"[FAIL] {fn}: emits raw per-pixel data ({pat!r}) — the "
+                      f"spec carries aggregate stats only")
+                fails += 1
+        for m in re.finditer(r'["\'](/(?:home|Users|mnt|media)/[^"\']*)["\']', body):
+            print(f"[FAIL] {fn}: hardcoded path outside the repo {m.group(1)!r} — "
+                  f"committed tools must resolve paths relative to __file__")
+            fails += 1
+    return fails
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--reference",
@@ -218,6 +258,7 @@ def main():
 
     fails = audit_terms()
     fails += audit_forbidden_files()
+    fails += audit_reference_scripts()
     if args.reference:
         fails += audit_reference_identity(args.reference)
 
@@ -225,7 +266,7 @@ def main():
         print(f"\n[FAIL] {fails} violation(s) — see above")
         sys.exit(1)
     print("[PASS] legal audit clean: no trademark terms, no forbidden "
-          "files" + (" , zero reference-identity copies"
+          "files, no reference-reading scripts" + (" , zero reference-identity copies"
                      if args.reference else ""))
 
 

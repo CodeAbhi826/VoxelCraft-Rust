@@ -3,11 +3,13 @@
 the removed third-party font), colormaps (functional LUT re-derivation from coarse sampled
 facts), environment (celestial discs, clouds, weather strips), paintings
 (original abstract art), map marks and misc overlays."""
+import os
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from voxel_synth_shim import *  # noqa: F403
 
-FONT_PATH = "/home/z/my-project/voxelcraft/crates/vc-render/assets/the removed third-party font.ttf"
+FONT_PATH = os.path.join(_ROOT, "voxelcraft/crates/vc-render/assets/Monocraft.ttf")
 
 def _glyph_font(size):
     try:

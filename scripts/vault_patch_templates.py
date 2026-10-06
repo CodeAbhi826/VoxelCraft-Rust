@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """vault_patch_templates.py — replace tool/armor template function bodies
 by function-boundary regex (robust to whitespace)."""
+import os
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 import re
 
-P = "/home/z/my-project/scripts/vault_synth_sprites.py"
+P = os.path.join(_ROOT, "scripts/vault_synth_sprites.py")
 src = open(P).read()
 
 TEMPLATES = {}

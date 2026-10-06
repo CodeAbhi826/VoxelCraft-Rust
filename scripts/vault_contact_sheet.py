@@ -2,11 +2,13 @@
 """vault_contact_sheet.py — labeled contact sheets of the VAULT's own
 output (no reference pixels) for visual QA critique. v2: proper fit."""
 import os
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import os
 import numpy as np
 from PIL import Image, ImageDraw
 
-V = "/home/z/my-project/voxelcraft/assets-vault/assets/the reference game/textures"
-OUT = "/home/z/my-project/diag/vault"
+V = os.path.join(_ROOT, "voxelcraft/assets-vault/assets/the reference game/textures")
+OUT = os.path.join(_ROOT, "diag/vault")
 
 def load_tile(path, tile):
     """First frame, fitted into the cell (max 8x upscale)."""

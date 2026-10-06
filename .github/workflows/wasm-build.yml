@@ -14,7 +14,11 @@ name: Build WASM
 
 on:
   push:
-    branches: [main]
+    # 2026-10-06 Phase 0: main-only meant the bundle was never rebuilt for
+    # the test/full-sweep-2026-09-25 branch, so the copy committed under
+    # public/ stayed 10 days stale. Build on both; the artifact is what
+    # actually gets deployed, and it must track whichever branch is live.
+    branches: [main, test/full-sweep-2026-09-25]
     paths:
       - 'voxelcraft/**'
       - '.github/workflows/wasm-build.yml'

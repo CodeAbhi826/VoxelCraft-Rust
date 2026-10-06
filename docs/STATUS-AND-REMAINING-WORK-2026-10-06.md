@@ -223,6 +223,7 @@ more Rust.
 | `review` | **Applied** | Adversarial read of the diff; found the stale `OUT_ROOT` and the over-broad script deletion |
 | `find-skills` | **Applied** | Skill sources verified rather than recommended blind |
 | `brainstorm` | **Partial** | Read-only; no files edited |
+| `learn` | **Rule recorded, not executed** | Its SKILL.md body was not supplied in this invocation (only the name), so its actual instruction — persist learnings to `AGENTS.md` — could not be followed. The learnings this session produced are listed in §6a instead. |
 | `rust-pro` | **Applied** | Type-level guards (`LocalXZ`), `Result` over `panic` |
 | `frontend-design` | **Out of scope** | No UI work requested this turn |
 | `deepen` | **Out of scope** | By its own rule: applies only when the user asked to *build* |
@@ -233,6 +234,28 @@ more Rust.
 
 Five of the twelve are explicitly build-only and correctly did not fire. That is
 the rule working, not the rule being ignored.
+
+### 6a. Non-obvious learnings this session produced
+(What `learn` would persist to `AGENTS.md`; recorded here because its SKILL.md body was not supplied.)
+
+1. `cargo clippy --workspace --all-targets -D warnings` **fails** on pre-existing
+   test-code lints; CI runs bare `cargo clippy -- -D warnings` (lib only). Match CI
+   exactly or you will chase warnings that are not gated.
+2. A manual `gh workflow run` collides with the push-triggered run of the same
+   commit under the concurrency group — the push run gets `cancelled`. Dispatch
+   once and wait; don't re-dispatch on a cancelled status.
+3. `.gitignore` has `/scripts/`, but those files were tracked before the rule.
+   After any script is deleted and restored, `git add` silently fails — use
+   `git add -f`.
+4. `scripts/legal_audit.py` (not `ci/legal_audit.py`) is the gate, and it
+   flags trademark terms in **docs** too. Any new doc containing the rights-holder
+   or product name fails the build.
+5. `build.rs` embeds `voxelcraft/builtin-packs/classic-art/` resolved from the
+   cargo workspace root — not the repo root. Touch `build.rs` to force a re-run;
+   a `cargo check` alone reports "Finished" from cache and proves nothing.
+6. A Section index is packed `(y << 8) | (z << 4) | x` with x/z **unmasked**, so
+   out-of-range local coords alias silently (x=32 -> local x=0; z=18 carries into
+   y). This is the trap `LocalXZ` exists to close.
 
 ---
 

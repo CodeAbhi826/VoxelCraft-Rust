@@ -150,3 +150,6 @@ ingame-test/
 # session test reports and audits (local review records)
 /TEST-REPORT-*.md
 docs/REPO-AUDIT-*.md
+# first-run pack extraction from running the game at the REPO ROOT (the
+# build-embedded copy lives in voxelcraft/builtin-packs/ and stays tracked)
+/builtin-packs/

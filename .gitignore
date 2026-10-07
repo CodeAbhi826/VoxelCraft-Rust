@@ -136,3 +136,17 @@ docs/screenshots/
 
 # 2026-09-24: headless in-game browser-test campaign artifacts (57 screenshots)
 ingame-test/
+
+# ---- 2026-10-07 session artifacts: local-only, never ship to GitHub ----
+# vision-toolkit sheets/screenshots (agent working files)
+.dsh-vision-toolkit/
+# root-level screenshot/diagnostic PNGs produced by review sessions
+/atlas_sheet.png
+/compare_pack_tiles.png
+/gameplay_f3.png
+/pack_tiles_2x.png
+/proof_one_image.png
+/title.png
+# session test reports and audits (local review records)
+/TEST-REPORT-*.md
+docs/REPO-AUDIT-*.md

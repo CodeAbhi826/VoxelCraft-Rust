@@ -1788,6 +1788,31 @@ pub struct GameApp {
     e2e_beds_done: bool,
     /// fluids round: E2E_FLUIDS — the in-game fluids leg ran once
     e2e_fluids_done: bool,
+    /// 1A.6: E2E_ICONIC — the iconic-cast capture leg ran once
+    e2e_iconic_done: bool,
+    /// E2E_ICONIC stage ladder: 0 = stage-build pending, 1..=4 = the four
+    /// cardinal orbit captures, 5 = the third-person player-rig capture,
+    /// 6 = done (the leg owns the exit)
+    e2e_iconic_stage: u8,
+    /// E2E_ICONIC: settle frames before arming the next capture (lets the
+    /// camera teleport + freshly-streamed meshes settle)
+    e2e_iconic_settle: u8,
+    /// E2E_ICONIC: a capture is armed (waiting for the readback PNG)
+    e2e_iconic_armed: bool,
+    /// E2E_ICONIC: frames since the leg armed its last capture — the
+    /// watchdog (a capture that never lands exits 1 instead of hanging)
+    e2e_iconic_watch: u32,
+    /// E2E_ICONIC: every capture verified non-trivial
+    e2e_iconic_ok: bool,
+    /// E2E_ICONIC: the lineup center (world coords) the orbit circles
+    e2e_iconic_center: [f32; 3],
+    /// 1A.6: the cast's pinned positions (mob id → pos) — re-applied every
+    /// update so the AI cannot wander the lineup out of frame while the
+    /// (slow) capture ladder runs
+    e2e_iconic_slots: std::collections::HashMap<u32, [f32; 3]>,
+    /// 1A.6: the plain villager's pinned slot (villagers are their own
+    /// system — MobKind has no Villager variant, only ZombieVillager)
+    e2e_iconic_villager: Option<(u32, [f32; 3])>,
     /// E2E_FKEYS: 0 = idle, 1 = key stage ran (behind-ON capture pending),
     /// 2 = behind-ON saved (behind-OFF capture pending), 3 = diff ran
     /// (front capture pending), done = the leg exits in stage 3
@@ -3101,6 +3126,15 @@ impl GameApp {
             e2e_containers_done: false,
             e2e_beds_done: false,
             e2e_fluids_done: false,
+            e2e_iconic_done: false,
+            e2e_iconic_stage: 0,
+            e2e_iconic_settle: 0,
+            e2e_iconic_armed: false,
+            e2e_iconic_watch: 0,
+            e2e_iconic_ok: true,
+            e2e_iconic_center: [0.0; 3],
+            e2e_iconic_slots: std::collections::HashMap::new(),
+            e2e_iconic_villager: None,
             smoke_clicked_ingame: false,
             smoke_game_t: 0.0,
             f3_dump2: false,
@@ -3544,7 +3578,13 @@ impl GameApp {
                         && self.camera_mode != 0;
                     #[cfg(target_arch = "wasm32")]
                     let fkeys_hold = false;
-                    if self.screen == Screen::Game && !fkeys_hold {
+                    // 1A.6: same hold for the E2E_ICONIC capture ladder
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let iconic_hold =
+                        std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
+                    #[cfg(target_arch = "wasm32")]
+                    let iconic_hold = false;
+                    if self.screen == Screen::Game && !fkeys_hold && !iconic_hold {
                         self.enter_pause();
                     }
                 }
@@ -14952,6 +14992,164 @@ impl GameApp {
         ));
     }
 
+    /// 1A.6: E2E_ICONIC stage build — a flat grass stage around the
+    /// player's chunk center, the iconic mob roster in a line (MobKind
+    /// rows only: the Wither boss and the Ender Dragon are separate boss
+    /// systems, and the dragon renders as a camera-facing billboard
+    /// sprite, so four orbit angles would be degenerate for it anyway),
+    /// the TNT block and a nether portal beside the line. The mobs face
+    /// +Z with no aim target (`mobs.player = None`), so the four orbit
+    /// angles see four sides of the rigs instead of four head-on shots.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_iconic_setup(&mut self, pcx: i32, pcz: i32) {
+        use vc_gameplay::mobs::MobKind;
+        let (_, sy, _) = self.world.find_spawn();
+        let cx = pcx * 16 + 8;
+        let cz = pcz * 16 + 8;
+        let gy = sy.floor() as i32;
+        // the stage: 44 × 20 grass, cleared above (a stray tree would
+        // photobomb the lineup; 20 deep so the r=8 ring + the diagonal
+        // portal prop stay on the platform)
+        for dx in -22..=21 {
+            for dz in -10..=9 {
+                self.test_place(GRASS, cx + dx, gy - 1, cz + dz);
+                for dy in 0..5 {
+                    self.test_place(AIR, cx + dx, gy + dy, cz + dz);
+                }
+            }
+        }
+        let cast: [MobKind; 10] = [
+            MobKind::Creeper,
+            MobKind::Enderman,
+            MobKind::Zombie,
+            MobKind::Skeleton,
+            MobKind::ZombieVillager,
+            MobKind::IronGolem,
+            MobKind::Blaze,
+            MobKind::Ghast,
+            MobKind::Piglin,
+            MobKind::WitherSkeleton,
+        ];
+        // The lineup is a CIRCLE (r = 8): the first run's single row read
+        // fine from ±Z but collapsed to one mob from ±X — all four angles
+        // must see the whole cast. Positions are recorded so the dispatch
+        // can re-pin them every update (AI wanders, the ghast flies, and
+        // the ladder spans minutes of wall clock on this hardware).
+        self.e2e_iconic_slots.clear();
+        let total = (cast.len() + 1) as f32; // +1: the villager below
+        for (i, k) in cast.iter().enumerate() {
+            let ang = (i as f32) * (std::f32::consts::TAU / total);
+            let px = cx as f32 + 0.5 + ang.cos() * 8.0;
+            let pz = cz as f32 + 0.5 + ang.sin() * 8.0;
+            let py = gy as f32;
+            if let Some(id) =
+                self.sim
+                    .mobs
+                    .spawn_at(*k, px.floor() as i32, gy, pz.floor() as i32)
+            {
+                if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == id) {
+                    m.pos = [px, py, pz];
+                    m.vel = [0.0; 3];
+                    m.yaw = 0.0;
+                }
+                self.e2e_iconic_slots.insert(id, [px, py, pz]);
+            }
+        }
+        self.sim.mobs.player = None;
+        // the plain villager rides its own system — profession 0 (the
+        // unemployed brown robe is the iconic villager look)
+        self.e2e_iconic_villager = None;
+        let vang = (cast.len() as f32) * (std::f32::consts::TAU / total);
+        let vpx = cx as f32 + 0.5 + vang.cos() * 8.0;
+        let vpz = cz as f32 + 0.5 + vang.sin() * 8.0;
+        if let Some(vid) =
+            self.sim
+                .villagers
+                .spawn_at(vpx.floor() as i32, gy, vpz.floor() as i32, Some(0))
+        {
+            if let Some(v) = self.sim.villagers.list.iter_mut().find(|v| v.id == vid) {
+                v.pos = [vpx, gy as f32 + 0.1, vpz];
+                v.vel = [0.0; 3];
+                v.yaw = 0.0;
+            }
+            self.e2e_iconic_villager = Some((vid, [vpx, gy as f32 + 0.1, vpz]));
+        }
+        // the TNT block + the nether portal, tucked DIAGONAL off the ring
+        // (x −16..−12, z −9) so none of the four camera axes crosses them
+        self.test_place(TNT, cx - 12, gy, cz - 9);
+        for y in gy..=gy + 4 {
+            self.test_place(OBSIDIAN, cx - 16, y, cz - 9);
+            self.test_place(OBSIDIAN, cx - 13, y, cz - 9);
+        }
+        for x in cx - 15..=cx - 14 {
+            self.test_place(OBSIDIAN, x, gy, cz - 9);
+            self.test_place(OBSIDIAN, x, gy + 4, cz - 9);
+            for y in gy + 1..=gy + 3 {
+                self.test_place(NETHER_PORTAL, x, y, cz - 9);
+            }
+        }
+        self.e2e_iconic_center = [cx as f32 + 0.5, gy as f32, cz as f32 + 0.5];
+        vc_render::render::report_boot_log(&format!(
+            "e2e: iconic cast spawned ({} mobs + TNT + portal) at ({cx},{gy},{cz})",
+            cast.len()
+        ));
+    }
+
+    /// 1A.6: position the first-person camera on the orbit ring at
+    /// `angle_deg` around the lineup center (the bench camera's yaw/pitch
+    /// convention), looking slightly down at the cast.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_iconic_orbit(&mut self, angle_deg: u32) {
+        let c = self.e2e_iconic_center;
+        let r = 22.0f32;
+        let a = (angle_deg as f32).to_radians();
+        let pos = glam::Vec3::new(c[0] + a.cos() * r, c[1] + 7.0, c[2] + a.sin() * r);
+        let to_c = (glam::Vec3::new(c[0], c[1] + 1.5, c[2]) - pos).normalize();
+        self.player.pos = pos;
+        self.player.vel = glam::Vec3::ZERO;
+        // IEEE atan2(y, −0.0) = ±π: at exactly 0°/180° the view vector
+        // lands on the signed zero (or a sin(π) rounding speck) and the
+        // yaw comes out 90° off — the first capture run's a0/a180 framed
+        // ocean/plains instead of the cast. Pin due-east/west to ±π/2.
+        let dz = -to_c.z;
+        self.player.yaw = if dz.abs() < 1e-5 {
+            if -to_c.x >= 0.0 {
+                std::f32::consts::FRAC_PI_2
+            } else {
+                -std::f32::consts::FRAC_PI_2
+            }
+        } else {
+            f32::atan2(-to_c.x, dz)
+        };
+        self.player.flying = true;
+        self.player.on_ground = false;
+    }
+
+    /// 1A.6: persist the waiting capture PNG (the same pull-based contract
+    /// as E2E_FKEYS: consume, verify non-trivial, log the byte count).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_iconic_save(&mut self, name: &str) {
+        let png = self.renderer.take_screenshot_png();
+        match png {
+            Some(bytes) => {
+                let dir = std::path::Path::new("screenshots");
+                let _ = std::fs::create_dir_all(dir);
+                let path = dir.join(format!("e2e_iconic_{name}_{}.png", chrono_like_stamp()));
+                let wrote = std::fs::write(&path, &bytes).is_ok();
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: iconic {name} {} ({} bytes)",
+                    if wrote { "saved" } else { "WRITE FAILED" },
+                    bytes.len()
+                ));
+                self.e2e_iconic_ok &= wrote && bytes.len() > 1000;
+            }
+            None => {
+                vc_render::render::report_boot_log("e2e: iconic capture MISSING");
+                self.e2e_iconic_ok = false;
+            }
+        }
+    }
+
     /// Round A: the F-KEY CONTRACT E2E leg (E2E_FKEYS=1, native) — every
     /// function key's effect through the REAL key_action input path,
     /// verified in-engine so CI greps a single verdict line:
@@ -15641,6 +15839,128 @@ impl GameApp {
                 _ => {}
             }
         }
+        // 1A.6: E2E_ICONIC — the iconic-cast capture leg (native-only).
+        // Stage 0 waits for world entry + the spawn neighborhood's chunks,
+        // builds the stage (flat grass + the cast + TNT + a nether portal)
+        // and spawns the roster. Stages 1..=4 orbit the lineup
+        // (0°/90°/180°/270°) and pull-capture each angle; stage 5 adds the
+        // third-person player-rig shot; stage 6 owns the exit. A REPORT
+        // artifact, not a CI contract: the PNGs are what the owner views
+        // (V1 rule — never claim visual correctness for unviewed images).
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_ICONIC").is_ok() && !self.e2e_iconic_done {
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            let (pcx, pcz) = (
+                (self.player.pos.x.floor() as i32).div_euclid(16),
+                (self.player.pos.z.floor() as i32).div_euclid(16),
+            );
+            // the stage spans cx-22..cx+21 at the chunk center → the two
+            // X neighbors and the two Z neighbors must exist
+            let chunks_ready = in_world
+                && [(-1i32, 0i32), (1, 0), (0, -1), (0, 1)]
+                    .iter()
+                    .all(|&(dx, dz)| self.world.chunks.contains_key(&(pcx + dx, pcz + dz)));
+            // hold the cast in its ring: without this the AI walks the
+            // lineup (and the ghast flies) out of frame over the ladder's
+            // minutes of wall clock — at most one sim tick of drift can
+            // show between the pin and the render
+            for (id, p) in &self.e2e_iconic_slots {
+                if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == *id) {
+                    m.pos = *p;
+                    m.vel = [0.0; 3];
+                    m.yaw = 0.0;
+                }
+            }
+            if let Some((vid, p)) = self.e2e_iconic_villager {
+                if let Some(v) = self
+                    .sim
+                    .villagers
+                    .list
+                    .iter_mut()
+                    .find(|v| v.id == vid)
+                {
+                    v.pos = p;
+                    v.vel = [0.0; 3];
+                    v.yaw = 0.0;
+                }
+            }
+            if self.e2e_iconic_watch > 900 {
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: iconic FAIL — capture watchdog fired at stage {} (armed={})",
+                    self.e2e_iconic_stage, self.e2e_iconic_armed
+                ));
+                self.dbg_exit_summary();
+                std::process::exit(1);
+            }
+            match self.e2e_iconic_stage {
+                0 if chunks_ready => {
+                    // the captures must see the WORLD, not menus — stay
+                    // unpaused for the whole ladder (the Focused(false)
+                    // auto-pause already fired at world entry)
+                    self.screen = Screen::Game;
+                    self.e2e_iconic_setup(pcx, pcz);
+                    self.e2e_iconic_stage = 1;
+                    self.e2e_iconic_settle = 30; // let the new meshes stream
+                }
+                1..=4 => {
+                    self.screen = Screen::Game;
+                    if self.e2e_iconic_armed {
+                        if self.renderer.screenshot_png.is_some() {
+                            let angle = (self.e2e_iconic_stage as u32 - 1) * 90;
+                            self.e2e_iconic_save(&format!("a{angle}"));
+                            self.e2e_iconic_armed = false;
+                            self.e2e_iconic_stage += 1;
+                            self.e2e_iconic_settle = 8;
+                            if self.e2e_iconic_stage == 5 {
+                                // the F5 third-person rig arms the player model
+                                self.camera_mode = 1;
+                            }
+                        }
+                    } else if self.e2e_iconic_settle == 0 {
+                        let angle = (self.e2e_iconic_stage as u32 - 1) * 90;
+                        self.e2e_iconic_orbit(angle);
+                        self.renderer.screenshot_request = true;
+                        self.e2e_iconic_armed = true;
+                        self.e2e_iconic_watch = 0;
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: iconic arm a{angle} (stage {}) cam={}",
+                            self.e2e_iconic_stage, self.camera_mode
+                        ));
+                    } else {
+                        self.e2e_iconic_settle -= 1;
+                    }
+                }
+                5 => {
+                    self.screen = Screen::Game;
+                    if self.e2e_iconic_armed {
+                        if self.renderer.screenshot_png.is_some() {
+                            self.e2e_iconic_save("player_rig");
+                            self.e2e_iconic_stage = 6;
+                            self.e2e_iconic_done = true;
+                            let ok = self.e2e_iconic_ok;
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: iconic 5 shots — ICONIC CAST {}",
+                                if ok { "OK" } else { "FAILED" }
+                            ));
+                            self.dbg_exit_summary();
+                            std::process::exit(if ok { 0 } else { 1 });
+                        }
+                    } else if self.e2e_iconic_settle == 0 {
+                        self.renderer.screenshot_request = true;
+                        self.e2e_iconic_armed = true;
+                        self.e2e_iconic_watch = 0;
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: iconic arm player_rig (stage 5) cam={}",
+                            self.camera_mode
+                        ));
+                    } else {
+                        self.e2e_iconic_settle -= 1;
+                    }
+                }
+                _ => {}
+            }
+            self.e2e_iconic_watch += 1;
+        }
         // E2E_MENU: the settings-tree script ran to the void — verify the
         // tree round-tripped back to the title and exit clean
         if self.smoke_menu_e2e && self.smoke_script.is_empty() && self.screen == Screen::Title {
@@ -15749,7 +16069,13 @@ impl GameApp {
                 let fkeys_pending = std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 4;
                 #[cfg(target_arch = "wasm32")]
                 let fkeys_pending = false;
-                if !fkeys_pending {
+                // 1A.6: E2E_ICONIC owns the exit while its capture ladder runs
+                #[cfg(not(target_arch = "wasm32"))]
+                let iconic_pending =
+                    std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
+                #[cfg(target_arch = "wasm32")]
+                let iconic_pending = false;
+                if !fkeys_pending && !iconic_pending {
                     vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                     self.dbg_exit_summary();
                     std::process::exit(0);
@@ -15792,7 +16118,12 @@ impl GameApp {
             let fkeys_pending = std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 4;
             #[cfg(target_arch = "wasm32")]
             let fkeys_pending = false;
-            if t_in > 2.2 && !fkeys_pending {
+            // 1A.6: E2E_ICONIC owns the exit while its capture ladder runs
+            #[cfg(not(target_arch = "wasm32"))]
+            let iconic_pending = std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
+            #[cfg(target_arch = "wasm32")]
+            let iconic_pending = false;
+            if t_in > 2.2 && !fkeys_pending && !iconic_pending {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();
                 std::process::exit(0);
@@ -24714,7 +25045,14 @@ impl GameApp {
             // draw over EVERYTHING world-space (vanilla hand pass)
             // Round A: ONLY in first-person (the F5 body model replaces
             // the view-model in third-person, exactly vanilla's behavior)
-            if self.screen == Screen::Game && self.camera_mode == 0 {
+            // 1A.6: and never during the E2E_ICONIC capture ladder — the
+            // character plates must not be photobombed by the hand
+            #[cfg(not(target_arch = "wasm32"))]
+            let iconic_shot =
+                std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
+            #[cfg(target_arch = "wasm32")]
+            let iconic_shot = false;
+            if self.screen == Screen::Game && self.camera_mode == 0 && !iconic_shot {
                 let e = self.player.eye();
                 self.push_held_item(right, up, dir, [e.x, e.y, e.z]);
             }
@@ -24807,6 +25145,11 @@ impl GameApp {
         #[cfg(not(target_arch = "wasm32"))]
         if self.renderer.screenshot_png.is_some()
             && (self.e2e_fkeys_stage == 0 || self.e2e_fkeys_stage > 3)
+            // 1A.6: while the E2E_ICONIC ladder is armed the PNG is its
+            // capture — the F2 dumper would otherwise consume it in the
+            // SAME frame the readback lands and the ladder deadlocks
+            // (the leg only checks screenshot_png on the next update)
+            && !self.e2e_iconic_armed
         {
             self.take_screenshot();
         }

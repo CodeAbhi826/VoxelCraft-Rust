@@ -69,4 +69,6 @@
 - A turn ends ONLY when: a HARD STOP applies, a Part's REVIEW PACKET is written, a STOP file exists, or a rate/context limit is hit.
 - On a HARD STOP, write "HARD STOP: \<reason\>" as the first line of `docs/BLOCKERS.md`.
 - **Hardware privacy**: never record the owner's hardware make, model, specs, device IDs, driver versions, or distro in the repo, docs, commit messages, or CI-visible strings. Perf numbers stay; the machine identity goes ("reference hardware" / "reference iGPU").
+- **Worklog convention**: append every slice to `docs/WORKLOG.md`; update `docs/AGENT-STATE.md` (todo tracker) in the same flow; write `docs/CHECKPOINTS.md` + REVIEW PACKET at each Part end. Root `worklog.md` is the prior era's closed log (Tasks 1–25) — read-only, never append.
+- **In-game review rule**: every slice that touches gameplay/rendering gets its own linux-game E2E run at its commit; every Part review ends with a full in-game tour (all legs re-run on the final binary, fresh captures viewed under V1). Brief verification after each major Part — never pile untested work into a later review.
 

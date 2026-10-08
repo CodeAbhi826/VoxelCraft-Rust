@@ -1,7 +1,8 @@
 # REPO-KNOWLEDGE-BASE.md — the complete repository knowledge file
 
-> NOT the worklog (worklog.md is append-only: the newest at the tail, the
-> early era at the head). THIS file is the complete, always-CURRENT picture
+> The live chronology is `docs/WORKLOG.md` (append entries per slice);
+> root `worklog.md` is the prior era's closed log (read-only). THIS file
+> is the complete, always-CURRENT picture
 > of the whole repository, at source-code-level depth: if you hand this file
 > to an engineer who has never seen the repo, they get a full, accurate
 > understanding of how everything works — the architecture, every crate's
@@ -31,20 +32,26 @@ reference game's material, the binding legal policy in docs/LEGAL-COMPLIANCE.md.
 shipped with its licence; Voxelfont is the in-repo original spare. The old
 “zero third-party material” wording was inaccurate.)
 
-The numbers (current):
-- 14 `vc-*` crates + the `voxelcraft` app — ~145,000 lines of Rust.
+The numbers (current, October 2026 — counted from the tree and CI logs):
+- 14 `vc-*` crates + the `voxelcraft` app — ~170,000 lines of Rust.
 - wgpu 22 (the graphics), glam 0.29 (the math), naga (the runtime WGSL
   validation), winit (the windowing), mimalloc (the native allocator,
   platform convention), rustc-hash/FxHash (the integer-keyed maps — the
   platform convention: every integer-keyed map in the engine uses FxHash
   over std SipHash), web-time (NOT std::time — std Instant PANICs on
-  wasm32).
+  wasm32), libm (pure-Rust sin/cos/sqrt — worldgen never touches the
+  platform libm, R5).
 - 20 Hz deterministic simulation (the sim is fixed-step and reproducible
   from the seed — the same seed always produces the same world and the
   same tick stream).
 - 1.16.5 parity: BLOCK_COUNT 539, STATE_COUNT 892, 32 effect kinds (the
-  COMPLETE 1.16.5 set), 50 MobKinds of the 70-mob 1.16.5 set, 28/66
-  biomes, ~1120 recipe entries.
+  COMPLETE 1.16.5 set), 66 declared MobKinds (65 MOB_DATA rows — Squid is
+  a classification-only stub), 28/66 biomes, ~1120 recipe entries.
+- 930 `#[test]` attributes; CI sums the `test result:` lines per run
+  (latest full-green: 933 passed / 0 failed / 2 ignored — counts move
+  with the suite; never quote a stale total, re-count from the log).
+- Repo is PRIVATE (owner order 2026-10-08); owner hardware specs never
+  appear anywhere (AGENTS.md hardware-privacy rule).
 
 ## 1.2 How to build, run, and verify (the exact recipes)
 
@@ -53,16 +60,21 @@ The workspace root (the directory holding the root Cargo.toml) is
 branch `test/full-sweep-2026-09-25`.
 
 ```sh
-# ALL COMPILATION HAPPENS ON GITHUB ACTIONS ONLY — never locally
-# (the owner's standing rule; cargo fmt is the ONLY local command).
-# The 6 CI gates (ci.yml, every push):
+# HEAVY WORK RUNS ON GITHUB ACTIONS ONLY — never locally (owner rule;
+# rustfmt is the only local command besides quick filtered test runs on
+# an idle machine). The 9 CI jobs (ci.yml, every push):
 #   1. legal audit  — scripts/legal_audit.py (the trademark scanner)
 #   2. cargo fmt --check
 #   3. cargo test --release --no-default-features --workspace
-#   4. cargo check --release --no-default-features --workspace --lib \
+#   4-6. worldgen golden-hash gate on ubuntu + windows + macos (R5:
+#        bit-identical terrain on all three OSes)
+#   7. cargo check --release --no-default-features --workspace --lib \
 #        --target wasm32-unknown-unknown
-#   5. cargo clippy -- -D warnings
-#   6. the headless bench (uploads the JSON + the vc_bench binary)
+#   8. cargo clippy -- -D warnings
+#   9. the headless bench (uploads the JSON + the vc_bench binary)
+# NOTE (2026-10-08): artifact uploads fail while the Actions storage
+# quota is exhausted (recalculated every 6-12h) — code jobs still
+# validate; close-outs wait for green including uploads.
 
 # the game binary (the single file, the builtin pack embedded by build.rs):
 gh workflow run linux-game.yml --ref test/full-sweep-2026-09-25
@@ -71,13 +83,19 @@ gh run download <run-id> -n voxelcraft-linux-single-file -D /tmp/vc-e2e
 chmod +x /tmp/vc-e2e/voxelcraft-*linux-x64   # the glob: HYPHEN not dot
 
 # the in-game E2E legs under Xvfb (the owner's rule: the in-game test is
-# the most important thing — the code/test-only pass is NOT enough):
+# the most important thing — the code/test-only pass is NOT enough).
+# Every gameplay/rendering slice gets its own linux-game run at its
+# commit (manual dispatch — linux-game.yml runs on dispatch + main only):
 E2E_FKEYS=1  xvfb-run -a -s "-screen 0 1280x720x24" ./voxelcraft-*linux-x64 --smoke --verbose
 E2E_BEDS=1   xvfb-run -a -s "-screen 0 1280x720x24" ./voxelcraft-*linux-x64 --smoke --verbose
 E2E_FLUIDS=1 xvfb-run -a -s "-screen 0 1280x720x24" ./voxelcraft-*linux-x64 --smoke --verbose
 E2E_CONTAINERS=1 xvfb-run -a -s "-screen 0 1280x720x24" ./voxelcraft-*linux-x64 --smoke
+E2E_PHASES=1 xvfb-run -a -s "-screen 0 1280x720x24" ./voxelcraft-*linux-x64 --smoke --verbose
+E2E_TURNTABLE=1 TURNTABLE_MOB=creeper xvfb-run -a -s "-screen 0 1280x720x24" ./voxelcraft-*linux-x64 --smoke --verbose
 # the legs exit 1 on a FAILED contract; the local pipe can mask the code —
 # grep the verdict lines, never trust the pipeline exit code alone.
+# Foreground runs (owner-approved, only when CI can't answer): download
+# the CI-built binary and run it here under xvfb-run + MangoHud.
 
 # the headless benchmark (the perf baselines):
 cargo run --release --no-default-features --features bench-bin --bin vc_bench -- chunks=96 json=bench-headless.json
@@ -86,8 +104,10 @@ cargo run --release --no-default-features --features bench-bin --bin vc_bench --
 The CLI flags (main.rs): (no args) the normal launch (intro → title →
 world); `--verbose` THE raw-log flag (the full raw stream — see §9.3);
 `--smoke` the CI smoke run; `--benchmark [frames=600] [warmup=120]
-[seed=…] [json=bench.json]`; `--help`/`-h` the usage card. (The old
-`--debug` name is retired — the same stream, everything raw.)
+[seed=…] [json=bench.json] [streaming]` (the streaming walk: 8 b/s at eye
+height through fresh terrain); `--gpu-timing` (scene-pass GPU timestamps
+when supported); `--help`/`-h` the usage card. (The old `--debug` name is
+retired — the same stream, everything raw.)
 
 ## 1.3 The crate map — what each crate owns, in dependency order
 
@@ -109,12 +129,12 @@ the voxelcraft app on top (the game loop).
 | **vc-world** | `src/world.rs`: the World (see §1.4). `src/gen.rs`: TerrainGen — the terrain generation (the biomes 28/66, the Biome enum + from_u8 + precipitation, the structures: village/dungeon/mineshaft/pyramid/jungle temple/stronghold/fortress/mansion/icebergs), vanilla_noise.rs (the Perlin formulation — the doubled 512-entry permutation table). `src/light.rs`: the LightEngine — the sky+block channels, init_chunk (THE #1 perf cost — see §6.4), the incremental on_block_changed (the ±15 block-light / the sky down-column regions), the pending sets. `src/anvil.rs`: the region-file save/load (the 1.16.5 format — the Biomes IntArrays ground-truthed against the owner's real saves). |
 | **vc-mesh** | `src/mesh.rs`: the greedy mesher (see §6.1). mesh_sections (the reference CPU path), build_mesh_inputs (the 3×3 padded snapshot + has_cross/has_models flags), MeshData (the solid/water buffers). |
 | **vc-particles** | The shared particle stream: ParticleVertex (pos/uv/col), spawn_kind (the named kinds: explosion_emitter, dust, dripping_water, the bubble trail, the splash burst...), 20/90 kinds. |
-| **vc-gameplay** | The gameplay systems, one module each: mobs.rs (50 MobKinds — see §5.1), combat.rs (the melee/explosion math), effects.rs (32 effect kinds — see §5.3), hunger.rs (the food/hunger/exhaustion), sleep.rs (the bed decision layer), portal.rs (the nether portal), weather.rs (the rain/thunder machine), furnace.rs/campfire.rs/brewing.rs/enchanting.rs (the block entities), bees.rs (the hive system), villagers.rs (the NPC AI + the trades), spawners.rs, dragon.rs (the End fight), anvil.rs (the repair), beacon.rs, fishing.rs, craft.rs (the recipe matching), datapack.rs (the loot/set_count). |
+| **vc-gameplay** | The gameplay systems, one module each: mobs.rs (66 declared MobKinds — see §5.1), combat.rs (the melee/explosion math), effects.rs (32 effect kinds — see §5.3), hunger.rs (the food/hunger/exhaustion), sleep.rs (the bed decision layer), portal.rs (the nether portal), weather.rs (the rain/thunder machine), furnace.rs/campfire.rs/brewing.rs/enchanting.rs (the block entities), bees.rs (the hive system), villagers.rs (the NPC AI + the trades), spawners.rs, dragon.rs (the End fight), anvil.rs (the repair), beacon.rs, fishing.rs, craft.rs (the recipe matching), datapack.rs (the loot/set_count), entity_model.rs (the 12 jointed rigs + billboard fallback). |
 | **vc-sim** | `src/sim.rs`: the 20 Hz Sim (see §1.5). `src/ticks.rs`: TickScheduler (the delayed ticks) + RandomTicker (the deterministic per-chunk sampling). `src/fluids.rs`: the water/lava/bubble/waterlogging ticks (see §5.5). `src/entities.rs`: the ItemSystem/ItemSystem, XpOrbSystem, PrimedTntSystem (see §5.6). `src/redstone.rs`: the redstone components (the wire/torch/lever/repeater/comparator/piston/QC/observer/dispenser/hopper/plates/target/daylight sensor). |
 | **vc-anvil** | The region-file format (the native save target — §8). |
-| **vc-render** | `src/render.rs` (~40k lines): the Renderer (the surface, the pipelines, the atlas, the debug stream), render.rs's report_boot_log/report_debug_log (the raw stream sinks), the chunk-border overlay, the particle draw. `src/gpu_mesh.rs`: the GPU compute mesher (see §6.2) — the WGSL greedy key + the LUT mirrors. `src/textures/`: generate_atlas (the 512×512 tile atlas — the clean-room painters per module: portal_art/tnt_art/weather_art/farming_art/v112..v116_art/e2_art/e3_art/r13_art/gui_art), merge_pack_textures (the user-pack override + the animated strips). `src/gui/`: the HUD + the container screens (the GuiTextureSet, the SpriteSheet, the 9-slice panels, the 32 effect icons, the font Voxelfont.ttf — the clean-room 5×8 glyphs). `src/ui.rs`: the UI canvas (the widget tree, the click routing, the screens). |
+| **vc-render** | `src/render.rs` (~7k lines): the Renderer (the surface, the pipelines, the atlas, the debug stream), render.rs's report_boot_log/report_debug_log (the raw stream sinks), the chunk-border overlay, the particle draw, the post chain (bloom → EASU → composite+RCAS → pack stages → UI), the FXAA pass (pre-upscale), scene-pass GPU timestamps (1.5). `src/gpu_mesh.rs`: the GPU compute mesher (see §6.2) — the WGSL greedy key + the LUT mirrors. `src/textures/` (TILE_MAX 818): generate_atlas (the 512×512 tile atlas — the clean-room painters per module: portal_art/tnt_art/weather_art/farming_art/v112..v116_art/e2_art/e3_art/r13_art/gui_art + the 16 mob billboard tiles + the player skin), merge_pack_textures (the user-pack override + the animated strips). `src/gui/`: the HUD + the container screens (the GuiTextureSet, the SpriteSheet, the 9-slice panels, the 32 effect icons). `src/ui.rs`: the UI canvas (the widget tree, the click routing, the screens — engine page carries the UPSCALING/SHARPNESS/CUSTOM/AA/GEN-THREADS buttons). |
 | **vc-audio** | The sound events (the SoundEvent family/volume/pitch), the .ogg decode, the SoundRegistry (the data-driven §21 registry), SoundBank. |
-| **voxelcraft (app)** | `src/game.rs` (~28k lines): GameApp — the update loop (see §1.6), the E2E legs, the explosion, the interactions, the streaming, the UI. `src/player.rs`: Player — the movement/combat/effects/detection (see §5.2). `src/main.rs`: the CLI. `src/bench.rs`: the benchmark harness. `src/wasm_entry.rs`/`web_input.rs`: the browser build. `src/alloc_stats.rs`: the counting allocator (the F3 "Allocated" telemetry). |
+| **voxelcraft (app)** | `src/game.rs` (~29k lines): GameApp — the update loop (see §1.6), the E2E legs (FKEYS/BEDS/FLUIDS/CONTAINERS/MENU/PHASES/TURNTABLE — §9.2), the explosion, the interactions, the streaming (dedicated cores-1 pool, 6 ms apply budget, stale-mesh drop, mesh-first order), the UI. `src/player.rs`: Player — the movement/combat/effects/detection (see §5.2). `src/main.rs`: the CLI. `src/bench.rs`: the benchmark harness (orbit/streaming cameras, the 5-phase meter with the 0.9-coverage contract). `src/wasm_entry.rs`/`web_input.rs`: the browser build. `src/alloc_stats.rs`: the counting allocator (the F3 "Allocated" telemetry). |
 
 ## 1.4 The World (vc-world/src/world.rs) — the core data model
 
@@ -215,7 +235,9 @@ pub struct Sim {
 atlas (the 512×512 RGBA tile atlas), gui_set (the procedural GUI texture
 set), icon_cache (the 3D item icons — the CPU-baked isometric models in a
 2048×2048 GPU atlas, LRU 512, 4 bakes/frame), bank/sounds/audio_rng (the
-audio), audio (the AudioBackend), settings, and the E2E/stat fields.
+audio), audio (the AudioBackend), settings (upscale ladder 0..5 + Sharpness
++ custom scale + AA mode + gen-threads knob), the streaming pool, and the
+E2E/stat fields.
 
 `GameApp::new(window)` (the boot): the wgpu adapter/device/queue → the
 pipelines (the chunk opaque/water/translucent, the particles, the GUI
@@ -250,6 +272,13 @@ wrote):
    collection + the GPU-mesh advance + the chunk gen/mesh dispatch +
    `PHASE_RESULTS` inside) → PHASE_UI (`rebuild_ui()`: the widget tree)
    → PHASE_DRAW (`draw()`: the render passes + the PHASE_DRAW timing).
+   The meter spans update+draw (`begin_frame` in AboutToWait, `end_frame`
+   at the end of `draw()`); the contract `sum(phases) >= 0.9 × frame`
+   holds as a unit test AND as the E2E_PHASES leg's in-game verdict.
+   Streaming runs on the dedicated cores-1 pool with worker-scaled
+   dispatch caps, a 6 ms time-boxed apply drain (mesh results first,
+   leftovers in `pending_apply`), and stale-mesh drops (dirty bits
+   preserved). The capability probe logs the hardware tier at boot.
 
 ## 1.7 The screens and the UI (vc-render/src/ui.rs + gui/)
 
@@ -270,10 +299,10 @@ class).
 
 ## 5.1 The mobs (vc-gameplay/src/mobs.rs)
 
-`MobKind` — 50 kinds of the 1.16.5's 70 (41 DONE / 12 PARTIAL / 17
-MISSING: cat, wolf, slime, panda, guardian/elder guardian, endermite,
-shulker, pillager, ravager, wandering trader, trader_llama, piglin_brute,
-zoglin, skeleton horse, zombie horse). Each kind carries a `MobDef`:
+`MobKind` — 66 declared variants of the 1.16.5 set (65 `MOB_DATA` rows;
+Squid is a classification-only stub, never spawned). 12 jointed entity
+rigs exist (player/cow/pig/sheep/horse/donkey/mule + families); the rest
+render as billboard sprites. Each kind carries a `MobDef`:
 the health, the damage, the speed_attr (× SPEED_PER_ATTR), the hitbox,
 the tile (the flat billboard sprite; the entity-model loading path is a
 L-tier gap — the mobs render as billboards today), the sound family,
@@ -627,22 +656,22 @@ exactly.
   rolls, the per-mob sounds. 122 entries vs the ~700 events (the L-tier
   gap: ~580 more + the .ogg files + the discs/jukebox).
 
-## 6.4 The performance (the measured baselines + the design)
+## 6.4 The performance (Part 1 re-measured — verdict: CPU-bound)
 
-docs/BASELINE-PERF-2026-10-02.md (Phase 1): the light-engine init 86.6
-ms/chunk (the reference hardware tier) / 15.6 (the GH runner) — THE #1 COST; the
-meshing 49.1/10.6; the generation 53.1/11.0 (the 1.4× parallel speedup);
-the sim tick 0.041 ms; the drawprep 13.9 µs; the memory 10.3 KiB/chunk.
-docs/PHASE4-LIGHT-DESIGN.md (Phase 4, designed not started): the
-optimizations ranked — O1 the per-section iteration (the empty bands
-skip; CAREFUL: the sky scan's empty bands need sky=15 written — the vec
-default is 0), O2 the sky scan's heightmap break (the 0-run from the
-first opaque), O3 the static per-state lookup table (the match chains →
-indexed loads, indexed BY the raw state), O4 the per-section emissive
-bitmap (stretch). The bench gates every change.
-The regression check: the CI bench job uploads the JSON every push (the
-baselines' comparison is manual — the automated regression gate is a
-candidate).
+Phase-1 baselines (docs/BASELINE-PERF-2026-10-02.md): light-engine init
+86.6 ms/chunk (reference tier) / 15.6 (GH runner); meshing 49.1/10.6;
+generation 53.1/11.0; sim tick 0.041 ms; drawprep 13.9 µs; 10.3 KiB/chunk.
+Part 1 streaming series (lavapipe walk, CI artifacts — runner numbers,
+never reference numbers): avg 268.4 ms pre-budgets → 52–53 (1.3 work
+budgets) → 83.2 (1.5) → 69.2 (1.6) → 78.0 (1.10 gate run); scene GPU
+8.9/11.7/30.5 ms across runs (software-rasterizer variance is ~3x).
+Headless bench: gen 11.44 → ~8.4–11.0 ms (inside the ±20% runner
+variance — directionally faster, honestly not proven). Verdict: the
+frame is CPU-bound by worldgen + lighting + mesh-apply on every
+measured tier (exact/gameplay classes — no lawful GPU offload left;
+see docs/OFFLOAD-AUDIT.md). Reference-hardware numbers come from the
+owner's runs (1.10); the streaming artifact carries avg/p99/worst +
+chunks + gpu_ms every run, gated structurally in CI.
 
 ## 7. The save format (vc-anvil + the web journal)
 
@@ -690,21 +719,48 @@ The rules that WILL bite a new engineer (each caught by a CI failure):
     the whole command buffer executes — the multi-instance uniform
     rewrites collapse to the LAST value (the T5 root cause — the
     chunk-border overlay is one static grid + one uniform for this).
+11. The F2-dumper yield: `take_screenshot()` in draw() consumes a waiting
+    PNG only while every capture leg is idle (FKEYS stage 0/done,
+    iconic disarmed, PHASES stage 0, turntable stage 0) — a leg that
+    armed a readback but finds its PNG eaten deadlocks to its step
+    timeout (caught twice: 1.1v, and the same class in 1A.6).
+12. The E2E leg pattern: world-entry + chunk-ready + settle guards, a
+    gated VERDICT line CI greps, pull-based PNG consume (arm one frame,
+    take next update), exit ownership in BOTH smoke-exit guards, and no
+    push atop a running slice CI (the concurrency group cancels it).
+13. The phase contract `sum(phases) >= 0.9 × frame` holds three ways:
+    the `phases_span_the_frame` unit test, `min_coverage()` for the
+    runtime check, and the E2E_PHASES in-game verdict.
+14. The streaming pool type is per-target (`StreamPool` = rayon pool
+    natively, unit on wasm — rayon is a native-only dep, so no
+    `rayon::` path may be named in shared code); the pool rebuilds
+    live under the gen-threads knob.
+15. Upscale input selection lives in `rebuild_post_targets` (EASU +
+    composite inputs follow fsr_off/aa_on) and the constructor must
+    agree with it — a Native-booted renderer whose composite binds the
+    never-written upscale target renders a black 3D view (the 1.6 catch;
+    UI-only legs still pass on it, only pixel contracts catch it).
 
 ## 9. The verification infrastructure (current)
 
 ## 9.1 The CI gates (ci.yml)
 
-The 6 gates (all must be green — nothing is done until they are):
+The 9 jobs (code jobs must be green — nothing is done until they are;
+artifact uploads additionally need Actions storage quota, which
+recalculates every 6-12h and fails uploads — never code — while
+exhausted):
 1. The legal audit (the trademark scanner) — every push.
-2. cargo fmt --check (rustfmt 1.9.0).
+2. cargo fmt --check (rustfmt; run `cargo fmt -p <crate>` locally).
 3. cargo test --release --no-default-features --workspace (14 libraries +
-   the app; 909 unit tests pass, 0 fail, 2 ignored (Actions run
-   37414381192 at f70c56d): the parity/roundtrip/census/E2E-sim suites — the old “~200” figure predated the later rounds).
-4. The wasm32 check (the headless-safe subset — --no-run, honestly named
+   the app; counts come ONLY from summing that run's `test result:` lines).
+4-6. The worldgen golden-hash gate on ubuntu + windows + macos (R5:
+   bit-identical terrain on all three; the full suite stays ubuntu-only).
+7. The wasm32 check (the headless-safe subset — --no-run, honestly named
    compile-check).
-5. cargo clippy -- -D warnings (ALSA headers on the full-audio leg).
-6. The headless bench (the sim-tick section 200 ticks + the light-engine
+8. cargo clippy -- -D warnings (ALSA headers on the full-audio leg;
+   lib-only — `clippy --workspace --all-targets` fails on pre-existing
+   test-code lints, so match CI exactly).
+9. The headless bench (the sim-tick section 200 ticks + the light-engine
    section — the glowstone-edit pump; uploads the JSON + the vc_bench
    binary artifact).
 
@@ -732,6 +788,18 @@ lavapipe/Vulkan backend) → the gated VERDICT lines:
   waterlogged chest.
 - **E2E_CONTAINERS**: the container screens (the chest/furnace opens, the
   9-slice panel on the GPU quad layer, the canvas dumps).
+- **E2E_MENU**: the settings-tree click script through every page and back.
+- **E2E_PHASES** (1.1v): the runtime phase-meter proof — min over the live
+  ring of sum(phases)/frame ≥ 0.9 with a VERDICT line, then the F3 overlay
+  (with the phase row) captured to screenshots/.
+- **E2E_TURNTABLE** (1.11): one subject mob alone on flat grass (TURNTABLE_MOB,
+  default creeper), HUD hidden, neutral daylight, natural spawning off —
+  front/side/back/three-quarter/close-up PNGs to screenshots/ (CI artifacts;
+  the PNGs are the owner's art verdicts under V1).
+- **Streaming bench** (1.2v, non-gating): `--benchmark streaming` walks fresh
+  terrain; the JSON artifact carries avg/p99/worst + chunks + gpu_ms, and
+  the 1.10 structural gate greps it (fields/frames/camera present, never
+  lavapipe timing thresholds).
 - The smoke legs: the boot (intro → panorama title → world entry through
   the real pipeline) + the exit contract (the exit holds cover every
   stage).
@@ -767,9 +835,17 @@ legacy alias).
   lines (8a6af38).
 - The xvfb-run in a pipeline: grep the verdict lines, never the pipeline
   exit code (tail/grep mask it).
+- Never push atop a running slice CI (the concurrency group cancels the
+  older run); dispatch a workflow once, then wait.
 - The stream teardown ("Stream ended without finish_reason"): the route
   tears a long stream down — small commits survive (one giant commit
   loses everything if the turn is cut).
+- `--benchmark` auto-pauses on headless focus loss: the bench holds Game
+  like the capture ladders, or `bs.seen` never advances (the 1.2v stall).
+- Lavapipe streaming runs at ~0.5–2 s/frame: size CI bench windows to it
+  (150 frames fit; 300 do not).
+- Actions artifact quota is finite: prune to the newest 2 per name when
+  uploads fail with quota errors; close-outs wait for the recalculation.
 
 ## 10. The legal policy (docs/LEGAL-COMPLIANCE.md — the binding rules)
 
@@ -789,16 +865,36 @@ legacy alias).
   shader packs load; never bundled; the compatibility statements are
   nominative fair use.
 - Game mechanics/data are facts — free to replicate from published
-  documentation. All assets are original works (the project license; the
-  font MIT).
+  documentation. Original art/code are the project's (per the licensing
+  decision below); the ACTIVE engine font is third-party Monocraft
+  (IdreesInc, SIL OFL 1.1, shipped with its licence), the Voxelfont
+  spare is ours (MIT).
+- Licensing (owner-approved, lands after slice 1.12): code + art-generator
+  scripts GPL-3.0-or-later; original art + aggregate spec CC BY-SA 4.0;
+  Monocraft stays OFL 1.1; Voxelfont stays MIT; no custom GPLv3 §7 terms,
+  no dual licensing. Slices L1–L8 (license texts, REUSE, CI lint, NOTICE/
+  TRADEMARKS/CONTRIBUTING, About screen, AUTHORSHIP, provider-terms
+  finding, doc updates) — tracked in AGENT-STATE.md.
+- The repo is PRIVATE (owner order). Owner hardware specs never appear
+  anywhere (AGENTS.md hardware-privacy rule); the study-corpus
+  provenance statements stay visible in LEGAL.md/docs forever (R4).
 
-## 11. The known gaps + the disclosed trims (the full list, current)
+## 11. The known gaps + the disclosed trims (current, October 2026)
 
-- **The L-tier gaps**: the 17 missing mobs; the entity-model loading path
-  (the mobs render as billboards); raids/advancements/slash commands/
-  scoreboard/gamerules; the 11 missing structures; the particles (20/90)
-  + the sounds (122/~700) breadth; A* pathfinding; the stonecutter
-  (121 recipes)/smithing (9)/special (13) + the recipe book.
+- **Landed since**: the 16 missing mobs (66 declared), gamerules live,
+  smoker/blast/dispenser/dropper GUIs, subtitles, the F3 phase + CPU/GPU
+  rows, the upscale ladder + Sharpness + FXAA + Native skip, GPU
+  timestamps, the capability probe + gen-threads knob, the streaming
+  bench + perf gate, the turntable tool.
+- **The L-tier gaps**: raids/advancements/slash commands/scoreboard;
+  the 11 missing structures; entity-model loading for the billboard
+  kinds; the particles (20/90) + the sounds (122/~700) breadth; A*
+  pathfinding; the stonecutter/smithing/special recipes + the recipe book;
+  the tool/weapon registry; vanilla world import (Part 2).
+- **Open engine findings**: EMERALD_BLOCK absent (T12); vanilla
+  shade:false unimplemented (T13); the Nether lava sea; Nether/End death
+  travel; InhabitedTime stub; bits_for 8-bit cap; SMAA-vs-FXAA 3 ms call
+  (soft blocker — needs reference-hardware numbers).
 - **The engine findings (open)**: EMERALD_BLOCK absent from the registry
   (T12); the vanilla shade:false unimplemented (T13 — CompiledFace.shade
   is dead data); the Nether lava sea; death in the Nether/End does not
@@ -846,20 +942,37 @@ legacy alias).
   2026-10-05 directive: the project is in the BUILDING stage, not
   production; all 3 releases (v0.2.0/v0.3.0/v0.4.0) and their tags were
   DELETED (the releases' binaries/assets removed from GitHub; the tags
-  pushed down). The README finalized (the 66-mob roster, the
-  32 effects, the new systems); the final E2E tour was verified on the
-  release-asset binary (FKEYS margin 825 + beds/fluids VERDICT OK — the
-  same code the tree carries). The tag/release step is DEFERRED to
-  production. The texture-pack + shader-pack legs are the documented
-  follow-up (the recipe in §9.2's pattern).
+  pushed down). The tag/release step is DEFERRED to production.
+- **PLAN v3.1 Part 1** (2026-10-08, this era — full record in
+  docs/WORKLOG.md): 1.0 determinism baseline (libm everywhere, 3-OS
+  golden gate, f32 census) → 1.0.5 per-function libm pins + wide/
+  targeted hashes → 1.1v phase-meter proof (unit + in-game VERDICT +
+  F3 phase row, V1-viewed) → 1.2v streaming bench + CI step (bench
+  auto-pause stall fixed) → 1.3 work budgets (dedicated pool, 6 ms
+  apply cap, stale-mesh drop; FIFO mesh starvation caught by the new
+  metric) → 1.4 cell-major fill (identical output, −4% inside noise) →
+  1.5 GPU timestamps (scene 8.9 ms lavapipe) → 1.6 upscale ladder +
+  Sharpness (Native black-screen catch) → 1.7 FXAA (SMAA decision
+  parked) → 1.8 probe + F3 split + gen knob → 1.9 offload audit
+  (CPU-bound verdict) → 1.10 perf gate → 1.11 turntable tool.
+- ** Privacy + repo ops** (2026-10-08): repo PUBLIC → PRIVATE; owner
+  hardware specs scrubbed from the tree AND (on explicit order) from
+  all pushed history via filter-repo (verified zero hits; bundle-kept
+  safety copy); stale local tags dropped; workspace junk cleared
+  (10 GB target/, session artifacts); no-push-atop-CI and
+  parallel-write-race scars logged as rules.
 
 ## 13. The worklog relationship
 
-worklog.md is the APPEND-ONLY task log (the newest at the tail — Tasks
-1..14; the early era at the head). THIS file (REPO-KNOWLEDGE-BASE.md) is
-the always-current knowledge: when a fact changes, edit the section here;
-the worklog records THAT the change happened. Together they are the full
-record: the worklog = the chronology, this file = the current truth.
+Root `worklog.md` is the PRIOR era's closed log (Tasks 1–25, through
+2026-10-05) — read-only, never append. `docs/WORKLOG.md` is the ACTIVE
+session log (this era's dated entries) — append every slice. THIS file
+(REPO-KNOWLEDGE-BASE.md) is the always-current knowledge: when a fact
+changes, edit the section here; the worklog records THAT the change
+happened. Together they are the full record: the worklog = the
+chronology, this file = the current truth. Session state (next slices,
+blockers) lives in `docs/AGENT-STATE.md`; Part reviews in
+`docs/CHECKPOINTS.md`; soft/hard blocks in `docs/BLOCKERS.md`.
 
 ---
 
@@ -909,21 +1022,13 @@ to ALL; the witches take 85% less EFFECT damage (JE).
 
 ## 14.2 The 66 MobKinds (current — the 1.16.5 set COMPLETE)
 
-DONE (41): zombie, drowned, husk, skeleton, stray, wither-skeleton,
-creeper, spider, cave-spider, enderman, witch (the attack DONE), zombie
-villager, villager, piglin, zombified piglin, hoglin, piglin-adjacent
-(the Nether sets), blaze, ghast, magma cube, slime-adjacent, bee, fox,
-ocelot, turtle, dolphin, cod/salmon/pufferfish/tropical-fish (the fish),
-squid, chicken, cow, pig, sheep, rabbit, horse/donkey/mule (the equines
-— the per-instance speed attribute 0.1125-0.3375), llama, bat, snow
-golem, iron golem, wolf-adjacent, strider, phantom, shulker-adjacent,
-evoker/illusioner/vindicator/vex (the illagers), the wither (the boss),
-the ender dragon (the boss), the elder guardian-adjacent.
-PARTIAL (12): the kinds whose behaviors are incomplete (the drop
-tables/the AI halves).
-MISSING (17): cat, wolf, slime, panda, guardian, elder guardian,
-endermite, shulker, pillager, ravager, wandering trader, trader_llama,
-piglin_brute, zoglin, skeleton horse, zombie horse (+1).
+66 declared variants (65 `MOB_DATA` rows — Squid is a classification-only
+stub that never spawns). 12 jointed rigs (player/cow/pig/sheep/horse/
+donkey/mule + families, walk gait + hurt recoil); the rest are billboard
+sprites. The turntable leg (E2E_TURNTABLE) captures any mob solo for the
+owner's art verdicts.
+PARTIAL behaviors (AI halves/drop-table edges vary per kind — see the
+per-kind tests). MISSING as full vanilla AI: raids, A* navigation.
 (The exact per-kind rows live in mobs.rs's def() — the health/damage/
 speed/hitbox/sound table, every row live-verified.)
 
@@ -957,9 +1062,11 @@ purpur/trio/food rows). The recipe book: MISSING.
 ## 14.5 The F3 debug screen (render.rs's f3 category)
 
 The two-column layout (the F3 toggle + F3+G the chunk borders): the left
-column (the fps envelope, the position, the chunk, the facing, the
+column (the fps envelope, the INTEGRATED phase row `sim/stream/results/
+ui/draw [cpu]` (1.1v), the position, the chunk, the facing, the
 biome, the day time, the light); the right column (the memory, the
-allocated — the counting allocator, the display, the GPU). The
+allocated — the counting allocator, the CPU model, the CPU/GPU ms split
+(1.8 — GPU from the 1.5 timestamps, "n/a" when off), the display, the GPU). The
 Targeted Block/Fluid line: the bottom-left (the crosshair's block +
 the break progress). The reduced_debug_info hides the detail rows. The
 1.16.5 rows: the wiki's Debug screen table (the verified anchors).
@@ -989,24 +1096,28 @@ HUD sprites: the hearts/armor/bubbles). The deterministic generators
   apply, the gamerule flags, the setblock/fill via the world edits, the
   summon via the mob spawns) but no SLASH-COMMAND PARSER — the systems
   round's gap (the commands are the L-tier gap list's row).
-- The gamerules (the engine's flags): the dofiretick/randomTickSpeed/
-  water_source_conversion equivalents are the fire/plant ticks' gates
-  (the fire's gamerule: the fire tick runs unconditionally today — the
-  gamerule flags are MISSING).
+- The gamerules: the live Gamerules struct (doFireTick gates the fire
+  tick, doDaylightCycle freezes the day clock, doWeatherCycle,
+  naturalRegeneration gates hunger regen, keepInventory keeps death drops,
+  mobGriefing gates mob-explosion terrain, doMobSpawning gates natural
+  spawns) + the set_gamerule stand-in (slash parser = Part 3).
 
 ## 14.8 The block-entity containers (the GUI screens, current)
 
-The chest + furnace screens (E2E_CONTAINERS verified): the 9-slice
+The chest + furnace + smoker + blast + dispenser/dropper screens
+(E2E_CONTAINERS verified): the 9-slice
 panel (the vanilla-grey), the slots (the 18×18 in the 20×20 cells with
 the 1-px buffer), the drag/click routing, the shift-click. The brewing
 stand + enchanting table: the reactive screens (the enchant list, the
-potion slots). MISSING: smoker/blast/stonecutter/loom/smithing/
-cartography/lectern/dispenser/dropper GUIs (the GUI batch's row).
+potion slots). MISSING: stonecutter/loom/smithing/
+cartography/lectern GUIs (the blocks-breadth round's row).
 
-## 15. The chronology (the session's worklog, cross-referenced)
+## 15. The chronology (superseded — see docs/WORKLOG.md)
 
-The worklog.md's Tasks 1..14 in one view (the hashes are the landing
-points; the details live in the worklog + the code):
+The Tasks 1..14 table below is the pre-rewrite era (kept for the old
+hashes; messages were de-specced in the 2026-10-08 rewrite). The live
+chronology is `docs/WORKLOG.md` (this era's dated entries) and the todo
+state is `docs/AGENT-STATE.md`.
 
 | Task | What | The key commits |
 |---|---|---|
@@ -1023,9 +1134,11 @@ points; the details live in the worklog + the code):
 
 ## 16. The recovery procedures
 
-- **The lost workspace**: the preset's bundled skills are the authority;
-  the repo's state is always recoverable from the GitHub remote (never
-  force-push; the push-rejected → `git pull --rebase`).
+- **The lost workspace**: the repo's state is always recoverable from the
+  GitHub remote. History rewrites and force-pushes happen ONLY on the
+  owner's explicit confirmation of that exact operation (R1) — with a
+  bundle backup kept until post-push CI is green, and a verification
+  pass (messages/contents/filenames) before pushing.
 - **The corrupted commit**: the pre-corruption state is in the git
   history — `git show <good>:<path> > <path>` restores the file; the
   re-apply of the intended fixes PROPERLY (the a69f0b1 corruption: the
@@ -1062,6 +1175,18 @@ points; the details live in the worklog + the code):
   the cross/model chunks → the CPU mesh.
 - **The sim ring**: the TickScope's simulation-distance circle — the
   ticks freeze outside it.
+- **The phase meter**: `begin_frame` (AboutToWait) → `end_frame` (end of
+  draw); `min_coverage()` = min over the ring of sum(phases)/frame.
+- **The streaming pool**: the dedicated cores-1 rayon pool (native;
+  unit on wasm), rebuilt live under the gen-threads knob; `pending_apply`
+  holds results past the 6 ms apply budget; mesh applies go first.
+- **fsr_off / aa_on**: Native mode (EASU skipped, composite reads scene)
+  / effective FXAA (mode or forced below 1.0 render scale).
+- **HwTier**: Low/Medium/High from cores + software-GL detection; the
+  boot log carries the recommended defaults (1.8b applies them).
+- **The turntable**: the solo-mob 5-view capture leg (E2E_TURNTABLE).
+- **The perf gate**: the structural CI check on streaming-bench.json
+  (fields/frames/camera; never lavapipe timing thresholds).
 
 ## 18. How to add a feature (the proven recipe, in order)
 
@@ -1073,11 +1198,26 @@ points; the details live in the worklog + the code):
    rules (§8); the era-locked constants (§3).
 3. **Implement**: the data first (the registry windows/folds/tables),
    then the logic (the tick functions), then the wiring (the game layer),
-   then the art (the clean-room painters) — each in its own commit.
+   then the art (the clean-room painters) — each in its own commit
+   (≤~300 lines; never parallel-write one file from two tool calls).
 4. **Test**: the unit tests next to the feature (the verified anchors);
-   the census pins update; the E2E leg if player-visible.
-5. **Gate**: cargo fmt → commit → push → the 6 CI gates → fix from the
-   logs → ALL GREEN.
-6. **Verify in-game**: the linux-game build → the Xvfb legs → the gated
-   VERDICTs + the vision check for the pixel work.
-7. **Log**: the worklog task + THIS file's section update.
+   the census pins update; the E2E leg if player-visible (its own
+   linux-game run at that commit — never pile untested work forward).
+5. **Gate**: cargo fmt → commit → push (never atop a running slice CI) →
+   the 9 CI jobs → fix from the logs → ALL GREEN → the linux-game run
+   for runtime behavior → V1 screenshots viewed → worklog + state.
+6. **Verify in-game**: the Xvfb legs → the gated
+   VERDICTs + the vision check for the pixel work (foreground
+   xvfb-run + MangoHud only when CI can't answer).
+7. **Log**: the worklog entry + THIS file's section update + AGENT-STATE.
+
+## 19. The operating rules (PLAN-FINAL §0 + AGENTS.md, condensed)
+
+Autonomy A1–A8 + continuation rule: one slice/commit, local
+`cargo check/test -p <crate>` only on an idle machine (heavy work is
+CI-only), commit→push→wait CI→green→worklog+state→next slice
+immediately; reports live in files, never as chat closings. Turn ends
+ONLY on a HARD STOP, a Part REVIEW PACKET, a STOP file, or a
+rate/context limit. L1–L8, V1, R1, R3–R7, P1 always in force. Key docs:
+PLAN-FINAL.md (the plan), AGENT-STATE.md (todo), BLOCKERS.md (soft/hard
+blocks), CHECKPOINTS.md (Part reviews), OFFLOAD-AUDIT.md, F32-AUDIT-GEN.md.

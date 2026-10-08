@@ -59,3 +59,6 @@
 - **R6 USER WORLDS**: never modify an original world; import works on a copy; automatic backups; unknown blocks, items, entities, tile entities and NBT are preserved verbatim through load and save; corrupt input never panics.
 - **R7**: one slice per commit (max about 300 changed lines); keep L1–L8, V1 in force at all times.
 
+### Privacy rule P1 (free-tier privacy, owner directive 2026-10-08)
+- **P1**: the owner is on a data-collecting free model tier. Never ask the owner for reference captures, sample worlds, jars, or any reference material; the owner gives numeric results only. Never put secrets, tokens, or personal files in work (code, docs, logs, or commits).
+

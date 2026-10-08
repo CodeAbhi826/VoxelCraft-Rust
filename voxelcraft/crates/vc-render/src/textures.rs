@@ -929,19 +929,23 @@ fn enchanted_book_art(a: &mut [u8], t: u16) {
 /// adventurer palette of our own design (cyan shirt, blue jeans, warm
 /// skin tones) — not a recreation of any existing skin.
 fn player_skin_art(a: &mut [u8], t: u16) {
+    // 1.12: the torso front samples rows 6-11 cols 4-11 and the arms
+    // cols 2-3/12-13, so the shirt (cyan) fills the center and the hands
+    // sit at rows 10-11; the eyes are symmetric about the face center
+    // (the old rows showed bare skin on the torso and scrambled marks).
     let rows = [
         "................",
         "....SSSSSS......",
         "....SSSSSS......",
-        "....SESSSE......",
+        "....SESSES......",
         "....SSMMSS......",
         "....SSSSSS......",
-        "...CCSSSSSSCC...",
-        "..CCCSSSSSSCCC..",
-        "..CCCSSSSSSCCC..",
-        "..CCCSSSSSSCCC..",
-        "...CCSSSSSSCC...",
-        "...CCSSSSSSCC...",
+        "..CCCCCCCCCCCC..",
+        "..CCCCCCCCCCCC..",
+        "..CCCCCCCCCCCC..",
+        "..CCCCCCCCCCCC..",
+        "..SSCCCCCCCCSS..",
+        "..SSCCCCCCCCSS..",
         "...JJ......JJ...",
         "...JJ......JJ...",
         "...JJ......JJ...",
@@ -6343,5 +6347,32 @@ mod v113_art_tests {
         let unlit = warm(TILE_CAMPFIRE_UNLIT);
         assert!(lit >= 10, "lit campfire has glowing coals: {lit}");
         assert_eq!(unlit, 0, "unlit campfire is cold ash: {unlit}");
+    }
+
+    /// 1.12: the player torso is shirt (not bare skin) and the eyes are
+    /// symmetric — the front-torso/face mapping bug (the torso rect
+    /// samples rows 6-11 cols 4-11, the arms cols 2-3/12-13).
+    #[test]
+    fn player_skin_torso_is_shirt_and_eyes_symmetric() {
+        let mut a = vec![0u8; 512 * 512 * 4];
+        player_skin_art(&mut a, TILE_MOB_PLAYER);
+        let px = |x: i32, y: i32| -> [u8; 4] {
+            let tx = (TILE_MOB_PLAYER % 32) as i32;
+            let ty = (TILE_MOB_PLAYER / 32) as i32;
+            let i = ((ty * 16 + y) as usize * 512 + (tx * 16 + x) as usize) * 4;
+            [a[i], a[i + 1], a[i + 2], a[i + 3]]
+        };
+        // torso center rows are the cyan tunic, not skin
+        assert_eq!(px(7, 8), [0, 150, 168, 255]);
+        assert_eq!(px(4, 6), [0, 150, 168, 255]);
+        assert_eq!(px(11, 9), [0, 150, 168, 255]);
+        // hands are skin at rows 10-11, sleeves cyan above
+        assert_eq!(px(2, 10), [224, 172, 138, 255]);
+        assert_eq!(px(2, 7), [0, 150, 168, 255]);
+        // eyes symmetric about the face center (cols 5 and 8)
+        assert_eq!(px(5, 3), [40, 48, 60, 255]);
+        assert_eq!(px(8, 3), [40, 48, 60, 255]);
+        assert_eq!(px(6, 3), [224, 172, 138, 255]);
+        assert_eq!(px(7, 3), [224, 172, 138, 255]);
     }
 }

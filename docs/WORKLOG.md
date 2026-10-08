@@ -6352,3 +6352,12 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z — 2.1e fix-forward 2: WGSL LUT offsets (Tested)
 - 2.1e CI (run 37855277144): down to 1 failure — `wgsl_lut_offsets_match_rust` ("want L_FL=893u"). The embedded WGSL mirrors the Rust LUT layout with hardcoded offsets/clamps: L_FL 892→893, L_TC 1431→1433, L_ST 1970→1973, sb/fl/tc clamps 891/538→892/539. Bubble-column id refs (538u water logic) deliberately untouched.
 - Local: LUT test passes. (Rust side derives offsets from STATE_COUNT/BLOCK_COUNT — no change needed there.)
+
+## 2026-10-09z2 — CI saboteur found: quota-probe killed
+- Three "higher priority" mis-cancels explained: the hourly quota-probe's `gh run rerun --failed` re-attempts competed in the same concurrency group and cancelled live push runs (its own log: 3 reruns, all cancelled, churning the queue). Probe killed (SIGTERM confirmed, 0 survivors).
+- Replacement quota signal (free): every push run's upload step already reports quota state. No dedicated probe until quota clears.
+
+## 2026-10-09z3 — 2.1e CLOSED (transient flake) + 2.1f remap (Tested)
+- Test-job rerun on 37856078658: ALL green (48/48 blocks, 309-suite clean) — the font upload-count failures were CI-load flake (green locally + on rerun, unrelated to the diff). 2.1e done. Bench quota-only (16th).
+- 2.1f: chunk_from_nbt maps unknown palette names to PLACEHOLDER_STATE (was air) — session now SHOWS checkers; sidecar still carries the verbatim record for the 2.4 writer. Height/light/collision unchanged (placeholder non-solid/non-opaque via BlockDef flags).
+- Local (idle): fmt clean; updated unknown test (expects PLACEHOLDER state) passes; full vc-anvil lib suite green.

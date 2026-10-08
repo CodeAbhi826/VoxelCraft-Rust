@@ -35,7 +35,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use vc_blocks::blocks::{
     self, prop_state_decode, prop_state_encode, BIRCH_LOG_X, BIRCH_LOG_Z, COBBLE_STAIRS, OAK_FENCE,
-    OAK_LOG_X, OAK_LOG_Z, OAK_SLAB, SPRUCE_LOG_X, SPRUCE_LOG_Z,
+    OAK_LOG_X, OAK_LOG_Z, OAK_SLAB, PLACEHOLDER_STATE, SPRUCE_LOG_X, SPRUCE_LOG_Z,
 };
 use vc_chunk::chunk::{Chunk, Section, SECTION_COUNT, SECTION_LEN};
 use vc_nbt::nbt::{self, Nbt};
@@ -618,15 +618,19 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
                             }
                         }
                     }
-                    // 2.1b: unknown names → air cell + verbatim sidecar
-                    // entry (name+props preserved for the 2.4 writer)
+                    // 2.1b: unknown names → verbatim sidecar entry
+                    // (name+props preserved for the 2.4 writer)
+                    // 2.1f: the cell shows the placeholder CHECKER
+                    // (PLACEHOLDER_STATE renders all faces checker;
+                    // non-solid/non-opaque so height/light/collision
+                    // behave exactly as air)
                     match vanilla_to_state(name, &props) {
                         Some(s) => {
                             palette.push(s);
                             unknown_pal.push(None);
                         }
                         None => {
-                            palette.push(0);
+                            palette.push(PLACEHOLDER_STATE);
                             unknown_pal.push(Some((name.to_string(), props)));
                         }
                     }
@@ -1816,12 +1820,17 @@ mod tests {
         let bytes = nbt::write_root("", &root).unwrap();
 
         let (chunk, _) = chunk_from_nbt(&bytes).unwrap();
-        // session view unchanged: stone parses, unknown shows air
+        // session view: stone parses, unknown shows the CHECKER
+        // placeholder (2.1f — folds to the placeholder block)
         assert_eq!(
             chunk.get_local(vc_chunk::chunk::LocalXZ::new(0, 0), 0),
             STONE
         );
-        assert_eq!(chunk.get_local(vc_chunk::chunk::LocalXZ::new(2, 0), 0), AIR);
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(2, 0), 0),
+            PLACEHOLDER
+        );
+        assert_eq!(chunk.get_state(2, 0, 0), PLACEHOLDER_STATE);
         // ...but the sidecar holds the verbatim record
         assert_eq!(chunk.unknown.len(), 1);
         let u = &chunk.unknown[0];

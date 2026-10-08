@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **2 WORLDS FIRST**. Current slice: **2.1e placeholder registry** (committed; CI watch armed).
-- HEAD: 2.1e fix-forward 2 commit (WGSL LUT offsets; local pass).
+- Part: **2 WORLDS FIRST**. Current slice: **2.1f import remap** (committed; CI watch armed).
+- HEAD: 2.1f commit (2.1e CLOSED — flake rerun green).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices

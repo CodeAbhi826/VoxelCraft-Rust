@@ -6253,3 +6253,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - V1 viewings (8 images): 2×CI F3 (terrain renders; phase row + [cpu] visible; Mem:0MB + right-col truncation bugs); 2×local F3 (overlay live; 3D viewport black = 1.6s dump timing, NOT a render bug — FKEYS proves scene renders); 2×FKEYS F5 (teal torso = 1.12 fix visible; borders visible; water oversaturated-cyan confirmed (known); first-person arm = large flat tan/brown rects — needs design check; right-edge tan strip unidentified; face-eye symmetry TBD at close-up); 1×phases F3 (first-person terrain + crosshair visible); chest/furnace dumps (icon crops only — container SCREENS still unviewed).
 - Phases gate local: 0.879 → 0.892 (quieter re-run), still <0.9 vs 0.983+ CI lavapipe → BLOCKERS #3 (owner call; CI gate untouched).
 - Manual tour blocked: X screenshots black (Vulkan direct present) + xdotool input never delivered (no WM/focus) → settings/title/inventory screens remain structural-only (E2E widget tables, zero overlap WARNs). Follow-up slice candidate: engine-side settings-screen dumps in E2E_MENU (batched for morning).
+
+## 2026-10-09e — L2 REUSE.toml (Code-only)
+- L1c CI (run 37831328901): 8/8 code jobs green; bench step 5 SUCCESS, upload-only red (quota). L1c done per convention → L1 CLOSED (L1a file + L1b manifests + L1c texts).
+- REUSE.toml: 6 bulk annotations (rs/wgsl/scripts→GPL-3.0-or-later; builtin-pack→CC-BY-SA-4.0; Monocraft→OFL-1.1; Voxelfont→MIT), copyright holders per decision block. Headers in NEW files only (no mass re-headering — keeps slice to 1 file + docs).
+- Claim: Code-only (no REUSE CLI locally to lint; L3 adds `reuse lint` CI job which will verify).

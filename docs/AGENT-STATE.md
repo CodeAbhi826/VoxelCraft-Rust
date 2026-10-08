@@ -2,7 +2,7 @@
 
 ## Current
 - Part: **1 PERFORMANCE CORE → licensing L1–L8**. Current slice: **L1a LICENSE swap** (GPL-3.0 text; L1b LICENSES/+Cargo fields next, then Part 1 foreground sweep when binary obtainable).
-- HEAD: L1a commit (Part 1 packet `926d2be` landed; sweep soft-blocked → BLOCKERS #2).
+- HEAD: L1b commit (L1a `024c1d6` code-green; sweep: F3+FKEYS legs green locally, turntable needs fresh binary post-quota).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
@@ -31,7 +31,7 @@
 
 ## TODO — approved licensing L1–L8 (APPLY ONLY AFTER slice 1.12; do not reorder)
 Decision: code + art-generator scripts GPL-3.0-or-later; original art + aggregate spec CC BY-SA 4.0; Monocraft SIL OFL 1.1 (unchanged, own folder); Voxelfont MIT; no custom GPLv3 §7 terms; no dual licensing; no permissive crates for now. No history rewrites. Gameplay/rendering behaviour must not change (metadata+docs except About screen). Incompatible dependency ⇒ stop, record in BLOCKERS.md.
-- [ ] L1 LICENSE (full GPL-3.0 text — FILE DONE in L1a) + LICENSES/ texts + `license` fields in every Cargo.toml (L1b next)
+- [ ] L1 LICENSE file DONE (L1a) + Cargo `license` fields DONE (L1b) + LICENSES/ texts (L1c next)
 - [ ] L2 REUSE: REUSE.toml bulk annotations + "Copyright (c) 2026 CodeAbhi826 and contributors" + SPDX identifiers (headers in new files only)
 - [ ] L3 CI job: `reuse lint` + `cargo deny check licenses` (fail on GPL-3.0-or-later-incompatible dep)
 - [ ] L4 NOTICE, TRADEMARKS.md, README credits, CITATION.cff, third-party list, generated-art licence statement (script+spec+provenance), CONTRIBUTING (GPL-3.0-or-later + DCO)

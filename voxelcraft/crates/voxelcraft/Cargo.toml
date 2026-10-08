@@ -5,6 +5,7 @@ default-run = "voxelcraft"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
+license.workspace = true
 # embeds the builtin resource pack into the binary (native targets only,
 # wasm fetches it instead) — see build.rs + the single-file Linux release
 build = "build.rs"

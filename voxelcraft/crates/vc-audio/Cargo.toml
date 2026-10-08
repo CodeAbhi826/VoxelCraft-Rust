@@ -3,6 +3,7 @@ name = "vc-audio"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
+license.workspace = true
 description = "Synthesized sound bank, sound events & spatial audio (rodio / WebAudio)"
 
 [features]

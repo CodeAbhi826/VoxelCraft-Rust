@@ -3,6 +3,7 @@ name = "vc-chunk"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
+license.workspace = true
 description = "Chunk & section storage: paletted containers, heightmaps, grid constants"
 
 [dependencies]

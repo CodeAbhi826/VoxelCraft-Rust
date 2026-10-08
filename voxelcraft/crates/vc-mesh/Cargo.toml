@@ -3,6 +3,7 @@ name = "vc-mesh"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
+license.workspace = true
 description = "Greedy mesher with per-vertex AO/skylight and section-scoped meshing"
 
 [dependencies]

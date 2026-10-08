@@ -3,6 +3,7 @@ name = "vc-render"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
+license.workspace = true
 description = "wgpu renderer: 5 pipelines, texture atlas, FSR 1.0, shader-pack API"
 
 [dependencies]

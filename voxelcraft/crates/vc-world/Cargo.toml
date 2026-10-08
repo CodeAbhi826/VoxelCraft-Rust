@@ -3,6 +3,7 @@ name = "vc-world"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
+license.workspace = true
 description = "World grid, terrain generation, biomes and the light engine"
 
 [dependencies]

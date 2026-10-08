@@ -6239,3 +6239,9 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09b — L1a LICENSE swap to GPL-3.0 (Code-only)
 - Replaced Apache-2.0 LICENSE (201 lines) with verbatim FSF GPL-3.0 text (674 lines; source https://www.gnu.org/licenses/gpl-3.0.txt, header/footer verified). R7 note: verbatim license text necessarily exceeds the ~300-line slice budget — one file, no code touched.
 - Claim: Code-only (license text; CI validates fmt/audit only). Next: L1b LICENSES/ + Cargo.toml `license` fields.
+
+## 2026-10-09c — L1b Cargo.toml `license` fields (Code-only)
+- 15 crates `license.workspace = true` + workspace `license = "GPL-3.0-or-later"` (matches existing version/edition/repository inheritance style). 16 insertions, 0 deletions.
+- L1a CI (run 37829070365): 8/8 code jobs green (test/clippy/fmt/wasm/golden×3/audit); bench job's benchmark step SUCCESS, only upload steps red (quota). Treated as transient infra per convention.
+- Quota: pruned 60 duplicate artifacts (104→44, newest per name kept). Uploads still red until 6–12h recalculation; quota-probe loop armed.
+- Open question (batched for morning): root package.json (private Next.js shell) has no license field — in scope for L8 docs or out of scope? Default: leave untouched.

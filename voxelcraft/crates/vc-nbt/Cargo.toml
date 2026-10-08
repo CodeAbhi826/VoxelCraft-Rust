@@ -3,6 +3,7 @@ name = "vc-nbt"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
+license.workspace = true
 description = "the 1.16.5 reference game NBT codec (named binary tags, read/write)"
 
 

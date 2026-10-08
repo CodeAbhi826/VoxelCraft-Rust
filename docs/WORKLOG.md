@@ -6348,3 +6348,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09y — 2.1e fix-forward: count pins + decode skip (Tested)
 - 2.1e CI (run 37854398012): 6 failures — 5× BLOCK_COUNT pins (539→540 + message) + prop_states_roundtrip ("state 892 failed to decode" → added PLACEHOLDER_STATE to the identity skip-predicate, TNT-precedent; polarity re-verified: is_model_state(892)=false ✓).
 - Local (idle): fmt clean; FULL vc-blocks lib suite 48/48 pass.
+
+## 2026-10-09z — 2.1e fix-forward 2: WGSL LUT offsets (Tested)
+- 2.1e CI (run 37855277144): down to 1 failure — `wgsl_lut_offsets_match_rust` ("want L_FL=893u"). The embedded WGSL mirrors the Rust LUT layout with hardcoded offsets/clamps: L_FL 892→893, L_TC 1431→1433, L_ST 1970→1973, sb/fl/tc clamps 891/538→892/539. Bubble-column id refs (538u water logic) deliberately untouched.
+- Local: LUT test passes. (Rust side derives offsets from STATE_COUNT/BLOCK_COUNT — no change needed there.)

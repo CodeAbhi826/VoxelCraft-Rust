@@ -2,7 +2,7 @@
 
 ## Current
 - Part: **2 WORLDS FIRST**. Current slice: **2.1e placeholder registry** (committed; CI watch armed).
-- HEAD: 2.1e fix-forward commit (count pins + decode skip; 48/48 local).
+- HEAD: 2.1e fix-forward 2 commit (WGSL LUT offsets; local pass).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices

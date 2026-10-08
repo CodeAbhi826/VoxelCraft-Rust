@@ -25248,6 +25248,9 @@ impl GameApp {
             // SAME frame the readback lands and the ladder deadlocks
             // (the leg only checks screenshot_png on the next update)
             && !self.e2e_iconic_armed
+            // 1.1v: same deadlock class for the E2E_PHASES capture —
+            // while its verdict ran (stage 1) the PNG belongs to the leg
+            && self.e2e_phases_stage == 0
         {
             self.take_screenshot();
         }

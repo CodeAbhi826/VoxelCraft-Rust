@@ -6189,3 +6189,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 **Changed:** probe_tier/tier_defaults/HwTier (pure+tested), F3 "CPU x ms / GPU y ms" row, gen_threads setting (0=Auto/1/2/4/8 presets, live pool rebuild) + persistence + engine-page button (ID 58) + tooltip, capability boot report. Commit `a7f233e` (~190 lines).
 - CI 37791549155: code jobs all green (quota kills only uploads). linux-game 37792865799: every leg exit 0 + OK (smoke/menu/containers/F3/FKEYS/beds/fluids/phases/streaming JSON); probe reports live ("Low, 2 cores, compute+timestamps → rd=8 ed=0.5" on the runner). Job red only on artifact uploads.
 - Deferred to 1.8b (stated): vanilla preset, particle-limit knob (diffuse spawn sites), first-run tiered defaults (needs boot reorder). Formal close-outs wait quota reset.
+
+## 2026-10-08p — slice 1.9 DONE (offload audit, report only)
+- `docs/OFFLOAD-AUDIT.md`: every per-frame/per-chunk system classified VISUAL-ONLY / EXACT / GAMEPLAY with measured costs (CI bench + streaming artifacts cited) and [ESTIMATED] flags. Conclusions: frame is CPU-bound by gen+light+mesh-apply (exact/gameplay classes — no lawful GPU offload left); particle/icon GPU migration explicitly not worth it sub-millisecond; 1.10 judges on reference hardware.
+- No code change (report-only per plan); verification is review + cited artifacts. Images: none.

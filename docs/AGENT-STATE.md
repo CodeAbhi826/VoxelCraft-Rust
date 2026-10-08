@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 PERFORMANCE CORE**. Current slice: **1.9 offload audit** (next, report only).
-- HEAD: `a7f233e` (1.8 done: CI code-green, all E2E legs exit 0; uploads red on quota).
+- Part: **1 PERFORMANCE CORE**. Current slice: **1.10 re-measure** (next; needs quota green + owner hardware).
+- HEAD: `a7f233e`+docs (1.9 done: audit committed, awaiting push).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
@@ -17,7 +17,8 @@
 - [x] 1.6 upscaling (§4 ladder + Sharpness + Native skip; `6b237ad`+fix; T5 margin 513)
 - [x] 1.7 FXAA (`d9f0425`; CI green, all legs green in run 37786754613; job red on quota only)
 - [x] 1.8 capability probe + F3 split + gen knob (`a7f233e`; legs all exit 0, uploads red on quota)
-- [ ] 1.9 offload audit (report only) — 1.8 capability probe + knobs — 1.9 offload audit (report) — 1.10 re-measure matrix + CI perf gate — 1.11 turntable tool — 1.12 player torso/face mapping fix
+- [x] 1.9 offload audit (`OFFLOAD-AUDIT.md`; CPU-bound by exact/gameplay classes)
+- [ ] 1.10 re-measure matrix + CI perf gate (needs quota green + owner numbers) — 1.8 capability probe + knobs — 1.9 offload audit (report) — 1.10 re-measure matrix + CI perf gate — 1.11 turntable tool — 1.12 player torso/face mapping fix
 - [ ] Interleaved: Chunk::get migration batches B–G (compile-verified)
 - [ ] Part 1 REVIEW PACKET + adversarial self-review (10 claims)
 

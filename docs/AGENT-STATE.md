@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **2 WORLDS FIRST**. Current slice: **2.1a DataVersion gate** (committed; CI watch armed).
-- HEAD: 2.1a commit (licensing L1–L8 COMPLETE at `2fd10a0`).
+- Part: **2 WORLDS FIRST**. Current slice: **2.1b unknown sidecar** (committed; CI watch armed).
+- HEAD: 2.1b commit (2.1a CLOSED `6a0c5f9` 9/9).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices

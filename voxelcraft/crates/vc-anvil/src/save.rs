@@ -597,6 +597,9 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
 
             // palette: list of {Name, Properties?}
             let mut palette: Vec<u16> = Vec::new();
+            // 2.1b: parallel verbatim record for palette entries outside
+            // our registry (re-emitted verbatim by the 2.4 writer)
+            let mut unknown_pal: Vec<Option<(String, Vec<(String, String)>)>> = Vec::new();
             if let Some(pal) = sec.get("Palette").and_then(|p| p.as_list()) {
                 for entry in pal {
                     let name = entry
@@ -611,11 +614,23 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
                             }
                         }
                     }
-                    palette.push(vanilla_to_state(name, &props).unwrap_or(0));
+                    // 2.1b: unknown names → air cell + verbatim sidecar
+                    // entry (name+props preserved for the 2.4 writer)
+                    match vanilla_to_state(name, &props) {
+                        Some(s) => {
+                            palette.push(s);
+                            unknown_pal.push(None);
+                        }
+                        None => {
+                            palette.push(0);
+                            unknown_pal.push(Some((name.to_string(), props)));
+                        }
+                    }
                 }
             }
             if palette.is_empty() {
                 palette.push(0); // empty palette → all-air section
+                unknown_pal.push(None);
             }
 
             // BlockStates → flat states
@@ -634,6 +649,17 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
                         let pi = ((longs[word] >> shift) as u64 & mask) as usize;
                         // out-of-range index (corrupt/trailing junk) → air
                         *slot = palette.get(pi).copied().unwrap_or(0);
+                        // 2.1b: cells via an unknown palette entry join
+                        // the verbatim sidecar (session still shows air —
+                        // placeholder presentation arrives in 2.1d)
+                        if let Some(Some((uname, uprops))) = unknown_pal.get(pi) {
+                            chunk.unknown.push(vc_chunk::chunk::UnknownCell {
+                                section: sy as u8,
+                                index: i as u16,
+                                name: uname.clone(),
+                                props: uprops.clone(),
+                            });
+                        }
                     }
                 }
             }
@@ -1734,6 +1760,57 @@ mod tests {
             OAK_LOG
         );
         assert_eq!(chunk.get_state(1, 0, 0), OAK_LOG_X);
+    }
+
+    /// 2.1b: unknown palette names land in the verbatim sidecar (R6) —
+    /// session shows air, name+props+position preserved for the writer.
+    /// Synthetic fixture (public palette shape), no real world.
+    #[test]
+    fn unknown_palette_names_preserved_verbatim() {
+        // palette [air, stone, future:block{color=red}]; stone at
+        // (0,0,0), the unknown at (2,0,0)
+        let mut pal_air = Nbt::compound();
+        pal_air.set("Name", Nbt::String("voxelcraft:air".into()));
+        let mut pal_stone = Nbt::compound();
+        pal_stone.set("Name", Nbt::String("voxelcraft:stone".into()));
+        let mut pal_future = Nbt::compound();
+        pal_future.set("Name", Nbt::String("future:block".into()));
+        let mut props = Nbt::compound();
+        props.set("color", Nbt::String("red".into()));
+        pal_future.set("Properties", props);
+
+        let mut data = vec![0i64; 256];
+        data[0] |= 1; // (x=0,y=0,z=0) → stone
+        data[0] |= 2 << 8; // (x=2,y=0,z=0) → palette 2 (unknown)
+
+        let mut sec = Nbt::compound();
+        sec.set("Y", Nbt::Byte(0));
+        sec.set("Palette", Nbt::List(vec![pal_air, pal_stone, pal_future]));
+        sec.set("BlockStates", Nbt::LongArray(data));
+        let mut level = Nbt::compound();
+        level.set("xPos", Nbt::Int(0));
+        level.set("zPos", Nbt::Int(0));
+        level.set("Sections", Nbt::List(vec![sec]));
+        level.set("Biomes", Nbt::IntArray(vec![1; 256]));
+        let mut root = Nbt::compound();
+        root.set("DataVersion", Nbt::Int(2586));
+        root.set("Level", level);
+        let bytes = nbt::write_root("", &root).unwrap();
+
+        let (chunk, _) = chunk_from_nbt(&bytes).unwrap();
+        // session view unchanged: stone parses, unknown shows air
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(0, 0), 0),
+            STONE
+        );
+        assert_eq!(chunk.get_local(vc_chunk::chunk::LocalXZ::new(2, 0), 0), AIR);
+        // ...but the sidecar holds the verbatim record
+        assert_eq!(chunk.unknown.len(), 1);
+        let u = &chunk.unknown[0];
+        assert_eq!(u.section, 0);
+        assert_eq!(u.index, 2);
+        assert_eq!(u.name, "future:block");
+        assert_eq!(u.props, vec![("color".to_string(), "red".to_string())]);
     }
 
     #[test]

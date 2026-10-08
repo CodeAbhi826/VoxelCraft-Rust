@@ -6308,3 +6308,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09p — 2.1a DataVersion gate (Tested)
 - vc-anvil save.rs: `VersionGate::{Supported, Refused{found}}` + `level_dat_version()` + `version_gate()` (level.dat→_old→gunzip→Data.DataVersion; 2586 only; foreign/absent/corrupt → loud refusal, never panic, never silent regenerate). Callers pass import COPIES (R6); fixtures are synthetic (public shape), no real world touched (L1).
 - Local (idle): fmt clean; 4/4 new tests pass (2586→Supported, 2576→Refused, missing field→Refused, garbage/missing→Refused).
+
+## 2026-10-09q — 2.1a CLOSED (Tested)
+- 2.1a CI (run 37845091121): 9/9 code green (new version_gate tests pass in CI); bench quota-only (12th). Importer now refuses non-2586 loudly.
+
+## 2026-10-09r — 2.1b unknown-block sidecar (Tested)
+- (Note: 2.1a close-out entry above rode uncommitted into this commit — docs only, code slices stay separate.)
+- Chunk gains `unknown: Vec<UnknownCell>{section, index, name, props}` (single constructor; gen/mesh untouched — worldgen never produces entries). chunk_from_nbt captures unknown palette names verbatim per cell; session still shows air (placeholder presentation = 2.1d; writer re-emit = 2.4).
+- Local (idle): fmt clean; new test passes (future:block{color=red} at (2,0,0) → air cell + exact sidecar record); `check -p vc-chunk --lib` clean.

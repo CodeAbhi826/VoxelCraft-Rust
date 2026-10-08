@@ -345,6 +345,25 @@ pub struct Chunk {
     pub height: Box<[u8; 256]>,
     /// Biome id per column
     pub biome: Box<[u8; 256]>,
+    /// 2.1b: verbatim unknown blocks met on import (palette names our
+    /// registry does not know). The session shows air at these cells
+    /// (placeholder presentation arrives in 2.1d); the sidecar preserves
+    /// the exact name+properties so the 2.4 writer re-emits them
+    /// verbatim (R6). Worldgen never produces entries here.
+    pub unknown: Vec<UnknownCell>,
+}
+
+/// One imported cell whose palette name is outside our registry.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UnknownCell {
+    /// section index (0..16)
+    pub section: u8,
+    /// cell index within the section (0..4096, y-major packing)
+    pub index: u16,
+    /// verbatim palette name (e.g. a newer-version block id)
+    pub name: String,
+    /// verbatim palette properties
+    pub props: Vec<(String, String)>,
 }
 
 /// The x/z of a block, LOCAL to its chunk.
@@ -387,6 +406,7 @@ impl Chunk {
             sections: Default::default(),
             height: Box::new([0u8; 256]),
             biome: Box::new([0u8; 256]),
+            unknown: Vec::new(),
         }
     }
 

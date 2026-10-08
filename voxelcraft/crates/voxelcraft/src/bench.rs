@@ -140,6 +140,29 @@ impl FramePhases {
     pub fn frame_times_us(&self) -> &std::collections::VecDeque<u64> {
         &self.frames
     }
+
+    /// 1.1v: runtime phase-meter coverage — min over the ring of
+    /// sum(phases)/frame. Returns (frames_checked, min_ratio). The
+    /// E2E leg asserts min_ratio >= 0.9 (the unit test's contract,
+    /// now through the real event loop).
+    pub fn min_coverage(&self) -> Option<(usize, f32)> {
+        let n = self.ring.len().min(self.frames.len());
+        if n == 0 {
+            return None;
+        }
+        let mut min_ratio = f32::MAX;
+        for (phases, frame) in self.ring.iter().zip(self.frames.iter()).take(n) {
+            if *frame == 0 {
+                continue;
+            }
+            let sum: u64 = phases.iter().sum();
+            min_ratio = min_ratio.min(sum as f32 / *frame as f32);
+        }
+        if min_ratio == f32::MAX {
+            return None;
+        }
+        Some((n, min_ratio))
+    }
 }
 
 /// helper: measure a phase around an expression

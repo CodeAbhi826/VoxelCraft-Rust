@@ -1838,6 +1838,14 @@ pub struct GameApp {
     /// the same binary, the pollution is the per-frame light change), so
     /// both captures must see the SAME light
     e2e_fkeys_freeze_day: bool,
+    /// 1.1v E2E_PHASES: 0 = idle, 1 = verdict ran (F3 capture pending),
+    /// done = the leg exits in stage 1
+    e2e_phases_stage: u8,
+    /// 1.1v E2E_PHASES: every stage's assertions passed
+    e2e_phases_ok: bool,
+    /// 1.1v: chunk-stability wait (same meshing-burst reason as FKEYS)
+    e2e_phases_last_chunks: u32,
+    e2e_phases_stable: u32,
     /// smoke stage 3: the in-game click fired once
     smoke_clicked_ingame: bool,
     /// smoke stage 3: game-entry time (F3_DUMP holds gameplay ~2 s)
@@ -3181,6 +3189,10 @@ impl GameApp {
             e2e_fkeys_last_chunks: u32::MAX,
             e2e_fkeys_stable: 0,
             e2e_fkeys_freeze_day: false,
+            e2e_phases_stage: 0,
+            e2e_phases_ok: true,
+            e2e_phases_last_chunks: u32::MAX,
+            e2e_phases_stable: 0,
             edits: 0,
             stats_t: 0.0,
             pointer_locked: false,
@@ -15849,6 +15861,70 @@ impl GameApp {
                 _ => {}
             }
         }
+        // 1.1v: E2E_PHASES — runtime proof the phase meter spans the
+        // frame: after world entry + 10 stable frames, min over the
+        // ring of sum(phases)/frame must be >= 0.9 (the unit test's
+        // contract, now through the REAL event loop). Then the F3
+        // overlay (with the phase row) is captured to screenshots/.
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_PHASES").is_ok() {
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            if in_world {
+                if self.stats.chunks == self.e2e_phases_last_chunks {
+                    self.e2e_phases_stable += 1;
+                } else {
+                    self.e2e_phases_stable = 0;
+                }
+                self.e2e_phases_last_chunks = self.stats.chunks;
+            }
+            match self.e2e_phases_stage {
+                0 if in_world && self.e2e_phases_stable >= 10 => {
+                    let (n, ratio) = self.phases.min_coverage().unwrap_or((0, 0.0));
+                    let ok = n >= 10 && ratio >= 0.9;
+                    self.e2e_phases_ok &= ok;
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: phases ring={n} min_ratio={ratio:.3} {}",
+                        if ok { "VERDICT OK" } else { "VERDICT FAILED" }
+                    ));
+                    // show the F3 overlay (with the phase row) for the capture
+                    self.show_debug = true;
+                    self.screen = Screen::Game;
+                    self.renderer.screenshot_request = true;
+                    self.e2e_phases_stage = 1;
+                }
+                1 if self.renderer.screenshot_png.is_some() => {
+                    let png = self.renderer.take_screenshot_png();
+                    let shot_ok = match png {
+                        Some(bytes) => {
+                            let dir = std::path::Path::new("screenshots");
+                            let _ = std::fs::create_dir_all(dir);
+                            let path =
+                                dir.join(format!("e2e_phases_f3_{}.png", chrono_like_stamp()));
+                            let wrote = std::fs::write(&path, &bytes).is_ok();
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: phases F3 view {} ({} bytes)",
+                                if wrote { "saved" } else { "WRITE FAILED" },
+                                bytes.len()
+                            ));
+                            wrote && bytes.len() > 1000
+                        }
+                        None => {
+                            vc_render::render::report_boot_log("e2e: phases capture MISSING");
+                            false
+                        }
+                    };
+                    self.e2e_phases_ok &= shot_ok;
+                    let all = self.e2e_phases_ok;
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: phases F3 captured — PHASES CONTRACT {}",
+                        if all { "OK" } else { "FAILED" }
+                    ));
+                    self.dbg_exit_summary();
+                    std::process::exit(if all { 0 } else { 1 });
+                }
+                _ => {}
+            }
+        }
         // 1A.6: E2E_ICONIC — the iconic-cast capture leg (native-only).
         // Stage 0 waits for world entry + the spawn neighborhood's chunks,
         // builds the stage (flat grass + the cast + TNT + a nether portal)
@@ -16076,13 +16152,19 @@ impl GameApp {
                 let fkeys_pending = std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 4;
                 #[cfg(target_arch = "wasm32")]
                 let fkeys_pending = false;
+                // 1.1v: E2E_PHASES owns the exit while its verdict + capture run
+                #[cfg(not(target_arch = "wasm32"))]
+                let phases_pending =
+                    std::env::var("E2E_PHASES").is_ok() && self.e2e_phases_stage < 2;
+                #[cfg(target_arch = "wasm32")]
+                let phases_pending = false;
                 // 1A.6: E2E_ICONIC owns the exit while its capture ladder runs
                 #[cfg(not(target_arch = "wasm32"))]
                 let iconic_pending =
                     std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
                 #[cfg(target_arch = "wasm32")]
                 let iconic_pending = false;
-                if !fkeys_pending && !iconic_pending {
+                if !fkeys_pending && !iconic_pending && !phases_pending {
                     vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                     self.dbg_exit_summary();
                     std::process::exit(0);
@@ -16125,12 +16207,17 @@ impl GameApp {
             let fkeys_pending = std::env::var("E2E_FKEYS").is_ok() && self.e2e_fkeys_stage < 4;
             #[cfg(target_arch = "wasm32")]
             let fkeys_pending = false;
+            // 1.1v: E2E_PHASES owns the exit while its verdict + capture run
+            #[cfg(not(target_arch = "wasm32"))]
+            let phases_pending = std::env::var("E2E_PHASES").is_ok() && self.e2e_phases_stage < 2;
+            #[cfg(target_arch = "wasm32")]
+            let phases_pending = false;
             // 1A.6: E2E_ICONIC owns the exit while its capture ladder runs
             #[cfg(not(target_arch = "wasm32"))]
             let iconic_pending = std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
             #[cfg(target_arch = "wasm32")]
             let iconic_pending = false;
-            if t_in > 2.2 && !fkeys_pending && !iconic_pending {
+            if t_in > 2.2 && !fkeys_pending && !iconic_pending && !phases_pending {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();
                 std::process::exit(0);
@@ -23766,6 +23853,10 @@ impl GameApp {
                 self.fps as i32, t_val, clouds_val, diff_id
             ),
             format!("Integrated server @ {:.0} ms ticks, 0 tx, 0 rx", tick_ms),
+            // 1.1v: the live per-phase breakdown row (sim/stream/results/
+            // ui/draw + the summed cpu) — the F3 screenshot the E2E leg
+            // captures pins this line, not just the sim tick above
+            self.phases.f3_line(),
             format!(
                 "C: {}/{} (s) D: {}, pC: {:03}, pU: {:03}, aB: {:03}",
                 drawn,

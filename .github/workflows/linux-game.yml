@@ -357,6 +357,28 @@ jobs:
           grep -q "e2e: fluids VERDICT OK" smoke-fluids.log || { echo "FAIL: the fluids E2E verdict is not OK (the flags line above shows which scenario failed)"; exit 1; }
           echo "FLUIDS OK - the fluid rules verified in-game (the infinite source, the mixing product, the bubble column, the waterlogged chest)"
 
+          # 1.1v: runtime phase-meter proof (E2E_PHASES=1) — min over the
+          # live ring of sum(phases)/frame must be >= 0.9 (the unit
+          # test's contract through the REAL event loop); then the F3
+          # overlay with the phase row is captured to screenshots/.
+          mkdir -p run6 && pushd run6 >/dev/null
+          set +e
+          timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan E2E_PHASES=1 \
+            "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-phases.log
+          CODE=$?
+          set -e
+          popd >/dev/null
+          echo "phases smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: phases E2E exited $CODE"
+            exit 1
+          fi
+          grep -q "e2e: phases .* VERDICT OK" smoke-phases.log || { echo "FAIL: the phases E2E verdict is not OK (the ring line above shows the coverage)"; exit 1; }
+          grep -q "PHASES CONTRACT OK" smoke-phases.log || { echo "FAIL: the phases capture contract is not OK"; exit 1; }
+          test -s run6/screenshots/e2e_phases_f3_*.png || { echo "FAIL: phases F3 screenshot missing"; exit 1; }
+          echo "PHASES OK - the phase meter spans update+draw in-game (min coverage >= 0.9, F3 phase row captured)"
+
           echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 
       - name: Upload artifact (the raw executable, no archive)
@@ -365,4 +387,12 @@ jobs:
           name: voxelcraft-linux-single-file
           path: voxelcraft-*-linux-x64
           retention-days: 90
+          if-no-files-found: error
+
+      - name: Upload phases F3 screenshot (1.1v V1 evidence)
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-phases-f3
+          path: run6/screenshots/e2e_phases_f3_*.png
+          retention-days: 30
           if-no-files-found: error

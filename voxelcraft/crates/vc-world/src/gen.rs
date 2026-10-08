@@ -6781,7 +6781,7 @@ mod phase10_tests {
                 let lx = x - cx * 16;
                 let lz = z - cz * 16;
                 if (0..16).contains(&lx) && (0..16).contains(&lz) {
-                    return c.get(lx as usize, y, lz as usize);
+                    return c.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), y);
                 }
             }
             panic!("probe ({x},{y},{z}) outside the generated neighborhood");
@@ -6839,7 +6839,7 @@ mod phase10_tests {
         let lz = (mz - (mz >> 4) * 16) as usize;
         let mut carved = 0;
         for y in 8..col_h.min(r.top) {
-            if state_block(c.get(lx, y as usize, lz)) == AIR {
+            if state_block(c.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y as usize)) == AIR {
                 carved += 1;
             }
         }
@@ -6946,7 +6946,7 @@ mod v172_tests {
         }
         // 1.8: red sandstone is the filler between red sand and banding
         assert_eq!(
-            chunk.get(lx, h - 2, lz),
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), h - 2),
             RED_SANDSTONE,
             "1.8 red-sand filler"
         );
@@ -7667,15 +7667,17 @@ mod auditfix_tests {
                 for lz in 1..15usize {
                     for lx in 1..15usize {
                         for y in 60..100usize {
-                            if chunk.get(lx, y, lz) != JUNGLE_LOG {
+                            if chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y)
+                                != JUNGLE_LOG
+                            {
                                 continue;
                             }
                             // a bush log has oak LEAVES beside it
                             let neighbors = [
-                                chunk.get(lx + 1, y, lz),
-                                chunk.get(lx - 1, y, lz),
-                                chunk.get(lx, y, lz + 1),
-                                chunk.get(lx, y, lz - 1),
+                                chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx + 1, lz), y),
+                                chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx - 1, lz), y),
+                                chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz + 1), y),
+                                chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz - 1), y),
                             ];
                             if neighbors.contains(&LEAVES) {
                                 found_bush = true;

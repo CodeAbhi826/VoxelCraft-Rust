@@ -1,15 +1,15 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 PERFORMANCE CORE**. Current slice: **1.3 work budgets** (next).
-- HEAD: `9e7945e` (1.2v done: CI green + linux-game 37754542709 green, streaming JSON artifact).
+- Part: **1 PERFORMANCE CORE**. Current slice: **1.4 CPU world-gen speedups** (next).
+- HEAD: `a5dc652` (1.3 done: CI 37758767658 + linux-game 37759391350 green; streaming avg 268→52ms lavapipe).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
 - [x] 1.0.5 per-function pinned `to_bits` tests + wide/targeted golden hashes (`30ad6a8`, CI 37743400037 green)
 - [x] 1.1v E2E phase proof (`29de86b`+`1ad23a4`; linux-game 37747380181 green, V1 F3 screenshot viewed)
 - [x] 1.2v CI streaming step (non-gating) + world-chunks in bench JSON (`871d28f`+2 fixes; linux-game 37754542709 green, artifact: avg 268ms/p99 808ms, 877 chunks)
-- [ ] 1.3 work budgets first (no frame over 100 ms streaming; 30 fps steady reference hardware at defaults)
+- [x] 1.3 work budgets (`8b4011c`+2 fixes; avg 268→52ms lavapipe, meshes land, all legs green)
 - [ ] 1.4 CPU world-gen speedups, IDENTICAL output (hash change = HARD STOP)
 
 ## TODO — queued (Part 1 remainder)

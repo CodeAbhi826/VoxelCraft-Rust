@@ -6137,3 +6137,12 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - linux-game run 37754542709 SUCCESS. First real streaming numbers (CI runner lavapipe, NOT reference hardware): 148 frames, avg 268.4 ms, median 100.0 ms, p99 807.8 ms, worst 1078.8 ms; phases stream 130.2 + results 129.7 + draw 137.4 ms (gen/mesh/upload dominate, as designed); world 877 chunks / 700 meshed; camera=streaming. [Tested: artifact JSON]
 - Known imprecision (logged, not chased): JSON "frames" counts the whole frame-time deque (148) rather than exactly the configured 120 measured — warmup/loading frames ride along. Fine for evidence; 1.10 defines gate semantics.
 - Images viewed: none (non-visual slice; V1 n/a). Local verify: fmt/check/test -p only; 98/98 lib green.
+
+## 2026-10-08g — slice 1.3 DONE (work budgets, linux-game green + measured)
+
+**Changed:** `game.rs` only — commits `8b4011c` (pool cores-1, 6ms apply budget + pending_apply, stale-mesh drop, worker-scaled caps 4..16, 2 unit tests), `22e4a95` (StreamPool per-target alias; rayon is native-only), `a5dc652` (mesh-before-gen apply order). ~160 lines total.
+- Before: global rayon pool, unbounded same-frame applies (gen lighting + uploads), no staleness concept. After: dedicated pool, bursts capped, stale meshes dropped with dirty bits preserved.
+- CI: 37758767658 9/9 green (incl. wasm). linux-game 37759391350 SUCCESS (all E2E legs green).
+- Measured (CI lavapipe streaming, NOT reference hardware): 1.2v baseline avg 268.4/p99 807.8/worst 1078.8 ms, 877 chunks/700 meshed → 1.3 avg 52.4/median 41.9/p99 80.4/worst 82.4 ms, 148 chunks/86 meshed; stream+results phases 130→11 ms. Mid-fix run caught FIFO mesh starvation (149 loaded/0 meshed) — fixed by mesh-first ordering. Chunks/frame lower by design (budgets); 1.10 judges tuning on owner hardware. [Tested: artifacts]
+- Images viewed: none (non-visual; V1 n/a). Local: fmt/check/test -p only; 100/100 lib green.
+- Honest bounds: the 6ms budget caps bursts, not a single lighting pass (~20ms CI runner, ~59ms reference hardware class); thread priority unset (no portable std API — 1.8).

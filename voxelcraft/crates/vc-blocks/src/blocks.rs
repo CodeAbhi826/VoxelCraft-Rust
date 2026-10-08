@@ -13756,7 +13756,7 @@ mod creative_tab_tests {
         // the 16 ids are contiguous 515..=530 and past the old registry
         assert_eq!(LEATHER_CAP, 515);
         assert_eq!(DIAMOND_BOOTS, 530);
-        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(BLOCK_COUNT, 540);
         for b in LEATHER_CAP..=DIAMOND_BOOTS {
             // every armor item is an inventory-only item block
             assert!(is_item_block(b), "armor {b} must be an item block");
@@ -14362,6 +14362,9 @@ mod state_tests {
                 // base 805) — never model states; the fold is verified
                 // per-block in the fire round's own tests
                 || is_fire_block(s)
+                // 2.1e: the placeholder identity (892) — folds to its
+                // block, verified in placeholder_identity_and_flags
+                || s == PLACEHOLDER_STATE
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(
@@ -14743,7 +14746,7 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 539, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone + the TNT block");
+        assert_eq!(BLOCK_COUNT, 540, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone + the TNT block + 2.1e placeholder");
         assert_eq!(STATE_COUNT, 893, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
@@ -14795,7 +14798,7 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 539); // + the backlog fire (block windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 540); // + the backlog fire (block windows are cumulative)
         assert_eq!(STATE_COUNT, 893); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
     }
 
@@ -14836,7 +14839,7 @@ mod auditfix_tests {
             );
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 539); // + the backlog fire (block windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 540); // + the backlog fire (block windows are cumulative)
         assert_eq!(STATE_COUNT, 893); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // solidity classes: log/planks solid-opaque (hardness family 2
                                       // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
@@ -14895,7 +14898,7 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 539); // + the backlog fire (block windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 540); // + the backlog fire (block windows are cumulative)
         assert_eq!(STATE_COUNT, 893); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_CLEAVER), SPAWNER);
@@ -15025,7 +15028,7 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(BLOCK_COUNT, 540);
         assert_eq!(STATE_COUNT, 893); // + the Round-13 station identities (861..=862)
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
@@ -15191,7 +15194,7 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(BLOCK_COUNT, 540);
         assert_eq!(STATE_COUNT, 893); // + the Round-13 station identities (861..=862)
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
@@ -15326,7 +15329,7 @@ mod v114_tests {
         );
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(BLOCK_COUNT, 540);
         assert_eq!(STATE_COUNT, 893); // + the Round-13 station identities (861..=862)
     }
 }
@@ -15427,7 +15430,7 @@ mod v115_tests {
         );
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
-        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(BLOCK_COUNT, 540);
         assert_eq!(STATE_COUNT, 893); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 471);
     }
@@ -15593,7 +15596,7 @@ mod v116_tests {
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
-        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(BLOCK_COUNT, 540);
         assert_eq!(STATE_COUNT, 893); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 471);
     }
@@ -15788,7 +15791,7 @@ mod v116_tests {
         // spawner states)
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
-        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(BLOCK_COUNT, 540);
         assert_eq!(STATE_COUNT, 893); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 471);
     }
@@ -16061,7 +16064,7 @@ mod tnt_tests {
         // the picker carries it (the Redstone tab)
         assert!(PICKER_BLOCKS.contains(&TNT), "picker missing TNT");
         assert_eq!(creative_tab(TNT), CreativeTab::Redstone);
-        assert_eq!(BLOCK_COUNT, 539);
+        assert_eq!(BLOCK_COUNT, 540);
         assert_eq!(STATE_COUNT, 893);
         // the per-state tiles fold to the same three faces (the HUD/hotbar
         // blit path through state_tiles's fallback)

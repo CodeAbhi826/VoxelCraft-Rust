@@ -6344,3 +6344,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - blocks.rs: PLACEHOLDER block 539 (+BLOCK_TABLE row, BLOCK_COUNT→540), PLACEHOLDER_STATE 892 (STATE_COUNT→893 ×11 asserts), TILE_PLACEHOLDER 819 (TILE_MAX→819), fold arms both ways, is_model_state arm, "Unknown Block" def (non-solid/opaque, stone sound; creative default = Miscellaneous, honestly labeled). No import remap yet (2.1f).
 - textures.rs: placeholder_art (magenta/black 8×8 checker, own slot) + dispatch arm + pixel test (mirrors 1.12/missing-tile precedent).
 - Local (idle): fmt clean; 2/2 new tests pass (registry identity/flags, tile pixels); lib clippy clean. Note: `clippy --tests` flags 4 PRE-EXISTING test-code lints (ui.rs/gpu_mesh.rs, untouched by this slice, outside CI's lib-only gate) — left alone.
+
+## 2026-10-09y — 2.1e fix-forward: count pins + decode skip (Tested)
+- 2.1e CI (run 37854398012): 6 failures — 5× BLOCK_COUNT pins (539→540 + message) + prop_states_roundtrip ("state 892 failed to decode" → added PLACEHOLDER_STATE to the identity skip-predicate, TNT-precedent; polarity re-verified: is_model_state(892)=false ✓).
+- Local (idle): fmt clean; FULL vc-blocks lib suite 48/48 pass.

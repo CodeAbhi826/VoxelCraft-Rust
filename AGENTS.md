@@ -3,10 +3,11 @@
 ## 1. Hardware & Compilation Guardrails (STRICT)
 - **Reference hardware**: low-end dual-core Linux test hardware (owner's machine — make/model/specs are private and must never appear in the repo, docs, commits, or logs).
 - **NEVER run `cargo build --release` or compile release binaries locally on the user's host machine**. Local release compilation risks thermal throttling and host freezing.
-- **Local machine usage is strictly restricted to**:
-  - `cargo check -p <crate> --lib`
-  - `cargo test -p <crate> --lib`
-  - Fast single-file or non-release inspection commands
+- **No local compilation except quick test verification** (owner directive 2026-10-08): a single filtered `cargo test -p <crate> --lib <filter>` when a fast signal is genuinely needed. Everything heavy — full builds, full test suites, benchmarks, wasm targets, binaries — runs ONLY on GitHub Actions CI. Check the machine load (`/proc/loadavg`, free memory, thermal zones) before even a quick run; skip it if the machine is busy.
+- **Local machine usage is strictly restricted to** (and only when the machine is idle):
+  - a single filtered `cargo test -p <crate> --lib <filter>` for a fast signal
+  - `cargo check -p <crate> --lib` only to catch syntax-level breakage pre-push
+  - Fast single-file or non-release inspection commands (grep, logs, image viewing)
   - Git operations
 - **All production executables, release packages, and standalone release binaries must be compiled and distributed via GitHub Actions CI**.
 

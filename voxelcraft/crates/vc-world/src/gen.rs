@@ -1146,10 +1146,8 @@ impl TerrainGen {
                                 || col_biome == Biome::River)
                             && col_biome != Biome::NetherWastes;
                         for by in by0..=by1 {
-                            let cur = chunk.get_local(
-                                vc_chunk::chunk::LocalXZ::new(lx, lz),
-                                by as usize,
-                            );
+                            let cur =
+                                chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), by as usize);
                             if cur == AIR || cur == WATER || cur == BEDROCK || cur == LAVA {
                                 continue; // only carve solids
                             }
@@ -1799,8 +1797,10 @@ impl TerrainGen {
                         }
                     }
                 }
-                if chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), h as usize)
-                    == GRASS
+                if chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    h as usize,
+                ) == GRASS
                 {
                     chunk.set(lx as usize, h as usize, lz as usize, DIRT);
                 }
@@ -1878,8 +1878,10 @@ impl TerrainGen {
                     }
                 }
                 // dirt under trunk
-                if chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), h as usize)
-                    == GRASS
+                if chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    h as usize,
+                ) == GRASS
                 {
                     chunk.set(lx as usize, h as usize, lz as usize, DIRT);
                 }
@@ -1942,7 +1944,8 @@ impl TerrainGen {
                         if chunk.get_local(
                             vc_chunk::chunk::LocalXZ::new((lx + dx) as usize, (lz + dz) as usize),
                             h as usize,
-                        ) == GRASS {
+                        ) == GRASS
+                        {
                             chunk.set((lx + dx) as usize, h as usize, (lz + dz) as usize, DIRT);
                         }
                     }
@@ -2106,7 +2109,10 @@ impl TerrainGen {
                 }
             }
             // dirt under trunk
-            let under = chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), h as usize);
+            let under = chunk.get_local(
+                vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                h as usize,
+            );
             if under == GRASS || under == SNOW_GRASS {
                 chunk.set(lx as usize, h as usize, lz as usize, DIRT);
             }
@@ -2137,8 +2143,10 @@ impl TerrainGen {
             let lz = rng.next_range(16) as i32;
             let col_idx = lz as usize * 16 + lx as usize;
             let h = chunk.height[col_idx] as i32;
-            if chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), h as usize)
-                != GRASS
+            if chunk.get_local(
+                vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                h as usize,
+            ) != GRASS
             {
                 continue;
             }
@@ -2379,11 +2387,18 @@ impl TerrainGen {
                     let lz = rng.next_range(16) as i32;
                     let col_idx = lz as usize * 16 + lx as usize;
                     let h = chunk.height[col_idx] as i32;
-                    let floor = chunk.get(lx as usize, h as usize, lz as usize);
+                    let floor = chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        h as usize,
+                    );
                     if floor != GRASS && floor != SNOW_GRASS && floor != PODZOL && floor != DIRT {
                         continue;
                     }
-                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                    if chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        (h + 1) as usize,
+                    ) != AIR
+                    {
                         continue;
                     }
                     let age = 1 + rng.next_range(3) as u8; // 1..=3
@@ -2517,12 +2532,22 @@ impl TerrainGen {
             let lz = rng.next_range(16) as i32;
             let col_idx = lz as usize * 16 + lx as usize;
             let h = chunk.height[col_idx] as i32;
-            if chunk.get(lx as usize, h as usize, lz as usize) != GRASS
-                && chunk.get(lx as usize, h as usize, lz as usize) != SNOW_GRASS
+            if chunk.get_local(
+                vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                h as usize,
+            ) != GRASS
+                && chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    h as usize,
+                ) != SNOW_GRASS
             {
                 continue;
             }
-            if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+            if chunk.get_local(
+                vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                (h + 1) as usize,
+            ) != AIR
+            {
                 continue;
             }
             let id = if rng.next_f32() < 0.5 {
@@ -2562,11 +2587,18 @@ impl TerrainGen {
                     }
                     let h = chunk.height[col_idx] as i32;
                     // fold: MYCELIUM stores its dedicated state (254)
-                    let top = chunk.get(lx as usize, h as usize, lz as usize);
+                    let top = chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        h as usize,
+                    );
                     if top != MYCELIUM && top != GRASS {
                         continue;
                     }
-                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                    if chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        (h + 1) as usize,
+                    ) != AIR
+                    {
                         continue;
                     }
                     let red = rng.next_f32() < 0.5;

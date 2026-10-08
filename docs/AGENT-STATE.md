@@ -20,6 +20,17 @@
 ## TODO — later parts (in order)
 - [ ] Part 2 worlds-first (importer → oracle → arch → writer) — Part 3 gameplay core — Part 4 world-gen parity (4.0 LEGAL GATE hard stop first) — Part 5 colour/lighting/packs/shader — Part 6 art/models — Part 7 remaining gameplay — Part 8 quirk parity — Part 9 release
 
+## TODO — approved licensing L1–L8 (APPLY ONLY AFTER slice 1.12; do not reorder)
+Decision: code + art-generator scripts GPL-3.0-or-later; original art + aggregate spec CC BY-SA 4.0; Monocraft SIL OFL 1.1 (unchanged, own folder); Voxelfont MIT; no custom GPLv3 §7 terms; no dual licensing; no permissive crates for now. No history rewrites. Gameplay/rendering behaviour must not change (metadata+docs except About screen). Incompatible dependency ⇒ stop, record in BLOCKERS.md.
+- [ ] L1 LICENSE (full GPL-3.0 text) + LICENSES/ texts + `license` fields in every Cargo.toml
+- [ ] L2 REUSE: REUSE.toml bulk annotations + "Copyright (c) 2026 CodeAbhi826 and contributors" + SPDX identifiers (headers in new files only)
+- [ ] L3 CI job: `reuse lint` + `cargo deny check licenses` (fail on GPL-3.0-or-later-incompatible dep)
+- [ ] L4 NOTICE, TRADEMARKS.md, README credits, CITATION.cff, third-party list, generated-art licence statement (script+spec+provenance), CONTRIBUTING (GPL-3.0-or-later + DCO)
+- [ ] L5 About screen (credit, warranty, source link, not-affiliated, third-party list; V1 screenshot)
+- [ ] L6 AUTHORSHIP.md (human role + AI agents, honest, no overclaim)
+- [ ] L7 provider output-ownership terms → finding in LEGAL.md
+- [ ] L8 README/LEGAL docs off Apache-2.0 (keep every provenance statement, R4) + worklog entry
+
 ## Open blockers
 - None. Soft blockers go to `docs/BLOCKERS.md` with exact ask + default; hard stops halt everything.
 

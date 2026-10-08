@@ -3596,7 +3596,12 @@ impl GameApp {
                         std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
                     #[cfg(target_arch = "wasm32")]
                     let iconic_hold = false;
-                    if self.screen == Screen::Game && !fkeys_hold && !iconic_hold {
+                    // 1.2v: same hold for --benchmark runs (the scripted
+                    // camera needs no window focus; pausing would park the
+                    // run on Screen::Pause, where bs.seen never advances
+                    // and the leg stalls to the step timeout)
+                    let bench_hold = self.bench.is_some();
+                    if self.screen == Screen::Game && !fkeys_hold && !iconic_hold && !bench_hold {
                         self.enter_pause();
                     }
                 }

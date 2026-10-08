@@ -6193,3 +6193,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-08p — slice 1.9 DONE (offload audit, report only)
 - `docs/OFFLOAD-AUDIT.md`: every per-frame/per-chunk system classified VISUAL-ONLY / EXACT / GAMEPLAY with measured costs (CI bench + streaming artifacts cited) and [ESTIMATED] flags. Conclusions: frame is CPU-bound by gen+light+mesh-apply (exact/gameplay classes — no lawful GPU offload left); particle/icon GPU migration explicitly not worth it sub-millisecond; 1.10 judges on reference hardware.
 - No code change (report-only per plan); verification is review + cited artifacts. Images: none.
+
+## 2026-10-08q — slice 1.10 DONE (re-measure matrix + verdict + CI gate)
+- Gate: structural python check on streaming-bench.json (fields, frames≥100, camera; REPORTS avg/p99/worst — no lavapipe timing thresholds by design). First live pass: `PERF GATE OK — frames=148 avg=78.0 median=78.3 p99=95.9 worst=99.4ms` (run 37794453631; job red only on uploads).
+- Matrix (streaming/lavapipe): 268.4 (pre-budget) → 52–53 (1.3) → 83.2 (1.5) → 69.2 (1.6) → 78.0 (gate run). Orbit/N4000 static: 127.5 ms pre-Part-1 (owner-era). Scene GPU: 8.9/11.7/30.5 ms across runs (lavapipe variance is 3x — noisy).
+- VERDICT: CPU-bound on every measured tier (gen + lighting + mesh-apply dominate; scene GPU ≪ CPU frame in all samples). Owner hardware gives the final word; the gate + gpu_ms artifact carry every future run's numbers.

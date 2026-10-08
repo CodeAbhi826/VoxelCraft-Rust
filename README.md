@@ -9,7 +9,7 @@ One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browse
 [![WASM build](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/wasm-build.yml/badge.svg)](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/wasm-build.yml)
 [![Linux single-file build](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/linux-game.yml/badge.svg)](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/linux-game.yml)
 [![Releases](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/release.yml/badge.svg)](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/release.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
 
 **909 unit tests pass* · clippy clean (0 warnings) · WGSL validated · E2E-screenshot verified**
 

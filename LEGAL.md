@@ -10,15 +10,15 @@ or trademarks are included in this repository — the audit script
 This file is the user-facing summary. The **binding policy** with the full
 rule set (L1–L8), audit history, and rationale is
 [docs/LEGAL-COMPLIANCE.md](docs/LEGAL-COMPLIANCE.md). The project licence is
-Apache-2.0 — see [LICENSE](LICENSE).
+GPL-3.0-or-later — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ## What ships, and where every byte came from
 
 | Asset class | Provenance | Licence |
 |---|---|---|
-| Engine code (Rust/WGSL) | Original implementation, written in this repository | Apache-2.0 |
-| Built-in textures, sounds, panorama (mode A) | Procedurally synthesized at startup / by the in-repo pipeline — pixel-level original work | Apache-2.0 |
-| `assets-vault` modern set | Re-synthesized original works: a quarantined reference texture zip (git-ignored, never committed) was reduced to **aggregate numeric facts only** (dimensions, top-24 palette histograms, banding/edge/symmetry/alpha statistics, animation metadata — `voxelcraft/assets-vault/spec/`); a synthesizer then draws every pixel of the shipped set from those facts. **The reference set's exact version is not recorded** — it is a modern-version dump, i.e. newer than the 1.16.5 target; the vault ships unused by the current game files and exists for later versions. No pixel positions, masks, or silhouettes were stored or derived. | Apache-2.0 |
+| Engine code (Rust/WGSL) | Original implementation, written in this repository | GPL-3.0-or-later |
+| Built-in textures, sounds, panorama (mode A) | Procedurally synthesized at startup / by the in-repo pipeline — pixel-level original work | CC-BY-SA-4.0 |
+| `assets-vault` modern set | Re-synthesized original works: a quarantined reference texture zip (git-ignored, never committed) was reduced to **aggregate numeric facts only** (dimensions, top-24 palette histograms, banding/edge/symmetry/alpha statistics, animation metadata — `voxelcraft/assets-vault/spec/`); a synthesizer then draws every pixel of the shipped set from those facts. **The reference set's exact version is not recorded** — it is a modern-version dump, i.e. newer than the 1.16.5 target; the vault ships unused by the current game files and exists for later versions. No pixel positions, masks, or silhouettes were stored or derived. | CC-BY-SA-4.0 |
 | Game mechanics, formulas, timings, registry data | Facts, replicated from published documentation (the reference wiki), live-verified at implementation time | facts — no licence needed |
 | Study corpus (standing provenance statement) | Owner-granted read-only reference sets (see `docs/LEGAL-COMPLIANCE.md` §6a) were used **only** for fact-level counts and aggregate statistics (dimensions, palette histograms, symmetry/edge/animation metadata). No pixels, code, pseudocode, variable names, or assets were copied, transcribed, or derived positionally from them. | facts — no licence needed |
 | User-imported assets (mode B) | Supplied by the player at runtime; never distributed by this project | user's own |

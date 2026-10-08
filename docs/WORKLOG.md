@@ -6295,3 +6295,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09m — L6 CLOSED + L7 provider-ownership finding (Code-only)
 - L6 CI (run 37840981889): 9/9 code green; bench quota-only (9th). L6 done.
 - L7: LEGAL.md finding (DCO + GPL-on-entry asserted, provider-side explicitly NOT asserted — terms never reviewed here) + BLOCKERS #5 (owner confirms provider terms pre-release; Part 9 re-verifies). No fabricated legal claims.
+
+## 2026-10-09n — L7 CLOSED + L8 Apache→GPL doc sweep (Code-only)
+- L7 rerun (run 37842033808, after a second concurrency mis-cancel): 9/9 code green; bench quota-only (10th). L7 done. (CI queue note: hourly probe reruns may be congesting capacity — pause probe once quota clears.)
+- L8: current-claim Apache-2.0 → GPL-3.0-or-later/CC-BY-SA-4.0 in README (badge + section done L4b, badge here), LEGAL.md (header + code/art/vault rows), LEGAL-COMPLIANCE.md (textures/overlays/sound/code cells). Third-party dep rows untouched (correct). Append-only history (WORKLOG/VERSION-EVOLUTION/root worklog) deliberately NOT rewritten — entries were true when written. Provenance statements kept (R4).

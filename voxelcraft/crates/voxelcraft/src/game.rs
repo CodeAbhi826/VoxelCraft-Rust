@@ -15985,7 +15985,10 @@ impl GameApp {
                 self.player.vel = glam::Vec3::ZERO;
                 self.player.yaw = yaw;
                 self.player.pitch = pitch;
-                self.player.flying = true;
+                // 1.2: the STREAMING path walks INSIDE the world (eye
+                // height) so chunk streaming sees a real player position;
+                // the orbit stays airborne/flying
+                self.player.flying = !bs.streaming;
                 self.player.on_ground = false;
             }
         }
@@ -25181,12 +25184,17 @@ impl GameApp {
                         let d_avg = self.draw_calls_ring.iter().map(|d| d.0).sum::<u32>() / n;
                         let b_avg = self.draw_calls_ring.iter().map(|d| d.1).sum::<u32>() / n;
                         let json = format!(
-                            "{{\"benchmark\":{{\"frame\":{},\"phases\":{},\"draw\":{{\"calls_avg\":{},\"binds_avg\":{},\"path\":\"{}\"}}}}}}",
+                            "{{\"benchmark\":{{\"frame\":{},\"phases\":{},\"draw\":{{\"calls_avg\":{},\"binds_avg\":{},\"path\":\"{}\"}},\"camera\":\"{}\"}}}}",
                             fs.to_json(),
                             report.to_json(),
                             d_avg,
                             b_avg,
-                            self.renderer.draw_path_name()
+                            self.renderer.draw_path_name(),
+                            if self.bench.as_ref().is_some_and(|b| b.streaming) {
+                                "streaming"
+                            } else {
+                                "orbit"
+                            }
                         );
                         #[cfg(not(target_arch = "wasm32"))]
                         if let Some(path) = &self.bench.as_ref().and_then(|b| b.json_path.clone()) {

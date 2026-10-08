@@ -277,6 +277,12 @@ pub struct BenchState {
     pub json_path: Option<String>,
     /// bench-local clock (seconds since bench start)
     pub t: f32,
+    /// 1.2 (PLAN v3.1): STREAMING camera — `--benchmark streaming` walks
+    /// the camera forward through FRESH terrain (straight line, ground
+    /// height, 8 blocks/s) so the frame cost includes continuous chunk
+    /// generation + meshing, instead of the orbit's already-loaded ring.
+    /// The orbit path stays the default.
+    pub streaming: bool,
 }
 
 impl BenchState {
@@ -290,6 +296,7 @@ impl BenchState {
             seed: 0xC0FFEE,
             json_path: None,
             t: 0.0,
+            streaming: false,
         };
         for a in args.iter().skip(bench + 1) {
             if a.starts_with("--") {
@@ -303,6 +310,8 @@ impl BenchState {
                 st.seed = v.parse().unwrap_or(st.seed);
             } else if let Some(v) = a.strip_prefix("json=") {
                 st.json_path = Some(v.to_string());
+            } else if a == "streaming" {
+                st.streaming = true;
             }
         }
         Some(st)
@@ -310,19 +319,35 @@ impl BenchState {
 
     /// scripted camera: deterministic orbit around the spawn area.
     /// radius 26, height +13 above spawn, look inward and slightly down.
+    /// With `streaming` set: a straight walk east at 8 blocks/s at spawn
+    /// height (flying=false handled by the caller's ground snap) — every
+    /// second crosses into ungenerated chunks, so the frame cost carries
+    /// the real streaming load (gen queue, mesh jobs, uploads).
     pub fn camera(&self, spawn: glam::Vec3) -> (glam::Vec3, f32, f32) {
-        let ang = self.t * 0.30;
-        let r = 26.0;
-        let pos = glam::Vec3::new(
-            spawn.x + ang.cos() * r,
-            spawn.y + 13.0,
-            spawn.z + ang.sin() * r,
-        );
-        // look toward the orbit center (yaw measured like the player's)
-        let to_c = (glam::Vec3::new(spawn.x, spawn.y + 2.0, spawn.z) - pos).normalize();
-        let yaw = f32::atan2(-to_c.x, -to_c.z);
-        let pitch = to_c.y.clamp(-1.0, 1.0).asin();
-        (pos, yaw, pitch)
+        if self.streaming {
+            const WALK_SPEED: f32 = 8.0; // blocks/s — vanilla walk pace
+            let pos = glam::Vec3::new(
+                spawn.x + self.t * WALK_SPEED,
+                spawn.y + 1.8, // eye height, inside the world (not over it)
+                spawn.z,
+            );
+            let yaw = std::f32::consts::FRAC_PI_2; // look due east (+x)
+            let pitch = 0.0;
+            (pos, yaw, pitch)
+        } else {
+            let ang = self.t * 0.30;
+            let r = 26.0;
+            let pos = glam::Vec3::new(
+                spawn.x + ang.cos() * r,
+                spawn.y + 13.0,
+                spawn.z + ang.sin() * r,
+            );
+            // look toward the orbit center (yaw measured like the player's)
+            let to_c = (glam::Vec3::new(spawn.x, spawn.y + 2.0, spawn.z) - pos).normalize();
+            let yaw = f32::atan2(-to_c.x, -to_c.z);
+            let pitch = to_c.y.clamp(-1.0, 1.0).asin();
+            (pos, yaw, pitch)
+        }
     }
 }
 

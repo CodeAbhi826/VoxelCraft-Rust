@@ -242,6 +242,48 @@ const G2: f32 = 0.211_324_87; // (sqrt(3) - 1) / 6
 const F3: f32 = 0.333_333_34;
 const G3: f32 = 0.166_666_67;
 
+// ---- 1.0.3 (PLAN v3.1): deterministic worldgen math (R5) -----------------
+// std's f32::sin/cos/sqrt are documented as implementation-defined — each
+// platform's libm decides the last bits. Worldgen calls them in the
+// feature/structure placement paths, so terrain differed per OS. These
+// wrappers route through the pure-Rust `libm` crate (bit-exact ports of
+// musl's routines): identical results on Linux, Windows, macOS, wasm.
+// The golden worldgen hash (golden_determinism_tests) pins the swap:
+// values there were taken on std libm and re-pinned in 1.0.3 — reported,
+// never silently re-baselined.
+
+#[inline]
+fn dsin32(x: f32) -> f32 {
+    libm::sinf(x)
+}
+
+#[inline]
+fn dcos32(x: f32) -> f32 {
+    libm::cosf(x)
+}
+
+#[inline]
+fn dsin64(x: f64) -> f64 {
+    libm::sin(x)
+}
+
+#[inline]
+fn dcos64(x: f64) -> f64 {
+    libm::cos(x)
+}
+
+#[inline]
+fn dsqrt32(x: f32) -> f32 {
+    libm::sqrtf(x)
+}
+
+/// round-half-away-from-zero, matching std f32::round (libm has no
+/// roundf wrapper name for it in older versions; roundf exists — use it)
+#[inline]
+fn dround32(x: f32) -> f32 {
+    libm::roundf(x)
+}
+
 pub struct Noise {
     perm: Box<[u8; 512]>,
     perm_mod12: Box<[u8; 512]>,
@@ -1060,8 +1102,8 @@ impl TerrainGen {
         for step in 0..worm.steps {
             yaw += (rng.next_f32() as f64 - 0.5) * 0.7;
             pitch = (pitch + (rng.next_f32() as f64 - 0.5) * 0.35).clamp(-0.6, 0.6);
-            x += yaw.cos() * 4.0;
-            z += yaw.sin() * 4.0;
+            x += dcos64(yaw) * 4.0;
+            z += dsin64(yaw) * 4.0;
             y = (y + pitch * 4.0).clamp(8.0, 126.0);
             width += (rng.next_f32() as f64 - 0.42) * 0.8;
             width = width.clamp(1.0, 5.0);
@@ -1185,7 +1227,7 @@ impl TerrainGen {
         let hy = a * (0.5 + rng.next_f32() as f64 * 0.5);
         let hz = a * (0.7 + rng.next_f32() as f64 * 0.6);
         let theta = rng.next_f32() as f64 * std::f64::consts::PI;
-        let (st, ct) = (theta.sin(), theta.cos());
+        let (st, ct) = (dsin64(theta), dcos64(theta));
         let r_out = ((a * 1.35).ceil() as i32) + 1;
         for dy in -r_out..=r_out {
             let by = cy + dy;
@@ -4019,8 +4061,8 @@ impl TerrainGen {
         for i in 0..n {
             let ang = (i as f32 + rng.next_f32() * 0.6) * std::f32::consts::TAU / n as f32;
             let r = 10.0 + rng.next_f32() * 9.0;
-            let hx = wx + (ang.cos() * r).round() as i32;
-            let hz = wz + (ang.sin() * r).round() as i32;
+            let hx = wx + dround32(dcos32(ang) * r) as i32;
+            let hz = wz + dround32(dsin32(ang) * r) as i32;
             // flatness: corner+center height spread ≤ 2, above sea
             let mut mn = i32::MAX;
             let mut mx = i32::MIN;
@@ -4751,8 +4793,8 @@ impl TerrainGen {
             // 120 degrees from the others")
             let angle = (i as f32) * std::f32::consts::TAU / 3.0 + (rng.next_f32() - 0.5) * 0.5; // ±~14°
             let dist = 1280.0 + rng.next_f32() * (2816.0 - 1280.0);
-            let x = (angle.cos() * dist) as i32;
-            let z = (angle.sin() * dist) as i32;
+            let x = dround32(dcos32(angle) * dist) as i32;
+            let z = dround32(dsin32(angle) * dist) as i32;
             out.push((x, z));
         }
         out
@@ -4919,8 +4961,8 @@ impl TerrainGen {
                 out.push(Ravine {
                     x0,
                     z0,
-                    dx: angle.cos(),
-                    dz: angle.sin(),
+                    dx: dcos32(angle),
+                    dz: dsin32(angle),
                     length,
                     half_w,
                     depth,
@@ -5013,7 +5055,7 @@ impl TerrainGen {
                 let wx = ox + x;
                 let wz = oz + z;
                 let col_idx = (z * 16 + x) as usize;
-                let dist = ((wx * wx + wz * wz) as f32).sqrt();
+                let dist = dsqrt32((wx * wx + wz * wz) as f32);
                 // gentle island surface: 62-64 center, tapering to the rim
                 if dist < 60.0 {
                     let surface = 63 - (dist / 30.0).floor() as i32
@@ -5045,7 +5087,7 @@ impl TerrainGen {
         let mut angles = [(0.0f32, 0.0f32); 10];
         for (i, a) in angles.iter_mut().enumerate() {
             let th = i as f32 * std::f32::consts::TAU / 10.0;
-            *a = (th.cos(), th.sin());
+            *a = (dcos32(th), dsin32(th));
         }
         for (i, ang) in angles.iter().enumerate() {
             let px = (ang.0 * 42.0).round() as i32;
@@ -5143,8 +5185,8 @@ impl TerrainGen {
         let mut out = Vec::with_capacity(10);
         for i in 0..10usize {
             let th = i as f32 * std::f32::consts::TAU / 10.0;
-            let px = (th.cos() * 42.0).round() as i32;
-            let pz = (th.sin() * 42.0).round() as i32;
+            let px = dround32(dcos32(th) * 42.0) as i32;
+            let pz = dround32(dsin32(th) * 42.0) as i32;
             let top = 78 + ((Rng::hash3(self.seed, i as i32, 0x11, 0xE1D) % 26) as i32);
             out.push((px, top, pz));
         }
@@ -5355,8 +5397,8 @@ impl TerrainGen {
                     for k in 0..12i32 {
                         let yaw = k as f32 * std::f32::consts::TAU / 12.0;
                         for d in [24.0f32, 48.0, 96.0] {
-                            let sx = (wx as f32 + yaw.sin() * d) as i32;
-                            let sz = (wz as f32 - yaw.cos() * d) as i32;
+                            let sx = (wx as f32 + dsin32(yaw) * d) as i32;
+                            let sz = (wz as f32 - dcos32(yaw) * d) as i32;
                             let c = self.column(sx, sz);
                             if land(sx, sz) {
                                 score += 1 + biome_bonus(c.biome);
@@ -6018,8 +6060,10 @@ mod spawn_tests {
             let neighbors_green = (0..12)
                 .map(|k| {
                     let yaw = k as f32 * std::f32::consts::TAU / 12.0;
-                    let c =
-                        gen.column((x + yaw.sin() * 40.0) as i32, (z - yaw.cos() * 40.0) as i32);
+                    let c = gen.column(
+                        (x + dsin32(yaw) * 40.0) as i32,
+                        (z - dcos32(yaw) * 40.0) as i32,
+                    );
                     matches!(c.biome, Biome::Forest | Biome::Plains)
                 })
                 .filter(|g| *g)

@@ -31,6 +31,10 @@ vc-audio = { path = "crates/vc-audio" }
 # consistent wins on alloc-heavy game loops (chunk meshing + worldgen);
 # native-only (wasm keeps the system allocator)
 mimalloc = "0.1"
+# 1.0.3 (PLAN v3.1): pure-Rust libm — worldgen's sin/cos/sqrt must not
+# depend on the host libc/libm (R5: identical results on every OS/CPU;
+# std f32::sin etc. are documented as implementation-defined per platform)
+libm = "0.2"
 # 2026-09-21b perf round: FxHash for every integer-keyed map (chunk
 # coords / block coords) — the rustc's own compiler hasher; ~2-4x std
 # SipHash on integer keys, no downside (keys are never attacker data).

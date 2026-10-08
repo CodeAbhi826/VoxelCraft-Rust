@@ -10,6 +10,9 @@ vc-blocks = { workspace = true }
 vc-chunk = { workspace = true }
 vc-rng = { workspace = true }
 rustc-hash.workspace = true
+# 1.0.3 (PLAN v3.1): pure-Rust math for worldgen (R5 determinism — the
+# host libm must not decide terrain)
+libm.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true }

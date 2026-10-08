@@ -1319,6 +1319,14 @@ enum WorkBackend {
         tx: std::sync::mpsc::Sender<JobResult>,
         rx: std::sync::mpsc::Receiver<JobResult>,
         inflight: usize,
+        /// 1.3: dedicated streaming pool (cores-1, min 1) — gen/mesh
+        /// jobs no longer share the global rayon pool with ad-hoc
+        /// parallel work, so a streaming burst can't starve the
+        /// frame's own parallel sections and vice versa. None only if
+        /// the pool failed to build (submit falls back to rayon::spawn).
+        /// Thread priority is intentionally unset here (no portable
+        /// std API; OS knobs belong to the 1.8 capability probe).
+        pool: Option<rayon::ThreadPool>,
     },
     /// the wasm32-only backend (native uses the threaded pool above)
     #[allow(dead_code)]
@@ -1844,6 +1852,9 @@ pub struct GameApp {
     /// 1.1v E2E_PHASES: every stage's assertions passed
     e2e_phases_ok: bool,
     /// 1.1v: chunk-stability wait (same meshing-burst reason as FKEYS)
+    /// 1.3: leftover job results that missed the frame's apply budget
+    /// (drained first next frame, ahead of fresh completions)
+    pending_apply: Vec<JobResult>,
     e2e_phases_last_chunks: u32,
     e2e_phases_stable: u32,
     /// smoke stage 3: the in-game click fired once
@@ -2893,10 +2904,30 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             {
                 let (tx, rx) = std::sync::mpsc::channel();
+                // 1.3: workers = cores-1 (min 1) — the main thread keeps
+                // one core for update/draw while the pool absorbs gen/mesh
+                let workers = std::thread::available_parallelism()
+                    .map(|n| n.get().saturating_sub(1).max(1))
+                    .unwrap_or(1);
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(workers)
+                    .thread_name(|i| format!("vc-stream-{i}"))
+                    .build()
+                    .ok();
+                vc_render::render::report_boot_log(&format!(
+                    "streaming pool: {workers} worker{} ({})",
+                    if workers == 1 { "" } else { "s" },
+                    if pool.is_some() {
+                        "dedicated"
+                    } else {
+                        "global fallback"
+                    }
+                ));
                 WorkBackend::Threading {
                     tx,
                     rx,
                     inflight: 0,
+                    pool,
                 }
             }
             #[cfg(target_arch = "wasm32")]
@@ -3193,6 +3224,7 @@ impl GameApp {
             e2e_phases_ok: true,
             e2e_phases_last_chunks: u32::MAX,
             e2e_phases_stable: 0,
+            pending_apply: Vec::new(),
             edits: 0,
             stats_t: 0.0,
             pointer_locked: false,
@@ -23247,9 +23279,35 @@ impl GameApp {
 
     // ---------------------------------------------------------- streaming --
 
+    /// 1.3: dispatch caps scaled to the streaming pool — small machines
+    /// dispatch fewer jobs per frame (shallower queues, smaller result
+    /// bursts); big machines keep the old ceiling.
+    fn dispatch_caps(workers: usize) -> (usize, usize) {
+        let n = (workers * 4).clamp(4, 16);
+        (n, n)
+    }
+
+    /// 1.3: stale-mesh drop — a mesh result whose chunk has moved out of
+    /// upload range is dropped WITHOUT clearing its dirty bits, so the
+    /// chunk remeshes when back in range. (Gen results are never dropped:
+    /// their outbound edits belong to neighbor chunks.)
+    fn stale_mesh(pos: ChunkPos, pc: ChunkPos, rd: i32) -> bool {
+        let d = (pos.0 - pc.0).abs().max((pos.1 - pc.1).abs());
+        d > rd + 3
+    }
+
     fn stream(&mut self) {
         let pc = self.player_chunk();
         let rd = self.settings.render_distance;
+        // 1.3: dispatch caps follow the pool size (small machines,
+        // shallow queues); wasm keeps its fixed caps below
+        let workers = match &self.work {
+            WorkBackend::Threading { pool, .. } => {
+                pool.as_ref().map(|p| p.current_num_threads()).unwrap_or(1)
+            }
+            WorkBackend::Inline { .. } => 1,
+        };
+        let (max_gen_native, max_mesh_native) = Self::dispatch_caps(workers);
 
         // 1. collect + apply results (collect first to release the borrow)
         let t_results = crate::bench::micros();
@@ -23273,6 +23331,12 @@ impl GameApp {
                     }
                 }
             }
+        }
+        // 1.3: last frame's leftovers go first (oldest work applies first)
+        if !self.pending_apply.is_empty() {
+            let mut pending = std::mem::take(&mut self.pending_apply);
+            pending.append(&mut results);
+            results = pending;
         }
         // Phase 7: drive the GPU compute mesher — completions become
         // ordinary Mesh results; pendings go back to the mesher; lost jobs
@@ -23327,8 +23391,31 @@ impl GameApp {
                 // false at submit) — drain nothing
             }
         }
+        // 1.3: time-boxed apply — one gen lighting pass (~60-90 ms on
+        // the reference hardware class) or a burst of mesh uploads must never all land
+        // in one frame; leftovers wait in pending_apply (dirty bits stay
+        // set until their apply runs, so nothing is lost). Honest bound:
+        // this caps bursts, not a single op's cost; the first result
+        // always applies (no starvation).
+        let t_apply = crate::bench::micros();
+        const APPLY_BUDGET_US: u64 = 6000;
+        let mut over_budget = false;
         for res in results {
+            if over_budget {
+                self.pending_apply.push(res);
+                continue;
+            }
+            // 1.3: drop stale mesh results (dirty bits preserved)
+            if let JobResult::Mesh { pos, .. } = &res {
+                if Self::stale_mesh(*pos, pc, rd) {
+                    self.mesh_inflight.remove(pos);
+                    continue;
+                }
+            }
             self.apply_result(res);
+            if crate::bench::micros() - t_apply > APPLY_BUDGET_US {
+                over_budget = true;
+            }
         }
         self.phases.add(
             crate::bench::PHASE_RESULTS,
@@ -23346,7 +23433,11 @@ impl GameApp {
             }
         }
         want_gen.sort_by_key(|p| (p.0 - pc.0).abs() + (p.1 - pc.1).abs());
-        let max_gen = if cfg!(target_arch = "wasm32") { 4 } else { 16 };
+        let max_gen = if cfg!(target_arch = "wasm32") {
+            4
+        } else {
+            max_gen_native
+        };
         for pos in want_gen.into_iter().take(max_gen) {
             // native: try the save dir first (§28) — a stored chunk skips
             // generation entirely; pending edits queued while the chunk was
@@ -23439,7 +23530,11 @@ impl GameApp {
         // guard: the loop always breaks after the first job that crosses it,
         // so slow devices are unaffected by the higher cap). Native keeps
         // the rayon pool cap.
-        let max_mesh = if cfg!(target_arch = "wasm32") { 4 } else { 16 };
+        let max_mesh = if cfg!(target_arch = "wasm32") {
+            4
+        } else {
+            max_mesh_native
+        };
         for (pos, _, mask) in want_mesh.into_iter().take(max_mesh) {
             if let Some(snap) = self.world.snapshot3x3(pos.0, pos.1) {
                 let lsnap = self
@@ -23507,16 +23602,28 @@ impl GameApp {
 
     fn submit(&mut self, job: Job) {
         match &mut self.work {
-            WorkBackend::Threading { tx, inflight, .. } => {
+            WorkBackend::Threading {
+                tx, inflight, pool, ..
+            } => {
                 let tx = tx.clone();
                 *inflight += 1;
                 #[cfg(not(target_arch = "wasm32"))]
-                rayon::spawn(move || {
-                    let res = run_job(job);
-                    let _ = tx.send(res);
-                });
+                if let Some(pool) = pool.as_ref() {
+                    pool.spawn(move || {
+                        let res = run_job(job);
+                        let _ = tx.send(res);
+                    });
+                } else {
+                    rayon::spawn(move || {
+                        let res = run_job(job);
+                        let _ = tx.send(res);
+                    });
+                }
                 #[cfg(target_arch = "wasm32")]
-                let _ = (tx, job);
+                {
+                    let _ = (tx, job);
+                    let _ = pool.as_ref();
+                }
             }
             WorkBackend::Inline { jobs } => {
                 jobs.push_back(job);
@@ -27166,6 +27273,25 @@ pub(crate) fn fps_meter_stats(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---- 1.3 (work budgets): dispatch caps + stale-mesh predicate ----
+    #[test]
+    fn dispatch_caps_scale_with_workers() {
+        assert_eq!(GameApp::dispatch_caps(1), (4, 4));
+        assert_eq!(GameApp::dispatch_caps(2), (8, 8));
+        assert_eq!(GameApp::dispatch_caps(3), (12, 12));
+        assert_eq!(GameApp::dispatch_caps(4), (16, 16));
+        assert_eq!(GameApp::dispatch_caps(64), (16, 16));
+    }
+
+    #[test]
+    fn stale_mesh_drop_boundary() {
+        assert!(!GameApp::stale_mesh((0, 0), (0, 0), 12));
+        assert!(!GameApp::stale_mesh((15, 0), (0, 0), 12)); // rd+3 kept
+        assert!(!GameApp::stale_mesh((-15, 15), (0, 0), 12));
+        assert!(GameApp::stale_mesh((16, 0), (0, 0), 12));
+        assert!(GameApp::stale_mesh((0, -16), (0, 0), 12));
+    }
 
     // ---- 2026-09-21 (click-side routing): the pointer-starvation
     // watchdog decision + the VC_POINTER override parsing ----

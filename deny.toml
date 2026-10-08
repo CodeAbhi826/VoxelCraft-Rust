@@ -18,5 +18,9 @@ allow = [
     "Zlib",
     "OFL-1.1",
     "BSL-1.0",
+    # MPL-2.0 (2026-10-09g): symphonia 0.5.5 (rodio MP3 backend). COMPATIBLE
+    # via MPL §3.3 secondary licenses (GPL-2.0-or-later ⇒ GPL-3.0);
+    # symphonia ships plain MPL-2.0, no Exhibit B. Text in LICENSES/.
+    "MPL-2.0",
 ]
 confidence-threshold = 0.8

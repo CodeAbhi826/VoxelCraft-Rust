@@ -6263,3 +6263,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - L2 CI (run 37832365026): 8/8 code jobs green; bench step 5 SUCCESS, upload-only red. L2 done → REUSE bulk annotations live.
 - deny.toml (repo root): GPL-compatible allow-list (GPL-3.0/LGPL-2.1/MIT/Apache-2.0/BSD-2-3/ISC/Unicode/CC0/Zlib/OFL/BSL), confidence 0.8. ci.yml `licenses` job: EmbarkStudios/cargo-deny-action@v2 (action verified live), manifest voxelcraft/Cargo.toml, `check licenses`. Lockfile tracked ✓.
 - reuse-lint half deferred to L3b (BLOCKERS #4: docs license unpicked; default recorded). No invented license, no fake-green gate.
+
+## 2026-10-09g — L3 fix-forward: MPL-2.0 allow-listed (Tested)
+- L3 CI (run 37833387192): new gate WORKS — 4 rejections, all symphonia 0.5.5 (rodio MP3 backend), license MPL-2.0. Everything else (incl. all other deps) passed the allow-list.
+- Verdict: COMPATIBLE, not a breach. MPL-2.0 §3.3 (verified in SPDX text + symphonia's own LICENSE): Larger Work may be distributed under Secondary License terms; "Secondary License" = GPL-2.0/LGPL-2.1/AGPL-3.0 "or any later versions" — GPL-3.0 is a later version of GPL-2.0. Symphonia ships plain MPL-2.0 (Exhibit A; no Exhibit B marking). Sources: mozilla.org/MPL/2.0 §1.12+§3.3, Symphonia LICENSE (upstream repo).
+- Fix: deny.toml += MPL-2.0 (with this justification) + LICENSES/MPL-2.0.txt (SPDX text, R7 verbatim exception). Obligations honored: MPL text shipped (§3.4 notices preserved via LICENSES/ + NOTICE).

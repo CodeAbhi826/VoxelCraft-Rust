@@ -2,7 +2,7 @@
 
 ## Current
 - Part: **1 PERFORMANCE CORE → licensing L1–L8**. Current slice: **L1a LICENSE swap** (GPL-3.0 text; L1b LICENSES/+Cargo fields next, then Part 1 foreground sweep when binary obtainable).
-- HEAD: L3 commit (L2 `2744f4c` code-green; L3b reuse-lint waits docs-license call).
+- HEAD: L3 fix-forward commit (gate caught symphonia MPL-2.0 → verified compatible §3.3, allow-listed).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices

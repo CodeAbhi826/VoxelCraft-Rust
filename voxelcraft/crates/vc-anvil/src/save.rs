@@ -1837,12 +1837,12 @@ mod tests {
     #[test]
     fn foreign_records_preserved_verbatim() {
         let mut tile = Nbt::compound();
-        tile.set("id", Nbt::String("minecraft:chest".into()));
+        tile.set("id", Nbt::String("future:chest".into()));
         tile.set("x", Nbt::Int(1));
         let mut ent = Nbt::compound();
-        ent.set("id", Nbt::String("minecraft:pig".into()));
+        ent.set("id", Nbt::String("future:pig".into()));
         let mut starts = Nbt::compound();
-        starts.set("minecraft:village", Nbt::compound());
+        starts.set("future:village", Nbt::compound());
         let mut structs = Nbt::compound();
         structs.set("Starts", starts);
 

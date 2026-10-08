@@ -2,7 +2,7 @@
 
 ## Current
 - Part: **2 WORLDS FIRST**. Current slice: **2.1c foreign sidecars** (committed; CI watch armed).
-- HEAD: 2.1c commit (2.1b CLOSED `942dfe2` 9/9).
+- HEAD: 2.1c fix-forward commit (trademark-clean fixtures; audit+test local pass).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices

@@ -6283,3 +6283,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - About screen: `Screen::About` + ID_OPT_ABOUT=250 (verified free of all 8 dynamic ranges + literals≤249) + ABOUT... row at options y412 (empty 402–626 band) + DONE via ID_OPT_DONE2 + render arm (8 centered credit/warranty/source/not-affiliated/third-party lines) + is_menu/panorama/name arms. Title untouched (vanilla layout intact).
 - Local (idle box): fmt clean; `check -p vc-render/voxelcraft --lib` clean (caught + fixed one non-exhaustive match); 3/3 filtered tests pass (literal uniqueness, row disjointness, about-row test).
 - V1 open: About visual needs a post-quota CI binary (E2E_MENU doesn't visit About; follow-up: extend E2E_MENU + capture, batched for morning).
+
+## 2026-10-09k — L5 fix-forward: ABOUT tooltip (Tested)
+- L5 CI (run 37839270432): 8/9 code green; `every_settings_option_has_tooltip` FAILED — new ID_OPT_ABOUT had no tooltip entry (all other L5 arms were fine).
+- Fix: 4-line tooltip arm (credits/licence/warranty + no-gameplay-change note), same l2() pattern. Local: 1/1 pass (idle box).

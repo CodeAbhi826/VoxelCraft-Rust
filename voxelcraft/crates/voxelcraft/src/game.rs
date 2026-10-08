@@ -5639,6 +5639,11 @@ impl GameApp {
             ),
             ID_OPT_ACCESS => l("Accessibility options. Currently: Auto-Jump."),
             ID_OPT_VIDEO => l("The video settings screen."),
+            // L5 (licensing): the About screen entry
+            ID_OPT_ABOUT => l2(
+                "Credits, licence, warranty and third-party notices.",
+                "Nothing here changes gameplay or rendering.",
+            ),
             // 2026-09-20: the Shaders screen family tooltips
             ID_OPT_SHADERS => l2(
                 "Select an external shader pack (BSL / SEUS style).",

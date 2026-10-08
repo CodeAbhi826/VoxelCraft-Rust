@@ -6048,3 +6048,58 @@ Work units, in order (all on `test/full-sweep-2026-09-25`):
    that generation, the other ICD serves pre-that generation only. The game runs on the main ICD. [Verified]
 
 Part 0 ends here per R2. No Part 1 work started.
+
+---
+
+## 2026-10-08b — PLAN v3.1 Part 1 opens: slice 1.0 DETERMINISM BASELINE (gate GREEN) + owner art verdicts
+
+1. **C: standing rules persisted** — L1–L8, V1, R1–R7 added to AGENTS.md
+   (commit 40a0421; L-numbers flagged as rested from the briefs since the
+   numbered list predated this file). `docs/PLAN-v3.1.md` placeholder
+   created for the owner's two-half paste. [Verified: legal audit PASS]
+
+2. **1.0.1 world-gen golden hash** (bb6d4d4) — FNV-1a over each chunk's
+   unpacked 4096 u16 block states + 256 biome ids + height map, over a
+   3×3 chunk neighborhood per (seed, dimension) with the REAL world flow
+   (outbound edits replayed as neighbors' inbound). 3 seeds × 3 dims = 9
+   golden values pinned from Linux x86-64; the test asserts bit-identity.
+   Verified twice locally (stable across runs). [Verified]
+
+3. **1.0.3 deterministic worldgen math** (3405f18) — all 11 production
+   sin/cos/sqrt sites in gen.rs now route through the pure-Rust `libm`
+   crate (std's float math is implementation-defined per platform —
+   R5's exact hazard). GOLDEN HASH REPORT: all 9 pinned values UNCHANGED
+   after the swap on Linux (std libm and libm agreed bit-exactly on the
+   generator's inputs on this host) — NO re-baseline needed. [Verified]
+
+4. **1.0.2 three-OS CI legs** (344be16) — `golden-hash` matrix job
+   (ubuntu/windows/macos) runs ONLY the golden test; full suite stays
+   ubuntu-only. RUN [37726444683](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/runs/37726444683):
+   ALL GREEN — the deduped GOLDEN log lines across the three legs are
+   exactly the 9 pinned values. **R5 GATE: identical hash on Linux,
+   Windows, macOS — slice 1.0 PASSES.** [Verified from the Actions log]
+
+5. **1.0.4 f32 census** (f490dbc) — docs/F32-AUDIT-GEN.md: 115 f32
+   mentions in gen.rs's production region grouped by system (RNG draws
+   ~45 / noise scaling ~20 / structural geometry ~25 / simplex kernel /
+   libm shims), each with its Part 4 parity question; [ESTIMATED /
+   APPROXIMATION] flagged where our constants lack a wiki source.
+   Docs-only. [Verified]
+
+6. **Owner art verdicts (viewed the 5 renders; V1)** — REDESIGN: ghast,
+   nether portal (swirl motif + frame), TNT (palette/pattern), default
+   player model (palette + front-torso/face mapping fix), enderman (eye
+   colour/shape, head, body pattern) — each ≥3 of silhouette/face/
+   proportions/palette/pose, gameplay role + hitbox + ids kept; owner's
+   design directions logged in the brief. PENDING (need turntables):
+   creeper, ender dragon, wither, blaze, piglin, villager, zombie
+   villager, iron golem. OTHER FIXES: leaf close-range per-pixel noise,
+   oversaturated cyan water, crosshair colour consistency, confirm HUD
+   heart/food icons are procedural. New capture tool required: per-
+   character solo 3 m turntable (front/side/back/¾ + close-up), HUD
+   hidden, neutral daylight, saved as CI artifacts. Art slices are
+   NON-BLOCKING for Part 1; no redesign until turntables exist and the
+   owner sends verdicts. [Code-only — queued]
+
+Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
+1.3 work budgets, 1.5–1.10; 1.4 now UNLOCKED (1.0 gate green).

@@ -6287,3 +6287,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09k — L5 fix-forward: ABOUT tooltip (Tested)
 - L5 CI (run 37839270432): 8/9 code green; `every_settings_option_has_tooltip` FAILED — new ID_OPT_ABOUT had no tooltip entry (all other L5 arms were fine).
 - Fix: 4-line tooltip arm (credits/licence/warranty + no-gameplay-change note), same l2() pattern. Local: 1/1 pass (idle box).
+
+## 2026-10-09l — L5 CLOSED + L6 AUTHORSHIP.md (Code-only)
+- L5 fix-forward CI (run 37840238574): 9/9 code green (tooltip test passes); bench quota-only (8th). L5 CLOSED — About screen fully gated in CI (uniqueness, disjointness, tooltip, fmt/clippy/test).
+- L6: AUTHORSHIP.md (owner direction/measurements/review + AI implementation-under-rules + explicit non-claims). ~40 lines, no code touched.

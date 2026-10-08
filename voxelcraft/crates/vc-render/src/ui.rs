@@ -654,6 +654,10 @@ pub const ID_SHDR_DONE: u16 = 248;
 /// the labPBR materials toggle (NAPP-style `_n`/`_s` resource-pack
 /// maps feed the PBR path when ON; default OFF = the vanilla look)
 pub const ID_SHDR_LABPBR: u16 = 249;
+/// L5 (licensing): the Options screen's ABOUT... entry — 250 is clear
+/// of every literal through 249 and every dynamic row range (shader
+/// rows top out at 241+7=248; see row_ranges_disjoint test)
+pub const ID_OPT_ABOUT: u16 = 250;
 /// available (left pane) pack rows
 ///
 /// 2026-09-14 follow-up (deploy-fix round): the 2026-09-14 resource-pack
@@ -920,6 +924,9 @@ pub fn layout_options() -> Vec<Widget> {
             "",
             true,
         ),
+        // L5 (licensing): the About screen entry — sits in the empty
+        // band between SKIN (ends 402) and DONE (626); no overlap
+        btn_h(ID_OPT_ABOUT, l, 412, 465, 30, "ABOUT...", "", true),
         btn_h(
             ID_OPT_DONE,
             (live_ui_w() as i32 - 300) / 2,
@@ -1690,6 +1697,22 @@ pub fn layout_language() -> Vec<Widget> {
             true,
         ),
     ]
+}
+
+/// L5 (licensing): the About screen — DONE only; the credit/warranty/
+/// source/not-affiliated/third-party body text is drawn by the render
+/// arm (game.rs `Screen::About`) via `ui.text`, title-screen style.
+pub fn layout_about() -> Vec<Widget> {
+    vec![btn_h(
+        ID_OPT_DONE2,
+        (live_ui_w() as i32 - 300) / 2,
+        anchor_y(470),
+        300,
+        30,
+        "DONE",
+        "",
+        true,
+    )]
 }
 
 /// Round 14: the Chat Settings screen — RETIRED as a stub in Round 14b
@@ -6871,6 +6894,7 @@ mod tests {
         ID_SHDR_NONE,
         ID_SHDR_DONE,
         ID_SHDR_LABPBR,
+        ID_OPT_ABOUT,
     ];
 
     #[test]
@@ -6879,6 +6903,22 @@ mod tests {
         for &id in LITERAL_IDS {
             assert!(seen.insert(id), "duplicate literal widget id {id}");
         }
+    }
+
+    #[test]
+    fn options_about_row_present_once_and_below_skin() {
+        // L5: the ABOUT... row lives in the empty band (SKIN ends y402,
+        // DONE sits at anchor_y(470)) — exactly once, below SKIN.
+        let v = layout_options();
+        let rows: Vec<_> = v.iter().filter(|w| w.id == ID_OPT_ABOUT).collect();
+        assert_eq!(rows.len(), 1, "one ABOUT row on Options");
+        let skin = v.iter().find(|w| w.id == ID_OPT_SKIN).unwrap();
+        assert!(
+            rows[0].y > skin.y,
+            "ABOUT below SKIN ({} <= {})",
+            rows[0].y,
+            skin.y
+        );
     }
 
     /// The dynamic row ranges (pack lists, resource-pack panes, world

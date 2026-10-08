@@ -1059,6 +1059,10 @@ pub enum Screen {
     /// Round 14b: the Skin Customization screen — the layer toggles +
     /// Main Hand (persisted; no visible effect until layer meshes land)
     Skin,
+    /// L5 (licensing): the About screen — credit, warranty disclaimer,
+    /// source link, not-affiliated notice, third-party list (reached
+    /// from the Options screen's ABOUT... row)
+    About,
 }
 
 /// 2026-09-14 round: the in-progress MINING target (the vanilla timed
@@ -1170,6 +1174,7 @@ impl Screen {
             Screen::Language => "language",
             Screen::ChatSettings => "chat",
             Screen::Skin => "skin",
+            Screen::About => "about",
         }
     }
 
@@ -1195,6 +1200,7 @@ impl Screen {
                 | Screen::WorldCreate
                 | Screen::WorldEdit
                 | Screen::Death
+                | Screen::About
         )
     }
 }
@@ -9676,6 +9682,9 @@ impl GameApp {
             ID_OPT_ENGINE => self.set_screen(Screen::Engine),
             ID_OPT_PACKS => self.set_screen(Screen::Packs),
             ID_OPT_ACCESS => self.set_screen(Screen::Access),
+            // L5 (licensing): ABOUT... → the About screen (Done there
+            // reuses ID_OPT_DONE2 back to Options)
+            ID_OPT_ABOUT => self.set_screen(Screen::About),
             // ---- 2026-09-20: the Shader Packs screen ----
             // the Video screen's SHADERS... row re-scans shader-packs/
             // (native) so newly dropped packs appear without a restart
@@ -11517,6 +11526,11 @@ impl GameApp {
                     s.skin_hat,
                     s.main_hand_left,
                 );
+            }
+            Screen::About => {
+                // L5 (licensing): the About screen — DONE only; the body
+                // text is drawn by the render arm (Screen::About)
+                self.widgets = ui::layout_about();
             }
             Screen::WorldSelect => {
                 // 2026-09-14: the vanilla Select World rows + bottom stack —
@@ -25046,6 +25060,33 @@ impl GameApp {
                 self.ui_dump_if_asked();
                 return;
             }
+            Screen::About => {
+                // L5 (licensing): credit, warranty, source, not-affiliated,
+                // third-party list. Body lines centered under the title;
+                // DONE rides ID_OPT_DONE2 back to Options.
+                let tt = self.tooltip_lines();
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "ABOUT VOXELCRAFT", &tt);
+                let body: &[&str] = &[
+                    "VoxelCraft-Rust 0.4.0 — a clean-room 1.16.5-era voxel engine.",
+                    "Copyright (c) 2026 CodeAbhi826 and contributors.",
+                    "Licensed GPL-3.0-or-later (LICENSE); art CC BY-SA 4.0.",
+                    "NO WARRANTY — see LICENSE sections 15-16.",
+                    "Source: github.com/CodeAbhi826/VoxelCraft-Rust",
+                    "Not affiliated with the reference game's publisher.",
+                    "Third party: Monocraft font (OFL 1.1), Voxelfont (MIT),",
+                    "symphonia audio (MPL-2.0); full list in LEGAL.md.",
+                ];
+                let mut y = 96;
+                for line in body {
+                    let w = UiCanvas::text_width(line, 1);
+                    let x = (self.ui.live_w as i32 - w) / 2;
+                    self.ui.text(x, y, line, [220, 220, 220, 255], 1);
+                    y += 24;
+                }
+                self.ui_dump_if_asked();
+                return;
+            }
             Screen::Pause => {
                 self.ui.pause_screen(&self.widgets, self.hover);
                 return;
@@ -25565,6 +25606,14 @@ impl GameApp {
             // Round 14: the new settings sub-screens ride the same
             // panorama treatment
             Screen::MusicSound | Screen::Controls | Screen::Language | Screen::ChatSettings => {
+                if self.options_from == Screen::Title {
+                    panorama = Some(pano_view);
+                }
+                (menu_cam(), 0.45, None)
+            }
+            // L5 (licensing): About rides the same panorama treatment
+            // (reached from Options, like its sibling text screens)
+            Screen::About => {
                 if self.options_from == Screen::Title {
                     panorama = Some(pano_view);
                 }

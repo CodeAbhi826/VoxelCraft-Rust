@@ -6277,3 +6277,9 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09i — L4a close-out + L4b (Code-only)
 - L4a CI (run 37836559049): 9/9 code jobs green incl. cargo-deny gate (2nd green run); bench step 5 SUCCESS, upload-only red (6th quota-only). L4a done.
 - L4b: README ## License → GPL-3.0-or-later (+NOTICE/TRADEMARKS links, not-affiliated line); LEGAL.md dep table honest rewrite (selection + deny.toml as enforced source, symphonia MPL-2.0 row from CI-log evidence) + generated-art licence statement (art+spec CC-BY-SA, scripts GPL, provenance R4 kept); CONTRIBUTING.md (GPL + DCO + L1–L8 contributor rules). ~110 lines.
+
+## 2026-10-09j — L5 About screen (Tested locally, V1 visual waits fresh binary)
+- L4b CI (run 37837312264): 9/9 code green; bench quota-only (7th). L4b done.
+- About screen: `Screen::About` + ID_OPT_ABOUT=250 (verified free of all 8 dynamic ranges + literals≤249) + ABOUT... row at options y412 (empty 402–626 band) + DONE via ID_OPT_DONE2 + render arm (8 centered credit/warranty/source/not-affiliated/third-party lines) + is_menu/panorama/name arms. Title untouched (vanilla layout intact).
+- Local (idle box): fmt clean; `check -p vc-render/voxelcraft --lib` clean (caught + fixed one non-exhaustive match); 3/3 filtered tests pass (literal uniqueness, row disjointness, about-row test).
+- V1 open: About visual needs a post-quota CI binary (E2E_MENU doesn't visit About; follow-up: extend E2E_MENU + capture, batched for morning).

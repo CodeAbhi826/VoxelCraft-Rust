@@ -23355,6 +23355,12 @@ impl GameApp {
             pending.append(&mut results);
             results = pending;
         }
+        // 1.3: mesh applies go before gen applies (stable — FIFO within a
+        // type). A gen apply carries synchronous lighting, so FIFO order
+        // starves meshes behind it: chunks pile up with zero GPU meshes
+        // (measured 149 loaded / 0 meshed). Visuals stay alive while the
+        // gen backlog drains behind the same budget.
+        results.sort_by_key(|r| matches!(r, JobResult::Gen { .. }) as u8);
         // Phase 7: drive the GPU compute mesher — completions become
         // ordinary Mesh results; pendings go back to the mesher; lost jobs
         // (readback failure) release their inflight markers so the §12

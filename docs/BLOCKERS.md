@@ -3,6 +3,17 @@
 (A3: each entry carries the exact ask + the default the work continues under.
 No hard stops open. The STOP file is absent.)
 
+## Soft blocker 4 — docs license undecided (reuse-lint half of L3)
+- Ask: pick ONE license for repo docs/prose (`docs/**`, root `*.md`
+  except README claims handled in L8, workflow/config text): e.g.
+  CC-BY-SA-4.0 (matches art/spec) or GPL-3.0-or-later (matches code).
+  Until picked, `reuse lint` cannot gate (it fails on unannotated
+  prose) and no docs license is asserted anywhere.
+- Default (work continues under it): L3 ships the cargo-deny
+  `check licenses` gate now; `reuse lint` gates in L3b right after the
+  docs license lands (with L8). REUSE.toml already covers everything
+  decided (code/art/fonts).
+
 ## Soft blocker 3 — phases 0.9 gate fails on the reference machine (2026-10-09)
 - Ask: E2E_PHASES min_ratio scored 0.879 then 0.892 on the reference
   machine (old CI binary, real GPU, loaded dual-core) vs 0.983–0.988 on

@@ -1,0 +1,22 @@
+# cargo-deny configuration (L3) — dependency license gate.
+# Policy (docs/AGENT-STATE.md licensing block): engine code is
+# GPL-3.0-or-later, so every dependency must carry a GPL-compatible
+# license. Anything outside `allow` fails CI; adding an entry needs a
+# worklog justification. Incompatible license ⇒ stop (BLOCKERS.md).
+[licenses]
+allow = [
+    "GPL-3.0-or-later",
+    "LGPL-2.1-or-later",
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "Zlib",
+    "OFL-1.1",
+    "BSL-1.0",
+]
+confidence-threshold = 0.8

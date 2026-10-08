@@ -209,3 +209,17 @@ jobs:
           path: voxelcraft/target/release/vc_bench
           retention-days: 30
           if-no-files-found: error
+
+  licenses:
+    name: license gates (cargo-deny)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: cargo-deny check licenses (deny.toml — GPL-incompatible dep fails)
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: voxelcraft/Cargo.toml
+          command: check licenses

@@ -6258,3 +6258,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - L1c CI (run 37831328901): 8/8 code jobs green; bench step 5 SUCCESS, upload-only red (quota). L1c done per convention → L1 CLOSED (L1a file + L1b manifests + L1c texts).
 - REUSE.toml: 6 bulk annotations (rs/wgsl/scripts→GPL-3.0-or-later; builtin-pack→CC-BY-SA-4.0; Monocraft→OFL-1.1; Voxelfont→MIT), copyright holders per decision block. Headers in NEW files only (no mass re-headering — keeps slice to 1 file + docs).
 - Claim: Code-only (no REUSE CLI locally to lint; L3 adds `reuse lint` CI job which will verify).
+
+## 2026-10-09f — L3 cargo-deny gate (Code-only)
+- L2 CI (run 37832365026): 8/8 code jobs green; bench step 5 SUCCESS, upload-only red. L2 done → REUSE bulk annotations live.
+- deny.toml (repo root): GPL-compatible allow-list (GPL-3.0/LGPL-2.1/MIT/Apache-2.0/BSD-2-3/ISC/Unicode/CC0/Zlib/OFL/BSL), confidence 0.8. ci.yml `licenses` job: EmbarkStudios/cargo-deny-action@v2 (action verified live), manifest voxelcraft/Cargo.toml, `check licenses`. Lockfile tracked ✓.
+- reuse-lint half deferred to L3b (BLOCKERS #4: docs license unpicked; default recorded). No invented license, no fake-green gate.

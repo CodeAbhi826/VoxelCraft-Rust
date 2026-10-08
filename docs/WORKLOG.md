@@ -6326,5 +6326,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Local (idle): fmt clean; new test passes (chest/pig/Starts round-trip verbatim + bare level stays empty); clippy clean on both touched libs.
 
 ## 2026-10-09u — 2.1c fix-forward: trademark-clean fixtures (Tested)
-- 2.1c CI (run 37848743388): 8/9 code green; legal audit FAILED — my test used `minecraft:chest/pig/village` strings (bright-line TERM_RX; the tree uses `voxelcraft:`/`future:`/`thirdparty:` namespaces by policy). Lesson: fixtures use `future:`/`thirdparty:` only.
+- 2.1c CI (run 37848743388): 8/9 code green; legal audit FAILED — my test used the trademarked-namespace `id` strings (bright-line TERM_RX; the tree uses `voxelcraft:`/`future:`/`thirdparty:` namespaces by policy). Lesson: fixtures use `future:`/`thirdparty:` only.
 - Fix: 3 strings → future:. Local: `legal_audit.py` [PASS] + 1/1 test pass.

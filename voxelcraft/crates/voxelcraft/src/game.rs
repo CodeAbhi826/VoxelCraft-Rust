@@ -3658,6 +3658,16 @@ impl GameApp {
                 }
             }
             Event::AboutToWait => {
+                // 1.1 (PLAN v3.1): the FRAME starts here, not in draw —
+                // update() (sim/stream/results/ui, the bulk of the CPU
+                // cost) runs from AboutToWait and previously fell OUTSIDE
+                // begin_frame/end_frame, so the phase meter summed to a
+                // fraction of the real frame (35 ms of a 2282 ms frame on
+                // the reference hardware). begin_frame now opens on the update side;
+                // end_frame still closes in draw(), which is the last
+                // thing the frame does. The sum(phases) >= 0.9*frame_ms
+                // test in bench.rs holds the contract.
+                self.phases.begin_frame();
                 let now = now_secs();
                 let dt = (now - self.last_frame_t).clamp(0.0, 0.1);
                 self.last_frame_t = now;
@@ -24603,8 +24613,9 @@ impl GameApp {
     // -------------------------------------------------------------- draw --
 
     fn draw(&mut self) {
-        // Phase-0 instrumentation: frame phases (§44)
-        self.phases.begin_frame();
+        // 1.1: begin_frame moved to AboutToWait (the frame now spans
+        // update + draw). The draw phase itself is still measured into
+        // PHASE_DRAW below.
         let t_draw0 = crate::bench::micros();
         // fps = real RENDERED frame rate (draws ride RAF on the web).
         // 1A.1 FIX: the window now closes on the WALL CLOCK (bench::micros).

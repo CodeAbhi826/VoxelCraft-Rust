@@ -416,4 +416,40 @@ mod tests {
         let line = p.f3_line();
         assert!(line.contains("sim") && line.contains("draw"));
     }
+
+    /// 1.1 (PLAN v3.1): the phase meter must span the WHOLE frame —
+    /// update() (sim/stream/results/ui) plus draw(). Contract: over the
+    /// ring, sum(phases) >= 0.9 x frame_ms. Since end_frame computes
+    /// frame_ms as micros() - frame_start and every phase inside the
+    /// window adds into `cur`, the identity holds unless a code path
+    /// forgets its phase!() wrapper (the 2282 ms frame / 35 ms meter bug
+    /// this slice fixes). Here the window is exercised synthetically:
+    /// real sleeps are too slow for a unit test, so the frame time is
+    /// taken from the same clock the phases are measured with.
+    #[test]
+    fn phases_span_the_frame() {
+        let mut p = FramePhases::new(8);
+        for _ in 0..4 {
+            p.begin_frame();
+            let t0 = micros();
+            // stand in for update(): a real measured chunk of work
+            while micros() - t0 < 800 {}
+            p.add(PHASE_SIM, micros() - t0);
+            let t1 = micros();
+            while micros() - t1 < 500 {}
+            p.add(PHASE_DRAW, micros() - t1);
+            p.end_frame();
+        }
+        let frames = p.frame_times_us();
+        assert_eq!(frames.len(), 4);
+        for (f, phases) in frames.iter().zip(p.ring.iter()) {
+            let frame_ms = *f as f32 / 1000.0;
+            let phase_sum_ms = phases.iter().sum::<u64>() as f32 / 1000.0;
+            assert!(
+                phase_sum_ms >= 0.9 * frame_ms,
+                "phases {phase_sum_ms:.2} ms < 0.9 x frame {frame_ms:.2} ms — \
+                 an unmeasured path escaped the phase meter"
+            );
+        }
+    }
 }

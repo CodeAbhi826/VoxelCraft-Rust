@@ -6171,3 +6171,9 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Repo visibility PUBLIC → PRIVATE via `gh repo edit` (owner order).
 - Working tree scrubbed of owner hardware make/model/specs (~60 mentions, 17 files, commit `47acd82`): silicon, device and driver identifiers → "reference hardware"/"reference iGPU". Perf numbers kept; filenames fixed (BENCH-1A3-REFHW). AGENTS.md gains the hardware-privacy rule.
 - NOT done: pushed git history still names the hardware in old commit messages. Rewriting history needs the owner's explicit confirmation of that exact operation (R1) — asked, awaiting.
+
+## 2026-10-08l — history rewrite done (verified) + workspace cleanup
+- Rewrite (explicitly confirmed): filter-repo over the branch with content+message replacements and the N4000→REFHW filename rule. Verified: branch messages zero hits, file contents zero hits across history (one bun.lock base64 coincidence, not a spec), filenames zero hits, 444 commits. Pushed with --force. Safety bundle kept uncommitted locally until post-push CI is green. Untouched by design: parked/round-b, stash, main/legacy, remote tags (none exist).
+- Method scar (honest): first attempt used only --replace-text (contents; messages need the separate --replace-message flag) plus a path-as-callback that did nothing — churned hashes with zero benefit. Proven on a bundle clone, then redone correctly.
+- Cleanup (owner order): removed regenerable/ignored junk — 10 GB target/, 6 root session PNGs, the superseded PLAN-v3.1 placeholder, local session screenshots/worlds/ingame-test, the 69 MB trial clone. Kept: node_modules (wrapper dependency), the 36 MB safety bundle + recent CI artifacts, stash/parked branch. Local test-run worlds only; no user content touched.
+- Repo is PRIVATE (verified via API). Pushed history: no spec terms.

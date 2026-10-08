@@ -6383,3 +6383,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Run 37860424148 (2.2b): ALL jobs unstarted in 2–5s — account payments failed / spending limit. 2.2b UNVALIDATED (code green locally only: fmt + 5/5 oracle tests + clippy clean).
 - Owner ask: clear billing ("Billing & plans"). Default: CI-independent tracks continue (local checks, design docs, foreground runs with Oct-8 binary); no slice marked done without CI green; commits queue for validation.
 - Morning batch now: billing (#0) + docs-license (#4) + provider terms (#5) + phases gate (#3) + package.json scope + branch-layout decision.
+
+## 2026-10-09z9 — 2.3a tick order + tickets (Tested locally, CI queued behind billing)
+- sim.rs step(): authoritative fixed-order doc table (1,2,3,3a-c,4,4b-d,5,6,6b,7,8 — matches body comments). New vc-world::tickets: TicketTable{Player,Forced} (acquire/release saturating, is_loaded/is_forced; consulted in 2.3b — arch lands unwired, no behavior change).
+- Local (idle): fmt clean; 2/2 ticket tests pass; lib clippy clean (own is_some lint fixed; pre-existing --tests-only lints elsewhere left alone).

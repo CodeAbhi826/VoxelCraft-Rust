@@ -4,5 +4,6 @@
 
 pub mod gen;
 pub mod light;
+pub mod tickets;
 pub mod vanilla_noise;
 pub mod world;

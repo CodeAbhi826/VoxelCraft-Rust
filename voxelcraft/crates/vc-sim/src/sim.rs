@@ -234,7 +234,18 @@ impl Sim {
     }
 
     /// ONE deterministic sim tick (`scope` = the simulation-distance ring;
-    /// `TickScope::everything()` = 1.16.5 behavior)
+    /// `TickScope::everything()` = 1.16.5 behavior).
+    ///
+    /// 2.3a: the authoritative fixed tick ORDER (phases run top to
+    /// bottom, every tick, 20 Hz — the numbers match the section
+    /// comments in this body):
+    /// 1. scheduled block updates (due, insertion order; out-of-ring
+    ///    non-redstone defers one tick) | 2. random plant ticks
+    ///    (in-ring chunks) | 3. furnaces, 3a. campfires, 3b. brewing,
+    ///    3c. TNT ignition sweep + primed tick | 4. item entities,
+    ///    4b. XP orbs, 4c. dragon (End), 4d. wither | 5. villagers |
+    ///    6. mobs (+bees/hives), 6b. spawners | 7. hoppers |
+    ///    8. dispenser/dropper ejects.
     pub fn step(
         &mut self,
         world: &mut World,

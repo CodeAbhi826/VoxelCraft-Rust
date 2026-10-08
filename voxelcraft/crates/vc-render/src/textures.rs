@@ -4850,6 +4850,9 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_MOB_ZOGLIN => mob_batch_art(&mut a, t, [160, 110, 90], [220, 230, 210]),
             TILE_MOB_SKELETON_HORSE => mob_batch_art(&mut a, t, [190, 190, 190], [120, 120, 120]),
             TILE_MOB_ZOMBIE_HORSE => mob_batch_art(&mut a, t, [120, 140, 100], [60, 70, 50]),
+            // 2.1e: unknown-block placeholder — magenta/black 8×8
+            // checker (our own missing-texture look; pixel-tested)
+            TILE_PLACEHOLDER => placeholder_art(&mut a, t),
             // ---- the 1.0-1.16.5 completeness audit: the V15 window ----
             TILE_STEAK => audit16_art::steak_art(&mut a, t, &mut rng),
             TILE_COOKED_PORKCHOP => audit16_art::cooked_porkchop_art(&mut a, t, &mut rng),
@@ -5059,6 +5062,20 @@ pub const PACK_TILE_BASE: u16 = vc_blocks::blocks::TILE_MAX + 1;
 /// ([merge atlas] was 255 in the 256² atlas — packs were locked out once
 /// TILE_MAX passed 255)
 pub const PACK_TILE_MAX: u16 = 1023;
+
+/// 2.1e: the unknown-block placeholder tile — the same magenta/black
+/// 8×8 checker language as draw_missing_tile, painted at the
+/// placeholder's own atlas slot (so imported unknowns read as
+/// missing-data, never as stone). Pixel-tested below.
+fn placeholder_art(a: &mut [u8], t: u16) {
+    for y in 0..16i32 {
+        for x in 0..16i32 {
+            let magenta = ((x / 4) + (y / 4)) % 2 == 0;
+            let (r, g, b) = if magenta { (248, 0, 248) } else { (0, 0, 0) };
+            put(a, t, x, y, r, g, b, 255);
+        }
+    }
+}
 
 /// draw the missing-texture tile (magenta/black 8×8 checker, §46 fallback —
 /// never crash, always something visible)
@@ -5692,6 +5709,21 @@ mod pack_tex_tests {
         let ty = (t / 32) as usize;
         // (ty + 0/tx + 0: the tile's top-left corner pixel; + 4: the neighbor
         // pixel to its right — checker alternation)
+        let i = (ty * TILE_PX * ATLAS_SIZE + tx * TILE_PX) * 4;
+        assert_eq!(&atlas[i..i + 4], &[248, 0, 248, 255]); // magenta
+        let i2 = (ty * TILE_PX * ATLAS_SIZE + tx * TILE_PX + 4) * 4;
+        assert_eq!(&atlas[i2..i2 + 4], &[0, 0, 0, 255]); // black
+    }
+
+    #[test]
+    fn placeholder_tile_draws_checker() {
+        // 2.1e: generate_atlas paints TILE_PLACEHOLDER via
+        // placeholder_art — same checker language, own slot.
+        let atlas = generate_atlas();
+        let t = TILE_PLACEHOLDER as usize;
+        assert!(t <= TILE_MAX as usize);
+        let tx = t % 32;
+        let ty = t / 32;
         let i = (ty * TILE_PX * ATLAS_SIZE + tx * TILE_PX) * 4;
         assert_eq!(&atlas[i..i + 4], &[248, 0, 248, 255]); // magenta
         let i2 = (ty * TILE_PX * ATLAS_SIZE + tx * TILE_PX + 4) * 4;

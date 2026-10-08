@@ -6336,3 +6336,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - (Cargo.lock vc-nbt edge rode uncommitted since 2.1c's local build — folded here; code slices stay separate.)
 - save.rs tests: `importer_never_panics_on_garbage` — truncated-valid chunk NBT + level.dat (every 97th/53rd cut) and 256 deterministic xorshift rounds (gzip-magic every 3rd, file-level entries every 8th) across chunk_from_nbt/version_gate/read_level_dat. Pass = return, never panic (R6).
 - Local (idle): fmt clean; 1/1 pass (0.03s); clippy lib+tests clean.
+
+## 2026-10-09x — 2.1d CLOSED (Tested)
+- 2.1d CI (run 37852253064): 9/9 code green (fuzz passes in CI); bench quota-only (15th). Importer now: gated, verbatim sidecars, panic-free.
+
+## 2026-10-09x2 — 2.1e placeholder registry+tile+art (Tested)
+- blocks.rs: PLACEHOLDER block 539 (+BLOCK_TABLE row, BLOCK_COUNT→540), PLACEHOLDER_STATE 892 (STATE_COUNT→893 ×11 asserts), TILE_PLACEHOLDER 819 (TILE_MAX→819), fold arms both ways, is_model_state arm, "Unknown Block" def (non-solid/opaque, stone sound; creative default = Miscellaneous, honestly labeled). No import remap yet (2.1f).
+- textures.rs: placeholder_art (magenta/black 8×8 checker, own slot) + dispatch arm + pixel test (mirrors 1.12/missing-tile precedent).
+- Local (idle): fmt clean; 2/2 new tests pass (registry identity/flags, tile pixels); lib clippy clean. Note: `clippy --tests` flags 4 PRE-EXISTING test-code lints (ui.rs/gpu_mesh.rs, untouched by this slice, outside CI's lib-only gate) — left alone.

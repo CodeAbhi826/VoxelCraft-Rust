@@ -3,23 +3,26 @@
 (A3: each entry carries the exact ask + the default the work continues under.
 No hard stops open. The STOP file is absent.)
 
-## Soft blocker 2 — Part 1 foreground capture sweep (2026-10-09)
-- Ask: EITHER (a) wait for the Actions artifact-quota recalculation
-  (6–12h; quota-probe loop armed, reruns failed CI legs hourly) so the
-  CI-built binary + turntable/F3 PNGs become downloadable, OR (b) grant
-  a one-time exception for a local debug build (`cargo build -p
-  voxelcraft`, NOT release) run when the machine is idle (load < ~1.5),
-  under `xvfb-run` + MangoHud on this machine.
-- Why blocked: no runnable binary exists anywhere (tree has none;
-  `voxelcraft/target` was cleared; CI uploads fail on quota so no
-  CI-built binary can be downloaded). Local full builds are otherwise
-  prohibited by the compilation guardrail, and current load (~2.5 on
-  the reference dual-core) makes a build unsafe right now. Display side
-  is ready (`xvfb-run`, `Xvfb`, `mangohud` all present).
-- Default (work continues under it): licensing L1–L8 then Part 2
-  proceed through CI; the sweep executes the moment a binary is
-  obtainable, before the Part 2 review packet. No visual claim beyond
-  the one viewed F3 capture is made until then.
+## Soft blocker 3 — phases 0.9 gate fails on the reference machine (2026-10-09)
+- Ask: E2E_PHASES min_ratio scored 0.879 then 0.892 on the reference
+  machine (old CI binary, real GPU, loaded dual-core) vs 0.983–0.988 on
+  CI lavapipe. Decide: (a) keep the 0.9 CI gate and accept a lower
+  local number as environmental, (b) recalibrate the gate
+  machine-relative, or (c) investigate the ~11% outside
+  begin/end_frame (present/acquire + event pump suspects).
+- Default (work continues under it): CI gate unchanged (green there);
+  no E2E threshold touched in code until your call.
+
+## Soft blocker 2 — Part 1 foreground capture sweep (2026-10-09, partial)
+- DONE locally: F3 pair, MENU tree, FKEYS views (8 images viewed, V1 in
+  WORKLOG 2026-10-09d), beds/fluids/containers green. Quota prune 104→44.
+- STILL OPEN: (a) turntable 5 views (needs fresh CI binary post-quota —
+  Oct-8 binary predates 1.11); (b) settings/title/inventory screens —
+  X capture black + xdotool undelivered (no WM), engine dumps don't
+  exist for menu screens (follow-up slice: dumps in E2E_MENU);
+  (c) face-eye symmetry + arm-design checks need close-ups.
+- Default: licensing → Part 2 through CI; sweep remainder runs when a
+  fresh binary is downloadable.
 
 ## Soft blocker 1 — SMAA-vs-FXAA 3 ms call (slice 1.7, PLAN-FINAL §4)
 - Ask: on the reference hardware at 720p, read the FXAA pass cost (as built in 1.7) and

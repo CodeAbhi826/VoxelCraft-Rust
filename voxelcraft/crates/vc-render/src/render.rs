@@ -3355,11 +3355,13 @@ impl Renderer {
             &post_buf,
             &easu_buf,
         );
-        // the composite (+ RCAS) reads the EASU-UPScaled target
+        // the composite (+ RCAS) reads the EASU-upscaled target — except
+        // at Native (1.6: EASU skipped, composite reads scene directly;
+        // the constructor starts native so it binds scene_view)
         let bg_comp = Self::comp_bg(
             &device,
             &comp_bgl,
-            &post_targets.up_view,
+            &post_targets.scene_view,
             &post_targets.b2_view,
             &post_samp,
             &post_buf,
@@ -3898,11 +3900,15 @@ impl Renderer {
     /// reads the scene target directly (1.6: FSR fully off).
     pub fn set_upscale(&mut self, scale: f32) {
         let scale = scale.clamp(0.5, 1.0);
-        if (scale - self.upscale).abs() < 1e-3 {
+        let off = scale >= 1.0 - 1e-3;
+        // 1.6: the native flag rides the early-return too — boot applies
+        // Native over a native-constructed renderer and must still agree
+        // on which target the composite reads
+        if (scale - self.upscale).abs() < 1e-3 && off == self.fsr_off {
             return;
         }
         self.upscale = scale;
-        self.fsr_off = scale >= 1.0 - 1e-3;
+        self.fsr_off = off;
         self.depth = Self::make_depth(
             &self.device,
             ((self.config.width as f32) * scale).round().max(1.0) as u32,

@@ -1,12 +1,12 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 PERFORMANCE CORE**. Current slice: **1.0.5 determinism coverage** (approved, in progress).
-- HEAD: `4895596` (STOP in .gitignore). Branch: `test/full-sweep-2026-09-25`.
+- Part: **1 PERFORMANCE CORE**. Current slice: **1.1v E2E phase proof** (next).
+- HEAD: `30ad6a8` (1.0.5 done, CI 37743400037 green 933/0/2). Branch: `test/full-sweep-2026-09-25`.
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
-- [ ] 1.0.5 per-function pinned `to_bits` tests for the 9 libm-site functions + widen golden hash (5 seeds x 25 chunks/dim + targeted village/stronghold/ravine/ocean pins), existing 3-OS job
+- [x] 1.0.5 per-function pinned `to_bits` tests + wide/targeted golden hashes (`30ad6a8`, CI 37743400037 green)
 - [ ] 1.1v E2E leg asserting sum(phases) >= 0.9 x frame_ms + VERDICT line + F3 phase-line screenshot (V1)
 - [ ] 1.2v streaming benchmark as non-gating CI step under xvfb + game-binary artifact upload
 - [ ] 1.3 work budgets first (no frame over 100 ms streaming; 30 fps steady reference hardware at defaults)

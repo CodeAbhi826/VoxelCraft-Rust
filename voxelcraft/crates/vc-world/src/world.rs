@@ -12,7 +12,7 @@ use std::sync::Arc;
 // (i32,i32) chunk coords / [i32;3] block coords, never attacker data).
 use rustc_hash::FxHashMap;
 use vc_blocks::blocks::*;
-use vc_chunk::chunk::Chunk;
+use vc_chunk::chunk::{Chunk, LocalXZ};
 use vc_rng::rng::Rng;
 
 pub type ChunkPos = (i32, i32);
@@ -217,7 +217,7 @@ impl World {
             Some(c) => {
                 let lx = (wx - cx * 16) as usize;
                 let lz = (wz - cz * 16) as usize;
-                c.get(lx, wy as usize, lz) // already folded by Chunk::get
+                c.get_local(LocalXZ::new(lx, lz), wy as usize) // already folded by Chunk::get
             }
             None => AIR,
         }
@@ -457,7 +457,7 @@ impl World {
             // wrapper here double-folded (the same class as the portal
             // search's dead scan; benign for the tree-canopy path today,
             // latent aliasing for any other id)
-            let cur = old.get(lx, wy as usize, lz);
+            let cur = old.get_local(LocalXZ::new(lx, lz), wy as usize);
             let target_ok = replaceable(cur) || (cur == LEAVES && id == OAK_LOG);
             if !target_ok {
                 return;

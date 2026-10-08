@@ -24,7 +24,7 @@ use rustc_hash::FxHashMap;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use vc_blocks::blocks::*;
-use vc_chunk::chunk::Chunk;
+use vc_chunk::chunk::{Chunk, LocalXZ};
 
 /// light reach — max BFS steps with any light left
 pub const LIGHT_REACH: u8 = 15;
@@ -203,7 +203,7 @@ impl LightEngine {
             for lx in 0..16usize {
                 let mut l: u8 = 15;
                 for y in (0..256usize).rev() {
-                    let b = chunk.get(lx, y, lz); // 1.7.2: Chunk::get folds states itself
+                    let b = chunk.get_local(LocalXZ::new(lx, lz), y); // 1.7.2: Chunk::get folds states itself
                     if is_opaque(b) {
                         l = 0;
                     } else if b == WATER {
@@ -1075,7 +1075,7 @@ mod tests {
                                     + (y as i32 - 70).abs()
                                     + (lz as i32 - 8).abs()
                                     <= 3
-                                    && c.get(lx, y, lz) == 0
+                                    && c.get_local(LocalXZ::new(lx, lz), y) == 0
                                 {
                                     c.set(lx, y, lz, LEAVES);
                                 }

@@ -355,7 +355,7 @@ pub fn search_existing_portal(
                     // state_block fold would alias the portal's state 872
                     // onto the raw-536 glazed-terracotta class and never
                     // match (the 2026-10-02 CI catch)
-                    if chunk.get(lx, ly, lz) != NETHER_PORTAL {
+                    if chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), ly) != NETHER_PORTAL {
                         continue;
                     }
                     let wx = kx * 16 + lx as i32;

@@ -2701,10 +2701,18 @@ impl TerrainGen {
                     }
                     let h = chunk.height[col_idx] as i32;
                     // fold: MYCELIUM stores its dedicated state (254)
-                    if chunk.get(lx as usize, h as usize, lz as usize) != MYCELIUM {
+                    if chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        h as usize,
+                    ) != MYCELIUM
+                    {
                         continue;
                     }
-                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                    if chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        (h + 1) as usize,
+                    ) != AIR
+                    {
                         continue;
                     }
                     let id = if rng.next_f32() < 0.5 {
@@ -2734,10 +2742,18 @@ impl TerrainGen {
                     let lz = rng.next_range(16) as i32;
                     let col_idx = lz as usize * 16 + lx as usize;
                     let h = chunk.height[col_idx] as i32;
-                    if chunk.get(lx as usize, h as usize, lz as usize) != SAND {
+                    if chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        h as usize,
+                    ) != SAND
+                    {
                         continue;
                     }
-                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                    if chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        (h + 1) as usize,
+                    ) != AIR
+                    {
                         continue;
                     }
                     if rng.next_f32() < 0.55 {
@@ -2792,8 +2808,14 @@ impl TerrainGen {
                     let lz = 1 + rng.next_range(14) as i32;
                     let col_idx = lz as usize * 16 + lx as usize;
                     let h = chunk.height[col_idx] as i32;
-                    if chunk.get(lx as usize, h as usize, lz as usize) == GRASS
-                        && chunk.get(lx as usize, (h + 1) as usize, lz as usize) == AIR
+                    if chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        h as usize,
+                    ) == GRASS
+                        && chunk.get_local(
+                            vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                            (h + 1) as usize,
+                        ) == AIR
                     {
                         set_dec(
                             &mut chunk,
@@ -2817,13 +2839,22 @@ impl TerrainGen {
                     if !(vc_chunk::SEA_LEVEL..=vc_chunk::SEA_LEVEL + 2).contains(&h) {
                         continue;
                     }
-                    if chunk.get(lx as usize, h as usize, lz as usize) == GRASS
-                        && chunk.get(lx as usize, (h + 1) as usize, lz as usize) == AIR
+                    if chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        h as usize,
+                    ) == GRASS
+                        && chunk.get_local(
+                            vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                            (h + 1) as usize,
+                        ) == AIR
                     {
                         // 2x1 shallow pool: punch the surface to water
                         chunk.set(lx as usize, h as usize, lz as usize, WATER);
                         if lx + 1 < 16
-                            && chunk.get((lx + 1) as usize, h as usize, lz as usize) == GRASS
+                            && chunk.get_local(
+                                vc_chunk::chunk::LocalXZ::new((lx + 1) as usize, lz as usize),
+                                h as usize,
+                            ) == GRASS
                         {
                             chunk.set((lx + 1) as usize, h as usize, lz as usize, WATER);
                         }
@@ -2845,8 +2876,14 @@ impl TerrainGen {
                     continue;
                 }
                 let y = 8 + rng.next_range((hmax - 8) as u32) as i32;
-                let above = chunk.get(lx as usize, (y + 1) as usize, lz as usize);
-                let here = chunk.get(lx as usize, y as usize, lz as usize);
+                let above = chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    (y + 1) as usize,
+                );
+                let here = chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    y as usize,
+                );
                 if here == AIR && (is_opaque(above) && above != BEDROCK) {
                     chunk.set(lx as usize, (y + 1) as usize, lz as usize, GLOWSTONE);
                     // a couple of extra glow blocks around it
@@ -2856,8 +2893,10 @@ impl TerrainGen {
                         let dz = rng.next_range(3) as i32 - 1;
                         let nx = (lx + dx).clamp(0, 15) as usize;
                         let nz = (lz + dz).clamp(0, 15) as usize;
-                        if chunk.get(nx, (y + 1) as usize, nz) != AIR
-                            && chunk.get(nx, y as usize, nz) == AIR
+                        if chunk.get_local(vc_chunk::chunk::LocalXZ::new(nx, nz), (y + 1) as usize)
+                            != AIR
+                            && chunk.get_local(vc_chunk::chunk::LocalXZ::new(nx, nz), y as usize)
+                                == AIR
                         {
                             chunk.set(nx, (y + 1) as usize, nz, GLOWSTONE);
                         }
@@ -2892,7 +2931,9 @@ impl TerrainGen {
                     // themselves are punched above at the swamp pass)
                     if b == Biome::Swamp {
                         if h < vc_chunk::SEA_LEVEL
-                            && chunk.get(lx, (h + 1) as usize, lz) == WATER
+                            && chunk
+                                .get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), (h + 1) as usize)
+                                == WATER
                             && rng.next_f32() < 0.20
                         {
                             chunk.set(lx, (h + 1) as usize, lz, SEAGRASS);
@@ -2908,7 +2949,9 @@ impl TerrainGen {
                         chunk.set(lx, sea as usize, lz, ICE);
                     }
                     // floor flora (a water cell above the floor)
-                    if chunk.get(lx, (h + 1) as usize, lz) != WATER {
+                    if chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), (h + 1) as usize)
+                        != WATER
+                    {
                         continue;
                     }
                     if b == Biome::WarmOcean {
@@ -2953,7 +2996,12 @@ impl TerrainGen {
                             let kh = 2 + rng.next_range(3) as i32;
                             for dy in 1..=kh {
                                 let y = h + dy;
-                                if y < sea && chunk.get(lx, y as usize, lz) == WATER {
+                                if y < sea
+                                    && chunk.get_local(
+                                        vc_chunk::chunk::LocalXZ::new(lx, lz),
+                                        y as usize,
+                                    ) == WATER
+                                {
                                     chunk.set(lx, y as usize, lz, KELP);
                                 }
                             }
@@ -2998,7 +3046,10 @@ impl TerrainGen {
                             } else {
                                 PACKED_ICE
                             };
-                            let cur = chunk.get(px as usize, y, pz as usize);
+                            let cur = chunk.get_local(
+                                vc_chunk::chunk::LocalXZ::new(px as usize, pz as usize),
+                                y,
+                            );
                             if cur == WATER || cur == ICE || (dy > 0 && cur == AIR) {
                                 chunk.set(px as usize, y, pz as usize, id);
                             }

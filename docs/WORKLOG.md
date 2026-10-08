@@ -6219,3 +6219,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-08v — Chunk batches B+C+D (get_local migration)
 - B (save.rs tests) + C (game.rs occlusion/nether/spawner/chest/column tests) in `7576870` (15 sites; fold semantics untouched).
 - D (gen.rs carve/ores/surface/trees/bamboo): same treatment, in-range verified per site (loop 0..16, rng ranges, guarded neighbors).
+
+## 2026-10-08w — Chunk batches D+E DONE (CI + 3-OS green)
+- D (carve/ores/surface/trees/bamboo) `398002c`; E (flora/mushrooms) `b2d9f63` (+fmt fix from CI feedback). In-range verified per site; fold semantics untouched.
+- CI: code jobs all green incl. full suite + golden ×3 (macOS needed one capacity re-run). Uploads red on quota (known).

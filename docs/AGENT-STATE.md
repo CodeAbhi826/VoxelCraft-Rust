@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 PERFORMANCE CORE**. Current slice: **1.11 turntable tool** (next).
-- HEAD: `567c915`+docs (1.10 done: gate live, verdict CPU-bound; uploads red on quota).
+- Part: **1 PERFORMANCE CORE**. Current slice: **1.12 player mapping fix** (next).
+- HEAD: `7f47f74`+docs (1.11 leg green in run 37802518664 — all 5 creeper views saved, VERDICT OK; V1 viewing waits quota reset).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
@@ -19,7 +19,8 @@
 - [x] 1.8 capability probe + F3 split + gen knob (`a7f233e`; legs all exit 0, uploads red on quota)
 - [x] 1.9 offload audit (`OFFLOAD-AUDIT.md`; CPU-bound by exact/gameplay classes)
 - [x] 1.10 re-measure + gate + verdict (`linux-game.yml` gate; CPU-bound, worst_ms gated)
-- [ ] 1.11 turntable capture tool (solo, 3m, HUD hidden, 5 angles, CI artifacts) — 1.8 capability probe + knobs — 1.9 offload audit (report) — 1.10 re-measure matrix + CI perf gate — 1.11 turntable tool — 1.12 player torso/face mapping fix
+- [x] 1.11 turntable capture tool (`7f47f74`; leg green, 5 creeper views; V1 viewing waits quota)
+- [ ] 1.12 player torso/face mapping fix — 1.8b vanilla preset + particle knob + first-run defaults — Chunk migration B–G — REVIEW PACKET
 - [ ] Interleaved: Chunk::get migration batches B–G (compile-verified)
 - [ ] Part 1 REVIEW PACKET + adversarial self-review (10 claims)
 

@@ -6166,3 +6166,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Red path (honest): first E2E failed T5 with on=0/off=0 — Native booted to a BLACK 3D view (constructor bound composite to the never-written upscale target; earlier legs passed on UI-only pixels). Fixed at construction + flag-aware early-return. Borders back: margin 513 VISIBLE. [Verified: CI logs]
 - CI 37776406041 9/9; linux-game 37777081043 SUCCESS (all legs); streaming stable (avg 69ms, gpu 11.7ms, 148/85).
 - V1 (partial, stated): no engine-screen PNG exists in CI artifacts; evidence is structural — live widget table from the E2E menu leg shows UPSCALING/SHARPNESS/CUSTOM SCALE placed disjointly, zero overlap/duplicate-id WARNs, plus layout + tooltip + round-trip unit tests. Menu-screen capture belongs to 1.11/1.10 foreground work.
+
+## 2026-10-08k — privacy: repo set PRIVATE; hardware specs scrubbed from tree
+- Repo visibility PUBLIC → PRIVATE via `gh repo edit` (owner order).
+- Working tree scrubbed of owner hardware make/model/specs (~60 mentions, 17 files, commit `47acd82`): reference hardware/Celeron/UHD/device IDs/driver details/distro → "reference hardware"/"reference iGPU". Perf numbers kept; filenames fixed (BENCH-1A3-REFHW). AGENTS.md gains the hardware-privacy rule.
+- NOT done: pushed git history still names the hardware in old commit messages. Rewriting history needs the owner's explicit confirmation of that exact operation (R1) — asked, awaiting.

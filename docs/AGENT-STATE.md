@@ -1,14 +1,14 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 PERFORMANCE CORE**. Current slice: **1.1v E2E phase proof** (next).
-- HEAD: `30ad6a8` (1.0.5 done, CI 37743400037 green 933/0/2). Branch: `test/full-sweep-2026-09-25`.
+- Part: **1 PERFORMANCE CORE**. Current slice: **1.2v CI streaming step** (next).
+- HEAD: `1ad23a4` (1.1v done: CI 37746975998 + linux-game 37747380181 green, V1 F3 screenshot viewed).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
 - [x] 1.0.5 per-function pinned `to_bits` tests + wide/targeted golden hashes (`30ad6a8`, CI 37743400037 green)
-- [ ] 1.1v E2E leg asserting sum(phases) >= 0.9 x frame_ms + VERDICT line + F3 phase-line screenshot (V1)
-- [ ] 1.2v streaming benchmark as non-gating CI step under xvfb + game-binary artifact upload
+- [x] 1.1v E2E phase proof (`29de86b`+`1ad23a4`; linux-game 37747380181 green, V1 F3 screenshot viewed)
+- [ ] 1.2v CI streaming step (non-gating) + world-chunks in bench JSON
 - [ ] 1.3 work budgets first (no frame over 100 ms streaming; 30 fps steady reference hardware at defaults)
 - [ ] 1.4 CPU world-gen speedups, IDENTICAL output (hash change = HARD STOP)
 

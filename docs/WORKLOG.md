@@ -6120,3 +6120,12 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - CI: run 37743400037 at `30ad6a8` — 9/9 green, **933 passed / 0 failed / 2 ignored** (summed `test result:` lines), GOLDEN HASH OK on ubuntu+windows+macos, TARGET ravine identical (`0x8801…`) on all 3 legs. CI-runner numbers, not reference hardware. [Tested]
 - Images viewed: none (no visual change; V1 n/a).
 - Could not do: nothing outstanding. Limitation: slice is 300 lines incl. tables (hash constants are inherently bulky); local verify was debug-build `test -p vc-world --lib` only, per the no-release-build rule.
+
+## 2026-10-08e — slice 1.1v DONE (runtime phase-meter proof, linux-game green + V1)
+
+**Changed:** `bench.rs` (+23: `min_coverage()`), `game.rs` (+95/−2: 4 E2E fields, F3 phase row via `phases.f3_line()`, E2E_PHASES 2-stage leg, exit-guard holds), `linux-game.yml` (+30: run6 step + F3 PNG artifact). Commits `29de86b` + fix-forward `1ad23a4` (F2 dumper yields PNG while E2E_PHASES captures — the same deadlock class as ICONIC; the dumper ate the leg's PNG every frame, leg stalled to timeout 124).
+- Before: phase span proven only by a synthetic unit test. After: `e2e: phases ring=145 min_ratio=0.988 VERDICT OK` through the real event loop + `PHASES CONTRACT OK` + F3 PNG (639,714 bytes).
+- CI: run 37745196634 (code-identical to 1.1v + docs) 9/9 green; fix CI 37746975998 9/9 green; WASM green. linux-game run 37747380181 SUCCESS (all prior legs still green).
+- Images viewed (V1): 1 — `e2e_phases_f3_2026-10-08_08-08-35-172.png` (1280x720 lavapipe, 7 fps). Saw the F3 two-column overlay over plains gameplay with the NEW live phase row `sim 0.2 stream 92.1 results 91.7 ui 0.3 draw 103.6 [cpu …]` under "Integrated server"; hotbar/hearts/hunger visible. Honest nit: the long phase row overlaps the right-column "Allocated" line at 1280px — cosmetic, F3-open only; queued for the next UI-touching slice, not grown here. [Verified]
+- Process learnings: (1) never push atop a running slice CI — the concurrency group cancelled 1.1v's own run mid-flight (used the docs-commit run + fix run as validation, stated); (2) every new screenshot leg must yield the F2 dumper guard or it deadlocks to timeout. [Verified]
+- Could not do: nothing. Limitation: lavapipe numbers (7 fps) are CI-runner numbers, not reference hardware.

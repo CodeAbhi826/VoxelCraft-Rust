@@ -6273,3 +6273,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - L3 fix-forward CI (run 37834546819, re-run after a concurrency mis-cancel): 9/9 code jobs green INCL. the new license gates (cargo-deny) — MPL-2.0 allow-listing verified live. Bench step 5 SUCCESS, upload-only red (5th consecutive quota-only bench). L3 CLOSED.
 - Concurrency lesson: the fix-forward push run got cancelled in favor of nothing (stale L3 run kept going); recovered via `gh run rerun` on the cancelled run — no duplicate dispatch, no extra commit.
 - L4a: NOTICE (project + third-party attributions + provenance pointer), TRADEMARKS.md (no third-party marks + not-affiliated disclaimer, L3 rule), CITATION.cff (v0.4.0, GPL-3.0-or-later). 3 new files, ~70 lines.
+
+## 2026-10-09i — L4a close-out + L4b (Code-only)
+- L4a CI (run 37836559049): 9/9 code jobs green incl. cargo-deny gate (2nd green run); bench step 5 SUCCESS, upload-only red (6th quota-only). L4a done.
+- L4b: README ## License → GPL-3.0-or-later (+NOTICE/TRADEMARKS links, not-affiliated line); LEGAL.md dep table honest rewrite (selection + deny.toml as enforced source, symphonia MPL-2.0 row from CI-log evidence) + generated-art licence statement (art+spec CC-BY-SA, scripts GPL, provenance R4 kept); CONTRIBUTING.md (GPL + DCO + L1–L8 contributor rules). ~110 lines.

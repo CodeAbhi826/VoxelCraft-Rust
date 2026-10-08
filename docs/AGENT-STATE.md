@@ -2,7 +2,7 @@
 
 ## Current
 - Part: **1 PERFORMANCE CORE → licensing L1–L8**. Current slice: **L1a LICENSE swap** (GPL-3.0 text; L1b LICENSES/+Cargo fields next, then Part 1 foreground sweep when binary obtainable).
-- HEAD: L4a commit (L3 CLOSED: `d86a522` 9/9 code-green incl. cargo-deny gate).
+- HEAD: L4b commit (L4a `1335126` 9/9 code-green incl. deny gate).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
@@ -34,7 +34,7 @@ Decision: code + art-generator scripts GPL-3.0-or-later; original art + aggregat
 - [x] L1 LICENSE file (L1a) + Cargo `license` fields (L1b) + LICENSES/ texts (L1c)
 - [x] L2 REUSE (committed; `reuse lint` gates in L3b after docs-license call)
 - [x] L3 CI job: cargo-deny `check licenses` (green; caught + resolved symphonia MPL-2.0); reuse-lint half → L3b (BLOCKERS #4)
-- [ ] L4 NOTICE/TRADEMARKS/CITATION (committed this slice); README credits + third-party list + generated-art statement + CONTRIBUTING → L4b
+- [x] L4 NOTICE/TRADEMARKS/CITATION (L4a) + README credits + third-party list + generated-art statement + CONTRIBUTING (L4b)
 - [ ] L2 REUSE: REUSE.toml bulk annotations + "Copyright (c) 2026 CodeAbhi826 and contributors" + SPDX identifiers (headers in new files only)
 - [ ] L3 CI job: `reuse lint` + `cargo deny check licenses` (fail on GPL-3.0-or-later-incompatible dep)
 - [ ] L4 NOTICE, TRADEMARKS.md, README credits, CITATION.cff, third-party list, generated-art licence statement (script+spec+provenance), CONTRIBUTING (GPL-3.0-or-later + DCO)

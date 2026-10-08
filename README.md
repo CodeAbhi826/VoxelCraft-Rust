@@ -198,7 +198,7 @@ CI does exactly this on every engine change and commits the bundle back to `publ
 
 ## License
 
-Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE). In short: use, copy, modify and distribute (including commercially), retaining the license notice and stating significant changes. Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* are independently authored and contain none of the reference game's material. The embedded Monocraft font is third-party under SIL OFL 1.1 and the Voxelfont spare keeps its own MIT notice.
+Licensed under the **GNU General Public License v3.0 or later** — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). In short: use, copy, modify and distribute (including commercially), keeping the same license on derivatives and stating significant changes. Original art and the aggregate specification are CC BY-SA 4.0; texts in [`LICENSES/`](LICENSES/). Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* are independently authored and contain none of the reference game's material. The embedded Monocraft font is third-party under SIL OFL 1.1 and the Voxelfont spare keeps its own MIT notice. Not affiliated with the reference game's publisher (see [`TRADEMARKS.md`](TRADEMARKS.md)).
 
 ## Documentation index
 

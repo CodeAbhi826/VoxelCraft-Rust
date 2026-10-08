@@ -1,7 +1,7 @@
 # VoxelCraft-Rust — Agent Guidelines & Rules
 
 ## 1. Hardware & Compilation Guardrails (STRICT)
-- **Host CPU/GPU**: the reference low-end CPU (dual-core 1.10 GHz, reference iGPU).
+- **Reference hardware**: low-end dual-core Linux test hardware (owner's machine — make/model/specs are private and must never appear in the repo, docs, commits, or logs).
 - **NEVER run `cargo build --release` or compile release binaries locally on the user's host machine**. Local release compilation risks thermal throttling and host freezing.
 - **Local machine usage is strictly restricted to**:
   - `cargo check -p <crate> --lib`
@@ -67,4 +67,5 @@
 - After CI is green and the state files are updated, immediately start the next slice from `docs/AGENT-STATE.md`. Never write "Next: ..." as a closing message; write it into AGENT-STATE.md and keep working.
 - A turn ends ONLY when: a HARD STOP applies, a Part's REVIEW PACKET is written, a STOP file exists, or a rate/context limit is hit.
 - On a HARD STOP, write "HARD STOP: \<reason\>" as the first line of `docs/BLOCKERS.md`.
+- **Hardware privacy**: never record the owner's hardware make, model, specs, device IDs, driver versions, or distro in the repo, docs, commit messages, or CI-visible strings. Perf numbers stay; the machine identity goes ("reference hardware" / "reference iGPU").
 

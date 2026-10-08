@@ -5,7 +5,7 @@ Overview of what the renderer does every frame
 design (a clean-room implementation, not a port); where a choice exists in
 the wider voxel-game design space, the note names the parity or the
 deviation. Companion to the 2026-10-06 reference hardware bench:
-[BENCH-1A3-reference hardware-2026-10-06.md](BENCH-1A3-reference hardware-2026-10-06.md).
+[BENCH-1A3-REFHW-2026-10-06.md](BENCH-1A3-REFHW-2026-10-06.md).
 
 ## Frame flow (CPU → GPU)
 
@@ -75,5 +75,5 @@ because fill rate is not the bottleneck, and rd=4 saves ~35%. Per-pass GPU
 timestamp queries are the natural next diagnostic (all 12 passes currently
 pass `timestamp_writes: None`), but wgpu timestamps need the
 TIMESTAMP_QUERY feature and a working query-period resolve — not guaranteed
-on the the other ICD target — so they are recorded as follow-up work, not added in
-Phase 1A.
+on every software-Vulkan target — so they were recorded as follow-up work
+(resolved since: 1.5 shipped them; lavapipe supports them).

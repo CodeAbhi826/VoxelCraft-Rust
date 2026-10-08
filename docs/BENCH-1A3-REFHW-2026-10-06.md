@@ -7,8 +7,7 @@ measure the engine per setting on the real target hardware against the
 
 ## Hardware / environment
 
-reference low-end CPU (2 cores @ 1.10 GHz), Intel reference iGPU iGPU (Mesa the other ICD, Vulkan
-1.4.354). Release binary built from commit `eb44519` (the two commits after it
+reference low-end hardware. Release binary built from commit `eb44519` (the two commits after it
 are docs-only and cannot affect the binary). Headless X: `xvfb-run -a -s
 "-screen 0 1280x720x24"`, `WGPU_BACKEND=Vulkan`.
 

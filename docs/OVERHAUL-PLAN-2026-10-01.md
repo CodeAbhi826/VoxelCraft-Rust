@@ -10,7 +10,7 @@ the rest of the overhaul structure.
 
 **Baseline (2026-10-01):** all SIX CI gates green (run 36868455480: fmt,
 wasm, test 4m17s, legal audit, clippy, bench); native game verified live
-under Xvfb on the real Intel reference iGPU (Vulkan/Mesa); findings ledger
+under Xvfb on the real reference iGPU (Vulkan/Mesa); findings ledger
 `docs/PRE-OVERHAUL-SWEEP-2026-10-01.md`; worklog Task 4.
 
 **Standing policies (inherited from the master plan, every round):**

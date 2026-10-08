@@ -26,7 +26,7 @@ reconcile; Phase 1 next.
 | HEAD | `8a51ed0` — "fix(clippy): collapse the two nested ifs in game.rs" |
 | Commit chain this round | `1d592cb` (rebased to `9336e59`: rustfmt 1.9.0 reflow, 77 files, zero logic change) → `2bb2ba2` (CuboidFace type alias, vc-sim clippy) → `219a118` (RenderFrame params struct + div_ceil + as_chunks) → `79f313b` (as_chunks `.0` tuple fix) → `8a51ed0` (collapsible-if fixes) |
 | Engine size | ~141.7k lines of Rust, 15 crates (14 `vc-*` + `voxelcraft` app) |
-| Local toolchain | rustc 1.98.1 / rustfmt 1.9.0 (Arch); 31m45s release build (fat LTO) |
+| Local toolchain | rustc 1.98.1 / rustfmt 1.9.0; 31m45s release build (fat LTO) |
 | CI policy | NO local compiling — all compiling gates run on GitHub Actions only |
 | Legal | `scripts/legal_audit.py` → **[PASS]** (after the docs/WORKLOG.md reword below) |
 

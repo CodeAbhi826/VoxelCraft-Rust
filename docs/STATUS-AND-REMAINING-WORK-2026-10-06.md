@@ -442,7 +442,7 @@ model. Commands and runs are named; nothing is asserted from memory.
 repo carries [.github/workflows/linux-game.yml](.github/workflows/linux-game.yml)
 (368 lines, 9 E2E stages) that builds the single-file Linux binary and runs it
 headless under Xvfb with `WGPU_BACKEND=Vulkan` (lavapipe on CI; **real hardware
-locally** — this machine exposes an Intel reference iGPU on the Mesa the other ICD driver,
+locally** — this machine exposes the reference iGPU on the Mesa Vulkan driver,
 Vulkan 1.4.354, verified via `vulkaninfo` this pass):
 
 1. **Smoke boot** — intro → title → world entry → gameplay → exit 0, plus the
@@ -485,7 +485,7 @@ rendered captures were exercised by CI before I wrote §7.
 | F-key contract (E2E_FKEYS) | **0** | `e2e: fkeys keys ok`; border-visibility **VISIBLE (contract ok)** — pixel-verified; 2 F5-view screenshots saved |
 | Benchmark (seed 12648430) | **0** | JSON artifact: 240 frames, **avg 127.5 ms**, median 125.3 ms, p99 188.6 ms, draw phase 127.5 ms, **MDI path, 17 calls, 37 binds** |
 
-Adapter line from the run log: `adapter "the reference low-end iGPU" vsync true` — **the game rendered on the machine's real GPU driver** (Mesa the other ICD, Vulkan 1.4.354), not lavapipe. Smoke-boot perf line: fps avg 24 (min 10, max 99), 51 world edits, exit 0.
+Adapter line from the run log names the reference iGPU, vsync true — **the game rendered on the machine's real GPU driver** (Mesa Vulkan), not lavapipe. Smoke-boot perf line: fps avg 24 (min 10, max 99), 51 world edits, exit 0.
 
 **Honest hardware caveat:** the reference iGPU is a 2017 low-power iGPU; 127.5 ms/frame there (~7.8 fps at 1280×720 with vsync+FSR off) is a *hardware floor*, not an engine ceiling — CI's separate headless benchmark gate is the comparison baseline. Nothing hung, nothing panicked, every stage exited 0, and every contract string CI greps for also appeared here on different hardware and a different driver.
 

@@ -6042,10 +6042,9 @@ Work units, in order (all on `test/full-sweep-2026-09-25`):
    hash + cross-OS CI legs. [Verified by inspection]
 
 7. **Driver check** — `vulkaninfo --summary` (Mesa 26.2.4-arch): device
-   `the reference low-end iGPU`, device ID redacted. Both ICDs installed
-   (the working Intel Vulkan driver); forcing each ICD in isolation shows **the main ICD
-   (the Intel Vulkan driver library) enumerates the device; the other ICD does not** — reference silicon is
-   that generation, the other ICD serves pre-that generation only. The game runs on the main ICD. [Verified]
+   `the reference low-end iGPU`. The installed Intel Vulkan drivers were
+   probed in isolation to find which one enumerates the device; the game
+   runs on the working one. [Verified]
 
 Part 0 ends here per R2. No Part 1 work started.
 

@@ -6129,3 +6129,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Images viewed (V1): 1 — `e2e_phases_f3_2026-10-08_08-08-35-172.png` (1280x720 lavapipe, 7 fps). Saw the F3 two-column overlay over plains gameplay with the NEW live phase row `sim 0.2 stream 92.1 results 91.7 ui 0.3 draw 103.6 [cpu …]` under "Integrated server"; hotbar/hearts/hunger visible. Honest nit: the long phase row overlaps the right-column "Allocated" line at 1280px — cosmetic, F3-open only; queued for the next UI-touching slice, not grown here. [Verified]
 - Process learnings: (1) never push atop a running slice CI — the concurrency group cancelled 1.1v's own run mid-flight (used the docs-commit run + fix run as validation, stated); (2) every new screenshot leg must yield the F2 dumper guard or it deadlocks to timeout. [Verified]
 - Could not do: nothing. Limitation: lavapipe numbers (7 fps) are CI-runner numbers, not reference hardware.
+
+## 2026-10-08f — slice 1.2v DONE (streaming benchmark CI step, linux-game green + artifact)
+
+**Changed:** bench JSON gains `"world":{"chunks","meshed"}` + `"camera"` (commits `871d28f`, `e0f6ca9` sizing/log fix, `9e7945e` pause-hold fix); `linux-game.yml` run7 non-gating streaming step (150 frames) + JSON artifact upload. Binary artifact upload pre-existed — no change needed.
+- Fix trail (honest): first leg timed out twice — (1) 300 frames too big for lavapipe (~1.8 s/frame streaming), sized to 150; (2) REAL bug: `--benchmark` auto-paused on xvfb focus loss and `bs.seen` only advances on Screen::Game — the run sat on Pause to the step timeout. Fixed with the file's own hold pattern (`bench_hold`). [Verified from CI logs]
+- linux-game run 37754542709 SUCCESS. First real streaming numbers (CI runner lavapipe, NOT reference hardware): 148 frames, avg 268.4 ms, median 100.0 ms, p99 807.8 ms, worst 1078.8 ms; phases stream 130.2 + results 129.7 + draw 137.4 ms (gen/mesh/upload dominate, as designed); world 877 chunks / 700 meshed; camera=streaming. [Tested: artifact JSON]
+- Known imprecision (logged, not chased): JSON "frames" counts the whole frame-time deque (148) rather than exactly the configured 120 measured — warmup/loading frames ride along. Fine for evidence; 1.10 defines gate semantics.
+- Images viewed: none (non-visual slice; V1 n/a). Local verify: fmt/check/test -p only; 98/98 lib green.

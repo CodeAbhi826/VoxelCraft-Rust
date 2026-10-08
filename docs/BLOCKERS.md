@@ -1,0 +1,18 @@
+# BLOCKERS.md — soft blockers (need owner input/checks) and hard stops
+
+(A3: each entry carries the exact ask + the default the work continues under.
+No hard stops open. The STOP file is absent.)
+
+## Soft blocker 1 — SMAA-vs-FXAA 3 ms call (slice 1.7, PLAN-FINAL §4)
+- Ask: on the reference hardware at 720p, read the FXAA pass cost (as built in 1.7) and
+  decide: keep FXAA, or implement SMAA (3-pass + LUTs) for comparison.
+  Anything I can measure here (lavapipe) does not transfer to the reference hardware,
+  and 1.5's gpu_ms needs a real GPU to mean anything.
+- How to measure: download any recent `voxelcraft-linux-single-file`
+  artifact, run `./voxelcraft-*-linux-x64 --benchmark streaming
+  frames=120 warmup=30 json=bench.json --gpu-timing` on the reference hardware, then
+  compare with AA off vs on (engine page ANTI-ALIAS). Or read the in-game
+  F3 phase row + gpu_ms from 1.8's split.
+- Default (work continues under it): FXAA ships as the ONE method; no
+  MSAA, no TAA; AA forced on pre-upscale below 1.0 render scale. SMAA
+  lands only on your explicit ask with your numbers attached.

@@ -383,11 +383,14 @@ jobs:
           # untouched; this leg walks fresh terrain (chunk gen + meshing in
           # the frame cost) and uploads its JSON. Never fails the job: the
           # numbers are evidence for the 1.10 verdict, not a gate.
+          # Sizing (measured 2026-10-08): lavapipe software raster runs the
+          # streaming walk at ~1.8 s/frame, so 150 frames + boot fit in the
+          # 600 s timeout with margin; bigger matrices belong on real GPUs.
           mkdir -p run7 && pushd run7 >/dev/null
           set +e
-          timeout 540 xvfb-run -a -s "-screen 0 1280x720x24" \
+          timeout 600 xvfb-run -a -s "-screen 0 1280x720x24" \
             env WGPU_BACKEND=Vulkan \
-            "../$BIN_NAME" --benchmark streaming frames=240 warmup=60 json=streaming-bench.json --verbose 2>&1 | tee ../smoke-streaming.log
+            "../$BIN_NAME" --benchmark streaming frames=120 warmup=30 json=streaming-bench.json --verbose 2>&1 | tee ../smoke-streaming.log
           CODE=$?
           set -e
           popd >/dev/null

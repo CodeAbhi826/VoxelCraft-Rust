@@ -5815,6 +5815,11 @@ impl GameApp {
     /// part of what the warmup window absorbs).
     pub fn start_bench(&mut self, bench: crate::bench::BenchState) {
         let seed = bench.seed;
+        let camera = if bench.streaming {
+            "streaming"
+        } else {
+            "orbit"
+        };
         self.bench = Some(bench);
         // fixed-seed world replaces the random one from GameApp::new
         self.world = World::new(seed);
@@ -5829,7 +5834,7 @@ impl GameApp {
         self.set_screen(Screen::Game);
         self.input = Input::default();
         vc_render::render::report_boot_log(&format!(
-            "benchmark armed: seed={seed}, orbit camera, fixed timestep"
+            "benchmark armed: seed={seed}, {camera} camera, fixed timestep"
         ));
     }
 

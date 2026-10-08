@@ -6202,3 +6202,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-08r — slice 1.11 leg green (V1 viewing pending quota)
 - linux-game 37802518664: `turntable subject Creeper staged`; all 5 views saved (front 230KB / side 320KB / back 416KB / threequarter 273KB / closeup 423KB — all non-trivial); `TURNTABLE VERDICT OK`, exit 0. Job red only on the PNG upload (quota).
 - V1 open: captures viewed by NOBODY yet — no visual claim made. Post-quota: re-dispatch, download e2e-turntable artifact, view all 5 before the Part 1 review packet.
+
+## 2026-10-08s — slice 1.12 DONE (player mapping fix, legs green)
+- `textures.rs` only (`333b766`, +38/−7): torso rows repainted shirt-center with skin hands; eyes symmetric. Pixel unit test pins torso/hand/eye colors.
+- CI: full suite green incl. the new test; linux-game 37805434035: every leg green (FKEYS margin 576, beds/fluids/phases/turntable VERDICT OK, exits 0). Job red only on uploads.
+- V1: player-rig visual deferred to the foreground session (turntable covers mobs only; FKEYS PNGs aren't artifacted). Structural proof: pixel test + all legs green on the new atlas.

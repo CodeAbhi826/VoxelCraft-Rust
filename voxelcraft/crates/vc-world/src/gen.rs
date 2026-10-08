@@ -8243,4 +8243,321 @@ mod golden_determinism_tests {
             );
         }
     }
+
+    /// 1.0.5: WIDE golden hash — same FNV contract over 5 seeds x 25
+    /// chunks (5x5) per dimension. NEW values only, narrow GOLDEN untouched.
+    const WIDE_SEEDS: [u64; 5] = [
+        0xC0FFEE_1234_5678,
+        0xDEAD_BEEF_0000_0001,
+        7,
+        0x1234_5678_9ABC_DEF0,
+        0x0BAD_F00D_CAFE_1234,
+    ];
+    const WIDE_OFF: i32 = 2;
+
+    fn wide_hash(seed: u64, dim: Dimension) -> u64 {
+        let gen = TerrainGen::for_dimension(seed, dim);
+        let mut h = fnv1a(0xCBF2_9CE4_8422_2325, seed.to_le_bytes().as_slice());
+        h = fnv1a(h, &[dim as u8]);
+        let mut outbound: Vec<(i32, i32, i32, u16)> = Vec::new();
+        for cz in -WIDE_OFF..=WIDE_OFF {
+            for cx in -WIDE_OFF..=WIDE_OFF {
+                let inbound: Vec<(u16, u16)> = outbound
+                    .iter()
+                    .filter(|(x, _, z, _)| x.div_euclid(16) == cx && z.div_euclid(16) == cz)
+                    .map(|(_, i, _, id)| (*i as u16, *id))
+                    .collect();
+                let (chunk, out) = gen.generate_chunk(cx, cz, inbound);
+                h = hash_chunk(h, &chunk);
+                outbound.extend(out);
+            }
+        }
+        h
+    }
+
+    const GOLDEN_WIDE: [u64; 15] = [
+        0x68da_0296_8bca_e76d,
+        0xc224_973a_dbae_0f7d,
+        0x00dc_0ad5_7854_7143,
+        0xf6ca_8ed0_9298_c5da,
+        0xa5cd_d32c_0dc7_2351,
+        0xfc5f_1dcc_3ad1_077e,
+        0xc0a5_4cb4_9cb4_646f,
+        0x9a72_3d3f_988b_df31,
+        0x179d_f76a_f1b2_c82c,
+        0x4697_f462_ddf1_0a63,
+        0x6237_bf3c_3e00_3d3f,
+        0x1be8_cff4_fbf8_59a5,
+        0x9bfd_3b34_24f4_a444,
+        0x5675_e557_60cc_6f5a,
+        0x12df_709c_8a36_fee3,
+    ];
+
+    #[test]
+    fn golden_worldgen_hash_wide() {
+        let dims = [
+            ("overworld", Dimension::Overworld),
+            ("nether", Dimension::Nether),
+            ("end", Dimension::End),
+        ];
+        let mut got: Vec<(String, u64)> = Vec::new();
+        for &seed in WIDE_SEEDS.iter() {
+            for (dname, dim) in dims {
+                let h = wide_hash(seed, dim);
+                println!("WIDE seed={seed:#018x} dim={dname} hash={h:#018x}");
+                got.push((format!("{seed:#x}/{dname}"), h));
+            }
+        }
+        for (i, (label, h)) in got.iter().enumerate() {
+            assert_eq!(*h, GOLDEN_WIDE[i], "wide golden hash drifted for {label}");
+        }
+    }
+
+    /// 1.0.5: targeted feature pins — one chunk per family (village /
+    /// stronghold / ravine / ocean) at a fixed seed, fixed-order search.
+    const GOLDEN_TARGETED: [u64; 4] = [
+        0xe473_51bf_1af2_59c0,
+        0x193b_184e_1da4_fe05,
+        0x8801_2d29_cc3d_c3e4,
+        0xbefd_66d3_85fb_a26d,
+    ];
+
+    #[test]
+    fn golden_targeted_features() {
+        let seed = 0xC0FFEE_1234_5678;
+        let gen = TerrainGen::for_dimension(seed, Dimension::Overworld);
+        // stronghold chunk: ring-1 always has 3 strongholds
+        let (sx, sz) = gen.strongholds()[0];
+        let strong_chunk = (sx.div_euclid(16), sz.div_euclid(16));
+        // village chunk: first center scanning regions outward
+        let mut vchunk = (0, 0);
+        'village: for r in 0..8 {
+            for (rx, rz) in [(r, 0), (0, r), (r, r), (-r, -r), (r, -r), (-r, r)] {
+                if let Some((wx, wz)) = gen.village_center(rx, rz) {
+                    vchunk = (wx.div_euclid(16), wz.div_euclid(16));
+                    break 'village;
+                }
+            }
+        }
+        // ravine chunk: first chunk with a rolled ravine nearby
+        let mut rchunk = (0, 0);
+        'ravine: for r in 0..17 {
+            for (cx, cz) in [(r, 0), (0, r), (r, r), (-r, -r), (r, -r), (-r, r)] {
+                if !gen.ravines_near_chunk(cx, cz).is_empty() {
+                    rchunk = (cx, cz);
+                    break 'ravine;
+                }
+            }
+        }
+        // ocean chunk: first ocean-biome column scanning outward
+        let mut ochunk = (0, 0);
+        'ocean: for r in 0..40 {
+            for (cx, cz) in [(r, 0), (0, r), (r, r), (-r, -r), (r, -r), (-r, r)] {
+                if gen.column(cx * 16 + 8, cz * 16 + 8).biome.is_ocean() {
+                    ochunk = (cx, cz);
+                    break 'ocean;
+                }
+            }
+        }
+        let targets = [
+            ("stronghold", strong_chunk),
+            ("village", vchunk),
+            ("ravine", rchunk),
+            ("ocean", ochunk),
+        ];
+        for (i, (name, (cx, cz))) in targets.iter().enumerate() {
+            let (chunk, _) = gen.generate_chunk(*cx, *cz, Vec::new());
+            let mut h = fnv1a(0xCBF2_9CE4_8422_2325, seed.to_le_bytes().as_slice());
+            h = hash_chunk(h, &chunk);
+            println!("TARGET {name} chunk=({cx},{cz}) hash={h:#018x}");
+            assert_eq!(
+                h, GOLDEN_TARGETED[i],
+                "targeted feature hash drifted for {name}"
+            );
+        }
+    }
+}
+
+/// 1.0.5: per-function pinned-value tests for every production libm
+/// site (R5, second layer under the neighborhood hash). Exact `to_bits`
+/// or FNV folds at fixed seeds; runs in the 3-OS golden job.
+#[cfg(test)]
+mod libm_pinned_tests {
+    use super::*;
+
+    const PIN_SEED: u64 = 0xC0FFEE_1234_5678;
+
+    fn fold64(mut h: u64, v: u64) -> u64 {
+        h ^= v;
+        h.wrapping_mul(0x0000_0100_0000_01B3)
+    }
+
+    /// shims at exactly-representable inputs — true on any correct libm.
+    #[test]
+    fn shims_are_bit_exact() {
+        assert_eq!(dsin32(0.0).to_bits(), 0x0000_0000);
+        assert_eq!(dcos32(0.0).to_bits(), 0x3F80_0000);
+        assert_eq!(dsin64(0.0).to_bits(), 0x0000_0000_0000_0000);
+        assert_eq!(dcos64(0.0).to_bits(), 0x3FF0_0000_0000_0000);
+        assert_eq!(dsqrt32(4.0).to_bits(), 0x4000_0000);
+        assert_eq!(dsqrt32(2.0).to_bits(), 0x3FB5_04F3);
+        assert_eq!(dround32(2.5).to_bits(), 0x4040_0000);
+        assert_eq!(dround32(-2.5).to_bits(), 0xC040_0000);
+    }
+
+    #[test]
+    fn worm_path_pinned() {
+        let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
+        let mut worm = None;
+        'search: for r in 0..5 {
+            for (cx, cz) in [(r, 0), (0, r), (r, r), (-r, -r)] {
+                let ws = gen.cave_worms_near(cx, cz);
+                if let Some(w) = ws.into_iter().next() {
+                    worm = Some(w);
+                    break 'search;
+                }
+            }
+        }
+        let worm = worm.expect("seed must roll a cave worm near origin");
+        let path = gen.worm_path(&worm);
+        let mut h = 0xCBF2_9CE4_8422_2325u64;
+        h = fold64(h, worm.steps as u64);
+        h = fold64(h, worm.yaw.to_bits());
+        h = fold64(h, path.len() as u64);
+        for (x, y, z, w) in path.iter().take(4) {
+            h = fold64(h, x.to_bits());
+            h = fold64(h, y.to_bits());
+            h = fold64(h, z.to_bits());
+            h = fold64(h, w.to_bits());
+        }
+        println!(
+            "PIN worm_path steps={} len={} hash={h:#018x}",
+            worm.steps,
+            path.len()
+        );
+        assert_eq!(h, 0x7f81_1bf0_a26d_d809, "pin worm_path");
+    }
+
+    /// ore_blob exercises dsin64/dcos64(theta) through the real flow.
+    #[test]
+    fn ore_blob_pinned() {
+        let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
+        let mut chunk = Chunk::empty();
+        for y in 0..256usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    chunk.set(x, y, z, STONE);
+                }
+            }
+        }
+        let mut rng = Rng::new(0xBE5E);
+        gen.place_ores(&mut chunk, &mut rng);
+        let mut n_coal = 0u64;
+        let mut h = 0xCBF2_9CE4_8422_2325u64;
+        for y in 0..256usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    if chunk.get(x, y, z) == COAL_ORE {
+                        n_coal += 1;
+                        h = fold64(h, (x + z * 16 + y * 256) as u64);
+                    }
+                }
+            }
+        }
+        println!("PIN ore_blob coal={n_coal} hash={h:#018x}");
+        assert_eq!((n_coal, h), (544, 0xe8c6_8c8d_700e_7823), "pin ore_blob");
+    }
+
+    /// village_houses exercises dcos32/dsin32/dround32 per house.
+    #[test]
+    fn village_houses_pinned() {
+        let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
+        let houses = gen.village_houses(64, 64);
+        let mut h = 0xCBF2_9CE4_8422_2325u64;
+        h = fold64(h, houses.len() as u64);
+        for hs in &houses {
+            h = fold64(h, hs.x as u64);
+            h = fold64(h, hs.z as u64);
+            h = fold64(h, hs.floor as u64);
+            h = fold64(h, hs.blacksmith as u64);
+        }
+        println!("PIN village_houses n={} hash={h:#018x}", houses.len());
+        assert_eq!(h, 0xfc56_7616_14b2_4dd0, "pin village_houses");
+    }
+
+    /// strongholds exercises dcos32/dsin32/dround32 per ring slot.
+    #[test]
+    fn strongholds_pinned() {
+        let gen = TerrainGen::new(PIN_SEED);
+        let sh = gen.strongholds();
+        assert_eq!(sh.len(), 3);
+        let mut h = 0xCBF2_9CE4_8422_2325u64;
+        for (x, z) in &sh {
+            h = fold64(h, *x as u64);
+            h = fold64(h, *z as u64);
+        }
+        println!("PIN strongholds {sh:?} hash={h:#018x}");
+        assert_eq!(h, 0x53b0_bd4e_7de0_7709, "pin strongholds");
+    }
+
+    /// ravines_near_chunk exercises dcos32/dsin32 per ravine.
+    #[test]
+    fn ravines_pinned() {
+        let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
+        let mut found = None;
+        'search: for r in 0..17 {
+            for (cx, cz) in [(r, 0), (0, r), (r, r), (-r, -r)] {
+                let rv = gen.ravines_near_chunk(cx, cz);
+                if let Some(first) = rv.into_iter().next() {
+                    found = Some(((cx, cz), first));
+                    break 'search;
+                }
+            }
+        }
+        let ((cx, cz), rv) = found.expect("seed must roll a ravine in range");
+        let mut h = 0xCBF2_9CE4_8422_2325u64;
+        h = fold64(h, rv.x0 as u64);
+        h = fold64(h, rv.z0 as u64);
+        h = fold64(h, rv.dx.to_bits() as u64);
+        h = fold64(h, rv.dz.to_bits() as u64);
+        h = fold64(h, rv.length as u64);
+        println!("PIN ravines chunk=({cx},{cz}) hash={h:#018x}");
+        assert_eq!(h, 0x4d00_6b9d_9734_8cc6, "pin ravines");
+    }
+
+    /// end_pillar_tops mirrors the pillar-angle math (dcos32/dsin32).
+    #[test]
+    fn end_pillars_pinned() {
+        let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::End);
+        let tops = gen.end_pillar_tops();
+        assert_eq!(tops.len(), 10);
+        let mut h = 0xCBF2_9CE4_8422_2325u64;
+        for (x, top, z) in &tops {
+            h = fold64(h, *x as u64);
+            h = fold64(h, *top as u64);
+            h = fold64(h, *z as u64);
+        }
+        println!("PIN end_pillars hash={h:#018x}");
+        assert_eq!(h, 0x4c24_15d1_fa10_524e, "pin end_pillars");
+    }
+
+    /// the end-island radius primitive (dsqrt32 over axis distances).
+    #[test]
+    fn end_island_dist_pinned() {
+        let mut h = 0xCBF2_9CE4_8422_2325u64;
+        for d2 in [0.0f32, 1.0, 1764.0, 3600.0, 10000.0, 12345.0] {
+            h = fold64(h, dsqrt32(d2).to_bits() as u64);
+        }
+        println!("PIN end_island_dist hash={h:#018x}");
+        assert_eq!(h, 0xd074_e40d_fa38_6994, "pin end_island_dist");
+    }
+
+    /// find_spawn exercises dsin32/dcos32 in the 12-dir scoring.
+    #[test]
+    fn find_spawn_pinned() {
+        let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
+        let (x, y, z) = gen.find_spawn();
+        println!("PIN find_spawn ({x},{y},{z})");
+        assert_eq!((x, y, z), (-143.5, 68.0, -103.5), "pin find_spawn");
+    }
 }

@@ -6184,3 +6184,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-08n — slice 1.7 E2E evidence (legs green, job red on quota only)
 - linux-game 37786754613: FKEY CONTRACT OK (borders margin 514), beds/fluids/phases VERDICT OK (phases ring 166, min 0.985), STREAMING JSON OK. The job's only failures are the three artifact-upload steps (quota). No code or leg failure.
 - Formal 1.7 close-out (and the bench-artifact re-runs) waits for the quota recalculation. V1 status unchanged: engine-screen buttons structural-only evidence; FKEYS captures prove the world renders with FXAA in the chain.
+
+## 2026-10-08o — slice 1.8 DONE (capability probe + F3 split + gen-threads knob)
+**Changed:** probe_tier/tier_defaults/HwTier (pure+tested), F3 "CPU x ms / GPU y ms" row, gen_threads setting (0=Auto/1/2/4/8 presets, live pool rebuild) + persistence + engine-page button (ID 58) + tooltip, capability boot report. Commit `a7f233e` (~190 lines).
+- CI 37791549155: code jobs all green (quota kills only uploads). linux-game 37792865799: every leg exit 0 + OK (smoke/menu/containers/F3/FKEYS/beds/fluids/phases/streaming JSON); probe reports live ("Low, 2 cores, compute+timestamps → rd=8 ed=0.5" on the runner). Job red only on artifact uploads.
+- Deferred to 1.8b (stated): vanilla preset, particle-limit knob (diffuse spawn sites), first-run tiered defaults (needs boot reorder). Formal close-outs wait quota reset.

@@ -6169,5 +6169,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-08k — privacy: repo set PRIVATE; hardware specs scrubbed from tree
 - Repo visibility PUBLIC → PRIVATE via `gh repo edit` (owner order).
-- Working tree scrubbed of owner hardware make/model/specs (~60 mentions, 17 files, commit `47acd82`): reference hardware/Celeron/UHD/device IDs/driver details/distro → "reference hardware"/"reference iGPU". Perf numbers kept; filenames fixed (BENCH-1A3-REFHW). AGENTS.md gains the hardware-privacy rule.
+- Working tree scrubbed of owner hardware make/model/specs (~60 mentions, 17 files, commit `47acd82`): silicon, device and driver identifiers → "reference hardware"/"reference iGPU". Perf numbers kept; filenames fixed (BENCH-1A3-REFHW). AGENTS.md gains the hardware-privacy rule.
 - NOT done: pushed git history still names the hardware in old commit messages. Rewriting history needs the owner's explicit confirmation of that exact operation (R1) — asked, awaiting.

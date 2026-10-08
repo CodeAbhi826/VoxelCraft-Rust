@@ -1312,6 +1312,15 @@ fn run_job(job: Job) -> JobResult {
     }
 }
 
+/// 1.3: the streaming pool's type — the real rayon pool natively,
+/// unit on wasm (rayon is a native-only dep; the wasm backend is Inline
+/// and the Threading arms are dead code there, kept compiling via this
+/// alias so no `rayon::` path is ever named on wasm).
+#[cfg(not(target_arch = "wasm32"))]
+type StreamPool = rayon::ThreadPool;
+#[cfg(target_arch = "wasm32")]
+type StreamPool = ();
+
 enum WorkBackend {
     /// the native-only backend (wasm constructs Inline below)
     #[allow(dead_code)]
@@ -1326,7 +1335,7 @@ enum WorkBackend {
         /// the pool failed to build (submit falls back to rayon::spawn).
         /// Thread priority is intentionally unset here (no portable
         /// std API; OS knobs belong to the 1.8 capability probe).
-        pool: Option<rayon::ThreadPool>,
+        pool: Option<StreamPool>,
     },
     /// the wasm32-only backend (native uses the threaded pool above)
     #[allow(dead_code)]
@@ -23303,7 +23312,15 @@ impl GameApp {
         // shallow queues); wasm keeps its fixed caps below
         let workers = match &self.work {
             WorkBackend::Threading { pool, .. } => {
-                pool.as_ref().map(|p| p.current_num_threads()).unwrap_or(1)
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    pool.as_ref().map(|p| p.current_num_threads()).unwrap_or(1)
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    let _ = pool.as_ref();
+                    1
+                }
             }
             WorkBackend::Inline { .. } => 1,
         };
@@ -23620,10 +23637,7 @@ impl GameApp {
                     });
                 }
                 #[cfg(target_arch = "wasm32")]
-                {
-                    let _ = (tx, job);
-                    let _ = pool.as_ref();
-                }
+                let _ = (tx, job, pool.as_ref());
             }
             WorkBackend::Inline { jobs } => {
                 jobs.push_back(job);

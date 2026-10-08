@@ -379,6 +379,21 @@ jobs:
           test -s run6/screenshots/e2e_phases_f3_*.png || { echo "FAIL: phases F3 screenshot missing"; exit 1; }
           echo "PHASES OK - the phase meter spans update+draw in-game (min coverage >= 0.9, F3 phase row captured)"
 
+          # 1.2v: streaming benchmark, NON-GATING — the orbit default stays
+          # untouched; this leg walks fresh terrain (chunk gen + meshing in
+          # the frame cost) and uploads its JSON. Never fails the job: the
+          # numbers are evidence for the 1.10 verdict, not a gate.
+          mkdir -p run7 && pushd run7 >/dev/null
+          set +e
+          timeout 540 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan \
+            "../$BIN_NAME" --benchmark streaming frames=240 warmup=60 json=streaming-bench.json --verbose 2>&1 | tee ../smoke-streaming.log
+          CODE=$?
+          set -e
+          popd >/dev/null
+          echo "streaming bench exit code: $CODE"
+          test -s run7/streaming-bench.json && grep -q '"avg_ms"' run7/streaming-bench.json && echo "STREAMING JSON OK" || echo "WARN: streaming bench produced no usable JSON (non-gating, see smoke-streaming.log)"
+
           echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 
       - name: Upload artifact (the raw executable, no archive)
@@ -396,3 +411,12 @@ jobs:
           path: run6/screenshots/e2e_phases_f3_*.png
           retention-days: 30
           if-no-files-found: error
+
+      - name: Upload streaming bench JSON (1.2v evidence, non-gating)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: streaming-bench-json
+          path: run7/streaming-bench.json
+          retention-days: 30
+          if-no-files-found: warn

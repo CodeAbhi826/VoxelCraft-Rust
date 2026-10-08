@@ -397,6 +397,24 @@ jobs:
           echo "streaming bench exit code: $CODE"
           test -s run7/streaming-bench.json && grep -q '"avg_ms"' run7/streaming-bench.json && echo "STREAMING JSON OK" || echo "WARN: streaming bench produced no usable JSON (non-gating, see smoke-streaming.log)"
 
+          # 1.10: CI perf gate on the streaming JSON — structural only
+          # (lavapipe timings are environment noise; thresholds would
+          # flake). Fails on missing/malformed data; REPORTS avg/p99/max
+          # (worst_ms) + chunks for the verdict. Owner hardware judges.
+          python3 - <<'EOF' || { echo "FAIL: streaming perf gate (malformed JSON)"; exit 1; }
+          import json, sys
+          d = json.load(open("run7/streaming-bench.json"))["benchmark"]
+          f, p, w = d["frame"], d["phases"]["phases_ms"], d.get("world", {})
+          assert d["camera"] == "streaming", d["camera"]
+          assert f["frames"] >= 100, f["frames"]
+          for k in ("avg_ms", "median_ms", "p99_ms", "worst_ms"):
+              assert isinstance(f[k], (int, float)) and f[k] > 0, k
+          print(f"PERF GATE OK — frames={f['frames']} avg={f['avg_ms']:.1f} "
+                f"median={f['median_ms']:.1f} p99={f['p99_ms']:.1f} "
+                f"worst={f['worst_ms']:.1f}ms phases={p} world={w} "
+                f"gpu_ms={d.get('gpu_ms')}")
+          EOF
+
           echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 
       - name: Upload artifact (the raw executable, no archive)

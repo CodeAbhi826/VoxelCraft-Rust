@@ -3253,7 +3253,7 @@ Work Log:
 - README accuracy pass: fixed the stale World section (10-min day ->
   20-min with the 24,000-tick citation, "18 block types" -> 506/805,
   5-biome list -> 25+End, added the audit-doc pointer)
-- Saved a user copy of the audit to /home/z/my-project/download/
+- Saved a user copy of the audit to <owner workstation path, redacted>/download/
 
 Stage Summary:
 - The verified checklist is the single source of truth now: every row
@@ -4945,7 +4945,7 @@ caught it because the Xvfb smoke runs X11 with a focus-armed XI2 stack.
   bench before the watchdog window, and llvmpipe runs ~3 fps. This is an
   Xvfb-without-WM artifact, not a real-desktop condition; the demotion
   decision itself is exhaustively unit-tested.
-- Test artifacts kept under `/home/z/my-project/scripts/` (smoke-run/,
+- Test artifacts kept under `<owner workstation path, redacted>/scripts/` (smoke-run/,
   bench-run/, debs/, xtest_inject*.c, xtest_keepalive.c).
 
 ### Docs
@@ -5870,7 +5870,7 @@ refreshed in `public/`.
   (filter-repo removes remotes). To deliver everything (and let CI
   rebuild the Linux binary + wasm), run:
 
-      cd /home/z/my-project
+      cd <repo checkout>
       git remote set-url origin https://<YOUR_TOKEN>@github.com/CodeAbhi826/VoxelCraft-Rust.git
       git push --force origin main
       git push --force origin --tags
@@ -5997,14 +5997,14 @@ Work units, in order (all on `test/full-sweep-2026-09-25`):
    commit messages and all tracked files; pre-rewrite bundle copied from
    tmpfs to permanent storage and verified (`git bundle verify`: complete
    history, tip `db07f71`):
-   **`/home/abhin/backups/voxelcraft-backup-pre-rewrite.bundle`** (10.7 MB).
+   **owner-held pre-rewrite history bundle (outside the repo, verified via `git bundle verify`)** (10.7 MB).
    Provenance statements re-confirmed in LEGAL.md + docs/LEGAL-COMPLIANCE.md;
    added an explicit standing study-corpus row to LEGAL.md (fca97ed). [Verified]
 
 3. **0.3 commit 75bfe64 (1A.6)** — committed **tools/tests only** (Cargo.toml
    + game.rs, 352 insertions; no images). The 4-angle + player-rig renders
    (from the 13:41–13:42 fullscreen run) staged for download at
-   **`/home/abhin/backups/1a6-renders/`** (5 PNGs). Vision-test protocol
+   **owner-held 1a6 render staging dir (outside the repo)** (5 PNGs). Vision-test protocol
    armed: 2 user-supplied images will be described before any visual
    verdict is trusted (V1). [Code-only; awaiting images]
 

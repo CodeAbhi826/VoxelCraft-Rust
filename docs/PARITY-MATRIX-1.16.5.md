@@ -2,8 +2,8 @@
 
 **Purpose:** the row-by-row parity audit the overhaul executes from. Built by
 five parallel audit agents (2026-10-02) against: the live reference wiki
-(the reference wiki), the extracted vanilla 1.16.5 client-jar data (STUDY-ONLY,
-never copied: `/home/abhin/vc-verify/mc-1.16.5/`), and the engine's code +
+(the reference wiki), the owner-held study-only reference set (outside the repo,
+never copied — used only for fact-level counts and aggregate statistics), and the engine's code +
 tests. Status: DONE / PARTIAL / MISSING / WRONG.
 
 **Reference-registry counts (measured from the jar today):** 859 recipe JSONs,

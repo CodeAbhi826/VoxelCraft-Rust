@@ -15440,7 +15440,11 @@ impl GameApp {
         let hx = cx as f32 + 0.5;
         let hz = cz as f32 + 0.5;
         self.e2e_turntable_subject = None;
-        if let Some(id) = self.sim.mobs.spawn_at(kind, hx.floor() as i32, gy, hz.floor() as i32) {
+        if let Some(id) = self
+            .sim
+            .mobs
+            .spawn_at(kind, hx.floor() as i32, gy, hz.floor() as i32)
+        {
             if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == id) {
                 m.pos = [hx, gy as f32, hz];
                 m.vel = [0.0; 3];
@@ -15484,8 +15488,7 @@ impl GameApp {
             home[1] + 1.6,
             home[2] + a.sin() * dist,
         );
-        let to_c =
-            (glam::Vec3::new(home[0], home[1] + 1.0, home[2]) - pos).normalize();
+        let to_c = (glam::Vec3::new(home[0], home[1] + 1.0, home[2]) - pos).normalize();
         self.player.pos = pos;
         self.player.vel = glam::Vec3::ZERO;
         let dz = -to_c.z;
@@ -16571,7 +16574,8 @@ impl GameApp {
                 let fkeys_pending = false;
                 // 1.1v: E2E_PHASES owns the exit while its verdict + capture run
                 #[cfg(not(target_arch = "wasm32"))]
-                let phases_pending = std::env::var("E2E_PHASES").is_ok() && self.e2e_phases_stage < 2;
+                let phases_pending =
+                    std::env::var("E2E_PHASES").is_ok() && self.e2e_phases_stage < 2;
                 #[cfg(target_arch = "wasm32")]
                 let phases_pending = false;
                 // 1.11: E2E_TURNTABLE owns the exit while its 5-view ladder runs
@@ -16645,7 +16649,12 @@ impl GameApp {
             let iconic_pending = std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
             #[cfg(target_arch = "wasm32")]
             let iconic_pending = false;
-            if t_in > 2.2 && !fkeys_pending && !iconic_pending && !phases_pending && !turntable_pending {
+            if t_in > 2.2
+                && !fkeys_pending
+                && !iconic_pending
+                && !phases_pending
+                && !turntable_pending
+            {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();
                 std::process::exit(0);

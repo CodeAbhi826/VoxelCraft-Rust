@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **2 WORLDS FIRST**. Current slice: **2.2a oracle primitives** (committed; CI watch armed).
-- HEAD: 2.2a commit (2.1f CLOSED `6212bcd` 9/9).
+- Part: **2 WORLDS FIRST**. Current slice: **2.2b structure starts** (committed; CI watch armed).
+- HEAD: 2.2b commit (2.2a CLOSED).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices

@@ -6370,3 +6370,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z5 — 2.2a oracle primitives (Tested)
 - New vc-anvil::oracle: diff_chunks (block+biome rates + first-mismatch locator), seam_match_x/z (4096-cell shared faces). Block-level (folded ids) + biome-level; state-level deferred. Real-import numbers await the P1 soft blocker (harness proves itself on synthetic pairs meanwhile).
 - Local (idle): fmt clean; 3/3 pass (identical→100%, 1-flip located exactly, seams cover full faces).
+
+## 2026-10-09z6 — 2.2a CLOSED (Tested)
+- 2.2a CI (run 37859454281): 9/9 code green (oracle tests pass in CI); bench quota-only (18th).
+
+## 2026-10-09z7 — 2.2b structure starts (Tested)
+- oracle.rs: StructureHit{kind,cx,cz} + extract_starts (ChunkX/Z or BB[minX,minZ]→chunk; malformed skipped §46; kinds verbatim, no type list) + structure_match_rate (Chebyshev tol; matched/total/kinds_agree — vocabulary gaps surface, never silent).
+- Caught own BB bug pre-CI (bb[4] is maxY, not minZ → bb[2]; fixture now BB-only so the path is genuinely exercised).
+- Local (idle): fmt clean; 5/5 oracle tests pass.

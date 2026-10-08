@@ -6361,3 +6361,12 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Test-job rerun on 37856078658: ALL green (48/48 blocks, 309-suite clean) — the font upload-count failures were CI-load flake (green locally + on rerun, unrelated to the diff). 2.1e done. Bench quota-only (16th).
 - 2.1f: chunk_from_nbt maps unknown palette names to PLACEHOLDER_STATE (was air) — session now SHOWS checkers; sidecar still carries the verbatim record for the 2.4 writer. Height/light/collision unchanged (placeholder non-solid/non-opaque via BlockDef flags).
 - Local (idle): fmt clean; updated unknown test (expects PLACEHOLDER state) passes; full vc-anvil lib suite green.
+
+## 2026-10-09z4 — 2.1f CLOSED → 2.1 importer COMPLETE (Tested)
+- 2.1f CI (run 37858371274): 9/9 code green first try; bench quota-only (17th). Unknowns now render as checkers with verbatim sidecars.
+- 2.1 ledger: 2.1a gate + 2.1b block sidecar + 2.1c tile/entity/structure sidecars + 2.1d fuzz + 2.1e registry/tile/art + 2.1f remap. Remaining 2.1 item (real-world validation) is soft-blocked (P1: no owner worlds); synthetic coverage stands in.
+- Next: 2.2 oracle harness primitives (diff/biome/mismatch-locator/seam fns + synthetic tests; real-import numbers await the soft blocker).
+
+## 2026-10-09z5 — 2.2a oracle primitives (Tested)
+- New vc-anvil::oracle: diff_chunks (block+biome rates + first-mismatch locator), seam_match_x/z (4096-cell shared faces). Block-level (folded ids) + biome-level; state-level deferred. Real-import numbers await the P1 soft blocker (harness proves itself on synthetic pairs meanwhile).
+- Local (idle): fmt clean; 3/3 pass (identical→100%, 1-flip located exactly, seams cover full faces).

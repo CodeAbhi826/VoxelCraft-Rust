@@ -6,4 +6,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod anvil;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod oracle;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod save;

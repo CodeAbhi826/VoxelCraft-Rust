@@ -379,6 +379,29 @@ jobs:
           test -s run6/screenshots/e2e_phases_f3_*.png || { echo "FAIL: phases F3 screenshot missing"; exit 1; }
           echo "PHASES OK - the phase meter spans update+draw in-game (min coverage >= 0.9, F3 phase row captured)"
 
+          # 1.11: solo-mob turntable (E2E_TURNTABLE=1, TURNTABLE_MOB=name,
+          # default creeper) — one subject alone on flat grass, HUD hidden,
+          # neutral daylight; front/side/back/three-quarter/close-up PNGs
+          # to screenshots/. The PNGs are the owner's art verdicts (V1).
+          mkdir -p run8 && pushd run8 >/dev/null
+          set +e
+          timeout 300 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan E2E_TURNTABLE=1 \
+            "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-turntable.log
+          CODE=$?
+          set -e
+          popd >/dev/null
+          echo "turntable smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: turntable E2E exited $CODE"
+            exit 1
+          fi
+          grep -q "TURNTABLE VERDICT OK" smoke-turntable.log || { echo "FAIL: the turntable E2E verdict is not OK"; exit 1; }
+          for v in front side back threequarter closeup; do
+            test -s run8/screenshots/e2e_turntable_*_${v}_*.png || { echo "FAIL: turntable ${v} screenshot missing"; exit 1; }
+          done
+          echo "TURNTABLE OK - solo-mob 5-view capture set saved"
+
           # 1.2v: streaming benchmark, NON-GATING — the orbit default stays
           # untouched; this leg walks fresh terrain (chunk gen + meshing in
           # the frame cost) and uploads its JSON. Never fails the job: the
@@ -439,5 +462,14 @@ jobs:
         with:
           name: streaming-bench-json
           path: run7/streaming-bench.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload turntable captures (1.11 V1 evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-turntable
+          path: run8/screenshots/e2e_turntable_*.png
           retention-days: 30
           if-no-files-found: warn

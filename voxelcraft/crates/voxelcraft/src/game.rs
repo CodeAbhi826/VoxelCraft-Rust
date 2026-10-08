@@ -1907,6 +1907,17 @@ pub struct GameApp {
     e2e_fluids_done: bool,
     /// 1A.6: E2E_ICONIC — the iconic-cast capture leg ran once
     e2e_iconic_done: bool,
+    /// 1.11: E2E_TURNTABLE — solo-mob capture leg ran once
+    e2e_turntable_done: bool,
+    /// stage 0 = setup pending, 1..=5 = the five views (front/side/
+    /// back/three-quarter/close-up), done = the leg exits in stage 5
+    e2e_turntable_stage: u8,
+    /// every capture verified non-trivial
+    e2e_turntable_ok: bool,
+    /// subject entity id + home pose (re-pinned every update: AI wanders)
+    e2e_turntable_subject: Option<(u32, [f32; 3])>,
+    /// settle frames since the stage's camera move
+    e2e_turntable_settle: u8,
     /// E2E_ICONIC stage ladder: 0 = stage-build pending, 1..=4 = the four
     /// cardinal orbit captures, 5 = the third-person player-rig capture,
     /// 6 = done (the leg owns the exit)
@@ -3294,6 +3305,11 @@ impl GameApp {
             e2e_iconic_center: [0.0; 3],
             e2e_iconic_slots: std::collections::HashMap::new(),
             e2e_iconic_villager: None,
+            e2e_turntable_done: false,
+            e2e_turntable_stage: 0,
+            e2e_turntable_ok: true,
+            e2e_turntable_subject: None,
+            e2e_turntable_settle: 0,
             smoke_clicked_ingame: false,
             smoke_game_t: 0.0,
             f3_dump2: false,
@@ -15389,6 +15405,132 @@ impl GameApp {
         }
     }
 
+    /// 1.11: the five turntable views — (camera angle°, distance, name).
+    /// The subject keeps yaw 0 for all views (no facing-convention guess:
+    /// the owner maps angles to front/side/back from the captures).
+    #[cfg(not(target_arch = "wasm32"))]
+    const TURNTABLE_VIEWS: [(u32, f32, &'static str); 5] = [
+        (0, 3.0, "front"),
+        (90, 3.0, "side"),
+        (180, 3.0, "back"),
+        (45, 3.0, "threequarter"),
+        (0, 1.5, "closeup"),
+    ];
+
+    /// 1.11: build the solo stage (flat grass, cleared air) and spawn one
+    /// subject by TURNTABLE_MOB (default creeper); neutral daylight, clear
+    /// weather, HUD hidden, natural spawning off, crowd removed.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_turntable_setup(&mut self, pcx: i32, pcz: i32) {
+        use vc_gameplay::mobs::MobKind;
+        let name = std::env::var("TURNTABLE_MOB").unwrap_or_else(|_| "creeper".to_string());
+        let kind = MobKind::from_name(&name.to_lowercase()).unwrap_or(MobKind::Creeper);
+        let (_, sy, _) = self.world.find_spawn();
+        let cx = pcx * 16 + 8;
+        let cz = pcz * 16 + 8;
+        let gy = sy.floor() as i32;
+        for dx in -8..=7 {
+            for dz in -8..=7 {
+                self.test_place(GRASS, cx + dx, gy - 1, cz + dz);
+                for dy in 0..6 {
+                    self.test_place(AIR, cx + dx, gy + dy, cz + dz);
+                }
+            }
+        }
+        let hx = cx as f32 + 0.5;
+        let hz = cz as f32 + 0.5;
+        self.e2e_turntable_subject = None;
+        if let Some(id) = self.sim.mobs.spawn_at(kind, hx.floor() as i32, gy, hz.floor() as i32) {
+            if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == id) {
+                m.pos = [hx, gy as f32, hz];
+                m.vel = [0.0; 3];
+                m.yaw = 0.0;
+            }
+            // solo: the crowd (and any natural spawn) leaves the stage
+            self.sim.mobs.list.retain(|m| m.id == id);
+            self.e2e_turntable_subject = Some((id, [hx, gy as f32, hz]));
+        }
+        // neutral daylight + clear air + no audience: the vanilla systems,
+        // not test hooks (daylight-cycle off, clear weather, HUD hidden,
+        // natural spawning off, nothing targets the player)
+        self.day_time = 0.25;
+        self.gamerules.do_daylight_cycle = false;
+        self.gamerules.do_mob_spawning = false;
+        self.sim.mobs.do_mob_spawning = false;
+        self.weather.force_clear(24000);
+        self.hide_hud = true;
+        self.sim.mobs.player = None;
+        self.screen = Screen::Game;
+        vc_render::render::report_boot_log(&format!(
+            "e2e: turntable subject {kind:?} staged at ({cx},{gy},{cz})"
+        ));
+    }
+
+    /// 1.11: put the camera on the view ring (the iconic orbit's yaw/pitch
+    /// convention, including its signed-zero pin).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_turntable_view(&mut self, angle_deg: u32, dist: f32) {
+        let Some((id, home)) = self.e2e_turntable_subject else {
+            return;
+        };
+        if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == id) {
+            m.pos = home;
+            m.vel = [0.0; 3];
+            m.yaw = 0.0;
+        }
+        let a = (angle_deg as f32).to_radians();
+        let pos = glam::Vec3::new(
+            home[0] + a.cos() * dist,
+            home[1] + 1.6,
+            home[2] + a.sin() * dist,
+        );
+        let to_c =
+            (glam::Vec3::new(home[0], home[1] + 1.0, home[2]) - pos).normalize();
+        self.player.pos = pos;
+        self.player.vel = glam::Vec3::ZERO;
+        let dz = -to_c.z;
+        self.player.yaw = if dz.abs() < 1e-5 {
+            if -to_c.x >= 0.0 {
+                std::f32::consts::FRAC_PI_2
+            } else {
+                -std::f32::consts::FRAC_PI_2
+            }
+        } else {
+            f32::atan2(-to_c.x, dz)
+        };
+        self.player.pitch = 0.0;
+        self.player.flying = true;
+        self.player.on_ground = false;
+        self.e2e_turntable_settle = 0;
+    }
+
+    /// 1.11: persist one turntable capture (the iconic pull contract).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_turntable_save(&mut self, mob: &str, view: &str) {
+        let png = self.renderer.take_screenshot_png();
+        match png {
+            Some(bytes) => {
+                let dir = std::path::Path::new("screenshots");
+                let _ = std::fs::create_dir_all(dir);
+                let path = dir.join(format!(
+                    "e2e_turntable_{mob}_{view}_{}.png",
+                    chrono_like_stamp()
+                ));
+                let wrote = std::fs::write(&path, &bytes).is_ok();
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: turntable {mob}/{view} {} ({} bytes)",
+                    if wrote { "saved" } else { "WRITE FAILED" },
+                    bytes.len()
+                ));
+                self.e2e_turntable_ok &= wrote && bytes.len() > 1000;
+            }
+            None => {
+                vc_render::render::report_boot_log("e2e: turntable capture MISSING");
+                self.e2e_turntable_ok = false;
+            }
+        }
+    }
+
     /// Round A: the F-KEY CONTRACT E2E leg (E2E_FKEYS=1, native) — every
     /// function key's effect through the REAL key_action input path,
     /// verified in-engine so CI greps a single verdict line:
@@ -16258,6 +16400,64 @@ impl GameApp {
             }
             self.e2e_iconic_watch += 1;
         }
+        // 1.11: E2E_TURNTABLE — solo-mob capture leg (native-only). Stage
+        // 0 waits for world entry + the player's chunk, then builds the
+        // stage (flat grass, one subject, neutral light, HUD hidden).
+        // Stages 1..=5 frame one view each (3 settle frames, arm on the
+        // readback, consume next update — the FKEYS pull contract); the
+        // mob is re-pinned every update (AI wanders). TURNTABLE_MOB
+        // selects the subject (default creeper); V1: the PNGs are the
+        // owner's art verdicts.
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_TURNTABLE").is_ok() && !self.e2e_turntable_done {
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            let (pcx, pcz) = (
+                (self.player.pos.x.floor() as i32).div_euclid(16),
+                (self.player.pos.z.floor() as i32).div_euclid(16),
+            );
+            let ready = in_world && self.world.chunks.contains_key(&(pcx, pcz));
+            match self.e2e_turntable_stage {
+                0 if ready => {
+                    self.e2e_turntable_setup(pcx, pcz);
+                    if self.e2e_turntable_subject.is_none() {
+                        self.e2e_turntable_ok = false;
+                        vc_render::render::report_boot_log("e2e: turntable FAIL no subject");
+                    }
+                    let (angle, dist, _) = Self::TURNTABLE_VIEWS[0];
+                    self.e2e_turntable_view(angle, dist);
+                    self.e2e_turntable_stage = 1;
+                }
+                n @ 1..=5 => {
+                    let (_, _, view) = Self::TURNTABLE_VIEWS[(n - 1) as usize];
+                    if self.renderer.screenshot_png.is_some() {
+                        let mob = std::env::var("TURNTABLE_MOB")
+                            .unwrap_or_else(|_| "creeper".to_string())
+                            .to_lowercase();
+                        self.e2e_turntable_save(&mob, view);
+                        if n == 5 {
+                            self.e2e_turntable_done = true;
+                            let ok = self.e2e_turntable_ok;
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: turntable 5 views — TURNTABLE {}",
+                                if ok { "VERDICT OK" } else { "VERDICT FAILED" }
+                            ));
+                            self.dbg_exit_summary();
+                            std::process::exit(if ok { 0 } else { 1 });
+                        } else {
+                            let (angle, dist, _) = Self::TURNTABLE_VIEWS[n as usize];
+                            self.e2e_turntable_view(angle, dist);
+                            self.e2e_turntable_stage = n + 1;
+                        }
+                    } else {
+                        self.e2e_turntable_settle += 1;
+                        if self.e2e_turntable_settle >= 3 {
+                            self.renderer.screenshot_request = true;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
         // E2E_MENU: the settings-tree script ran to the void — verify the
         // tree round-tripped back to the title and exit clean
         if self.smoke_menu_e2e && self.smoke_script.is_empty() && self.screen == Screen::Title {
@@ -16371,17 +16571,22 @@ impl GameApp {
                 let fkeys_pending = false;
                 // 1.1v: E2E_PHASES owns the exit while its verdict + capture run
                 #[cfg(not(target_arch = "wasm32"))]
-                let phases_pending =
-                    std::env::var("E2E_PHASES").is_ok() && self.e2e_phases_stage < 2;
+                let phases_pending = std::env::var("E2E_PHASES").is_ok() && self.e2e_phases_stage < 2;
                 #[cfg(target_arch = "wasm32")]
                 let phases_pending = false;
+                // 1.11: E2E_TURNTABLE owns the exit while its 5-view ladder runs
+                #[cfg(not(target_arch = "wasm32"))]
+                let turntable_pending =
+                    std::env::var("E2E_TURNTABLE").is_ok() && self.e2e_turntable_stage < 6;
+                #[cfg(target_arch = "wasm32")]
+                let turntable_pending = false;
                 // 1A.6: E2E_ICONIC owns the exit while its capture ladder runs
                 #[cfg(not(target_arch = "wasm32"))]
                 let iconic_pending =
                     std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
                 #[cfg(target_arch = "wasm32")]
                 let iconic_pending = false;
-                if !fkeys_pending && !iconic_pending && !phases_pending {
+                if !fkeys_pending && !iconic_pending && !phases_pending && !turntable_pending {
                     vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                     self.dbg_exit_summary();
                     std::process::exit(0);
@@ -16429,12 +16634,18 @@ impl GameApp {
             let phases_pending = std::env::var("E2E_PHASES").is_ok() && self.e2e_phases_stage < 2;
             #[cfg(target_arch = "wasm32")]
             let phases_pending = false;
+            // 1.11: E2E_TURNTABLE owns the exit while its 5-view ladder runs
+            #[cfg(not(target_arch = "wasm32"))]
+            let turntable_pending =
+                std::env::var("E2E_TURNTABLE").is_ok() && self.e2e_turntable_stage < 6;
+            #[cfg(target_arch = "wasm32")]
+            let turntable_pending = false;
             // 1A.6: E2E_ICONIC owns the exit while its capture ladder runs
             #[cfg(not(target_arch = "wasm32"))]
             let iconic_pending = std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
             #[cfg(target_arch = "wasm32")]
             let iconic_pending = false;
-            if t_in > 2.2 && !fkeys_pending && !iconic_pending && !phases_pending {
+            if t_in > 2.2 && !fkeys_pending && !iconic_pending && !phases_pending && !turntable_pending {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();
                 std::process::exit(0);
@@ -25603,7 +25814,9 @@ impl GameApp {
             && !self.e2e_iconic_armed
             // 1.1v: same deadlock class for the E2E_PHASES capture —
             // while its verdict ran (stage 1) the PNG belongs to the leg
+            // 1.11: same for the E2E_TURNTABLE captures (stages 1..5)
             && self.e2e_phases_stage == 0
+            && self.e2e_turntable_stage == 0
         {
             self.take_screenshot();
         }

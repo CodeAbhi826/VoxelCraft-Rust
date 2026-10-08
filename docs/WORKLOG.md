@@ -6291,3 +6291,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09l — L5 CLOSED + L6 AUTHORSHIP.md (Code-only)
 - L5 fix-forward CI (run 37840238574): 9/9 code green (tooltip test passes); bench quota-only (8th). L5 CLOSED — About screen fully gated in CI (uniqueness, disjointness, tooltip, fmt/clippy/test).
 - L6: AUTHORSHIP.md (owner direction/measurements/review + AI implementation-under-rules + explicit non-claims). ~40 lines, no code touched.
+
+## 2026-10-09m — L6 CLOSED + L7 provider-ownership finding (Code-only)
+- L6 CI (run 37840981889): 9/9 code green; bench quota-only (9th). L6 done.
+- L7: LEGAL.md finding (DCO + GPL-on-entry asserted, provider-side explicitly NOT asserted — terms never reviewed here) + BLOCKERS #5 (owner confirms provider terms pre-release; Part 9 re-verifies). No fabricated legal claims.

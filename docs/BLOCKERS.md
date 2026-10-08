@@ -3,6 +3,14 @@
 (A3: each entry carries the exact ask + the default the work continues under.
 No hard stops open. The STOP file is absent.)
 
+## Soft blocker 5 — provider output-ownership terms (L7, owner confirm)
+- Ask: confirm your model-provider terms permit shipping
+  model-assisted output under GPL-3.0-or-later (the LEGAL.md L7
+  finding records our DCO + GPL-entry side; provider-side ownership
+  is not asserted). If they do not, say so and release re-scopes.
+- Default (work continues under it): DCO + GPL-on-entry + AUTHORSHIP
+  honesty stands; Part 9 re-verifies before release.
+
 ## Soft blocker 4 — docs license undecided (reuse-lint half of L3)
 - Ask: pick ONE license for repo docs/prose (`docs/**`, root `*.md`
   except README claims handled in L8, workflow/config text): e.g.

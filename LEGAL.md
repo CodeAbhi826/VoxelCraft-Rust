@@ -81,6 +81,24 @@ Development of this project was AI-assisted; the solo maintainer reviews and
 takes responsibility for everything shipped. See the "How this was built"
 section of [README.md](README.md).
 
+### AI output ownership (L7 finding, 2026-10-09)
+
+- **What this project controls.** Every AI-produced change enters the
+  repo under the owner's direction and the project's DCO
+  (CONTRIBUTING.md): the owner reviews, commissions, and ships each
+  slice, and all contributions — human or AI-assisted — are licensed
+  GPL-3.0-or-later on entry. Authorship roles are recorded honestly in
+  AUTHORSHIP.md (no overclaim of verification status).
+- **What this project cannot assert.** Whether the model provider's
+  terms grant, retain, or disclaim rights in model outputs depends on
+  the owner's provider agreement, which is not in this repo and was
+  not reviewed here (P1: no owner files in this work). No claim is
+  made about provider-side ownership.
+- **Owner action (docs/BLOCKERS.md #5).** Confirm the provider terms
+  permit shipping model-assisted output under GPL-3.0-or-later; if
+  they do not, stop and re-scope before release (Part 9). Default
+  until then: work continues under the DCO + GPL-entry treatment.
+
 ## Enforcement
 
 `scripts/legal_audit.py` runs on every CI push: it scans shipped files for

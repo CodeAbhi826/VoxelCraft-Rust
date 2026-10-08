@@ -6207,3 +6207,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - `textures.rs` only (`333b766`, +38/−7): torso rows repainted shirt-center with skin hands; eyes symmetric. Pixel unit test pins torso/hand/eye colors.
 - CI: full suite green incl. the new test; linux-game 37805434035: every leg green (FKEYS margin 576, beds/fluids/phases/turntable VERDICT OK, exits 0). Job red only on uploads.
 - V1: player-rig visual deferred to the foreground session (turntable covers mobs only; FKEYS PNGs aren't artifacted). Structural proof: pixel test + all legs green on the new atlas.
+
+## 2026-10-08t — slice 1.8b DONE (vanilla preset + fresh-profile tiering)
+- `7006495` (~80 lines): VANILLA button (ID 59, reference defaults + live re-applies), fresh profiles tier rd/ed at first-run write (cores) with a post-probe software-GL correction + re-save, tier-step-down helper + tests. Particle knob already existed and wired (density gate) — verified, not duplicated.
+- linux-game 37808829181: every leg exit 0 + OK (FKEYS/beds/fluids/phases/turntable/streaming JSON); runner correctly tiers Low (2 cores) at boot write, probe correction a silent no-op. Job red only on uploads.

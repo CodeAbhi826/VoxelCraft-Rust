@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 PERFORMANCE CORE**. Current slice: **1.8b vanilla preset + particle knob** (next).
-- HEAD: `333b766`+docs (1.12 done: pixel test + all legs green in run 37805434035; player visual waits foreground).
+- Part: **1 PERFORMANCE CORE**. Current slice: **Chunk migration B–G + REVIEW PACKET** (next).
+- HEAD: `7006495`+docs (1.8b done: all E2E legs exit 0; uploads red on quota).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
@@ -21,7 +21,8 @@
 - [x] 1.10 re-measure + gate + verdict (`linux-game.yml` gate; CPU-bound, worst_ms gated)
 - [x] 1.11 turntable capture tool (`7f47f74`; leg green, 5 creeper views; V1 viewing waits quota)
 - [x] 1.12 player torso/face fix (`333b766`; pixel test + all legs green; visual waits foreground)
-- [ ] 1.8b vanilla preset + particle knob + first-run tiered defaults
+- [x] 1.8b vanilla preset + fresh-profile tiering (`7006495`; all legs exit 0; particle knob pre-existed)
+- [ ] Chunk migration B–G (save.rs, game.rs, gen.rs ranges; A done)
 - [ ] Interleaved: Chunk::get migration batches B–G (compile-verified)
 - [ ] Part 1 REVIEW PACKET + adversarial self-review (10 claims)
 

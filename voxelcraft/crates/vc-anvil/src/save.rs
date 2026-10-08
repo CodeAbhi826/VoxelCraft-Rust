@@ -695,6 +695,20 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
         }
     }
 
+    // 2.1c: verbatim foreign records (R6) — tile entities, entities,
+    // and the whole Structures compound (starts + references). Cloned
+    // untouched: never interpreted, never dropped, never panics on
+    // foreign shapes (non-list/wrong-type → absent, §46).
+    if let Some(tiles) = level.get("TileEntities").and_then(|t| t.as_list()) {
+        chunk.unknown_tiles.extend(tiles.iter().cloned());
+    }
+    if let Some(ents) = level.get("Entities").and_then(|e| e.as_list()) {
+        chunk.unknown_entities.extend(ents.iter().cloned());
+    }
+    if let Some(structs) = level.get("Structures") {
+        chunk.unknown_structures.push(structs.clone());
+    }
+
     recompute_height(&mut chunk);
     Ok((
         chunk,
@@ -1815,6 +1829,53 @@ mod tests {
         assert_eq!(u.index, 2);
         assert_eq!(u.name, "future:block");
         assert_eq!(u.props, vec![("color".to_string(), "red".to_string())]);
+    }
+
+    /// 2.1c: tile entities, entities, and Structures survive import
+    /// verbatim (R6) — cloned untouched, never interpreted. Synthetic
+    /// fixture, no real world.
+    #[test]
+    fn foreign_records_preserved_verbatim() {
+        let mut tile = Nbt::compound();
+        tile.set("id", Nbt::String("minecraft:chest".into()));
+        tile.set("x", Nbt::Int(1));
+        let mut ent = Nbt::compound();
+        ent.set("id", Nbt::String("minecraft:pig".into()));
+        let mut starts = Nbt::compound();
+        starts.set("minecraft:village", Nbt::compound());
+        let mut structs = Nbt::compound();
+        structs.set("Starts", starts);
+
+        let mut level = Nbt::compound();
+        level.set("xPos", Nbt::Int(0));
+        level.set("zPos", Nbt::Int(0));
+        level.set("TileEntities", Nbt::List(vec![tile.clone()]));
+        level.set("Entities", Nbt::List(vec![ent.clone()]));
+        level.set("Structures", structs.clone());
+        let mut root = Nbt::compound();
+        root.set("DataVersion", Nbt::Int(2586));
+        root.set("Level", level);
+        let bytes = nbt::write_root("", &root).unwrap();
+
+        let (chunk, _) = chunk_from_nbt(&bytes).unwrap();
+        assert_eq!(chunk.unknown_tiles, vec![tile]);
+        assert_eq!(chunk.unknown_entities, vec![ent]);
+        assert_eq!(chunk.unknown_structures, vec![structs]);
+
+        // and a bare level stays empty-sidecarred (no foreign data lost
+        // because there was none)
+        let mut bare_level = Nbt::compound();
+        bare_level.set("xPos", Nbt::Int(0));
+        bare_level.set("zPos", Nbt::Int(0));
+        let mut bare_root = Nbt::compound();
+        bare_root.set("DataVersion", Nbt::Int(2586));
+        bare_root.set("Level", bare_level);
+        let bare_bytes = nbt::write_root("", &bare_root).unwrap();
+        let (bare, _) = chunk_from_nbt(&bare_bytes).unwrap();
+        assert!(bare.unknown_tiles.is_empty());
+        assert!(bare.unknown_entities.is_empty());
+        assert!(bare.unknown_structures.is_empty());
+        assert!(bare.unknown.is_empty());
     }
 
     #[test]

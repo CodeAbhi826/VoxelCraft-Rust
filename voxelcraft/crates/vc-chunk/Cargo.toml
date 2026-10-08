@@ -8,3 +8,4 @@ description = "Chunk & section storage: paletted containers, heightmaps, grid co
 
 [dependencies]
 vc-blocks = { workspace = true }
+vc-nbt = { workspace = true }

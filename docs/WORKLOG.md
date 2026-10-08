@@ -6319,3 +6319,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09s — 2.1b fix-forward: type alias for clippy (Tested)
 - 2.1b CI (run 37846442811): 8/9 code green; clippy `type_complexity` on the nested `Vec<Option<...>>`. Fix: `UnknownPaletteEntry` alias. Local: fmt clean + `clippy -p vc-anvil --lib -D warnings` clean.
+
+## 2026-10-09t — 2.1b CLOSED + 2.1c foreign-record sidecars (Tested)
+- 2.1b fix-forward CI (run 37847524543): 9/9 code green (clippy alias verified); bench quota-only (13th). 2.1b done — unknown blocks preserved verbatim in memory.
+- 2.1c: Chunk gains unknown_tiles/entities/structures: Vec<Nbt> (opaque to gameplay; loader fills, 2.4 writer drains; §28 note on fields) + vc-chunk→vc-nbt dep. chunk_from_nbt clones TileEntities/Entities/Structures untouched (non-list → absent, §46).
+- Local (idle): fmt clean; new test passes (chest/pig/Starts round-trip verbatim + bare level stays empty); clippy clean on both touched libs.

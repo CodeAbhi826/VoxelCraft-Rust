@@ -351,6 +351,15 @@ pub struct Chunk {
     /// the exact name+properties so the 2.4 writer re-emits them
     /// verbatim (R6). Worldgen never produces entries here.
     pub unknown: Vec<UnknownCell>,
+    /// 2.1c: verbatim foreign records met on import — tile entities,
+    /// entities, and the Structures compound (starts + references).
+    /// Opaque to gameplay (mesh/gen/world never read these; only the
+    /// anvil loader fills and the 2.4 writer drains them), so §28's
+    /// runtime/compatibility separation holds: the live layout never
+    /// interprets foreign data (R6).
+    pub unknown_tiles: Vec<vc_nbt::nbt::Nbt>,
+    pub unknown_entities: Vec<vc_nbt::nbt::Nbt>,
+    pub unknown_structures: Vec<vc_nbt::nbt::Nbt>,
 }
 
 /// One imported cell whose palette name is outside our registry.
@@ -407,6 +416,9 @@ impl Chunk {
             height: Box::new([0u8; 256]),
             biome: Box::new([0u8; 256]),
             unknown: Vec::new(),
+            unknown_tiles: Vec::new(),
+            unknown_entities: Vec::new(),
+            unknown_structures: Vec::new(),
         }
     }
 

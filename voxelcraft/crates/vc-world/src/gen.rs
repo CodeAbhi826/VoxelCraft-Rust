@@ -1428,10 +1428,18 @@ impl TerrainGen {
                 let top_y = ((top_cell + 1) * 8).min(255);
 
                 let mut surf: i32 = 0;
-                for y in (0..=top_y).rev() {
-                    let ly = y / 8;
-                    let fy = (y % 8) as f64 / 8.0;
-                    // trilinear over the 8 cell corners
+                // 1.4: cell-major fill — the 8 lattice corners are read
+                // once per 8-block cell instead of once per level
+                // (identical values, identical lerp order per level).
+                // Cells whose corners are all <= 0 above sea level can
+                // write nothing and are skipped: trilinear is a convex
+                // combination of its corners, so d <= max <= 0 (no
+                // STONE), and no level is below sea (no WATER).
+                // Surf/height/biome tracking is unaffected (skipped
+                // cells contribute no d > 0 level).
+                for ly in 0..=(top_y / 8) {
+                    let y0 = ly * 8;
+                    let y1 = (y0 + 7).min(top_y);
                     let c000 = getdens(lxi, ly, lzi);
                     let c100 = getdens(lxi + 1, ly, lzi);
                     let c010 = getdens(lxi, ly, lzi + 1);
@@ -1440,21 +1448,36 @@ impl TerrainGen {
                     let c101 = getdens(lxi + 1, ly + 1, lzi);
                     let c011 = getdens(lxi, ly + 1, lzi + 1);
                     let c111 = getdens(lxi + 1, ly + 1, lzi + 1);
-                    let dx0 = lerp64(c000, c100, fx);
-                    let dx1 = lerp64(c010, c110, fx);
-                    let dxy = lerp64(dx0, dx1, fz);
-                    let ex0 = lerp64(c001, c101, fx);
-                    let ex1 = lerp64(c011, c111, fx);
-                    let exy = lerp64(ex0, ex1, fz);
-                    let d = lerp64(dxy, exy, fy);
+                    let cmax = c000
+                        .max(c100)
+                        .max(c010)
+                        .max(c110)
+                        .max(c001)
+                        .max(c101)
+                        .max(c011)
+                        .max(c111);
+                    if cmax <= 0.0 && (y0 as i32) >= sea {
+                        continue;
+                    }
+                    for y in (y0..=y1).rev() {
+                        let fy = (y % 8) as f64 / 8.0;
+                        // trilinear over the 8 cell corners
+                        let dx0 = lerp64(c000, c100, fx);
+                        let dx1 = lerp64(c010, c110, fx);
+                        let dxy = lerp64(dx0, dx1, fz);
+                        let ex0 = lerp64(c001, c101, fx);
+                        let ex1 = lerp64(c011, c111, fx);
+                        let exy = lerp64(ex0, ex1, fz);
+                        let d = lerp64(dxy, exy, fy);
 
-                    if d > 0.0 {
-                        chunk.set(x, y, z, STONE);
-                        if y as i32 > surf {
-                            surf = y as i32;
+                        if d > 0.0 {
+                            chunk.set(x, y, z, STONE);
+                            if y as i32 > surf {
+                                surf = y as i32;
+                            }
+                        } else if (y as i32) < sea {
+                            chunk.set(x, y, z, WATER);
                         }
-                    } else if (y as i32) < sea {
-                        chunk.set(x, y, z, WATER);
                     }
                 }
 

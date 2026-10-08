@@ -6146,3 +6146,10 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Measured (CI lavapipe streaming, NOT reference hardware): 1.2v baseline avg 268.4/p99 807.8/worst 1078.8 ms, 877 chunks/700 meshed → 1.3 avg 52.4/median 41.9/p99 80.4/worst 82.4 ms, 148 chunks/86 meshed; stream+results phases 130→11 ms. Mid-fix run caught FIFO mesh starvation (149 loaded/0 meshed) — fixed by mesh-first ordering. Chunks/frame lower by design (budgets); 1.10 judges tuning on owner hardware. [Tested: artifacts]
 - Images viewed: none (non-visual; V1 n/a). Local: fmt/check/test -p only; 100/100 lib green.
 - Honest bounds: the 6ms budget caps bursts, not a single lighting pass (~20ms CI runner, ~59ms reference hardware class); thread priority unset (no portable std API — 1.8).
+
+## 2026-10-08h — slice 1.4 DONE (cell-major fill, identical output proven, E2E green)
+
+**Changed:** `gen.rs` only, commit `8e0fcd6` (+41/−18): per-block trilinear fill restructured cell-major (8 corners read once per cell, identical lerp order per level) + convex-combination air skip above sea.
+- Proof of identical output (HARD STOP gate, all green): 12/12 golden+pin tests locally; CI 37760921203 9/9 incl. 3-OS golden legs; linux-game 37761596978 SUCCESS (every E2E leg generates worlds through the new fill).
+- Measured (CI bench artifact, single sample): gen avg 11.436→10.961 ms (−4.2%), p50 −2.9%, p95 −4.9% — directionally faster on all percentiles but INSIDE the documented ±20% runner variance: honestly not a proven win, stated as such. The transform is strictly less work per chunk (kept); bigger items deliberately declined under IDENTICAL output: coarser lattice, fewer octaves (both change values), hand SIMD (determinism risk), unsafe indexing (zero-unsafe workspace rule).
+- Images viewed: none (non-visual; V1 n/a). Local: fmt/check/test -p vc-world only.

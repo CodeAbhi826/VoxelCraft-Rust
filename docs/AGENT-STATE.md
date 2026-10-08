@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 PERFORMANCE CORE**. Current slice: **1.4 CPU world-gen speedups** (next).
-- HEAD: `a5dc652` (1.3 done: CI 37758767658 + linux-game 37759391350 green; streaming avg 268→52ms lavapipe).
+- Part: **1 PERFORMANCE CORE**. Current slice: **1.5 GPU timestamp queries** (next).
+- HEAD: `8e0fcd6` (1.4 done: CI 37760921203 + linux-game 37761596978 green; gen −4% inside noise).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
@@ -10,10 +10,10 @@
 - [x] 1.1v E2E phase proof (`29de86b`+`1ad23a4`; linux-game 37747380181 green, V1 F3 screenshot viewed)
 - [x] 1.2v CI streaming step (non-gating) + world-chunks in bench JSON (`871d28f`+2 fixes; linux-game 37754542709 green, artifact: avg 268ms/p99 808ms, 877 chunks)
 - [x] 1.3 work budgets (`8b4011c`+2 fixes; avg 268→52ms lavapipe, meshes land, all legs green)
-- [ ] 1.4 CPU world-gen speedups, IDENTICAL output (hash change = HARD STOP)
+- [x] 1.4 CPU world-gen speedups, IDENTICAL output (`8e0fcd6`; 3-OS + E2E green, −4% inside noise)
 
 ## TODO — queued (Part 1 remainder)
-- [ ] 1.5 GPU timestamp queries (`--gpu-timing`) — 1.6 upscaling (§4) — 1.7 AA (§4) — 1.8 capability probe + knobs — 1.9 offload audit (report) — 1.10 re-measure matrix + CI perf gate — 1.11 turntable tool — 1.12 player torso/face mapping fix
+- [ ] 1.5 GPU timestamp queries (`--gpu-timing`, next) — 1.6 upscaling (§4) — 1.7 AA (§4) — 1.8 capability probe + knobs — 1.9 offload audit (report) — 1.10 re-measure matrix + CI perf gate — 1.11 turntable tool — 1.12 player torso/face mapping fix
 - [ ] Interleaved: Chunk::get migration batches B–G (compile-verified)
 - [ ] Part 1 REVIEW PACKET + adversarial self-review (10 claims)
 

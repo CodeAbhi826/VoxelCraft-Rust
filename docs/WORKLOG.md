@@ -6227,3 +6227,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-08x — Chunk batches F+G DONE (migration complete)
 - F (flora/sand/pools/ocean) `b6bf20e`; G (nether/decorations/tests) this commit. Every remaining positional `Chunk::get` site migrated to `get_local` (in-range verified: usize loops, rng ranges, clamped coords, guarded neighbors). Fold semantics untouched throughout. Deliberately unmigrated: `Section::get` (raw by design), the trap-pinning tests in chunk.rs (they assert aliasing), NBT map gets.
 - Full-workspace sweep: zero positional production sites remain.
+
+## 2026-10-08y — Chunk batches F+G DONE (migration complete, E2E green)
+- F (flora/sand/pools/ocean) + G (nether/decorations/tests): every remaining positional `Chunk::get` migrated workspace-wide. Full sweep: zero production sites remain (kept: `Section::get`, trap-pinning tests, NBT gets). Fold semantics untouched; one inference lesson (de-cast vars orphan sibling casts → clippy).
+- CI: code jobs green (incl. 3-OS golden); linux-game 37823779698: every leg green (FKEYS 597, beds/fluids/phases/turntable VERDICT OK). Job red only on uploads.
+
+## 2026-10-09a — Part 1 REVIEW PACKET written (docs/CHECKPOINTS.md)
+- All Part 1 slices landed with per-slice CI + E2E (see packet for hashes/runs/numbers). Adversarial self-review: 10/10 claims re-verified (narrow golden values diffed identical to 1.0.1; final Chunk sweep clean; streaming artifact keys parsed).
+- Part 1 ends here per the packet. Next: foreground capture sweep + V1 viewings, then Part 2 (needs the branch-layout decision + quota reset for formal greens).

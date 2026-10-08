@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 PERFORMANCE CORE**. Current slice: **Chunk migration B–G + REVIEW PACKET** (next).
-- HEAD: `7006495`+docs (1.8b done: all E2E legs exit 0; uploads red on quota).
+- Part: **1 PERFORMANCE CORE**. Current slice: **REVIEW close-out** (Part 1 packet written; foreground sweep + Part 2 next).
+- HEAD: review packet pending commit (Chunk G done, E2E green).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices

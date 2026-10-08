@@ -6235,3 +6235,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09a — Part 1 REVIEW PACKET written (docs/CHECKPOINTS.md)
 - All Part 1 slices landed with per-slice CI + E2E (see packet for hashes/runs/numbers). Adversarial self-review: 10/10 claims re-verified (narrow golden values diffed identical to 1.0.1; final Chunk sweep clean; streaming artifact keys parsed).
 - Part 1 ends here per the packet. Next: foreground capture sweep + V1 viewings, then Part 2 (needs the branch-layout decision + quota reset for formal greens).
+
+## 2026-10-09b — L1a LICENSE swap to GPL-3.0 (Code-only)
+- Replaced Apache-2.0 LICENSE (201 lines) with verbatim FSF GPL-3.0 text (674 lines; source https://www.gnu.org/licenses/gpl-3.0.txt, header/footer verified). R7 note: verbatim license text necessarily exceeds the ~300-line slice budget — one file, no code touched.
+- Claim: Code-only (license text; CI validates fmt/audit only). Next: L1b LICENSES/ + Cargo.toml `license` fields.

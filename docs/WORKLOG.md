@@ -6299,3 +6299,12 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09n — L7 CLOSED + L8 Apache→GPL doc sweep (Code-only)
 - L7 rerun (run 37842033808, after a second concurrency mis-cancel): 9/9 code green; bench quota-only (10th). L7 done. (CI queue note: hourly probe reruns may be congesting capacity — pause probe once quota clears.)
 - L8: current-claim Apache-2.0 → GPL-3.0-or-later/CC-BY-SA-4.0 in README (badge + section done L4b, badge here), LEGAL.md (header + code/art/vault rows), LEGAL-COMPLIANCE.md (textures/overlays/sound/code cells). Third-party dep rows untouched (correct). Append-only history (WORKLOG/VERSION-EVOLUTION/root worklog) deliberately NOT rewritten — entries were true when written. Provenance statements kept (R4).
+
+## 2026-10-09o — L8 CLOSED → licensing L1–L8 COMPLETE (Code-only)
+- L8 CI (run 37843656352): 9/9 code green; bench quota-only (11th). L1–L8 ALL GREEN, each slice code-verified in CI.
+- Licensing ledger: L1a LICENSE + L1b manifests + L1c LICENSES/ (+MPL-2.0 fix-forward) + L2 REUSE.toml + L3/L3b cargo-deny gate (reuse-lint waits docs-license call #4) + L4a NOTICE/TRADEMARKS/CITATION + L4b README/LEGAL/CONTRIBUTING + L5 About screen + L6 AUTHORSHIP + L7 ownership finding (#5) + L8 doc sweep.
+- Next: Part 2 worlds-first, starting 2.1a (DataVersion gate; design in /tmp/opencode/2.1a-design.md). Morning batch: docs-license call (#4), provider-terms confirm (#5), phases-gate call (#3), package.json license scope, E2E_MENU About capture + turntable (needs fresh binary post-quota).
+
+## 2026-10-09p — 2.1a DataVersion gate (Tested)
+- vc-anvil save.rs: `VersionGate::{Supported, Refused{found}}` + `level_dat_version()` + `version_gate()` (level.dat→_old→gunzip→Data.DataVersion; 2586 only; foreign/absent/corrupt → loud refusal, never panic, never silent regenerate). Callers pass import COPIES (R6); fixtures are synthetic (public shape), no real world touched (L1).
+- Local (idle): fmt clean; 4/4 new tests pass (2586→Supported, 2576→Refused, missing field→Refused, garbage/missing→Refused).

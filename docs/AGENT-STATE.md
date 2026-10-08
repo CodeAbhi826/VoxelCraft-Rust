@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 PERFORMANCE CORE → licensing L1–L8**. Current slice: **L1a LICENSE swap** (GPL-3.0 text; L1b LICENSES/+Cargo fields next, then Part 1 foreground sweep when binary obtainable).
-- HEAD: L8 commit (L7 `548d469` 9/9 code-green; licensing L1–L8 COMPLETE pending L8 green).
+- Part: **2 WORLDS FIRST**. Current slice: **2.1a DataVersion gate** (committed; CI watch armed).
+- HEAD: 2.1a commit (licensing L1–L8 COMPLETE at `2fd10a0`).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
@@ -38,7 +38,7 @@ Decision: code + art-generator scripts GPL-3.0-or-later; original art + aggregat
 - [x] L5 About screen (gated in CI; V1 screenshot waits fresh binary post-quota)
 - [x] L6 AUTHORSHIP.md (green)
 - [x] L7 provider output-ownership finding (green; owner confirms pre-release → BLOCKERS #5)
-- [ ] L8 README/LEGAL docs off Apache-2.0 (committed this slice; history left intact, R4 kept)
+- [x] L8 README/LEGAL docs off Apache-2.0 (green; history intact, R4 kept)
 - [ ] L2 REUSE: REUSE.toml bulk annotations + "Copyright (c) 2026 CodeAbhi826 and contributors" + SPDX identifiers (headers in new files only)
 - [ ] L3 CI job: `reuse lint` + `cargo deny check licenses` (fail on GPL-3.0-or-later-incompatible dep)
 - [ ] L4 NOTICE, TRADEMARKS.md, README credits, CITATION.cff, third-party list, generated-art licence statement (script+spec+provenance), CONTRIBUTING (GPL-3.0-or-later + DCO)

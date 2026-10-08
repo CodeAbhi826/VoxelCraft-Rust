@@ -1117,6 +1117,63 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
     Ok(Some(meta))
 }
 
+/// 2.1a: the DataVersion gate — 1.16.5 worlds (DataVersion 2586) are the
+/// only supported import input (PLAN-FINAL Part 2). Missing/corrupt
+/// level.dat behaves exactly as before (caller regenerates); a FOREIGN
+/// but well-formed version is a loud refusal, never silent
+/// regeneration and never a panic (R6: corrupt input never panics).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VersionGate {
+    /// level.dat carries DataVersion 2586 — proceed to `read_level_dat`
+    Supported,
+    /// well-formed level.dat with another (or no) DataVersion — refuse
+    /// with the found value (`None` = field absent)
+    Refused { found: Option<i32> },
+}
+
+/// Read `level.dat`/`level.dat_old` far enough to report its DataVersion
+/// (`None` = absent/unreadable — the regenerate path, not a refusal).
+pub fn level_dat_version(world_dir: &Path) -> Option<i32> {
+    let gz = fs::read(world_dir.join("level.dat"))
+        .or_else(|_| fs::read(world_dir.join("level.dat_old")))
+        .ok()?;
+    let bytes = gunzip_bytes(&gz).ok()?;
+    let (_name, root) = nbt::read_root(&bytes).ok()?;
+    let data = root.get("Data")?;
+    data.get("DataVersion")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32)
+}
+
+/// Gate an import copy (R6: callers pass a COPY, never the original):
+/// `Supported` → `read_level_dat`; `Refused` → user-facing message.
+pub fn version_gate(world_dir: &Path) -> VersionGate {
+    // absent/unreadable level.dat is not a version refusal — distinguish
+    // "no Data compound at all" from "Data without DataVersion"
+    let gz = fs::read(world_dir.join("level.dat"))
+        .or_else(|_| fs::read(world_dir.join("level.dat_old")))
+        .ok();
+    let Some(gz) = gz else {
+        return VersionGate::Refused { found: None };
+    };
+    let Ok(bytes) = gunzip_bytes(&gz) else {
+        return VersionGate::Refused { found: None };
+    };
+    let Ok((_name, root)) = nbt::read_root(&bytes) else {
+        return VersionGate::Refused { found: None };
+    };
+    let Some(data) = root.get("Data") else {
+        return VersionGate::Refused { found: None };
+    };
+    match data.get("DataVersion").and_then(|v| v.as_i64()) {
+        Some(v) if v as i32 == DATA_VERSION => VersionGate::Supported,
+        Some(v) => VersionGate::Refused {
+            found: Some(v as i32),
+        },
+        None => VersionGate::Refused { found: None },
+    }
+}
+
 // ---------------------------------------------------------------------------
 // high-level world directory operations (native only by nature of anvil.rs)
 // ---------------------------------------------------------------------------
@@ -1813,6 +1870,63 @@ mod tests {
         fs::rename(dir.join("level.dat"), dir.join("level.dat_old")).unwrap();
         let old = read_level_dat(&dir).unwrap().expect("falls back to _old");
         assert_eq!(old.seed, meta.seed);
+    }
+
+    /// 2.1a: synthetic level.dat fixtures (public DataVersion shape —
+    /// gzip NBT root with a Data compound); no real world needed.
+    fn write_fixture_level_dat(dir: &Path, data: Nbt) {
+        let mut root = Nbt::compound();
+        root.set("Data", data);
+        let bytes = nbt::write_root("", &root).unwrap();
+        fs::write(dir.join("level.dat"), gzip_bytes(&bytes).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn version_gate_accepts_2586() {
+        let dir = tmp_dir("gate-ok");
+        let mut data = Nbt::compound();
+        data.set("DataVersion", Nbt::Int(2586));
+        data.set("LevelName", Nbt::String("Gate".into()));
+        write_fixture_level_dat(&dir, data);
+        assert_eq!(level_dat_version(&dir), Some(2586));
+        assert_eq!(version_gate(&dir), VersionGate::Supported);
+    }
+
+    #[test]
+    fn version_gate_refuses_other_versions() {
+        let dir = tmp_dir("gate-old");
+        let mut data = Nbt::compound();
+        data.set("DataVersion", Nbt::Int(2576));
+        write_fixture_level_dat(&dir, data);
+        assert_eq!(level_dat_version(&dir), Some(2576));
+        assert_eq!(
+            version_gate(&dir),
+            VersionGate::Refused { found: Some(2576) }
+        );
+    }
+
+    #[test]
+    fn version_gate_refuses_missing_field_without_panic() {
+        let dir = tmp_dir("gate-nofield");
+        let mut data = Nbt::compound();
+        data.set("LevelName", Nbt::String("NoVersion".into()));
+        write_fixture_level_dat(&dir, data);
+        assert_eq!(level_dat_version(&dir), None);
+        assert_eq!(version_gate(&dir), VersionGate::Refused { found: None });
+    }
+
+    #[test]
+    fn version_gate_refuses_garbage_without_panic() {
+        // corrupt gzip, corrupt NBT, missing dir: refusal, never panic,
+        // never silent regeneration of foreign data
+        let dir = tmp_dir("gate-garbage");
+        fs::write(dir.join("level.dat"), b"not gzip at all").unwrap();
+        assert_eq!(level_dat_version(&dir), None);
+        assert_eq!(version_gate(&dir), VersionGate::Refused { found: None });
+        assert_eq!(
+            version_gate(&dir.join("nowhere")),
+            VersionGate::Refused { found: None }
+        );
     }
 
     #[test]

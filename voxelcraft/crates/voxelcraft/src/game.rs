@@ -1330,21 +1330,38 @@ fn chunk_occl(
         // would be wrong for the state-window blocks, e.g. a portal state
         // 872 folds to the glazed-terracotta class)
         // +X / -X walls: 16×16 cells each (x fixed, y × z varies)
-        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(c.get(15, y0 + dy, z)))) {
+        if (0..16usize).any(|dy| {
+            (0..16usize)
+                .any(|z| !is_opaque(c.get_local(vc_chunk::chunk::LocalXZ::new(15, z), y0 + dy)))
+        }) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_PX as u32);
         }
-        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(c.get(0, y0 + dy, z)))) {
+        if (0..16usize).any(|dy| {
+            (0..16usize)
+                .any(|z| !is_opaque(c.get_local(vc_chunk::chunk::LocalXZ::new(0, z), y0 + dy)))
+        }) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_NX as u32);
         }
         // +Z / -Z walls: 16×16 cells each (z fixed, y × x varies)
-        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(c.get(x, y0 + dy, 15)))) {
+        if (0..16usize).any(|dy| {
+            (0..16usize)
+                .any(|x| !is_opaque(c.get_local(vc_chunk::chunk::LocalXZ::new(x, 15), y0 + dy)))
+        }) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_PZ as u32);
         }
-        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(c.get(x, y0 + dy, 0)))) {
+        if (0..16usize).any(|dy| {
+            (0..16usize)
+                .any(|x| !is_opaque(c.get_local(vc_chunk::chunk::LocalXZ::new(x, 0), y0 + dy)))
+        }) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_NZ as u32);
         }
         // ceiling plane of this band (y = b·16+15) — only for b < 15
-        if b < 15 && (0..16usize).any(|x| (0..16usize).any(|z| !is_opaque(c.get(x, y0 + 15, z)))) {
+        if b < 15
+            && (0..16usize).any(|x| {
+                (0..16usize)
+                    .any(|z| !is_opaque(c.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y0 + 15)))
+            })
+        {
             occl.planes |= 1u16 << b;
         }
     }
@@ -23352,9 +23369,9 @@ impl GameApp {
         let mut best: Option<i32> = None;
         let mut best_dist = f32::MAX;
         for y in 6..120usize {
-            let feet = state_block(chunk.get(lx, y, lz));
-            let head = state_block(chunk.get(lx, y + 1, lz));
-            let floor = state_block(chunk.get(lx, y - 1, lz));
+            let feet = state_block(chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y));
+            let head = state_block(chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y + 1));
+            let floor = state_block(chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y - 1));
             if !is_solid(floor) || is_solid(feet) || is_solid(head) {
                 continue;
             }
@@ -24161,8 +24178,9 @@ impl GameApp {
         for y in 0..256usize {
             for z in 0..16usize {
                 for x in 0..16usize {
-                    // Chunk::get returns the raw STATE id (as u8), and the
-                    // dedicated-state blocks this scan hunts for never
+                    // Chunk::get folds to the owning BLOCK id (the spawner/
+                    // chest scan below re-reads the RAW state where it
+                    // needs property variants), and the dedicated-state blocks this scan hunts for never
                     // equal their block ids raw (CHEST_STATE 227 vs block
                     // 96, SPAWNER states 232..=234 vs block 101) — so the
                     // comparison must decode through state_block, the same
@@ -24171,7 +24189,7 @@ impl GameApp {
                     // actually registered, because the fast-skip compared
                     // raw states against block ids. Fixed with the Phase 10
                     // loot seam that builds on this scan.]
-                    let b = state_block(chunk.get(x, y, z));
+                    let b = state_block(chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y));
                     if b != SPAWNER && b != CHEST {
                         continue; // fast skip — `get` on empty sections is cheap
                     }
@@ -27764,7 +27782,9 @@ mod settings_tests {
             let x = ((wx + dx) - cx * 16) as usize;
             let z = ((wz + dz) - cz * 16) as usize;
             // 1.7.2 refactor: Chunk::get FOLDS to the block id itself now
-            if chunk.get(x, floor, z) == vc_blocks::blocks::CHEST {
+            if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), floor)
+                == vc_blocks::blocks::CHEST
+            {
                 chests += 1;
             }
         }
@@ -28006,16 +28026,22 @@ mod tests {
         }
         // column (0,0): water at 61..=63 above the floor → unsafe at any y
         let surface = c.top_solid_y(0, 0) + 1; // = 61, inside the water
-        let feet = c.get(0, surface as usize, 0);
-        let head = c.get(0, (surface + 1) as usize, 0);
+        let feet = c.get_local(vc_chunk::chunk::LocalXZ::new(0, 0), surface as usize);
+        let head = c.get_local(vc_chunk::chunk::LocalXZ::new(0, 0), (surface + 1) as usize);
         assert!(
             feet == WATER || head == WATER,
             "the wet column must fail the two-air-blocks check"
         );
         // column (1,0): dry grass at 60 → surface 61 with air 61/62
         let dry = c.top_solid_y(1, 0) + 1;
-        assert_eq!(c.get(1, dry as usize, 0), AIR);
-        assert_eq!(c.get(1, (dry + 1) as usize, 0), AIR);
+        assert_eq!(
+            c.get_local(vc_chunk::chunk::LocalXZ::new(1, 0), dry as usize),
+            AIR
+        );
+        assert_eq!(
+            c.get_local(vc_chunk::chunk::LocalXZ::new(1, 0), (dry + 1) as usize),
+            AIR
+        );
         assert_ne!(dry, surface, "the dry neighbor must be findable");
     }
 

@@ -1454,7 +1454,11 @@ mod tests {
         for y in 0..256usize {
             for z in 0..16usize {
                 for x in 0..16usize {
-                    assert_eq!(a.get(x, y, z), b.get(x, y, z), "block at ({x},{y},{z})");
+                    assert_eq!(
+                        a.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y),
+                        b.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y),
+                        "block at ({x},{y},{z})"
+                    );
                 }
             }
         }
@@ -1607,7 +1611,10 @@ mod tests {
         let bytes = nbt::write_root("", &root).unwrap();
 
         let (chunk, _light) = chunk_from_nbt(&bytes).unwrap();
-        assert_eq!(chunk.get(0, 0, 0), STONE);
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(0, 0), 0),
+            STONE
+        );
         // 1.7.2 refactor: Chunk::get FOLDS states to block ids (the raw
         // state accessor is get_state — kept as the honest both-sides check)
         assert_eq!(chunk.get(1, 0, 0), OAK_LOG);

@@ -6153,3 +6153,10 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Proof of identical output (HARD STOP gate, all green): 12/12 golden+pin tests locally; CI 37760921203 9/9 incl. 3-OS golden legs; linux-game 37761596978 SUCCESS (every E2E leg generates worlds through the new fill).
 - Measured (CI bench artifact, single sample): gen avg 11.436→10.961 ms (−4.2%), p50 −2.9%, p95 −4.9% — directionally faster on all percentiles but INSIDE the documented ±20% runner variance: honestly not a proven win, stated as such. The transform is strictly less work per chunk (kept); bigger items deliberately declined under IDENTICAL output: coarser lattice, fewer octaves (both change values), hand SIMD (determinism risk), unsafe indexing (zero-unsafe workspace rule).
 - Images viewed: none (non-visual; V1 n/a). Local: fmt/check/test -p vc-world only.
+
+## 2026-10-08i — slice 1.5 DONE (GPU timestamp queries, measured live)
+
+**Changed:** `render.rs` (+139: queryset+buffers on capability, scene-pass stamps, resolve/readback pump, set_gpu_timing), `game.rs` (+10: gpu_ms in bench JSON), `main.rs` (+8: --gpu-timing flag + help), `linux-game.yml` (+1: streaming step passes the flag). Commit `89a935a`.
+- CI 37771530522 9/9 green (incl. wasm). linux-game 37772129669 SUCCESS.
+- Measured (CI lavapipe): timestamps SUPPORTED, period 1 ns/tick — no adapter blocklist needed. First GPU number: scene pass **8.875 ms** vs CPU frame avg 83.2/p99 121.8 ms → CPU-bound on the runner (stream/gen/upload dominate); owner hardware gives the verdict in 1.10. gpu_ms rides the streaming artifact from here on. [Tested: artifact + boot lines]
+- Images viewed: none (non-visual; V1 n/a). Local: fmt/check/test -p (100 app + 201 render green).

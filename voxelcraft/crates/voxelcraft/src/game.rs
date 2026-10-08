@@ -310,6 +310,10 @@ pub struct Settings {
     /// preserves the old fixed 0.6 look); forced 0 at Native (FSR off).
     /// Labeled "SHARPNESS" in the UI, never RCAS.
     pub sharpness: u8,
+    /// 1.7: AA mode (0 Off, 1 FXAA; forced on pre-upscale below 1.0).
+    /// PLAN-FINAL §4: Off or ONE method — FXAA ships; the SMAA-vs-FXAA
+    /// 3 ms call needs reference hardware numbers (soft blocker, default FXAA).
+    pub aa_mode: u8,
     /// §21 music category volume (0..1, master = `volume`)
     pub music_volume: f32,
     /// Sub-round 5: the per-category volumes for the Music & Sound
@@ -470,6 +474,7 @@ impl Default for Settings {
             upscale: 0,
             custom_scale: 1.25,
             sharpness: 60,
+            aa_mode: 0,
             maxfps: 0,
             mipmap_levels: 4,
             aniso: 1, // OFF — vanilla ships no aniso filtering
@@ -643,7 +648,7 @@ impl Settings {
     /// folder/zip file names, which never contain `;` or `|`).
     pub fn serialize(&self) -> String {
         let mut s = format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};uscale={:.2};sharp={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={};accfog={};accfoveff={:.3}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};uscale={:.2};sharp={};aamode={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={};accfog={};accfoveff={:.3}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -664,6 +669,7 @@ impl Settings {
             self.upscale,
             self.custom_scale,
             self.sharpness,
+            self.aa_mode,
             self.maxfps,
             self.mipmap_levels,
             self.aniso,
@@ -864,6 +870,7 @@ impl Settings {
                 }
                 "uscale" => st.custom_scale = v.parse::<f32>().unwrap_or(1.25).clamp(1.0, 2.0),
                 "sharp" => st.sharpness = v.parse().unwrap_or(60).min(100),
+                "aamode" => st.aa_mode = v.parse().unwrap_or(0).min(1),
                 "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
                 "mip" => st.mipmap_levels = v.parse().unwrap_or(4).min(4),
                 "aniso" => st.aniso = v.parse().unwrap_or(st.aniso).clamp(1, 16),
@@ -2889,6 +2896,8 @@ impl GameApp {
 
         // apply persisted render scale (FSR 1.0 EASU) before the first frame
         renderer.set_upscale(settings.upscale_factor());
+        // 1.7: apply persisted AA mode (rebuilds post targets for the inputs)
+        renderer.set_aa_mode(settings.aa_mode);
         // §17: apply persisted shadow quality
         renderer.set_shadow_quality(settings.shadow_map_px());
         // Phase 6 §26: apply persisted texture quality (mipmaps + aniso),
@@ -5577,6 +5586,9 @@ impl GameApp {
             ID_OPT_UPSCALE => l("Renders at a lower internal resolution and upscales with FSR."),
             ID_OPT_SHARP => l("RCAS sharpening strength for upscaled modes; off at Native."),
             ID_OPT_USCALE => l("Custom upscale factor for CUSTOM mode (1.0 to 2.0)."),
+            ID_OPT_AA => l(
+                "Edge anti-aliasing (FXAA) before the upscale; forced on below 1.0 render scale.",
+            ),
             ID_OPT_AUTOJUMP => l("Automatically jumps one-block steps while walking."),
             // ---- Round 14b: the accessibility completion + skin + chat ----
             ui::ID_ACC_SPRINT => l("Hold sprints while the key is down; Toggle latches it (1.15)."),
@@ -10019,6 +10031,11 @@ impl GameApp {
                 }
                 self.after_settings_change();
             }
+            ID_OPT_AA => {
+                self.settings.aa_mode = (self.settings.aa_mode + 1) % 2;
+                self.renderer.set_aa_mode(self.settings.aa_mode);
+                self.after_settings_change();
+            }
             ID_OPT_MAXFPS => {
                 self.settings.maxfps = (self.settings.maxfps + 1) % 4;
                 self.after_settings_change();
@@ -11203,6 +11220,9 @@ impl GameApp {
                         ID_OPT_SHARP => set_button_value(w, &format!("{}%", s.sharpness.min(100))),
                         ID_OPT_USCALE => {
                             set_button_value(w, &format!("{:.2}X", s.custom_scale.clamp(1.0, 2.0)))
+                        }
+                        ID_OPT_AA => {
+                            set_button_value(w, if s.aa_mode == 1 { "FXAA" } else { "OFF" })
                         }
                         _ => {}
                     }
@@ -27047,6 +27067,10 @@ mod settings_tests {
         assert_eq!(r5.upscale, 3);
         assert!((r5.custom_scale - 1.75).abs() < 1e-3);
         assert_eq!(r5.sharpness, 80);
+        // 1.7: the AA mode round trips
+        s.aa_mode = 1;
+        let r6 = Settings::deserialize(&s.serialize());
+        assert_eq!(r6.aa_mode, 1);
         // default = no pack, labpbr off
         let d = Settings::default();
         let rd = Settings::deserialize(&d.serialize());

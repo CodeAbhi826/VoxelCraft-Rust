@@ -64,6 +64,13 @@ struct AuxUniform {
     dir: [f32; 4],
 }
 
+/// 1.7: FXAA texel steps (1/w, 1/h of the scene target) + padding
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct FxaaUniform {
+    texel: [f32; 4],
+}
+
 /// shadow-map globals: light view-projection + params
 /// params = (enabled, strength, fade_start, fade_end)
 /// size = (map_px, _, _, _) — §17 quality (1024/2048/4096)
@@ -102,6 +109,10 @@ struct PostTargets {
     #[allow(dead_code)] // GPU keep-alive (b2_view / blur pong)
     b2: wgpu::Texture,
     b2_view: wgpu::TextureView,
+    /// 1.7: FXAA working target (scene size — AA runs pre-upscale)
+    #[allow(dead_code)] // GPU keep-alive (aa_view / the aa bind group)
+    aa: wgpu::Texture,
+    aa_view: wgpu::TextureView,
 }
 
 impl PostTargets {
@@ -145,6 +156,8 @@ impl PostTargets {
         let sh = ((h as f32) * scale).round().max(1.0) as u32;
         let (scene, scene_view) = make(sw, sh);
         let (up, up_view) = make(w.max(1), h.max(1));
+        // 1.7: FXAA target matches the scene size (pre-upscale AA)
+        let (aa, aa_view) = make(sw, sh);
         let (pack, pack_view) = make(w.max(1), h.max(1));
         let (q, q_view) = make(sw / 4, sh / 4);
         let (b1, b1_view) = make(sw / 8, sh / 8);
@@ -162,6 +175,8 @@ impl PostTargets {
             b1_view,
             b2,
             b2_view,
+            aa,
+            aa_view,
         }
     }
 
@@ -1406,6 +1421,78 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+// 1.7: FXAA 3.11-console-style edge AA (single pass, no LUTs) — runs on
+// the scene target BEFORE the upscale whenever AA is effective (mode
+// FXAA, or forced on while the render scale is below 1.0). Luma-edge
+// detect + perpendicular 2-tap blend + light subpixel lift; texel steps
+// ride the binding-3 uniform (refreshed on rebuild).
+const FXAA_SHADER: &str = r#"
+struct FxaaU { texel: vec4<f32> };
+@group(0) @binding(0) var scene_tex: texture_2d<f32>;
+@group(0) @binding(1) var scene_samp: sampler;
+@group(0) @binding(3) var<uniform> U: FxaaU;
+
+struct VsOut {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
+    var p = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>(3.0, -1.0),
+        vec2<f32>(-1.0, 3.0),
+    );
+    var out: VsOut;
+    out.pos = vec4<f32>(p[vi], 0.0, 1.0);
+    out.uv = vec2<f32>(p[vi].x * 0.5 + 0.5, 0.5 - p[vi].y * 0.5);
+    return out;
+}
+
+fn fx_luma(c: vec3<f32>) -> f32 {
+    return dot(c, vec3<f32>(0.299, 0.587, 0.114));
+}
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    let uv = in.uv;
+    let tx = U.texel.xy;
+    let rgb_m = textureSample(scene_tex, scene_samp, uv).rgb;
+    let luma_m = fx_luma(rgb_m);
+    let luma_n = fx_luma(textureSample(scene_tex, scene_samp, uv + vec2<f32>(0.0, -tx.y)).rgb);
+    let luma_s = fx_luma(textureSample(scene_tex, scene_samp, uv + vec2<f32>(0.0, tx.y)).rgb);
+    let luma_e = fx_luma(textureSample(scene_tex, scene_samp, uv + vec2<f32>(tx.x, 0.0)).rgb);
+    let luma_w = fx_luma(textureSample(scene_tex, scene_samp, uv + vec2<f32>(-tx.x, 0.0)).rgb);
+    let range_max = max(max(max(luma_n, luma_s), max(luma_e, luma_w)), luma_m);
+    let range_min = min(min(min(luma_n, luma_s), min(luma_e, luma_w)), luma_m);
+    let range = range_max - range_min;
+    // below the edge threshold: untouched (avoids blurring texture detail)
+    if (range < max(0.0312, range_max * 0.125)) {
+        return vec4<f32>(rgb_m, 1.0);
+    }
+    let luma_nw = fx_luma(textureSample(scene_tex, scene_samp, uv + vec2<f32>(-tx.x, -tx.y)).rgb);
+    let luma_ne = fx_luma(textureSample(scene_tex, scene_samp, uv + vec2<f32>(tx.x, -tx.y)).rgb);
+    let luma_sw = fx_luma(textureSample(scene_tex, scene_samp, uv + vec2<f32>(-tx.x, tx.y)).rgb);
+    let luma_se = fx_luma(textureSample(scene_tex, scene_samp, uv + vec2<f32>(tx.x, tx.y)).rgb);
+    // edge direction: heavier gradient axis wins
+    let edge_h = abs(luma_n + luma_s - 2.0 * luma_m) * 2.0
+        + abs(luma_ne + luma_se - 2.0 * luma_e)
+        + abs(luma_nw + luma_sw - 2.0 * luma_w);
+    let edge_v = abs(luma_e + luma_w - 2.0 * luma_m) * 2.0
+        + abs(luma_ne + luma_nw - 2.0 * luma_n)
+        + abs(luma_se + luma_sw - 2.0 * luma_s);
+    let is_horizontal = edge_h >= edge_v;
+    let step = select(vec2<f32>(tx.x, 0.0), vec2<f32>(0.0, tx.y), is_horizontal);
+    // subpixel lift toward the neighborhood average (gentle: 1/4 strength)
+    let luma_avg = (luma_n + luma_s + luma_e + luma_w) * 0.25;
+    let subpix = clamp(abs(luma_avg - luma_m) / max(range, 1e-5), 0.0, 1.0) * 0.25;
+    let rgb_edge = (textureSample(scene_tex, scene_samp, uv - step * 0.5).rgb
+        + textureSample(scene_tex, scene_samp, uv + step * 0.5).rgb) * 0.5;
+    return vec4<f32>(mix(rgb_edge, rgb_m, subpix), 1.0);
+}
+"#;
+
 // ---------------------------------------------------------------- renderer
 
 /// Sun shadow-map pass: renders terrain geometry from an orthographic camera
@@ -1625,6 +1712,15 @@ pub struct Renderer {
     blur_pipe: wgpu::RenderPipeline,
     /// FSR 1.0 EASU upscale pass (scene → up)
     easu_pipe: wgpu::RenderPipeline,
+    /// 1.7: FXAA edge-AA pass (scene → aa, pre-upscale) + its texel
+    /// uniform + bind group; the pass runs only while aa_on
+    aa_pipe: wgpu::RenderPipeline,
+    fxaa_buf: wgpu::Buffer,
+    bg_aa: wgpu::BindGroup,
+    /// 1.7: AA mode (0 Off, 1 FXAA) + the effective flag (mode FXAA, or
+    /// forced on while the render scale is below 1.0)
+    pub aa_mode: u8,
+    aa_on: bool,
     post_pipe: wgpu::RenderPipeline,
     // sun shadow map
     shadow_tex: wgpu::TextureView,
@@ -3179,6 +3275,13 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        // 1.7: FXAA texel steps (rewritten on resize with the easu sizes)
+        let fxaa_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("fxaa"),
+            size: std::mem::size_of::<FxaaUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         // write once here; rewritten on resize (texel steps are size-dependent)
         let bw = (config.width / 8).max(1);
         let bh = (config.height / 8).max(1);
@@ -3261,6 +3364,11 @@ impl Renderer {
             label: Some("fsr-easu"),
             source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(EASU_SHADER)),
         });
+        // 1.7: FXAA edge-AA pass (validated with the rest in wgsl_shaders_validate)
+        let fxaa_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("fxaa"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(FXAA_SHADER)),
+        });
 
         let post_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("post-pl"),
@@ -3314,6 +3422,8 @@ impl Renderer {
         let blur_pipe = make_fs_pipe(&blur_mod, &post_pl, linear);
         // FSR 1.0 EASU: scene (render scale) → up (full surface res)
         let easu_pipe = make_fs_pipe(&easu_mod, &post_pl, linear);
+        // 1.7: FXAA reads scene, writes the scene-size aa target
+        let fxaa_pipe = make_fs_pipe(&fxaa_mod, &post_pl, linear);
         // composite writes the final srgb-encoded image to the surface
         let post_pipe = make_fs_pipe(&post_mod, &comp_pl, format);
         // Phase 11 §34: linear-target variant for the pack handoff path
@@ -3354,6 +3464,15 @@ impl Renderer {
             &post_samp,
             &post_buf,
             &easu_buf,
+        );
+        // 1.7: FXAA reads the scene too (binding 3 = the texel buffer)
+        let bg_aa = Self::single_tex_bg(
+            &device,
+            &post_bgl,
+            &post_targets.scene_view,
+            &post_samp,
+            &post_buf,
+            &fxaa_buf,
         );
         // the composite (+ RCAS) reads the EASU-upscaled target — except
         // at Native (1.6: EASU skipped, composite reads scene directly;
@@ -3547,6 +3666,12 @@ impl Renderer {
             bright_pipe,
             blur_pipe,
             easu_pipe,
+            // 1.7: constructor starts Native + AA off (boot applies settings)
+            aa_pipe: fxaa_pipe,
+            fxaa_buf,
+            bg_aa,
+            aa_mode: 0,
+            aa_on: false,
             post_pipe,
             shadow_tex: shadow_view,
             shadow_depth,
@@ -3694,6 +3819,8 @@ impl Renderer {
         let h = self.config.height.max(1);
         let format = self.config.format;
         let t = PostTargets::new(&self.device, w, h, format, self.upscale);
+        // 1.7: effective AA follows mode + scale (forced on below 1.0)
+        self.aa_on = self.aa_mode == 1 || !self.fsr_off;
         let bg_scene = Self::single_tex_bg(
             &self.device,
             &self.post_bgl,
@@ -3721,20 +3848,37 @@ impl Renderer {
         let bg_easu = Self::single_tex_bg(
             &self.device,
             &self.post_bgl,
-            &t.scene_view,
+            // 1.7: EASU upscales the AA output when active, else the scene
+            if self.aa_on {
+                &t.aa_view
+            } else {
+                &t.scene_view
+            },
             &self.post_samp,
             &self.post_buf,
             &self.easu_buf,
+        );
+        let bg_aa = Self::single_tex_bg(
+            &self.device,
+            &self.post_bgl,
+            &t.scene_view,
+            &self.post_samp,
+            &self.post_buf,
+            &self.fxaa_buf,
         );
         let bg_comp = Self::comp_bg(
             &self.device,
             &self.comp_bgl,
             // 1.6: at Native the EASU pass is skipped, so the composite
-            // reads the full-res scene target directly (same format)
-            if self.fsr_off {
-                &t.scene_view
-            } else {
+            // reads the full-res scene target directly (same format).
+            // 1.7: with AA the composite reads the aa target instead
+            // (native+AA) — upscaled modes always read `up`.
+            if !self.fsr_off {
                 &t.up_view
+            } else if self.aa_on {
+                &t.aa_view
+            } else {
+                &t.scene_view
             },
             &t.b2_view,
             &self.post_samp,
@@ -3761,12 +3905,21 @@ impl Renderer {
                 con: [sc_w as f32, sc_h as f32, w as f32, h as f32],
             }),
         );
+        // 1.7: FXAA texel steps track the scene size
+        self.queue.write_buffer(
+            &self.fxaa_buf,
+            0,
+            bytemuck::bytes_of(&FxaaUniform {
+                texel: [1.0 / sc_w.max(1) as f32, 1.0 / sc_h.max(1) as f32, 0.0, 0.0],
+            }),
+        );
         self.post_targets = t;
         self.bg_scene = bg_scene;
         self.bg_q = bg_q;
         self.bg_b1 = bg_b1;
         self.bg_comp = bg_comp;
         self.bg_easu = bg_easu;
+        self.bg_aa = bg_aa;
         // v2 external-pack chain: the scratch + per-pass bind groups
         // reference the resized handoff/bloom targets
         self.rebuild_v2_bgs();
@@ -3892,6 +4045,18 @@ impl Renderer {
         self.ui_tex = tex;
         self.ui_view = view;
         self.ui_tex_size = (w, h);
+    }
+
+    /// 1.7: set the AA mode (0 Off, 1 FXAA). Effective AA also turns
+    /// on while the render scale is below 1.0 (forced pre-upscale AA);
+    /// rebuilds targets so the EASU/composite inputs follow.
+    pub fn set_aa_mode(&mut self, mode: u8) {
+        let mode = mode.min(1);
+        if mode == self.aa_mode {
+            return;
+        }
+        self.aa_mode = mode;
+        self.rebuild_post_targets();
     }
 
     /// FSR 1.0 (§33): set the internal render scale (1.0 = native, 0.75/0.5
@@ -6273,6 +6438,30 @@ impl Renderer {
             }
         }
 
+        // ─────── pass 3.4: FXAA edge-AA: scene → aa (1.7) ──
+        // Runs while effective AA is on (mode FXAA, or forced below
+        // 1.0 render scale); the EASU/composite inputs already follow.
+        if self.aa_on {
+            let att = wgpu::RenderPassColorAttachment {
+                view: &self.post_targets.aa_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            };
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("fxaa"),
+                color_attachments: &[Some(att)],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            pass.set_pipeline(&self.aa_pipe);
+            pass.set_bind_group(0, &self.bg_aa, &[]);
+            pass.draw(0..3, 0..1);
+        }
+
         // ───────────────────── pass 3.5: FSR 1.0 EASU: scene → up ──
         // Edge-adaptive spatial upsampling to the full surface resolution.
         // 1.6: skipped entirely at Native (the composite reads the scene
@@ -6803,6 +6992,7 @@ mod shader_tests {
             ("blur", BLUR_SHADER),
             ("post", POST_SHADER),
             ("fsr-easu", EASU_SHADER),
+            ("fxaa", FXAA_SHADER),
             ("shadow", SHADOW_SHADER),
             ("particle", PARTICLE_SHADER),
             ("panorama", crate::panorama::PANO_SHADER),

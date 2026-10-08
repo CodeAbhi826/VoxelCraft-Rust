@@ -513,6 +513,8 @@ pub const ID_OPT_GMESH: u16 = 35;
 pub const ID_OPT_SHARP: u16 = 55;
 /// 1.6: custom upscale-factor button (engine page, live only in CUSTOM mode)
 pub const ID_OPT_USCALE: u16 = 56;
+/// 1.7: anti-aliasing mode button (engine page, Off/FXAA)
+pub const ID_OPT_AA: u16 = 57;
 
 /// The vanilla-1.16.5 settings tree: Options → Video Settings (the exact
 /// vanilla screen), Resource Packs, Accessibility, plus our Engine page.
@@ -1166,6 +1168,7 @@ pub fn layout_engine() -> Vec<Widget> {
             "1.25X",
             true,
         ),
+        btn_h(ID_OPT_AA, r, rows[5], bw, 30, "ANTI-ALIAS", "OFF", true),
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
@@ -6772,6 +6775,7 @@ mod tests {
         ID_OPT_GMESH,
         ID_OPT_SHARP,
         ID_OPT_USCALE,
+        ID_OPT_AA,
         ID_OPT_VIDEO,
         ID_OPT_ENGINE,
         ID_OPT_PACKS,

@@ -1617,7 +1617,10 @@ mod tests {
         );
         // 1.7.2 refactor: Chunk::get FOLDS states to block ids (the raw
         // state accessor is get_state — kept as the honest both-sides check)
-        assert_eq!(chunk.get(1, 0, 0), OAK_LOG);
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(1, 0), 0),
+            OAK_LOG
+        );
         assert_eq!(chunk.get_state(1, 0, 0), OAK_LOG_X);
         assert_eq!(
             chunk.sections[0].as_ref().unwrap().states_flat()[1],
@@ -1665,8 +1668,14 @@ mod tests {
         let bytes = nbt::write_root("", &root).unwrap();
 
         let (chunk, _) = chunk_from_nbt(&bytes).unwrap();
-        assert_eq!(chunk.get(0, 0, 0), STONE);
-        assert_eq!(chunk.get(1, 0, 0), OAK_LOG);
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(0, 0), 0),
+            STONE
+        );
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(1, 0), 0),
+            OAK_LOG
+        );
         assert_eq!(chunk.get_state(1, 0, 0), OAK_LOG_X);
     }
 

@@ -2790,7 +2790,11 @@ impl TerrainGen {
                     if !(vc_chunk::SEA_LEVEL - 2..=vc_chunk::SEA_LEVEL + 1).contains(&h) {
                         continue;
                     }
-                    if chunk.get(lx as usize, h as usize, lz as usize) == SAND {
+                    if chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        h as usize,
+                    ) == SAND
+                    {
                         chunk.set(lx as usize, h as usize, lz as usize, CLAY);
                     }
                 }
@@ -3471,7 +3475,11 @@ impl TerrainGen {
                 let oy = (by + (i / 9)).clamp(27, 36);
                 let oz = (bz + ((i / 3) % 3) - 1).clamp(0, 15);
                 // only replace netherrack (embedded look, never floating)
-                if chunk.get(ox as usize, oy as usize, oz as usize) == NETHERRACK {
+                if chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(ox as usize, oz as usize),
+                    oy as usize,
+                ) == NETHERRACK
+                {
                     chunk.set(ox as usize, oy as usize, oz as usize, MAGMA_BLOCK);
                 }
             }
@@ -3488,11 +3496,20 @@ impl TerrainGen {
             // scan the column for a floor (solid below air) in the band
             let mut y = 30;
             while y < 100 {
-                let here_air = chunk.get(lx as usize, y as usize, lz as usize) == AIR
+                let here_air = chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    y as usize,
+                ) == AIR
                     && (y + 1) < 128
-                    && chunk.get(lx as usize, (y + 1) as usize, lz as usize) == AIR;
+                    && chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        (y + 1) as usize,
+                    ) == AIR;
                 let below = if y > 0 {
-                    chunk.get(lx as usize, (y - 1) as usize, lz as usize)
+                    chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        (y - 1) as usize,
+                    )
                 } else {
                     BEDROCK
                 };
@@ -3537,9 +3554,13 @@ impl TerrainGen {
             let lz = rng.next_range(16) as i32;
             let mut y = 20;
             while y < 110 {
-                let here = chunk.get(lx as usize, y as usize, lz as usize);
+                let here =
+                    chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), y);
                 let above = if y < 127 {
-                    chunk.get(lx as usize, (y + 1) as usize, lz as usize)
+                    chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        y + 1,
+                    )
                 } else {
                     BEDROCK
                 };
@@ -3552,8 +3573,8 @@ impl TerrainGen {
                         let dz = rng.next_range(3) as i32 - 1;
                         let nx = (lx + dx).clamp(0, 15) as usize;
                         let nz = (lz + dz).clamp(0, 15) as usize;
-                        let there = chunk.get(nx, (y + 1) as usize, nz);
-                        let below_there = chunk.get(nx, y as usize, nz);
+                        let there = chunk.get_local(vc_chunk::chunk::LocalXZ::new(nx, nz), y + 1);
+                        let below_there = chunk.get_local(vc_chunk::chunk::LocalXZ::new(nx, nz), y);
                         if there == NETHERRACK && below_there == AIR {
                             chunk.set(nx, (y + 1) as usize, nz, GLOWSTONE);
                         }
@@ -3612,8 +3633,10 @@ impl TerrainGen {
                     let wx = cx * 16 + x as i32;
                     let wz = cz * 16 + z as i32;
                     for y in (20..110usize).rev() {
-                        let below = chunk.get(x, y, z);
-                        if below == NETHERRACK && chunk.get(x, y + 1, z) == 0 {
+                        let below = chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y);
+                        if below == NETHERRACK
+                            && chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y + 1) == 0
+                        {
                             let sand = Rng::hash3(self.seed ^ 0x50F1, wx, y as i32, wz) % 10 < 6;
                             let floor = if sand { SOUL_SAND } else { SOUL_SOIL };
                             chunk.set(x, y, z, floor);
@@ -3639,7 +3662,9 @@ impl TerrainGen {
                                     let fy = (y as i32 + 1 - (d / 3) + (d == 0) as i32)
                                         .clamp(1, 126)
                                         as usize;
-                                    if chunk.get(fx, fy, fz) == 0 {
+                                    if chunk.get_local(vc_chunk::chunk::LocalXZ::new(fx, fz), fy)
+                                        == 0
+                                    {
                                         chunk.set(fx, fy, fz, BONE_BLOCK);
                                     }
                                 }
@@ -3680,8 +3705,12 @@ impl TerrainGen {
                 // same pattern)
                 let mut fy = 20i32;
                 for y in (20..110usize).rev() {
-                    let b = chunk.get(lx as usize, y, lz as usize);
-                    let above = chunk.get(lx as usize, (y + 1).min(127), lz as usize);
+                    let b =
+                        chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), y);
+                    let above = chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        (y + 1).min(127),
+                    );
                     if b != 0 && vc_blocks::blocks::is_solid(b) && above == 0 {
                         fy = y as i32;
                         break;
@@ -3692,7 +3721,12 @@ impl TerrainGen {
                 }
                 let top = 90 + rng.next_range(30) as i32; // into the ceiling band
                 for yy in fy + 1..=top {
-                    if yy > 126 || chunk.get(lx as usize, yy as usize, lz as usize) != 0 {
+                    if yy > 126
+                        || chunk.get_local(
+                            vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                            yy as usize,
+                        ) != 0
+                    {
                         break;
                     }
                     chunk.set(lx as usize, yy as usize, lz as usize, BASALT);
@@ -3708,8 +3742,10 @@ impl TerrainGen {
                     let wx = cx * 16 + x as i32;
                     let wz = cz * 16 + z as i32;
                     for y in (20..110usize).rev() {
-                        let below = chunk.get(x, y, z);
-                        if below == NETHERRACK && chunk.get(x, y + 1, z) == 0 {
+                        let below = chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y);
+                        if below == NETHERRACK
+                            && chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y + 1) == 0
+                        {
                             let v = Rng::hash3(self.seed ^ 0xBA2A, wx, y as i32, wz) % 10;
                             let floor = if v < 7 {
                                 BASALT
@@ -3732,8 +3768,12 @@ impl TerrainGen {
                 let lz = rng.next_range(16) as i32;
                 let mut base = 20i32;
                 for y in (20..110usize).rev() {
-                    let b = chunk.get(lx as usize, y, lz as usize);
-                    let above = chunk.get(lx as usize, (y + 1).min(127), lz as usize);
+                    let b =
+                        chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), y);
+                    let above = chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        (y + 1).min(127),
+                    );
                     if b != 0 && vc_blocks::blocks::is_solid(b) && above == 0 {
                         base = y as i32;
                         break;
@@ -3748,16 +3788,16 @@ impl TerrainGen {
                     let yy = (base + d).min(126) as usize;
                     let x = lx.clamp(0, 15) as usize;
                     let z = lz.clamp(0, 15) as usize;
-                    if chunk.get(x, yy, z) == 0 {
+                    if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), yy) == 0 {
                         chunk.set(x, yy, z, BASALT);
                     }
                     if thick {
                         let x2 = (lx + 1).clamp(0, 15) as usize;
                         let z2 = (lz + 1).clamp(0, 15) as usize;
-                        if chunk.get(x2, yy, z) == 0 {
+                        if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x2, z), yy) == 0 {
                             chunk.set(x2, yy, z, BASALT);
                         }
-                        if chunk.get(x, yy, z2) == 0 {
+                        if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z2), yy) == 0 {
                             chunk.set(x, yy, z2, BASALT);
                         }
                     }
@@ -3807,8 +3847,10 @@ impl TerrainGen {
                     continue;
                 }
                 for y in (20..110usize).rev() {
-                    let below = chunk.get(x, y, z);
-                    if below == NETHERRACK && chunk.get(x, y + 1, z) == 0 {
+                    let below = chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y);
+                    if below == NETHERRACK
+                        && chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y + 1) == 0
+                    {
                         // plant the nylium block (Chunk::set routes
                         // through default_state)
                         chunk.set(x, y, z, nylium);
@@ -3854,7 +3896,7 @@ impl TerrainGen {
             // naturally")
             let mut base = 0i32;
             for y in (20..110usize).rev() {
-                let b = chunk.get(lx as usize, y, lz as usize);
+                let b = chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), y);
                 if b != 0 && vc_blocks::blocks::is_solid(b) {
                     base = y as i32;
                     break;
@@ -3863,7 +3905,10 @@ impl TerrainGen {
             if base < 20 {
                 continue;
             }
-            let floor = chunk.get(lx as usize, base as usize, lz as usize);
+            let floor = chunk.get_local(
+                vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                base as usize,
+            );
             if floor != nylium {
                 continue; // not a forest floor — skip this attempt
             }
@@ -3871,7 +3916,12 @@ impl TerrainGen {
             let mut top = base;
             for d in 1..=h {
                 let yy = base + d;
-                if yy > 125 || chunk.get(lx as usize, yy as usize, lz as usize) != 0 {
+                if yy > 125
+                    || chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        yy as usize,
+                    ) != 0
+                {
                     break;
                 }
                 chunk.set(lx as usize, yy as usize, lz as usize, stem);
@@ -3890,7 +3940,7 @@ impl TerrainGen {
                     }
                     let x = (lx + dx).clamp(0, 15) as usize;
                     let z = (lz + dz).clamp(0, 15) as usize;
-                    if chunk.get(x, cy as usize, z) == 0 {
+                    if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), cy as usize) == 0 {
                         chunk.set(x, cy as usize, z, wart_cap);
                     }
                 }
@@ -3899,7 +3949,7 @@ impl TerrainGen {
             // generate in huge fungi", VERIFIED w/Shroomlight)
             let x = lx.clamp(0, 15) as usize;
             let z = lz.clamp(0, 15) as usize;
-            if chunk.get(x, cy as usize, z) == wart_cap {
+            if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), cy as usize) == wart_cap {
                 chunk.set(x, cy as usize, z, SHROOMLIGHT);
             }
             // crimson: weeping vines hang from the cap's rim (1..4
@@ -3917,7 +3967,7 @@ impl TerrainGen {
                         if yy < 2 {
                             break;
                         }
-                        if chunk.get(x, yy as usize, z) != 0 {
+                        if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), yy as usize) != 0 {
                             break;
                         }
                         chunk.set(x, yy as usize, z, WEEPING_VINES);
@@ -3935,20 +3985,29 @@ impl TerrainGen {
                 let lz = rng.next_range(16) as i32;
                 let mut base = 0i32;
                 for y in (20..110usize).rev() {
-                    let b = chunk.get(lx as usize, y, lz as usize);
+                    let b =
+                        chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), y);
                     if b != 0 && vc_blocks::blocks::is_solid(b) {
                         base = y as i32;
                         break;
                     }
                 }
-                let floor = chunk.get(lx as usize, base as usize, lz as usize);
+                let floor = chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    base as usize,
+                );
                 if base < 20 || floor != nylium {
                     continue;
                 }
                 let len = 2 + rng.next_range(6) as i32; // 2..7
                 for d in 1..=len {
                     let yy = base + d;
-                    if yy > 125 || chunk.get(lx as usize, yy as usize, lz as usize) != 0 {
+                    if yy > 125
+                        || chunk.get_local(
+                            vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                            yy as usize,
+                        ) != 0
+                    {
                         break;
                     }
                     chunk.set(lx as usize, yy as usize, lz as usize, TWISTING_VINES);
@@ -3983,7 +4042,7 @@ impl TerrainGen {
                         let x = (bx + dx).clamp(0, 15) as usize;
                         let y = (by + dy).clamp(1, 126) as usize;
                         let z = (bz + dz).clamp(0, 15) as usize;
-                        if chunk.get(x, y, z) == NETHERRACK {
+                        if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y) == NETHERRACK {
                             chunk.set(x, y, z, BASALT);
                         }
                     }
@@ -3999,13 +4058,24 @@ impl TerrainGen {
             let lz = rng.next_range(16) as i32;
             let mut y = 20;
             while y < 100 {
-                let below = chunk.get(lx as usize, y as usize, lz as usize);
-                let here = chunk.get(lx as usize, (y + 1) as usize, lz as usize);
+                let below = chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    y as usize,
+                );
+                let here = chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    (y + 1) as usize,
+                );
                 if below != AIR && below != BEDROCK && here == AIR {
                     let h = 6 + rng.next_range(9) as i32; // 6..14
                     for d in 1..=h {
                         let yy = y + d;
-                        if yy > 126 || chunk.get(lx as usize, yy as usize, lz as usize) != AIR {
+                        if yy > 126
+                            || chunk.get_local(
+                                vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                                yy as usize,
+                            ) != AIR
+                        {
                             break;
                         }
                         chunk.set(lx as usize, yy as usize, lz as usize, BASALT);
@@ -4037,7 +4107,7 @@ impl TerrainGen {
                         let x = (bx + dx).clamp(0, 15) as usize;
                         let y = (by + dy).clamp(1, 126) as usize;
                         let z = (bz + dz).clamp(0, 15) as usize;
-                        if chunk.get(x, y, z) == NETHERRACK {
+                        if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y) == NETHERRACK {
                             chunk.set(x, y, z, BLACKSTONE);
                         }
                     }
@@ -4049,7 +4119,7 @@ impl TerrainGen {
                 let x = (bx + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(0, 15) as usize;
                 let y = (by + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(1, 126) as usize;
                 let z = (bz + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(0, 15) as usize;
-                if chunk.get(x, y, z) == BLACKSTONE {
+                if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y) == BLACKSTONE {
                     chunk.set(x, y, z, GILDED_BLACKSTONE);
                 }
             }
@@ -4058,7 +4128,7 @@ impl TerrainGen {
                 let x = (bx + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(0, 15) as usize;
                 let y = (by + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(1, 126) as usize;
                 let z = (bz + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(0, 15) as usize;
-                if chunk.get(x, y, z) == BLACKSTONE {
+                if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y) == BLACKSTONE {
                     chunk.set(x, y, z, CRYING_OBSIDIAN);
                 }
             }
@@ -4070,7 +4140,7 @@ impl TerrainGen {
         for z in 0..16usize {
             for x in 0..16usize {
                 for y in 1..=126usize {
-                    if chunk.get(x, y, z) != NETHERRACK {
+                    if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y) != NETHERRACK {
                         continue;
                     }
                     let wx = cx * 16 + x as i32;
@@ -4096,7 +4166,10 @@ impl TerrainGen {
                 if !(0..=15).contains(&xx) || !(0..=15).contains(&zz) || !(1..=126).contains(&yy) {
                     return true; // out of local range counts as rock
                 }
-                c.get(xx as usize, yy as usize, zz as usize) != AIR
+                c.get_local(
+                    vc_chunk::chunk::LocalXZ::new(xx as usize, zz as usize),
+                    yy as usize,
+                ) != AIR
             };
             solid_at(x as i32 - 1, y as i32, z as i32)
                 && solid_at(x as i32 + 1, y as i32, z as i32)
@@ -4113,7 +4186,10 @@ impl TerrainGen {
             let lz = rng.next_range(16) as i32;
             let y = 8 + (rng.next_range(9) as i32 + rng.next_range(9) as i32);
             if y <= 126
-                && placeable(chunk.get(lx as usize, y as usize, lz as usize))
+                && placeable(chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    y as usize,
+                ))
                 && solid_no_air(chunk, lx as usize, y as usize, lz as usize)
             {
                 chunk.set(lx as usize, y as usize, lz as usize, ANCIENT_DEBRIS);
@@ -4125,7 +4201,10 @@ impl TerrainGen {
             let lz = rng.next_range(16) as i32;
             let y = 8 + rng.next_range(112) as i32;
             if y <= 126
-                && placeable(chunk.get(lx as usize, y as usize, lz as usize))
+                && placeable(chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                    y as usize,
+                ))
                 && solid_no_air(chunk, lx as usize, y as usize, lz as usize)
             {
                 chunk.set(lx as usize, y as usize, lz as usize, ANCIENT_DEBRIS);
@@ -4145,14 +4224,15 @@ impl TerrainGen {
                     for lz in 0..16usize {
                         for lx in 0..16usize {
                             for y in 10..110usize {
-                                let feet = chunk.get(lx, y, lz);
+                                let feet =
+                                    chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y);
                                 let head = if y + 1 < 128 {
-                                    chunk.get(lx, y + 1, lz)
+                                    chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y + 1)
                                 } else {
                                     BEDROCK
                                 };
                                 let floor = if y > 0 {
-                                    chunk.get(lx, y - 1, lz)
+                                    chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y - 1)
                                 } else {
                                     BEDROCK
                                 };
@@ -5681,10 +5761,18 @@ mod village_tests {
         // so probes read the block id directly (the fence STATE check below
         // uses get_state — the raw accessor).
         // well: water at center, cobble rim, fence post corner, plank roof
-        assert_eq!(chunk.get(lx, ground, lz), WATER, "well center water");
-        assert_eq!(chunk.get(lx + 1, ground, lz), COBBLE, "well rim cobble");
         assert_eq!(
-            chunk.get(lx - 1, ground + 3, lz - 1),
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), ground),
+            WATER,
+            "well center water"
+        );
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx + 1, lz), ground),
+            COBBLE,
+            "well rim cobble"
+        );
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx - 1, lz - 1), ground + 3),
             OAK_FENCE,
             "well post"
         );
@@ -5693,7 +5781,11 @@ mod village_tests {
             73,
             "well post stores the no-connection fence STATE (not a log axis)"
         );
-        assert_eq!(chunk.get(lx, ground + 4, lz), PLANKS, "well roof");
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), ground + 4),
+            PLANKS,
+            "well roof"
+        );
     }
 
     /// generation is order-independent and deterministic: generating the
@@ -5918,15 +6010,23 @@ mod nether_tests {
         let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
         for lz in 0..16usize {
             for lx in 0..16usize {
-                assert_eq!(fold(chunk.get(lx, 0, lz)), BEDROCK, "y=0 is bedrock floor");
                 assert_eq!(
-                    fold(chunk.get(lx, 127, lz)),
+                    fold(chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), 0)),
+                    BEDROCK,
+                    "y=0 is bedrock floor"
+                );
+                assert_eq!(
+                    fold(chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), 127)),
                     BEDROCK,
                     "y=127 is bedrock roof"
                 );
                 // above the build ceiling: air (nothing exists)
                 for y in 128..256usize {
-                    assert_eq!(chunk.get(lx, y, lz), AIR, "y={y} must be air");
+                    assert_eq!(
+                        chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y),
+                        AIR,
+                        "y={y} must be air"
+                    );
                 }
             }
         }
@@ -6098,7 +6198,7 @@ mod nether_tests {
                 // engine's column scan). 127 = "nothing above" = pass.
                 let mut top_content = 127;
                 for y in (128..256usize).rev() {
-                    if chunk.get(lx, y, lz) != AIR {
+                    if chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y) != AIR {
                         top_content = y as i32;
                         break;
                     }
@@ -6122,13 +6222,22 @@ mod nether_tests {
             let (chunk, _) = gen.generate_chunk(xi.div_euclid(16), zi.div_euclid(16), Vec::new());
             let lx = (xi - xi.div_euclid(16) * 16) as usize;
             let lz = (zi - zi.div_euclid(16) * 16) as usize;
-            assert_eq!(chunk.get(lx, yi as usize, lz), AIR, "feet open (seed {s})");
+            assert_eq!(
+                chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), yi as usize),
+                AIR,
+                "feet open (seed {s})"
+            );
             assert!(
-                yi + 1 >= 128 || chunk.get(lx, (yi + 1) as usize, lz) == AIR,
+                yi + 1 >= 128
+                    || chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), (yi + 1) as usize)
+                        == AIR,
                 "headroom (seed {s})"
             );
             assert!(
-                is_solid(fold(chunk.get(lx, (yi - 1) as usize, lz))),
+                is_solid(fold(chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx, lz),
+                    (yi - 1) as usize
+                ))),
                 "solid floor below (seed {s})"
             );
             assert!(
@@ -6388,7 +6497,10 @@ mod dungeon_tests {
         let mut floor_total = 0;
         for dx in -1..=room.size {
             for dz in -1..=room.size {
-                let b = chunk.get(lx(room.x0 + dx), (room.y0 - 1) as usize, lz(room.z0 + dz));
+                let b = chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lx(room.x0 + dx), lz(room.z0 + dz)),
+                    (room.y0 - 1) as usize,
+                );
                 assert!(matches!(b, COBBLE | MOSSY_COBBLE), "floor block {b}");
                 floor_total += 1;
                 if b == MOSSY_COBBLE {
@@ -6423,7 +6535,10 @@ mod dungeon_tests {
                     {
                         continue; // a chest
                     }
-                    let b = chunk.get(lx(wx), (room.y0 + dy) as usize, lz(wz));
+                    let b = chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx(wx), lz(wz)),
+                        (room.y0 + dy) as usize,
+                    );
                     assert_eq!(b, AIR, "interior cell must be air");
                 }
             }
@@ -6813,7 +6928,7 @@ mod v172_tests {
                     continue;
                 }
                 let hi = chunk.height[czi * 16 + cxi] as usize;
-                if chunk.get(cxi, hi, czi) == RED_SAND {
+                if chunk.get_local(vc_chunk::chunk::LocalXZ::new(cxi, czi), hi) == RED_SAND {
                     h = Some((hi, cxi, czi));
                     break 'col;
                 }
@@ -6826,7 +6941,7 @@ mod v172_tests {
         // below it.
         let mut distinct = std::collections::HashSet::new();
         for y in (h - 14)..(h - 4) {
-            let b = chunk.get(lx, y, lz);
+            let b = chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y);
             distinct.insert(b);
         }
         // 1.8: red sandstone is the filler between red sand and banding
@@ -7114,7 +7229,7 @@ mod e1_tests {
         // the island center (8,8 local = world (8,8)): end stone surface
         let mut stone = 0;
         for y in 40..=64usize {
-            if chunk.get(8, y, 8) == END_STONE {
+            if chunk.get_local(vc_chunk::chunk::LocalXZ::new(8, 8), y) == END_STONE {
                 stone += 1;
             }
         }
@@ -7122,18 +7237,21 @@ mod e1_tests {
         // the arrival platform (100, 63, 0) — chunk (6, 0), local (4, ?, 0)
         let (pchunk, _) = gen.generate_chunk(6, 0, Vec::new());
         assert_eq!(
-            state_block(pchunk.get(4, 63, 0)),
+            state_block(pchunk.get_local(vc_chunk::chunk::LocalXZ::new(4, 0), 63)),
             OBSIDIAN,
             "5×5 obsidian platform at (100, 63, 0) — VERIFIED arrival x/z"
         );
         // the exit-portal fountain: the egg pedestal at world (0, 63, 0)
         assert_eq!(
-            chunk.get(0, 63, 0),
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(0, 0), 63),
             BEDROCK,
             "egg pedestal above the fountain"
         );
         // the fountain's inner 3×3 at y 62 stays open for the victory portal
-        assert_eq!(chunk.get(1, 62, 1), AIR);
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(1, 1), 62),
+            AIR
+        );
         // the biome field is the_end (id 9)
         assert_eq!(chunk.biome[8 * 16 + 8], 9);
     }
@@ -7145,7 +7263,7 @@ mod e1_tests {
         let (chunk, _) = gen.generate_chunk(2, 0, Vec::new());
         let mut found = false;
         for y in 70..=110usize {
-            if chunk.get(10, y, 0) == BEDROCK {
+            if chunk.get_local(vc_chunk::chunk::LocalXZ::new(10, 0), y) == BEDROCK {
                 found = true;
                 break;
             }
@@ -7354,11 +7472,31 @@ mod e2_tests {
         let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
         for lz in 0..16usize {
             for lx in 0..16usize {
-                assert_eq!(chunk.get(lx, 0, lz), BEDROCK, "bedrock floor");
-                assert_eq!(chunk.get(lx, 1, lz), DIRT, "dirt layer 1");
-                assert_eq!(chunk.get(lx, 2, lz), DIRT, "dirt layer 2");
-                assert_eq!(chunk.get(lx, 3, lz), GRASS, "grass surface");
-                assert_eq!(chunk.get(lx, 4, lz), AIR, "air above");
+                assert_eq!(
+                    chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), 0),
+                    BEDROCK,
+                    "bedrock floor"
+                );
+                assert_eq!(
+                    chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), 1),
+                    DIRT,
+                    "dirt layer 1"
+                );
+                assert_eq!(
+                    chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), 2),
+                    DIRT,
+                    "dirt layer 2"
+                );
+                assert_eq!(
+                    chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), 3),
+                    GRASS,
+                    "grass surface"
+                );
+                assert_eq!(
+                    chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), 4),
+                    AIR,
+                    "air above"
+                );
             }
         }
         // plains biome everywhere; no ocean fill above the surface
@@ -7402,7 +7540,7 @@ mod e2_tests {
                     continue;
                 }
                 let hi = chunk.height[czi * 16 + cxi] as usize;
-                if chunk.get(cxi, hi, czi) == RED_SAND {
+                if chunk.get_local(vc_chunk::chunk::LocalXZ::new(cxi, czi), hi) == RED_SAND {
                     surface = Some(RED_SAND);
                     h = hi;
                     lx = cxi;
@@ -7420,7 +7558,7 @@ mod e2_tests {
         assert_eq!(surface, RED_SAND, "badlands surface is red sand");
         let mut bands = std::collections::HashSet::new();
         for y in (h.saturating_sub(15))..(h.saturating_sub(4)) {
-            let b = chunk.get(lx, y, lz);
+            let b = chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx, lz), y);
             if (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b) {
                 bands.insert(b);
             }
@@ -8077,7 +8215,10 @@ mod v115_nest_tests {
                                 (0..16).contains(&nx)
                                     && (0..16).contains(&nz)
                                     && matches!(
-                                        chunk.get(nx as usize, y as usize, nz as usize),
+                                        chunk.get_local(
+                                            vc_chunk::chunk::LocalXZ::new(nx as usize, nz as usize),
+                                            y as usize,
+                                        ),
                                         OAK_LOG | BIRCH_LOG
                                     )
                             });
@@ -8632,7 +8773,7 @@ mod libm_pinned_tests {
         for y in 0..256usize {
             for z in 0..16usize {
                 for x in 0..16usize {
-                    if chunk.get(x, y, z) == COAL_ORE {
+                    if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y) == COAL_ORE {
                         n_coal += 1;
                         h = fold64(h, (x + z * 16 + y * 256) as u64);
                     }

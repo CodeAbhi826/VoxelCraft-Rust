@@ -6223,3 +6223,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-08w — Chunk batches D+E DONE (CI + 3-OS green)
 - D (carve/ores/surface/trees/bamboo) `398002c`; E (flora/mushrooms) `b2d9f63` (+fmt fix from CI feedback). In-range verified per site; fold semantics untouched.
 - CI: code jobs all green incl. full suite + golden ×3 (macOS needed one capacity re-run). Uploads red on quota (known).
+
+## 2026-10-08x — Chunk batches F+G DONE (migration complete)
+- F (flora/sand/pools/ocean) `b6bf20e`; G (nether/decorations/tests) this commit. Every remaining positional `Chunk::get` site migrated to `get_local` (in-range verified: usize loops, rng ranges, clamped coords, guarded neighbors). Fold semantics untouched throughout. Deliberately unmigrated: `Section::get` (raw by design), the trap-pinning tests in chunk.rs (they assert aliasing), NBT map gets.
+- Full-workspace sweep: zero positional production sites remain.

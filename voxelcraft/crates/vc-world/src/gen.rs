@@ -3565,7 +3565,7 @@ impl TerrainGen {
                     BEDROCK
                 };
                 if here == AIR && above == NETHERRACK {
-                    chunk.set(lx as usize, (y + 1) as usize, lz as usize, GLOWSTONE);
+                    chunk.set(lx as usize, y + 1, lz as usize, GLOWSTONE);
                     // a small cluster around it
                     let extra = rng.next_range(3);
                     for _ in 0..extra {
@@ -3576,7 +3576,7 @@ impl TerrainGen {
                         let there = chunk.get_local(vc_chunk::chunk::LocalXZ::new(nx, nz), y + 1);
                         let below_there = chunk.get_local(vc_chunk::chunk::LocalXZ::new(nx, nz), y);
                         if there == NETHERRACK && below_there == AIR {
-                            chunk.set(nx, (y + 1) as usize, nz, GLOWSTONE);
+                            chunk.set(nx, y + 1, nz, GLOWSTONE);
                         }
                     }
                     break;

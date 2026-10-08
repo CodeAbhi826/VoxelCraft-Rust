@@ -62,3 +62,9 @@
 ### Privacy rule P1 (free-tier privacy, owner directive 2026-10-08)
 - **P1**: the owner is on a data-collecting free model tier. Never ask the owner for reference captures, sample worlds, jars, or any reference material; the owner gives numeric results only. Never put secrets, tokens, or personal files in work (code, docs, logs, or commits).
 
+### Continuation rule (owner directive 2026-10-08 — overrides R2's per-Part wait and §6 chat reporting)
+- Do NOT end the turn after a slice. A slice report goes into `docs/WORKLOG.md` and `docs/AGENT-STATE.md`, not into a closing chat message.
+- After CI is green and the state files are updated, immediately start the next slice from `docs/AGENT-STATE.md`. Never write "Next: ..." as a closing message; write it into AGENT-STATE.md and keep working.
+- A turn ends ONLY when: a HARD STOP applies, a Part's REVIEW PACKET is written, a STOP file exists, or a rate/context limit is hit.
+- On a HARD STOP, write "HARD STOP: \<reason\>" as the first line of `docs/BLOCKERS.md`.
+

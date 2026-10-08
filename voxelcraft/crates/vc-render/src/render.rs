@@ -5732,6 +5732,11 @@ impl Renderer {
         }
     }
 
+    /// 1.8: whether timestamp queries are armed (capability, not a mode)
+    pub fn timestamps_supported(&self) -> bool {
+        self.ts_supported
+    }
+
     pub fn render(&mut self, draw: RenderFrame<'_>, ui: &mut UiCanvas) -> RenderStats {
         let RenderFrame {
             cam,

@@ -515,6 +515,8 @@ pub const ID_OPT_SHARP: u16 = 55;
 pub const ID_OPT_USCALE: u16 = 56;
 /// 1.7: anti-aliasing mode button (engine page, Off/FXAA)
 pub const ID_OPT_AA: u16 = 57;
+/// 1.8: streaming-pool worker override button (engine page, Auto/1/2/4/8)
+pub const ID_OPT_THREADS: u16 = 58;
 
 /// The vanilla-1.16.5 settings tree: Options → Video Settings (the exact
 /// vanilla screen), Resource Packs, Accessibility, plus our Engine page.
@@ -1101,7 +1103,7 @@ pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> V
 /// live on their own page so the Video screen stays vanilla-exact.
 pub fn layout_engine() -> Vec<Widget> {
     let (l, r, bw) = (ref_x(248), ref_x(487), 225);
-    let rows = [72, 108, 144, 180, 216, 252];
+    let rows = [72, 108, 144, 180, 216, 252, 288];
     vec![
         slider_h(ID_OPT_SIMDIST, l, rows[0], bw, 30, "SIM DISTANCE", 0.25),
         btn_h(
@@ -1169,6 +1171,16 @@ pub fn layout_engine() -> Vec<Widget> {
             true,
         ),
         btn_h(ID_OPT_AA, r, rows[5], bw, 30, "ANTI-ALIAS", "OFF", true),
+        btn_h(
+            ID_OPT_THREADS,
+            l,
+            rows[6],
+            bw,
+            30,
+            "GEN THREADS",
+            "AUTO",
+            true,
+        ),
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
@@ -6776,6 +6788,7 @@ mod tests {
         ID_OPT_SHARP,
         ID_OPT_USCALE,
         ID_OPT_AA,
+        ID_OPT_THREADS,
         ID_OPT_VIDEO,
         ID_OPT_ENGINE,
         ID_OPT_PACKS,

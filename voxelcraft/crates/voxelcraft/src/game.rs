@@ -314,6 +314,9 @@ pub struct Settings {
     /// PLAN-FINAL §4: Off or ONE method — FXAA ships; the SMAA-vs-FXAA
     /// 3 ms call needs reference hardware numbers (soft blocker, default FXAA).
     pub aa_mode: u8,
+    /// 1.8: streaming-pool worker override (0 = Auto → cores-1 min 1;
+    /// else a fixed count, clamped to cores). The pool rebuilds live.
+    pub gen_threads: u8,
     /// §21 music category volume (0..1, master = `volume`)
     pub music_volume: f32,
     /// Sub-round 5: the per-category volumes for the Music & Sound
@@ -475,6 +478,7 @@ impl Default for Settings {
             custom_scale: 1.25,
             sharpness: 60,
             aa_mode: 0,
+            gen_threads: 0,
             maxfps: 0,
             mipmap_levels: 4,
             aniso: 1, // OFF — vanilla ships no aniso filtering
@@ -517,6 +521,16 @@ impl Default for Settings {
     }
 }
 
+/// 1.8: hardware tier from probe inputs (pure, unit-tested) —
+/// Low at ≤2 cores or software GL, High above 8 cores. Compute and
+/// timestamp support gate their own paths, never the tier.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum HwTier {
+    Low,
+    Medium,
+    High,
+}
+
 impl Settings {
     /// §17: shadow map resolution for the current quality (0 = off)
     pub fn shadow_map_px(&self) -> u32 {
@@ -537,6 +551,36 @@ impl Settings {
             0.55
         }
     }
+    /// 1.8: probe any CPU/GPU into a HwTier. `adapter` is the renderer
+    /// adapter/backend string (matched case-insensitively for the
+    /// known software rasterizers).
+    pub fn probe_tier(cores: usize, adapter: &str) -> HwTier {
+        let a = adapter.to_lowercase();
+        let software = a.contains("llvmpipe")
+            || a.contains("lavapipe")
+            || a.contains("swiftshader")
+            || a.contains("software");
+        if software || cores <= 2 {
+            HwTier::Low
+        } else if cores <= 8 {
+            HwTier::Medium
+        } else {
+            HwTier::High
+        }
+    }
+
+    /// 1.8: recommended first-run knob defaults per tier — (render
+    /// distance, entity distance). Reference (vanilla) defaults stay
+    /// High; weaker hardware steps down. Applied to fresh profiles in
+    /// 1.8b; today the probe only reports (boot log).
+    pub fn tier_defaults(tier: HwTier) -> (i32, f32) {
+        match tier {
+            HwTier::Low => (8, 0.5),
+            HwTier::Medium => (10, 0.75),
+            HwTier::High => (12, 1.0),
+        }
+    }
+
     /// effective internal render scale (render px = round(out / factor))
     pub fn upscale_factor(&self) -> f32 {
         match self.upscale {
@@ -648,7 +692,7 @@ impl Settings {
     /// folder/zip file names, which never contain `;` or `|`).
     pub fn serialize(&self) -> String {
         let mut s = format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};uscale={:.2};sharp={};aamode={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={};accfog={};accfoveff={:.3}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};uscale={:.2};sharp={};aamode={};gthreads={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={};accfog={};accfoveff={:.3}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -670,6 +714,7 @@ impl Settings {
             self.custom_scale,
             self.sharpness,
             self.aa_mode,
+            self.gen_threads,
             self.maxfps,
             self.mipmap_levels,
             self.aniso,
@@ -871,6 +916,7 @@ impl Settings {
                 "uscale" => st.custom_scale = v.parse::<f32>().unwrap_or(1.25).clamp(1.0, 2.0),
                 "sharp" => st.sharpness = v.parse().unwrap_or(60).min(100),
                 "aamode" => st.aa_mode = v.parse().unwrap_or(0).min(1),
+                "gthreads" => st.gen_threads = v.parse().unwrap_or(0).min(64),
                 "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
                 "mip" => st.mipmap_levels = v.parse().unwrap_or(4).min(4),
                 "aniso" => st.aniso = v.parse().unwrap_or(st.aniso).clamp(1, 16),
@@ -2896,6 +2942,22 @@ impl GameApp {
 
         // apply persisted render scale (FSR 1.0 EASU) before the first frame
         renderer.set_upscale(settings.upscale_factor());
+        // 1.8: capability probe — classify this CPU/GPU and report the
+        // recommended knob defaults (1.8b applies them to fresh profiles;
+        // today the probe only reports; gen-threads Auto already follows
+        // the pool sizing from the same core count)
+        {
+            let cores = std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(1);
+            let tier = Settings::probe_tier(cores, &renderer.adapter_name);
+            let (rec_rd, rec_ed) = Settings::tier_defaults(tier);
+            vc_render::render::report_boot_log(&format!(
+                "capability: {tier:?} ({cores} cores, compute {}, timestamps {}) → suggested rd={rec_rd} ed={rec_ed}",
+                renderer.gpu_mesh.is_some(),
+                renderer.timestamps_supported()
+            ));
+        }
         // 1.7: apply persisted AA mode (rebuilds post targets for the inputs)
         renderer.set_aa_mode(settings.aa_mode);
         // §17: apply persisted shadow quality
@@ -2969,16 +3031,9 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             {
                 let (tx, rx) = std::sync::mpsc::channel();
-                // 1.3: workers = cores-1 (min 1) — the main thread keeps
-                // one core for update/draw while the pool absorbs gen/mesh
-                let workers = std::thread::available_parallelism()
-                    .map(|n| n.get().saturating_sub(1).max(1))
-                    .unwrap_or(1);
-                let pool = rayon::ThreadPoolBuilder::new()
-                    .num_threads(workers)
-                    .thread_name(|i| format!("vc-stream-{i}"))
-                    .build()
-                    .ok();
+                // 1.8: workers from the knob (Auto = cores-1, min 1)
+                let workers = Self::pool_threads(settings.gen_threads);
+                let pool = Self::build_stream_pool(workers);
                 vc_render::render::report_boot_log(&format!(
                     "streaming pool: {workers} worker{} ({})",
                     if workers == 1 { "" } else { "s" },
@@ -5589,6 +5644,7 @@ impl GameApp {
             ID_OPT_AA => l(
                 "Edge anti-aliasing (FXAA) before the upscale; forced on below 1.0 render scale.",
             ),
+            ID_OPT_THREADS => l("Streaming-pool workers (Auto follows cores-1); rebuilds live."),
             ID_OPT_AUTOJUMP => l("Automatically jumps one-block steps while walking."),
             // ---- Round 14b: the accessibility completion + skin + chat ----
             ui::ID_ACC_SPRINT => l("Hold sprints while the key is down; Toggle latches it (1.15)."),
@@ -10036,6 +10092,20 @@ impl GameApp {
                 self.renderer.set_aa_mode(self.settings.aa_mode);
                 self.after_settings_change();
             }
+            ID_OPT_THREADS => {
+                // worker presets (Auto follows cores-1; the pool rebuilds live)
+                const PRESETS: [u8; 5] = [0, 1, 2, 4, 8];
+                let cur = self.settings.gen_threads;
+                let next = PRESETS
+                    .iter()
+                    .find(|p| **p > cur)
+                    .copied()
+                    .unwrap_or(PRESETS[0]);
+                self.settings.gen_threads = next;
+                #[cfg(not(target_arch = "wasm32"))]
+                self.rebuild_stream_pool();
+                self.after_settings_change();
+            }
             ID_OPT_MAXFPS => {
                 self.settings.maxfps = (self.settings.maxfps + 1) % 4;
                 self.after_settings_change();
@@ -11223,6 +11293,14 @@ impl GameApp {
                         }
                         ID_OPT_AA => {
                             set_button_value(w, if s.aa_mode == 1 { "FXAA" } else { "OFF" })
+                        }
+                        ID_OPT_THREADS => {
+                            let label = if s.gen_threads == 0 {
+                                "AUTO".to_string()
+                            } else {
+                                format!("{}", s.gen_threads)
+                            };
+                            set_button_value(w, &label)
                         }
                         _ => {}
                     }
@@ -23393,6 +23471,43 @@ impl GameApp {
         d > rd + 3
     }
 
+    /// 1.8: streaming-pool worker count — Auto (0) resolves to cores-1
+    /// (min 1, the main thread keeps a core); a fixed knob clamps to
+    /// the core count. Pure for tests.
+    fn pool_threads(gen_threads: u8) -> usize {
+        let cores = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .max(1);
+        if gen_threads == 0 {
+            cores.saturating_sub(1).max(1)
+        } else {
+            (gen_threads as usize).clamp(1, cores)
+        }
+    }
+
+    /// 1.8: build the streaming pool (native only; wasm is Inline).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn build_stream_pool(workers: usize) -> Option<rayon::ThreadPool> {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(workers)
+            .thread_name(|i| format!("vc-stream-{i}"))
+            .build()
+            .ok()
+    }
+
+    /// 1.8: rebuild the streaming pool at the knob's count (live UI
+    /// apply). In-flight jobs on a replaced pool still complete — their
+    /// result channel persists.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn rebuild_stream_pool(&mut self) {
+        let n = Self::pool_threads(self.settings.gen_threads);
+        if let WorkBackend::Threading { pool, .. } = &mut self.work {
+            *pool = Self::build_stream_pool(n);
+        }
+        vc_render::render::report_boot_log(&format!("streaming pool: {n} workers (knob)"));
+    }
+
     fn stream(&mut self) {
         let pc = self.player_chunk();
         let rd = self.settings.render_distance;
@@ -24178,6 +24293,7 @@ impl GameApp {
             self.f3_allocated_line(),
             String::new(),
             self.f3_cpu_line(),
+            self.f3_cpu_gpu_line(),
             self.f3_display_line(),
             self.renderer.adapter_name.clone(),
             self.renderer.adapter_desc.clone(),
@@ -24425,6 +24541,20 @@ impl GameApp {
             .unwrap_or(1);
         let model = cpu_model_name().unwrap_or_else(|| "unknown".to_string());
         format!("CPU: {}x {}", n, model)
+    }
+
+    /// 1.8: CPU vs GPU frame-time split (F3 right column) — CPU from the
+    /// live phase meter, GPU from the timestamp queries (1.5, "n/a"
+    /// when off or unsupported). The 1.10 verdict reads this row.
+    fn f3_cpu_gpu_line(&self) -> String {
+        let mut cpu = 0.0f32;
+        for i in 0..crate::bench::PHASE_COUNT {
+            cpu += self.phases.phase_ms(i);
+        }
+        match self.renderer.gpu_ms {
+            Some(g) => format!("CPU: {cpu:.1} ms / GPU: {g:.1} ms"),
+            None => format!("CPU: {cpu:.1} ms / GPU: n/a"),
+        }
     }
 
     /// "Display WxH (vendor)" — the live swapchain size + adapter family
@@ -27071,6 +27201,10 @@ mod settings_tests {
         s.aa_mode = 1;
         let r6 = Settings::deserialize(&s.serialize());
         assert_eq!(r6.aa_mode, 1);
+        // 1.8: the gen-threads knob round trips
+        s.gen_threads = 4;
+        let r7 = Settings::deserialize(&s.serialize());
+        assert_eq!(r7.gen_threads, 4);
         // default = no pack, labpbr off
         let d = Settings::default();
         let rd = Settings::deserialize(&d.serialize());
@@ -27109,6 +27243,31 @@ mod settings_tests {
         assert_eq!(r2.upscale, 4);
         let r0 = Settings::deserialize("upscale=0");
         assert_eq!(r0.upscale, 0);
+    }
+
+    /// 1.8: the capability probe — tiers, software detection, the
+    /// recommended table, and the pool sizing (Auto + clamping).
+    #[test]
+    fn capability_probe_tiers_and_pool_sizing() {
+        use super::HwTier::{High, Low, Medium};
+        assert_eq!(Settings::probe_tier(1, "Intel UHD"), Low);
+        assert_eq!(Settings::probe_tier(2, "NVIDIA GeForce"), Low);
+        assert_eq!(Settings::probe_tier(4, "llvmpipe (LLVM)"), Low);
+        assert_eq!(Settings::probe_tier(4, "NVIDIA GeForce"), Medium);
+        assert_eq!(Settings::probe_tier(8, "Apple M1"), Medium);
+        assert_eq!(Settings::probe_tier(16, "AMD Ryzen"), High);
+        assert_eq!(Settings::probe_tier(4, "SwiftShader Device"), Low);
+        assert_eq!(Settings::tier_defaults(Low), (8, 0.5));
+        assert_eq!(Settings::tier_defaults(Medium), (10, 0.75));
+        assert_eq!(Settings::tier_defaults(High), (12, 1.0));
+        // pool sizing follows the core count (Auto) or the knob
+        let cores = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .max(1);
+        assert_eq!(GameApp::pool_threads(0), cores.saturating_sub(1).max(1));
+        assert_eq!(GameApp::pool_threads(1), 1);
+        assert_eq!(GameApp::pool_threads(255), cores);
     }
 
     /// 2026-09-20 round: the modern (1.17+) Entity Distance — roundtrip

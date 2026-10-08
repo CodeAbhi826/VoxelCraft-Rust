@@ -1,0 +1,20 @@
+# Do not edit by hand for releases: version/date track the workspace release.
+cff-version: 1.2.0
+title: VoxelCraft-Rust
+version: 0.4.0
+date-released: 2026-10-09
+authors:
+  - name: CodeAbhi826 and contributors
+repository-code: https://github.com/CodeAbhi826/VoxelCraft-Rust
+license: GPL-3.0-or-later
+abstract: >-
+  A clean-room 1.16.5-era reference-style voxel engine in Rust + wgpu
+  (native + WebGPU/WASM). Original code and procedurally synthesized
+  art; no rights-holder assets. Not affiliated with the reference
+  game's publisher.
+keywords:
+  - voxel
+  - voxel-engine
+  - rust
+  - wgpu
+  - clean-room

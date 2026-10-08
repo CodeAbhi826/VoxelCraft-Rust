@@ -6268,3 +6268,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - L3 CI (run 37833387192): new gate WORKS — 4 rejections, all symphonia 0.5.5 (rodio MP3 backend), license MPL-2.0. Everything else (incl. all other deps) passed the allow-list.
 - Verdict: COMPATIBLE, not a breach. MPL-2.0 §3.3 (verified in SPDX text + symphonia's own LICENSE): Larger Work may be distributed under Secondary License terms; "Secondary License" = GPL-2.0/LGPL-2.1/AGPL-3.0 "or any later versions" — GPL-3.0 is a later version of GPL-2.0. Symphonia ships plain MPL-2.0 (Exhibit A; no Exhibit B marking). Sources: mozilla.org/MPL/2.0 §1.12+§3.3, Symphonia LICENSE (upstream repo).
 - Fix: deny.toml += MPL-2.0 (with this justification) + LICENSES/MPL-2.0.txt (SPDX text, R7 verbatim exception). Obligations honored: MPL text shipped (§3.4 notices preserved via LICENSES/ + NOTICE).
+
+## 2026-10-09h — L3 CLOSED + L4a (NOTICE/TRADEMARKS/CITATION) (Code-only)
+- L3 fix-forward CI (run 37834546819, re-run after a concurrency mis-cancel): 9/9 code jobs green INCL. the new license gates (cargo-deny) — MPL-2.0 allow-listing verified live. Bench step 5 SUCCESS, upload-only red (5th consecutive quota-only bench). L3 CLOSED.
+- Concurrency lesson: the fix-forward push run got cancelled in favor of nothing (stale L3 run kept going); recovered via `gh run rerun` on the cancelled run — no duplicate dispatch, no extra commit.
+- L4a: NOTICE (project + third-party attributions + provenance pointer), TRADEMARKS.md (no third-party marks + not-affiliated disclaimer, L3 rule), CITATION.cff (v0.4.0, GPL-3.0-or-later). 3 new files, ~70 lines.

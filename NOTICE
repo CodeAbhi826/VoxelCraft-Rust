@@ -1,0 +1,19 @@
+VoxelCraft-Rust
+Copyright (c) 2026 CodeAbhi826 and contributors
+
+This project is licensed under the GNU General Public License v3.0 or
+later (GPL-3.0-or-later). See LICENSE for the full text and LICENSES/
+for the texts of all licenses that cover parts of this project:
+original code and generator scripts (GPL-3.0-or-later), original art and
+aggregate specification (CC-BY-SA-4.0), the Monocraft font (SIL OFL 1.1,
+unchanged in its own folder), the Voxelfont spare (MIT).
+
+Third-party components keep their own licenses and notices:
+- Monocraft font — Copyright (c) 2022 Idrees Hassan, SIL OFL 1.1
+  (voxelcraft/crates/vc-render/assets/OFL-Monocraft.txt).
+- Rust crate dependencies — MIT / Apache-2.0 / BSD / ISC / Unicode /
+  Zlib (per-crate, GPL-compatible); full list in docs/LEGAL.md and
+  enforced by deny.toml (`cargo deny check licenses`).
+- No rights-holder game assets, code, or text are included; all art is
+  procedurally synthesized in-repo (see docs/LEGAL-COMPLIANCE.md and
+  the provenance statements in LEGAL.md, which must be preserved).

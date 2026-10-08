@@ -5975,3 +5975,76 @@ serving the new bundle. PUSH PENDING (user action — same as the
 previous round): after `git push --force origin main`, CI rebuilds
 the single-file Linux binary with the click-fix family + the real
 vocabulary + Monocraft.
+
+---
+
+## 2026-10-08 — PLAN v3 Part 0 (dispatch/audit part; no Part 1 work)
+
+Work units, in order (all on `test/full-sweep-2026-09-25`):
+
+1. **0.1 CI on the rewritten HEAD** — first push-CI on rewritten history
+   (51368bd) failed only `cargo fmt --check` (3 hand-wrapped expressions
+   left in game.rs by 1A.6). Fixed by running `cargo fmt` (commit
+   21978bc, formatting-only; `cargo check -p voxelcraft --lib` exit 0).
+   Green run [37717461715](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/runs/37717461715):
+   **911 passed / 0 failed / 2 ignored** across 35 suites — counts taken
+   from the Actions log (`test result:` lines), not attributed. Final
+   Part-0 HEAD run [37723063799](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/runs/37723063799):
+   **911 / 0 / 2** again. [Verified]
+
+2. **0.2 history-rewrite accounting** — the 2026-10-07 rewrite (user-authorized,
+   before R1 existed) scrubbed Luanti/Mineclonia/Minetest names from ~198
+   commit messages and all tracked files; pre-rewrite bundle copied from
+   tmpfs to permanent storage and verified (`git bundle verify`: complete
+   history, tip `db07f71`):
+   **`/home/abhin/backups/voxelcraft-backup-pre-rewrite.bundle`** (10.7 MB).
+   Provenance statements re-confirmed in LEGAL.md + docs/LEGAL-COMPLIANCE.md;
+   added an explicit standing study-corpus row to LEGAL.md (fca97ed). [Verified]
+
+3. **0.3 commit 75bfe64 (1A.6)** — committed **tools/tests only** (Cargo.toml
+   + game.rs, 352 insertions; no images). The 4-angle + player-rig renders
+   (from the 13:41–13:42 fullscreen run) staged for download at
+   **`/home/abhin/backups/1a6-renders/`** (5 PNGs). Vision-test protocol
+   armed: 2 user-supplied images will be described before any visual
+   verdict is trusted (V1). [Code-only; awaiting images]
+
+4. **0.4 vanilla-mode defaults audit** — `shadow_quality: 0` (the engine's
+   shadow-map extra is OFF — the vanilla look), `entity_shadows: true`
+   (matches the vanilla 1.16.5 `entityShadows:true` default), README AI-use
+   disclosure present (README.md "How this was built"), third-party licence
+   list present (LEGAL.md 16-crate table + Monocraft OFL + Voxelfont MIT).
+   Nothing missing; no change. [Verified]
+
+5. **0.5 Chunk::get migration slicing** — grep-level census: ~184
+   `chunk.get`-looking hits, of which **~150 are real positional
+   `Chunk::get(x,y,z)` sites** (gen.rs ~127, game.rs 9, save.rs 5,
+   light.rs 3, world.rs 2, portal.rs 1; chunk.rs's hits are internal
+   `Section::get`/tests that stay). Batch A executed (af86aae): 6 sites
+   migrated to `get_local(LocalXZ, y)` (behavior-identical door).
+   Remaining batches: save.rs (B), game.rs (C), gen.rs split by line
+   ranges (D–G, ~32 sites each). [Verified for batch A: check/fmt exit 0;
+   light::+world:: modules 11/0 exit 0 locally; full suite green in CI]
+
+6. **0.6 worldgen numerics audit** — vanilla_noise.rs is pure f64
+   (next_f64, GRAD3, fade polynomial, lerp; **zero** sin/cos/pow/exp/log
+   calls — arithmetic only, IEEE-exact and OS-stable). gen.rs production
+   region: 59 f64 lines (terrain density/depth — f64 noise), 66 f32 lines
+   (feature/structure placement). Production transcendental sites (~11):
+   cave_worms_near (yaw cos/sin), place_ores (theta sin/cos),
+   village_center (ang cos/sin round), emit_jungle_temple (angle cos/sin),
+   ravines_near_chunk (angle cos/sin), ravine_cut (f32 sqrt),
+   generate_end_chunk (th cos/sin, 42.0 orbit), find_spawn (yaw sin/cos),
+   plus f32 F2/G2 simplex constants. **Golden terrain hash across OSes:
+   does NOT currently exist as a worldgen test** — the only golden hash is
+   vc-mesh's `golden_terrain_patch_hash` (mesher output, synthetic patch),
+   and CI is **ubuntu-only** (no Windows/macOS legs), so R5's three-OS
+   identity is UNVERIFIED today. Part 1.4/4.x must add the worldgen golden
+   hash + cross-OS CI legs. [Verified by inspection]
+
+7. **Driver check** — `vulkaninfo --summary` (Mesa 26.2.4-arch): device
+   `the reference low-end iGPU`, device ID redacted. Both ICDs installed
+   (the working Intel Vulkan driver); forcing each ICD in isolation shows **the main ICD
+   (the Intel Vulkan driver library) enumerates the device; the other ICD does not** — reference silicon is
+   that generation, the other ICD serves pre-that generation only. The game runs on the main ICD. [Verified]
+
+Part 0 ends here per R2. No Part 1 work started.

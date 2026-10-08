@@ -80,6 +80,42 @@ jobs:
           sudo apt-get update && sudo apt-get install -y libasound2-dev
           cargo check --release --workspace
 
+  # 1.0.2 (PLAN v3.1): the R5 determinism gate — the worldgen golden hash
+  # (vc-world::gen::golden_determinism_tests) must be bit-identical on
+  # Linux, Windows and macOS. Only this ONE test runs on the extra legs
+  # (the full suite stays ubuntu-only, as the owner specified). The test
+  # binary builds fast (vc-world + its deps, no app crate).
+  golden-hash:
+    name: worldgen golden hash (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: voxelcraft
+          key: ci-golden-${{ matrix.os }}
+
+      - name: Run the golden worldgen hash test ONLY
+        working-directory: voxelcraft
+        shell: bash
+        run: |
+          cargo test -p vc-world --lib golden_determinism -- --nocapture 2>&1 | tee golden.log
+          test "${PIPESTATUS[0]:-0}" -eq 0 || exit 1
+          grep -q "test result: ok" golden.log || { echo "FAIL: golden hash test did not pass"; exit 1; }
+          grep -c "GOLDEN seed=" golden.log | grep -q "^9$" || { echo "FAIL: expected 9 GOLDEN hash lines"; exit 1; }
+          echo "GOLDEN HASH OK on ${{ matrix.os }} — all 9 neighborhood hashes bit-identical to the pinned values"
+
   wasm:
     name: cargo check (wasm32, lib)
     runs-on: ubuntu-latest

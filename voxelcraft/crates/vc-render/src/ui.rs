@@ -509,6 +509,10 @@ pub const ID_OPT_DONE2: u16 = 34;
 /// Phase 7: GPU compute meshing toggle (engine optimization — no vanilla
 /// equivalent; labeled plainly, not with a vanilla options.txt name)
 pub const ID_OPT_GMESH: u16 = 35;
+/// 1.6: FSR Sharpness button (engine page) — labeled "SHARPNESS", never RCAS
+pub const ID_OPT_SHARP: u16 = 55;
+/// 1.6: custom upscale-factor button (engine page, live only in CUSTOM mode)
+pub const ID_OPT_USCALE: u16 = 56;
 
 /// The vanilla-1.16.5 settings tree: Options → Video Settings (the exact
 /// vanilla screen), Resource Packs, Accessibility, plus our Engine page.
@@ -1095,7 +1099,7 @@ pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> V
 /// live on their own page so the Video screen stays vanilla-exact.
 pub fn layout_engine() -> Vec<Widget> {
     let (l, r, bw) = (ref_x(248), ref_x(487), 225);
-    let rows = [72, 108, 144, 180, 216];
+    let rows = [72, 108, 144, 180, 216, 252];
     vec![
         slider_h(ID_OPT_SIMDIST, l, rows[0], bw, 30, "SIM DISTANCE", 0.25),
         btn_h(
@@ -1141,7 +1145,27 @@ pub fn layout_engine() -> Vec<Widget> {
             "2K",
             true,
         ),
-        btn_h(ID_OPT_UPSCALE, l, rows[4], bw, 30, "UPSCALING", "OFF", true),
+        btn_h(
+            ID_OPT_UPSCALE,
+            l,
+            rows[4],
+            bw,
+            30,
+            "UPSCALING",
+            "NATIVE",
+            true,
+        ),
+        btn_h(ID_OPT_SHARP, r, rows[4], bw, 30, "SHARPNESS", "60%", true),
+        btn_h(
+            ID_OPT_USCALE,
+            l,
+            rows[5],
+            bw,
+            30,
+            "CUSTOM SCALE",
+            "1.25X",
+            true,
+        ),
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
@@ -6746,6 +6770,8 @@ mod tests {
         ID_OPT_AUTOJUMP,
         ID_OPT_DONE2,
         ID_OPT_GMESH,
+        ID_OPT_SHARP,
+        ID_OPT_USCALE,
         ID_OPT_VIDEO,
         ID_OPT_ENGINE,
         ID_OPT_PACKS,

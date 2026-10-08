@@ -299,8 +299,17 @@ pub struct Settings {
     /// pass, and a defaulted-on 2048px map visibly darkens the scene vs
     /// the vanilla look. Engine extra (Video → Engine screen only).
     pub shadow_quality: u8,
-    /// FSR 1.0 internal render scale index: 0 = 100%, 1 = 75%, 2 = 50%
+    /// 1.6: FSR 1.0 upscale mode — 0 Native (FSR fully off, pass
+    /// skipped), 1 Ultra Quality (1.3x), 2 Quality (1.5x), 3 Balanced
+    /// (1.7x), 4 Performance (2.0x), 5 Custom (custom_scale). Old saves
+    /// (0 = 100%, 1 = 75%, 2 = 50%) migrate: 1 → Ultra, 2 → Performance.
     pub upscale: u8,
+    /// 1.6: custom upscale factor for mode 5 (1.0..=2.0)
+    pub custom_scale: f32,
+    /// 1.6: RCAS sharpness percent for modes 1..=5 (0..=100, default 60
+    /// preserves the old fixed 0.6 look); forced 0 at Native (FSR off).
+    /// Labeled "SHARPNESS" in the UI, never RCAS.
+    pub sharpness: u8,
     /// §21 music category volume (0..1, master = `volume`)
     pub music_volume: f32,
     /// Sub-round 5: the per-category volumes for the Music & Sound
@@ -459,6 +468,8 @@ impl Default for Settings {
             graphics: 1,
             shadow_quality: 0, // OFF — vanilla look (engine extra, opt-in)
             upscale: 0,
+            custom_scale: 1.25,
+            sharpness: 60,
             maxfps: 0,
             mipmap_levels: 4,
             aniso: 1, // OFF — vanilla ships no aniso filtering
@@ -521,12 +532,35 @@ impl Settings {
             0.55
         }
     }
-    /// effective internal render scale
+    /// effective internal render scale (render px = round(out / factor))
     pub fn upscale_factor(&self) -> f32 {
         match self.upscale {
-            1 => 0.75,
-            2 => 0.5,
+            1 => 1.0 / 1.3,
+            2 => 1.0 / 1.5,
+            3 => 1.0 / 1.7,
+            4 => 0.5,
+            5 => 1.0 / self.custom_scale.clamp(1.0, 2.0),
             _ => 1.0,
+        }
+    }
+    /// mode name for the engine-page button (PLAN-FINAL §4 ladder)
+    pub fn upscale_name(&self) -> &'static str {
+        match self.upscale {
+            1 => "ULTRA QUALITY",
+            2 => "QUALITY",
+            3 => "BALANCED",
+            4 => "PERFORMANCE",
+            5 => "CUSTOM",
+            _ => "NATIVE",
+        }
+    }
+    /// RCAS lobe amount (0 = off): user sharpness for modes 1..=5,
+    /// forced 0 at Native (FSR fully off)
+    pub fn rcas_amount(&self) -> f32 {
+        if self.upscale == 0 {
+            0.0
+        } else {
+            self.sharpness.min(100) as f32 / 100.0
         }
     }
     /// effective frame cap (0 = uncapped)
@@ -609,7 +643,7 @@ impl Settings {
     /// folder/zip file names, which never contain `;` or `|`).
     pub fn serialize(&self) -> String {
         let mut s = format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={};accfog={};accfoveff={:.3}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};uscale={:.2};sharp={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={};accfog={};accfoveff={:.3}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -628,6 +662,8 @@ impl Settings {
             self.graphics,
             self.shadow_quality,
             self.upscale,
+            self.custom_scale,
+            self.sharpness,
             self.maxfps,
             self.mipmap_levels,
             self.aniso,
@@ -816,7 +852,18 @@ impl Settings {
                     st.entity_distance = v.parse::<f32>().unwrap_or(1.0).clamp(0.5, 1.0);
                 }
                 "shadowq" => st.shadow_quality = v.parse().unwrap_or(0).min(3),
-                "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(2),
+                "upscale" => {
+                    // 1.6: old saves (0 = 100%, 1 = 75%, 2 = 50%) migrate
+                    // onto the §4 ladder: 1 → Ultra (1.3x ≈ 77%), 2 →
+                    // Performance (2.0x = 50%); newer modes pass through
+                    st.upscale = match v.parse().unwrap_or(st.upscale) {
+                        1 => 1,
+                        2 => 4,
+                        n => n.min(5),
+                    }
+                }
+                "uscale" => st.custom_scale = v.parse::<f32>().unwrap_or(1.25).clamp(1.0, 2.0),
+                "sharp" => st.sharpness = v.parse().unwrap_or(60).min(100),
                 "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
                 "mip" => st.mipmap_levels = v.parse().unwrap_or(4).min(4),
                 "aniso" => st.aniso = v.parse().unwrap_or(st.aniso).clamp(1, 16),
@@ -5528,6 +5575,8 @@ impl GameApp {
                 l("Sun shadow map resolution. Higher is sharper but costs fill rate.")
             }
             ID_OPT_UPSCALE => l("Renders at a lower internal resolution and upscales with FSR."),
+            ID_OPT_SHARP => l("RCAS sharpening strength for upscaled modes; off at Native."),
+            ID_OPT_USCALE => l("Custom upscale factor for CUSTOM mode (1.0 to 2.0)."),
             ID_OPT_AUTOJUMP => l("Automatically jumps one-block steps while walking."),
             // ---- Round 14b: the accessibility completion + skin + chat ----
             ui::ID_ACC_SPRINT => l("Hold sprints while the key is down; Toggle latches it (1.15)."),
@@ -9944,8 +9993,30 @@ impl GameApp {
                 self.after_settings_change();
             }
             ID_OPT_UPSCALE => {
-                self.settings.upscale = (self.settings.upscale + 1) % 3;
+                self.settings.upscale = (self.settings.upscale + 1) % 6;
                 self.renderer.set_upscale(self.settings.upscale_factor());
+                self.after_settings_change();
+            }
+            ID_OPT_SHARP => {
+                self.settings.sharpness = (self.settings.sharpness + 10) % 110;
+                if self.settings.sharpness > 100 {
+                    self.settings.sharpness = 0;
+                }
+                self.after_settings_change();
+            }
+            ID_OPT_USCALE => {
+                // custom-factor presets (the slider affordance on a button)
+                const PRESETS: [f32; 5] = [1.0, 1.25, 1.5, 1.75, 2.0];
+                let cur = self.settings.custom_scale;
+                let next = PRESETS
+                    .iter()
+                    .find(|p| **p > cur + 1e-3)
+                    .copied()
+                    .unwrap_or(PRESETS[0]);
+                self.settings.custom_scale = next;
+                if self.settings.upscale == 5 {
+                    self.renderer.set_upscale(self.settings.upscale_factor());
+                }
                 self.after_settings_change();
             }
             ID_OPT_MAXFPS => {
@@ -11128,14 +11199,11 @@ impl GameApp {
                                 _ => "4K",
                             },
                         ),
-                        ID_OPT_UPSCALE => set_button_value(
-                            w,
-                            match s.upscale {
-                                1 => "75% FSR",
-                                2 => "50% FSR",
-                                _ => "OFF",
-                            },
-                        ),
+                        ID_OPT_UPSCALE => set_button_value(w, s.upscale_name()),
+                        ID_OPT_SHARP => set_button_value(w, &format!("{}%", s.sharpness.min(100))),
+                        ID_OPT_USCALE => {
+                            set_button_value(w, &format!("{:.2}X", s.custom_scale.clamp(1.0, 2.0)))
+                        }
                         _ => {}
                     }
                 }
@@ -25338,10 +25406,8 @@ impl GameApp {
                     } else {
                         self.settings.shadow_strength()
                     },
-                    // FSR 1.0: RCAS lobe factor when the internal scale is below
-                    // native (0.6 ≈ FsrRcasCon(~0.7 stops) — sharp without halos;
-                    // EASU already reconstructs most of the edge contrast)
-                    sharpen: if self.settings.upscale > 0 { 0.6 } else { 0.0 },
+                    // 1.6: user Sharpness for modes 1..=5, forced 0 at Native
+                    sharpen: self.settings.rcas_amount(),
                 },
                 clouds: if self.settings.graphics >= 1 && !nether {
                     self.settings.clouds_level
@@ -26871,7 +26937,7 @@ mod settings_tests {
                 x if x == vc_render::ui::ID_OPT_OCCL => set_button_value(w, "ON"),
                 x if x == vc_render::ui::ID_OPT_GMESH => set_button_value(w, "ON"),
                 x if x == vc_render::ui::ID_OPT_SHADOWS => set_button_value(w, "2K"),
-                x if x == vc_render::ui::ID_OPT_UPSCALE => set_button_value(w, "OFF"),
+                x if x == vc_render::ui::ID_OPT_UPSCALE => set_button_value(w, "NATIVE"),
                 _ => {}
             }
         }
@@ -26973,11 +27039,52 @@ mod settings_tests {
             r4.shader_pack.is_none(),
             "(none) persists as the empty selection"
         );
+        // 1.6: the §4 upscale ladder round trips (mode + custom + sharp)
+        s.upscale = 3;
+        s.custom_scale = 1.75;
+        s.sharpness = 80;
+        let r5 = Settings::deserialize(&s.serialize());
+        assert_eq!(r5.upscale, 3);
+        assert!((r5.custom_scale - 1.75).abs() < 1e-3);
+        assert_eq!(r5.sharpness, 80);
         // default = no pack, labpbr off
         let d = Settings::default();
         let rd = Settings::deserialize(&d.serialize());
         assert!(rd.shader_pack.is_none());
         assert!(!rd.labpbr);
+    }
+
+    /// 1.6: the §4 upscale ladder — factors, names, sharpness gating,
+    /// and old-save migration (1 → Ultra, 2 → Performance).
+    #[test]
+    fn upscale_ladder_factors_and_migration() {
+        let mut s = Settings::default();
+        assert!((s.upscale_factor() - 1.0).abs() < 1e-6);
+        assert_eq!(s.upscale_name(), "NATIVE");
+        assert_eq!(s.rcas_amount(), 0.0);
+        s.upscale = 1;
+        assert!((s.upscale_factor() - 1.0 / 1.3).abs() < 1e-6);
+        assert_eq!(s.upscale_name(), "ULTRA QUALITY");
+        s.upscale = 2;
+        assert!((s.upscale_factor() - 1.0 / 1.5).abs() < 1e-6);
+        s.upscale = 3;
+        assert!((s.upscale_factor() - 1.0 / 1.7).abs() < 1e-6);
+        s.upscale = 4;
+        assert!((s.upscale_factor() - 0.5).abs() < 1e-6);
+        s.upscale = 5;
+        s.custom_scale = 1.75;
+        assert!((s.upscale_factor() - 1.0 / 1.75).abs() < 1e-6);
+        s.sharpness = 80;
+        assert!((s.rcas_amount() - 0.8).abs() < 1e-6);
+        s.upscale = 0;
+        assert_eq!(s.rcas_amount(), 0.0); // Native forces RCAS off
+                                          // old saves migrate onto the ladder
+        let r1 = Settings::deserialize("upscale=1");
+        assert_eq!(r1.upscale, 1);
+        let r2 = Settings::deserialize("upscale=2");
+        assert_eq!(r2.upscale, 4);
+        let r0 = Settings::deserialize("upscale=0");
+        assert_eq!(r0.upscale, 0);
     }
 
     /// 2026-09-20 round: the modern (1.17+) Entity Distance — roundtrip

@@ -1653,6 +1653,9 @@ pub struct Renderer {
     particle_vb: wgpu::Buffer,
     // internal render scale (FSR-lite): scene/bloom/depth sized w*scale
     pub upscale: f32,
+    /// 1.6: Native mode — FSR fully off: the EASU pass is skipped and
+    /// the composite reads the scene target directly (set with upscale)
+    pub fsr_off: bool,
     /// adapter/backend description for the F3 overlay (e.g. "WebGPU (SwiftShader)")
     pub backend_name: String,
     /// full adapter line for the F3 right column (driver + driver info —
@@ -3556,6 +3559,7 @@ impl Renderer {
             part_pipe: scene.part,
             particle_vb,
             upscale,
+            fsr_off: true, // constructor starts native (boot applies settings)
             backend_name,
             adapter_desc,
             adapter_name,
@@ -3723,7 +3727,13 @@ impl Renderer {
         let bg_comp = Self::comp_bg(
             &self.device,
             &self.comp_bgl,
-            &t.up_view,
+            // 1.6: at Native the EASU pass is skipped, so the composite
+            // reads the full-res scene target directly (same format)
+            if self.fsr_off {
+                &t.scene_view
+            } else {
+                &t.up_view
+            },
             &t.b2_view,
             &self.post_samp,
             &self.post_buf,
@@ -3884,13 +3894,15 @@ impl Renderer {
 
     /// FSR 1.0 (§33): set the internal render scale (1.0 = native, 0.75/0.5
     /// = EASU-upscaled). Rebuilds the offscreen targets + scene depth
-    /// immediately.
+    /// immediately. At native the EASU pass is skipped and the composite
+    /// reads the scene target directly (1.6: FSR fully off).
     pub fn set_upscale(&mut self, scale: f32) {
         let scale = scale.clamp(0.5, 1.0);
         if (scale - self.upscale).abs() < 1e-3 {
             return;
         }
         self.upscale = scale;
+        self.fsr_off = scale >= 1.0 - 1e-3;
         self.depth = Self::make_depth(
             &self.device,
             ((self.config.width as f32) * scale).round().max(1.0) as u32,
@@ -6257,9 +6269,9 @@ impl Renderer {
 
         // ───────────────────── pass 3.5: FSR 1.0 EASU: scene → up ──
         // Edge-adaptive spatial upsampling to the full surface resolution.
-        // Mathematically identity at 1:1 scale (verified in EASU_SHADER
-        // notes), so it runs at every upscale setting.
-        {
+        // 1.6: skipped entirely at Native (the composite reads the scene
+        // target directly) — FSR fully off, not just identity.
+        if !self.fsr_off {
             let att = wgpu::RenderPassColorAttachment {
                 view: &self.post_targets.up_view,
                 resolve_target: None,

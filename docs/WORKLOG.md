@@ -6160,3 +6160,10 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - CI 37771530522 9/9 green (incl. wasm). linux-game 37772129669 SUCCESS.
 - Measured (CI lavapipe): timestamps SUPPORTED, period 1 ns/tick — no adapter blocklist needed. First GPU number: scene pass **8.875 ms** vs CPU frame avg 83.2/p99 121.8 ms → CPU-bound on the runner (stream/gen/upload dominate); owner hardware gives the verdict in 1.10. gpu_ms rides the streaming artifact from here on. [Tested: artifact + boot lines]
 - Images viewed: none (non-visual; V1 n/a). Local: fmt/check/test -p (100 app + 201 render green).
+
+## 2026-10-08j — slice 1.6 DONE (upscale ladder + Sharpness, E2E green)
+
+**Changed:** settings ladder 0..5 (Native/Ultra1.3/Quality1.5/Balanced1.7/Performance2.0/Custom) + custom_scale + sharpness + rcas_amount (Native forces 0) + migration (old 2→Performance) + engine-page SHARPNESS/CUSTOM SCALE buttons (IDs 55/56) + tooltips + renderer Native skip (EASU skipped, composite reads scene). Commits `6b237ad` + fix `19d99cd`.
+- Red path (honest): first E2E failed T5 with on=0/off=0 — Native booted to a BLACK 3D view (constructor bound composite to the never-written upscale target; earlier legs passed on UI-only pixels). Fixed at construction + flag-aware early-return. Borders back: margin 513 VISIBLE. [Verified: CI logs]
+- CI 37776406041 9/9; linux-game 37777081043 SUCCESS (all legs); streaming stable (avg 69ms, gpu 11.7ms, 148/85).
+- V1 (partial, stated): no engine-screen PNG exists in CI artifacts; evidence is structural — live widget table from the E2E menu leg shows UPSCALING/SHARPNESS/CUSTOM SCALE placed disjointly, zero overlap/duplicate-id WARNs, plus layout + tooltip + round-trip unit tests. Menu-screen capture belongs to 1.11/1.10 foreground work.

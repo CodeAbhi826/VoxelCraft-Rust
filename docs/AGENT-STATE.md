@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 PERFORMANCE CORE**. Current slice: **1.6 upscaling** (next).
-- HEAD: `89a935a` (1.5 done: CI + linux-game 37772129669 green; scene GPU 8.9ms lavapipe).
+- Part: **1 PERFORMANCE CORE**. Current slice: **1.7 AA** (next).
+- HEAD: `19d99cd` (1.6 done: CI + linux-game 37777081043 green, borders margin 513).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices
@@ -14,7 +14,8 @@
 
 ## TODO — queued (Part 1 remainder)
 - [x] 1.5 GPU timestamp queries (`89a935a`; scene GPU 8.9ms vs CPU 83ms lavapipe, gpu_ms in artifacts)
-- [ ] 1.6 upscaling (§4) — 1.8 capability probe + knobs — 1.9 offload audit (report) — 1.10 re-measure matrix + CI perf gate — 1.11 turntable tool — 1.12 player torso/face mapping fix
+- [x] 1.6 upscaling (§4 ladder + Sharpness + Native skip; `6b237ad`+fix; T5 margin 513)
+- [ ] 1.7 AA (SMAA measured, FXAA fallback) — 1.8 capability probe + knobs — 1.9 offload audit (report) — 1.10 re-measure matrix + CI perf gate — 1.11 turntable tool — 1.12 player torso/face mapping fix
 - [ ] Interleaved: Chunk::get migration batches B–G (compile-verified)
 - [ ] Part 1 REVIEW PACKET + adversarial self-review (10 claims)
 

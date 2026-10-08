@@ -15042,10 +15042,10 @@ impl GameApp {
             let px = cx as f32 + 0.5 + ang.cos() * 8.0;
             let pz = cz as f32 + 0.5 + ang.sin() * 8.0;
             let py = gy as f32;
-            if let Some(id) =
-                self.sim
-                    .mobs
-                    .spawn_at(*k, px.floor() as i32, gy, pz.floor() as i32)
+            if let Some(id) = self
+                .sim
+                .mobs
+                .spawn_at(*k, px.floor() as i32, gy, pz.floor() as i32)
             {
                 if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == id) {
                     m.pos = [px, py, pz];
@@ -15872,13 +15872,7 @@ impl GameApp {
                 }
             }
             if let Some((vid, p)) = self.e2e_iconic_villager {
-                if let Some(v) = self
-                    .sim
-                    .villagers
-                    .list
-                    .iter_mut()
-                    .find(|v| v.id == vid)
-                {
+                if let Some(v) = self.sim.villagers.list.iter_mut().find(|v| v.id == vid) {
                     v.pos = p;
                     v.vel = [0.0; 3];
                     v.yaw = 0.0;
@@ -25048,8 +25042,7 @@ impl GameApp {
             // 1A.6: and never during the E2E_ICONIC capture ladder — the
             // character plates must not be photobombed by the hand
             #[cfg(not(target_arch = "wasm32"))]
-            let iconic_shot =
-                std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
+            let iconic_shot = std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
             #[cfg(target_arch = "wasm32")]
             let iconic_shot = false;
             if self.screen == Screen::Game && self.camera_mode == 0 && !iconic_shot {

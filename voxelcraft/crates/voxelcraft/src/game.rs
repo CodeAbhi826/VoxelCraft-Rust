@@ -581,6 +581,16 @@ impl Settings {
         }
     }
 
+    /// 1.8b: tier-down for fresh profiles (pure; the boot call sites
+    /// handle IO). Only steps DOWN toward the tier recommendation.
+    fn apply_tier_defaults(settings: &mut Settings, tier: HwTier) {
+        let (rd, ed) = Self::tier_defaults(tier);
+        settings.render_distance = settings.render_distance.min(rd);
+        if settings.entity_distance > ed {
+            settings.entity_distance = ed;
+        }
+    }
+
     /// effective internal render scale (render px = round(out / factor))
     pub fn upscale_factor(&self) -> f32 {
         match self.upscale {
@@ -2448,7 +2458,13 @@ fn bootstrap_game_dir() {
 
     // default options.txt only when none exists (never clobber user edits)
     if !Path::new("options.txt").exists() {
-        let defaults = Settings::default();
+        let mut defaults = Settings::default();
+        // 1.8b: preliminary tier from the core count alone (no adapter
+        // yet); the post-renderer probe corrects software GL downward
+        let cores = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
+        Settings::apply_tier_defaults(&mut defaults, Settings::probe_tier(cores, ""));
         let _ = fs::write("options.txt", defaults.serialize());
         vc_render::render::report_boot_log("first run: default options.txt written");
     }
@@ -2755,6 +2771,11 @@ impl GameApp {
         // folder source takes precedence over the embedded copy — mods
         // and texture tweaks work by editing it), starts the log mirror
         // and writes a default options.txt when none exists.
+        // 1.8b: remember fresh profiles (no options.txt yet) — the
+        // post-renderer probe tiers their knobs once (wasm: never fresh,
+        // web settings live in localStorage)
+        #[cfg(not(target_arch = "wasm32"))]
+        let fresh_profile = !std::path::Path::new("options.txt").exists();
         #[cfg(not(target_arch = "wasm32"))]
         bootstrap_game_dir();
         // 2026-09-21 (click-side routing round): the pointer environment
@@ -2788,7 +2809,7 @@ impl GameApp {
         // persisted settings FIRST (2026-09-14): the ENABLED resource-pack
         // list is a setting and the atlas compile below needs it (web:
         // localStorage; native: options.txt in the first-run game folder)
-        let settings = {
+        let mut settings = {
             #[cfg(target_arch = "wasm32")]
             {
                 crate::web_input::load_settings()
@@ -2968,6 +2989,20 @@ impl GameApp {
                 renderer.gpu_mesh.is_some(),
                 renderer.timestamps_supported()
             ));
+            // 1.8b: fresh profiles tier down once more for software GL
+            // (the boot-time write only knew the core count); re-saved
+            #[cfg(not(target_arch = "wasm32"))]
+            if fresh_profile {
+                let before = (settings.render_distance, settings.entity_distance);
+                Settings::apply_tier_defaults(&mut settings, tier);
+                if (settings.render_distance, settings.entity_distance) != before {
+                    save_native_settings(&settings);
+                    vc_render::render::report_boot_log(&format!(
+                        "capability: fresh profile tiered to rd={} ed={}",
+                        settings.render_distance, settings.entity_distance
+                    ));
+                }
+            }
         }
         // 1.7: apply persisted AA mode (rebuilds post targets for the inputs)
         renderer.set_aa_mode(settings.aa_mode);
@@ -5661,6 +5696,7 @@ impl GameApp {
                 "Edge anti-aliasing (FXAA) before the upscale; forced on below 1.0 render scale.",
             ),
             ID_OPT_THREADS => l("Streaming-pool workers (Auto follows cores-1); rebuilds live."),
+            ID_OPT_VANILLA => l("Restore the reference (vanilla) knob defaults."),
             ID_OPT_AUTOJUMP => l("Automatically jumps one-block steps while walking."),
             // ---- Round 14b: the accessibility completion + skin + chat ----
             ui::ID_ACC_SPRINT => l("Hold sprints while the key is down; Toggle latches it (1.15)."),
@@ -10121,6 +10157,31 @@ impl GameApp {
                 #[cfg(not(target_arch = "wasm32"))]
                 self.rebuild_stream_pool();
                 self.after_settings_change();
+            }
+            ID_OPT_VANILLA => {
+                // 1.8b: restore the reference (vanilla) knob defaults +
+                // re-apply every live path (upscale, AA, pool, shadows;
+                // texture/MSAA/occlusion ride after_settings_change)
+                let d = Settings::default();
+                self.settings.upscale = d.upscale;
+                self.settings.custom_scale = d.custom_scale;
+                self.settings.sharpness = d.sharpness;
+                self.settings.aa_mode = d.aa_mode;
+                self.settings.gen_threads = d.gen_threads;
+                self.settings.render_distance = d.render_distance;
+                self.settings.entity_distance = d.entity_distance;
+                self.settings.msaa = d.msaa;
+                self.settings.aniso = d.aniso;
+                self.settings.mipmap_levels = d.mipmap_levels;
+                self.settings.shadow_quality = d.shadow_quality;
+                self.renderer.set_upscale(self.settings.upscale_factor());
+                self.renderer.set_aa_mode(self.settings.aa_mode);
+                #[cfg(not(target_arch = "wasm32"))]
+                self.rebuild_stream_pool();
+                self.renderer
+                    .set_shadow_quality(self.settings.shadow_map_px());
+                self.after_settings_change();
+                vc_render::render::report_boot_log("settings: vanilla defaults restored");
             }
             ID_OPT_MAXFPS => {
                 self.settings.maxfps = (self.settings.maxfps + 1) % 4;
@@ -27490,6 +27551,16 @@ mod settings_tests {
         assert_eq!(GameApp::pool_threads(0), cores.saturating_sub(1).max(1));
         assert_eq!(GameApp::pool_threads(1), 1);
         assert_eq!(GameApp::pool_threads(255), cores);
+        // fresh-profile tiering only ever steps down
+        let mut s = Settings {
+            render_distance: 12,
+            entity_distance: 1.0,
+            ..Settings::default()
+        };
+        Settings::apply_tier_defaults(&mut s, Low);
+        assert_eq!((s.render_distance, s.entity_distance), (8, 0.5));
+        Settings::apply_tier_defaults(&mut s, High);
+        assert_eq!((s.render_distance, s.entity_distance), (8, 0.5));
     }
 
     /// 2026-09-20 round: the modern (1.17+) Entity Distance — roundtrip

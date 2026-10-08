@@ -517,6 +517,8 @@ pub const ID_OPT_USCALE: u16 = 56;
 pub const ID_OPT_AA: u16 = 57;
 /// 1.8: streaming-pool worker override button (engine page, Auto/1/2/4/8)
 pub const ID_OPT_THREADS: u16 = 58;
+/// 1.8b: restore reference (vanilla) defaults button (engine page)
+pub const ID_OPT_VANILLA: u16 = 59;
 
 /// The vanilla-1.16.5 settings tree: Options → Video Settings (the exact
 /// vanilla screen), Resource Packs, Accessibility, plus our Engine page.
@@ -1181,6 +1183,7 @@ pub fn layout_engine() -> Vec<Widget> {
             "AUTO",
             true,
         ),
+        btn_h(ID_OPT_VANILLA, r, rows[6], bw, 30, "VANILLA", "", true),
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
@@ -6789,6 +6792,7 @@ mod tests {
         ID_OPT_USCALE,
         ID_OPT_AA,
         ID_OPT_THREADS,
+        ID_OPT_VANILLA,
         ID_OPT_VIDEO,
         ID_OPT_ENGINE,
         ID_OPT_PACKS,

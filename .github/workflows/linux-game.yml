@@ -390,7 +390,7 @@ jobs:
           set +e
           timeout 600 xvfb-run -a -s "-screen 0 1280x720x24" \
             env WGPU_BACKEND=Vulkan \
-            "../$BIN_NAME" --benchmark streaming frames=120 warmup=30 json=streaming-bench.json --verbose 2>&1 | tee ../smoke-streaming.log
+            "../$BIN_NAME" --benchmark streaming frames=120 warmup=30 json=streaming-bench.json --gpu-timing --verbose 2>&1 | tee ../smoke-streaming.log
           CODE=$?
           set -e
           popd >/dev/null

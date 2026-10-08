@@ -39,6 +39,7 @@ fn main() {
         println!("                reporting bugs)");
         println!("  --smoke       CI end-to-end smoke run (boots, enters a world, exits)");
         println!("  --benchmark   [frames=600] [warmup=120] [seed=…] [json=bench.json]");
+        println!("  --gpu-timing  stamp the scene pass with GPU timestamps when supported");
         return;
     }
 
@@ -84,6 +85,13 @@ fn main() {
     // machine (lavapipe software Vulkan under Xvfb).
     if args.iter().any(|a| a == "--smoke") {
         app.smoke = true;
+    }
+
+    // 1.5: --gpu-timing stamps the scene pass when the adapter supports
+    // timestamp queries (never an adapter blocklist; unsupported logs
+    // and stays off)
+    if args.iter().any(|a| a == "--gpu-timing") {
+        app.renderer.set_gpu_timing(true);
     }
 
     use winit::event_loop::ControlFlow;

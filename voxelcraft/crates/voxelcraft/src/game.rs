@@ -25415,7 +25415,7 @@ impl GameApp {
                         let d_avg = self.draw_calls_ring.iter().map(|d| d.0).sum::<u32>() / n;
                         let b_avg = self.draw_calls_ring.iter().map(|d| d.1).sum::<u32>() / n;
                         let json = format!(
-                            "{{\"benchmark\":{{\"frame\":{},\"phases\":{},\"draw\":{{\"calls_avg\":{},\"binds_avg\":{},\"path\":\"{}\"}},\"camera\":\"{}\",\"world\":{{\"chunks\":{},\"meshed\":{}}}}}}}",
+                            "{{\"benchmark\":{{\"frame\":{},\"phases\":{},\"draw\":{{\"calls_avg\":{},\"binds_avg\":{},\"path\":\"{}\"}},\"camera\":\"{}\",\"world\":{{\"chunks\":{},\"meshed\":{}}},\"gpu_ms\":{}}}}}",
                             fs.to_json(),
                             report.to_json(),
                             d_avg,
@@ -25429,7 +25429,13 @@ impl GameApp {
                             // 1.2v: world size at finish — the streaming
                             // artifact's "chunks generated" number
                             self.world.chunks.len(),
-                            self.renderer.chunks.len()
+                            self.renderer.chunks.len(),
+                            // 1.5: latest scene-pass GPU time (null when
+                            // timestamps are off/unsupported)
+                            self.renderer
+                                .gpu_ms
+                                .map(|v| format!("{v:.3}"))
+                                .unwrap_or_else(|| "null".to_string())
                         );
                         #[cfg(not(target_arch = "wasm32"))]
                         if let Some(path) = &self.bench.as_ref().and_then(|b| b.json_path.clone()) {

@@ -1742,6 +1742,19 @@ pub struct Renderer {
     /// main-thread-only (the zero-Mutex design holds: rayon jobs build
     /// inputs, a channel hands them back here)
     pub gpu_mesh: Option<crate::gpu_mesh::GpuMesher>,
+    /// 1.5: GPU timestamp state — capability armed when the ADAPTER
+    /// reports it (never an adapter blocklist); writes only while
+    /// gpu_timing is on (--gpu-timing). Measures the scene pass.
+    ts_supported: bool,
+    ts_query: Option<wgpu::QuerySet>,
+    ts_resolve: Option<wgpu::Buffer>,
+    ts_stage: Option<wgpu::Buffer>,
+    ts_ready: Option<std::sync::mpsc::Receiver<()>>,
+    ts_inflight: bool,
+    ts_period: f32,
+    gpu_timing: bool,
+    /// latest completed scene-pass GPU time in ms (None = no sample yet)
+    pub gpu_ms: Option<f32>,
 }
 
 /// Phase 6: the six scene-pass pipelines (everything that renders into the
@@ -2189,12 +2202,15 @@ impl Renderer {
         // Phase 9 §14: request multi-draw-indirect where the adapter has it
         // (native-only feature; intersected so unsupported adapters still
         // create the device — capability detection, not assumption).
+        // 1.5: same treatment for timestamp queries — enabled whenever
+        // SUPPORTED, never an adapter blocklist.
         let mdi_wanted = if cfg!(not(target_arch = "wasm32")) {
             adapter.features()
                 & (wgpu::Features::MULTI_DRAW_INDIRECT | wgpu::Features::INDIRECT_FIRST_INSTANCE)
         } else {
             wgpu::Features::empty()
         };
+        let ts_wanted = adapter.features() & wgpu::Features::TIMESTAMP_QUERY;
 
         // WebGL2 (downlevel) can't satisfy default limits (no compute);
         // retry with downlevel limits in that case.
@@ -2202,7 +2218,7 @@ impl Renderer {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("voxelcraft"),
-                    required_features: mdi_wanted,
+                    required_features: mdi_wanted | ts_wanted,
                     required_limits: wgpu::Limits::default(),
                     ..Default::default()
                 },
@@ -3430,6 +3446,36 @@ impl Renderer {
             report_boot_log("gpu meshing unavailable: adapter lacks compute (WebGL2-class)");
             None
         };
+        // 1.5: arm timestamp queries when the DEVICE has them (checked
+        // post-request so the downlevel retry path degrades cleanly)
+        let ts_supported = device.features().contains(wgpu::Features::TIMESTAMP_QUERY);
+        let (ts_query, ts_resolve, ts_stage, ts_period) = if ts_supported {
+            let ts_query = device.create_query_set(&wgpu::QuerySetDescriptor {
+                label: Some("scene-timestamps"),
+                ty: wgpu::QueryType::Timestamp,
+                count: 2,
+            });
+            let ts_resolve = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ts-resolve"),
+                size: 16,
+                usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            });
+            let ts_stage = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ts-stage"),
+                size: 16,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let ts_period = queue.get_timestamp_period();
+            report_boot_log(&format!(
+                "gpu timestamps: supported (period {ts_period} ns/tick; writes need --gpu-timing)"
+            ));
+            (Some(ts_query), Some(ts_resolve), Some(ts_stage), ts_period)
+        } else {
+            report_boot_log("gpu timestamps: unsupported on this adapter (writes stay off)");
+            (None, None, None, 0.0)
+        };
         // pre-render the menu panorama cubemap (one-shot painter → cube)
         let pano = PanoResources::new(&device, &queue);
         let renderer = Renderer {
@@ -3546,6 +3592,15 @@ impl Renderer {
             screenshot_request: false,
             screenshot_png: None,
             gpu_mesh,
+            ts_supported,
+            ts_query,
+            ts_resolve,
+            ts_stage,
+            ts_ready: None,
+            ts_inflight: false,
+            ts_period,
+            gpu_timing: false,
+            gpu_ms: None,
         };
         report_boot_log("renderer ready (pipelines + atlas + clouds + post chain)");
         Ok(renderer)
@@ -5418,6 +5473,82 @@ impl Renderer {
         self.screenshot_png = Some(px);
     }
 
+    /// 1.5: enable/disable scene-pass timestamp writes (--gpu-timing).
+    /// No-op (stays off) when the adapter lacks support.
+    pub fn set_gpu_timing(&mut self, on: bool) {
+        self.gpu_timing = on && self.ts_supported;
+        report_boot_log(&format!(
+            "gpu timing: {}",
+            if self.gpu_timing {
+                "on (scene pass stamped)"
+            } else if on {
+                "requested but unsupported on this adapter"
+            } else {
+                "off"
+            }
+        ));
+    }
+
+    /// timestamp writes for a pass (None unless writes are armed)
+    fn ts_writes(&self, begin: u32, end: u32) -> Option<wgpu::RenderPassTimestampWrites<'_>> {
+        if self.gpu_timing {
+            self.ts_query
+                .as_ref()
+                .map(|q| wgpu::RenderPassTimestampWrites {
+                    query_set: q,
+                    beginning_of_pass_write_index: Some(begin),
+                    end_of_pass_write_index: Some(end),
+                })
+        } else {
+            None
+        }
+    }
+
+    /// 1.5: resolve the scene-pass stamps + pump the readback channel.
+    /// Called with the frame encoder before submit; issues at most one
+    /// resolve+copy while none is in flight, then harvests completions
+    /// (channel pattern mirrors the GPU mesher's readback).
+    fn pump_timestamps(&mut self, encoder: &mut wgpu::CommandEncoder) {
+        if self.gpu_timing && !self.ts_inflight {
+            if let (Some(qs), Some(rs), Some(st)) = (
+                self.ts_query.as_ref(),
+                self.ts_resolve.as_ref(),
+                self.ts_stage.as_ref(),
+            ) {
+                encoder.resolve_query_set(qs, 0..2, rs, 0);
+                encoder.copy_buffer_to_buffer(rs, 0, st, 0, 16);
+                let (tx, rx) = std::sync::mpsc::channel::<()>();
+                st.slice(..).map_async(wgpu::MapMode::Read, move |res| {
+                    if res.is_ok() {
+                        let _ = tx.send(());
+                    }
+                });
+                self.ts_ready = Some(rx);
+                self.ts_inflight = true;
+            }
+        }
+        if self.ts_inflight {
+            self.device.poll(wgpu::Maintain::Poll);
+            let done = self
+                .ts_ready
+                .as_ref()
+                .map(|rx| rx.try_recv().is_ok())
+                .unwrap_or(false);
+            if done {
+                if let Some(st) = self.ts_stage.as_ref() {
+                    let data = st.slice(..).get_mapped_range().to_vec();
+                    st.unmap();
+                    if data.len() == 16 {
+                        let begin = u64::from_le_bytes(data[0..8].try_into().unwrap_or([0; 8]));
+                        let end = u64::from_le_bytes(data[8..16].try_into().unwrap_or([0; 8]));
+                        self.gpu_ms = Some(end.wrapping_sub(begin) as f32 * self.ts_period / 1e6);
+                    }
+                }
+                self.ts_inflight = false;
+            }
+        }
+    }
+
     pub fn render(&mut self, draw: RenderFrame<'_>, ui: &mut UiCanvas) -> RenderStats {
         let RenderFrame {
             cam,
@@ -5947,6 +6078,7 @@ impl Renderer {
             // panorama mode draws a depth-less fullscreen pass — a pipeline
             // without depth-stencil state must not run in a pass that
             // carries a depth attachment (wgpu validation)
+            let ts = self.ts_writes(0, 1);
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("scene"),
                 color_attachments: &[Some(clear)],
@@ -5955,7 +6087,7 @@ impl Renderer {
                 } else {
                     Some(depth_att)
                 },
-                timestamp_writes: None,
+                timestamp_writes: ts,
                 occlusion_query_set: None,
             });
 
@@ -6362,6 +6494,9 @@ impl Renderer {
                 }
             }
         }
+
+        // 1.5: resolve scene-pass timestamps before the frame submits
+        self.pump_timestamps(&mut encoder);
 
         self.queue.submit(Some(encoder.finish()));
         // Round A (F2): readback while the swapchain texture is still

@@ -8064,3 +8064,139 @@ mod rampart_fix_tests {
         }
     }
 }
+
+/// 1.0.1 (PLAN v3.1): the WORLD-GEN golden hash — the R5 determinism gate.
+/// Three fixed seeds × nine chunks per dimension (Overworld, Nether, End),
+/// hashing the raw block STATE ids and the per-column biome ids of every
+/// generated chunk. The expected values below were pinned on Linux x86-64
+/// (the only CI OS today); slices 1.0.2/1.0.3 run this single test on the
+/// Windows and macOS legs — the gate is the SAME hash on all three.
+///
+/// The hash is FNV-1a over the u16 state stream (chunk-local index order,
+/// y-major as the section layout stores it) with the biome stream and the
+/// seed/dimension tag folded in, so any drift anywhere changes it.
+///
+/// NOTE for reviewers: this is NOT a reference-game parity claim — it pins
+/// OUR generator against accidental change (numeric type drift, FMA,
+/// libm-dependent transcendental swaps, noise reordering). Part 4 owns
+/// parity against the reference game via the oracle harness (2.2).
+#[cfg(test)]
+mod golden_determinism_tests {
+    use super::*;
+    use vc_chunk::chunk::Chunk;
+
+    const GOLDEN_SEEDS: [u64; 3] = [0xC0FFEE_1234_5678, 0xDEAD_BEEF_0000_0001, 7];
+
+    /// 3×3 chunk neighborhood per seed per dimension — borders exercise
+    /// the outbound-edit path (trees crossing chunk edges) via `inbound`.
+    const NEIGHBORS: [(i32, i32); 9] = [
+        (-1, -1),
+        (-1, 0),
+        (-1, 1),
+        (0, -1),
+        (0, 0),
+        (0, 1),
+        (1, -1),
+        (1, 0),
+        (1, 1),
+    ];
+
+    fn fnv1a(state: u64, bytes: &[u8]) -> u64 {
+        let mut h = state;
+        for &b in bytes {
+            h ^= b as u64;
+            h = h.wrapping_mul(0x0000_0100_0000_01B3);
+        }
+        h
+    }
+
+    fn hash_chunk(h0: u64, c: &Chunk) -> u64 {
+        let mut h = h0;
+        for (i, slot) in c.sections.iter().enumerate() {
+            h = fnv1a(h, &(i as u64).to_le_bytes());
+            match slot {
+                Some(s) => {
+                    // non-empty sections hash the unpacked 4096 u16
+                    // states (bit-exact, layout-stable: the packed
+                    // palette/word layout may change, the truth it
+                    // encodes must not)
+                    h = fnv1a(h, &[1]);
+                    let flat = s.states_flat();
+                    let bytes: Vec<u8> = flat.iter().flat_map(|v| v.to_le_bytes()).collect();
+                    h = fnv1a(h, &bytes);
+                }
+                None => h = fnv1a(h, &[0]),
+            }
+        }
+        let biome_bytes: Vec<u8> = c.biome.iter().copied().collect();
+        h = fnv1a(h, &biome_bytes);
+        let height_bytes: Vec<u8> = c.height.iter().copied().collect();
+        h = fnv1a(h, &height_bytes);
+        h
+    }
+
+    /// generate the 9-chunk neighborhood with the REAL world flow: each
+    /// chunk's outbound edits are queued and replayed as the neighbors'
+    /// inbound (the cross-chunk canopy/structure path is part of the
+    /// contract), then hash each chunk.
+    fn neighborhood_hash(seed: u64, dim: Dimension) -> u64 {
+        let gen = TerrainGen::for_dimension(seed, dim);
+        let mut h = fnv1a(0xCBF2_9CE4_8422_2325, seed.to_le_bytes().as_slice());
+        h = fnv1a(h, &[dim as u8]);
+        let mut outbound: Vec<(i32, i32, i32, u16)> = Vec::new();
+        for &(cx, cz) in NEIGHBORS.iter() {
+            // replay every edit that targets this chunk from the ones
+            // generated before it (deterministic iteration order)
+            let inbound: Vec<(u16, u16)> = outbound
+                .iter()
+                .filter(|(x, _, z, _)| x.div_euclid(16) == cx && z.div_euclid(16) == cz)
+                .map(|(_, i, _, id)| (*i as u16, *id))
+                .collect();
+            let (chunk, out) = gen.generate_chunk(cx, cz, inbound);
+            h = hash_chunk(h, &chunk);
+            outbound.extend(out);
+        }
+        h
+    }
+    /// THE GOLDEN VALUES — pinned on Linux x86-64, Rust stable,
+    /// 2026-10-08 (slice 1.0.1). Do NOT update silently: any drift here
+    /// is a determinism regression (R5) until proven an intentional,
+    /// reported re-baseline (slice 1.0.3 reports old vs new). The seed /
+    /// dimension pairs are in [GOLDEN_SEEDS] × [OVERWORLD, NETHER, END].
+    const GOLDEN: [u64; 9] = [
+        0xa794_356f_b819_1b75, // seed c0ffee12345678, overworld
+        0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
+        0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
+        0xea59_03a5_56d4_c1ba, // seed deadbeef00000001, overworld
+        0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
+        0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
+        0x4434_1912_68f3_5767, // seed 7, overworld
+        0xbb9f_4859_d4d2_ae6a, // seed 7, nether
+        0x821f_f1cc_25ca_21cd, // seed 7, end
+    ];
+
+    #[test]
+    fn golden_worldgen_hash_overworld_nether_end() {
+        let dims = [
+            ("overworld", Dimension::Overworld),
+            ("nether", Dimension::Nether),
+            ("end", Dimension::End),
+        ];
+        let mut got: Vec<(String, u64)> = Vec::new();
+        for &seed in GOLDEN_SEEDS.iter() {
+            for (dname, dim) in dims {
+                let h = neighborhood_hash(seed, dim);
+                println!("GOLDEN seed={seed:#018x} dim={dname} hash={h:#018x}");
+                got.push((format!("{seed:#x}/{dname}"), h));
+            }
+        }
+        for (i, (label, h)) in got.iter().enumerate() {
+            assert_eq!(
+                *h, GOLDEN[i],
+                "golden worldgen hash drifted for {label} — a determinism \
+                 regression (R5) unless this is an intentional, reported \
+                 re-baseline"
+            );
+        }
+    }
+}

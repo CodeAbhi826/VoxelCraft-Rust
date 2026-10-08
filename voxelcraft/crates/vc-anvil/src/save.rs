@@ -1878,6 +1878,70 @@ mod tests {
         assert!(bare.unknown.is_empty());
     }
 
+    /// 2.1d: deterministic garbage across every importer entry point —
+    /// must return, never panic (R6). No new deps: a 6-line xorshift.
+    /// Truncated-valid inputs go deep before failing; random bytes +
+    /// gzip-magic prefixes exercise the corrupt paths.
+    #[test]
+    fn importer_never_panics_on_garbage() {
+        let mut st: u64 = 0x9E37_79B9_7F4A_7C15;
+        let mut next = || {
+            st ^= st << 13;
+            st ^= st >> 7;
+            st ^= st << 17;
+            st
+        };
+        // truncated-valid chunk NBT: every 97th cut must not panic
+        let valid = chunk_to_nbt(0, 0, &demo_chunk(), 0, None);
+        for cut in (0..valid.len()).step_by(97) {
+            let _ = chunk_from_nbt(&valid[..cut]);
+        }
+        // truncated-valid level.dat through the file-level entries
+        let ldir = tmp_dir("fuzz-level");
+        let meta = WorldMeta {
+            seed: 7,
+            name: "Fuzz".into(),
+            spawn: (8, 71, 8),
+            player: None,
+            game_time: 0,
+            game_type: 0,
+            hardcore: false,
+            hardcore_dead: false,
+            flat: false,
+            structures: true,
+            bonus_chest: false,
+            containers: Vec::new(),
+        };
+        write_level_dat(&ldir, &meta).unwrap();
+        let lbytes = fs::read(ldir.join("level.dat")).unwrap();
+        for cut in (0..lbytes.len()).step_by(53) {
+            let dir = tmp_dir("fuzz-cut");
+            fs::write(dir.join("level.dat"), &lbytes[..cut]).unwrap();
+            let _ = level_dat_version(&dir);
+            let _ = version_gate(&dir);
+            let _ = read_level_dat(&dir);
+        }
+        // pure garbage: 256 rounds, gzip-magic every 3rd
+        for round in 0..256 {
+            let len = (next() % 4200) as usize;
+            let mut bytes = vec![0u8; len];
+            for b in bytes.iter_mut() {
+                *b = (next() & 0xFF) as u8;
+            }
+            if round % 3 == 0 && len >= 4 {
+                bytes[0..4].copy_from_slice(&[0x1F, 0x8B, 0x08, 0x00]);
+            }
+            let _ = chunk_from_nbt(&bytes);
+            if round % 8 == 0 {
+                let dir = tmp_dir("fuzz-garbage");
+                fs::write(dir.join("level.dat"), &bytes).unwrap();
+                let _ = level_dat_version(&dir);
+                let _ = version_gate(&dir);
+                let _ = read_level_dat(&dir);
+            }
+        }
+    }
+
     #[test]
     fn unknown_names_and_corruption_degrade_gracefully() {
         let c = demo_chunk();
@@ -2022,7 +2086,6 @@ mod tests {
         let bytes = nbt::write_root("", &root).unwrap();
         fs::write(dir.join("level.dat"), gzip_bytes(&bytes).unwrap()).unwrap();
     }
-
     #[test]
     fn version_gate_accepts_2586() {
         let dir = tmp_dir("gate-ok");

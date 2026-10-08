@@ -6328,3 +6328,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09u — 2.1c fix-forward: trademark-clean fixtures (Tested)
 - 2.1c CI (run 37848743388): 8/9 code green; legal audit FAILED — my test used the trademarked-namespace `id` strings (bright-line TERM_RX; the tree uses `voxelcraft:`/`future:`/`thirdparty:` namespaces by policy). Lesson: fixtures use `future:`/`thirdparty:` only.
 - Fix: 3 strings → future:. Local: `legal_audit.py` [PASS] + 1/1 test pass.
+
+## 2026-10-09v — 2.1c CLOSED (Tested)
+- 2.1c scrub CI (run 37850823859): 9/9 code green incl. legal audit; bench quota-only (14th). Unknown tiles/entities/structures preserved verbatim in memory.
+
+## 2026-10-09w — 2.1d no-panic fuzz (Tested)
+- (Cargo.lock vc-nbt edge rode uncommitted since 2.1c's local build — folded here; code slices stay separate.)
+- save.rs tests: `importer_never_panics_on_garbage` — truncated-valid chunk NBT + level.dat (every 97th/53rd cut) and 256 deterministic xorshift rounds (gzip-magic every 3rd, file-level entries every 8th) across chunk_from_nbt/version_gate/read_level_dat. Pass = return, never panic (R6).
+- Local (idle): fmt clean; 1/1 pass (0.03s); clippy lib+tests clean.

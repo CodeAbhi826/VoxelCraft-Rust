@@ -6378,3 +6378,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - oracle.rs: StructureHit{kind,cx,cz} + extract_starts (ChunkX/Z or BB[minX,minZ]→chunk; malformed skipped §46; kinds verbatim, no type list) + structure_match_rate (Chebyshev tol; matched/total/kinds_agree — vocabulary gaps surface, never silent).
 - Caught own BB bug pre-CI (bb[4] is maxY, not minZ → bb[2]; fixture now BB-only so the path is genuinely exercised).
 - Local (idle): fmt clean; 5/5 oracle tests pass.
+
+## 2026-10-09z8 — HARD STOP: CI billing block (owner action needed)
+- Run 37860424148 (2.2b): ALL jobs unstarted in 2–5s — account payments failed / spending limit. 2.2b UNVALIDATED (code green locally only: fmt + 5/5 oracle tests + clippy clean).
+- Owner ask: clear billing ("Billing & plans"). Default: CI-independent tracks continue (local checks, design docs, foreground runs with Oct-8 binary); no slice marked done without CI green; commits queue for validation.
+- Morning batch now: billing (#0) + docs-license (#4) + provider terms (#5) + phases gate (#3) + package.json scope + branch-layout decision.

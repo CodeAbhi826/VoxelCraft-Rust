@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **2 WORLDS FIRST**. Current slice: **2.2b structure starts** (committed; CI watch armed).
-- HEAD: 2.2b commit (2.2a CLOSED).
+- Part: **2 WORLDS FIRST**. Current slice: **2.2b UNVALIDATED (CI billing block)** — local green only; CI-independent tracks continue.
+- HEAD: 2.2b commit (CI cannot validate until billing clears).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices

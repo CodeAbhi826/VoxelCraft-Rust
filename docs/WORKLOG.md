@@ -6177,3 +6177,10 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Method scar (honest): first attempt used only --replace-text (contents; messages need the separate --replace-message flag) plus a path-as-callback that did nothing — churned hashes with zero benefit. Proven on a bundle clone, then redone correctly.
 - Cleanup (owner order): removed regenerable/ignored junk — 10 GB target/, 6 root session PNGs, the superseded PLAN-v3.1 placeholder, local session screenshots/worlds/ingame-test, the 69 MB trial clone. Kept: node_modules (wrapper dependency), the 36 MB safety bundle + recent CI artifacts, stash/parked branch. Local test-run worlds only; no user content touched.
 - Repo is PRIVATE (verified via API). Pushed history: no spec terms.
+
+## 2026-10-08m — artifact quota (transient infra, NOT code)
+- CI bench uploads fail with "Artifact storage quota has been hit" (two runs). Pruned 596 stale artifacts (kept newest 2 per name, 104 remain) — quota accounting recalculates every 6-12h, so uploads stay red until then. Code jobs all green; bench itself runs (numbers in logs). Close-outs wait for green; E2E verdicts remain readable from logs meanwhile.
+
+## 2026-10-08n — slice 1.7 E2E evidence (legs green, job red on quota only)
+- linux-game 37786754613: FKEY CONTRACT OK (borders margin 514), beds/fluids/phases VERDICT OK (phases ring 166, min 0.985), STREAMING JSON OK. The job's only failures are the three artifact-upload steps (quota). No code or leg failure.
+- Formal 1.7 close-out (and the bench-artifact re-runs) waits for the quota recalculation. V1 status unchanged: engine-screen buttons structural-only evidence; FKEYS captures prove the world renders with FXAA in the chain.

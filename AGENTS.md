@@ -35,3 +35,27 @@
   - **Zero Decompiled Code Transcription**: Strictly forbid copying, reproducing, or transcribing proprietary decompiled source code, variable names, or pseudocode into repository comments or documentation; express all mechanics purely as clean-room behavioral descriptions.
 - **Repository Documentation Sync**: All documentation files (`docs/WORKLOG.md`, `docs/PARITY-BACKLOG.md`, `AGENTS.md`, and README) must be committed and pushed to GitHub alongside code changes.
 
+## 6. Standing Session Rules (PLAN v3.1 — transcribed 2026-10-08 from the owner's plan briefs)
+
+### Legal rules L1–L8 (numbering rests from the plan briefs; meanings are the documented repo rules)
+- **L1 — Black-box only**: parity work against the reference game is built from public documentation plus our own oracle/behavior probes. No decompiled output, and no community reimplementation built from decompiled sources, is consulted for parity code. Propose the method before using it (Part 4.0 gate).
+- **L2 — Read-side only**: the ecosystem's formats (packs, saves, NBT) are accepted as inputs for interop; we never emit or mirror another project's layout in our own shipped data. No reference set is committed, bundled, or distributed in any form.
+- **L3 — Zero copied assets**: no byte of any rights-holder asset (texture, sound, model, font, panorama) enters the repo; all art/audio is synthesized procedurally in-repo. Verified per-pixel by `scripts/legal_audit.py`.
+- **L4 — Zero decompiled transcription**: strict forbid on copying, reproducing, or transcribing proprietary decompiled source, variable names, or pseudocode into code, comments, or docs; mechanics are expressed purely as clean-room behavioral descriptions.
+- **L5 — Study corpus = facts only**: owner-granted read-only reference sets are used only for fact-level counts and aggregate statistics (dimensions, palette histograms, banding/edge/symmetry/alpha statistics, animation metadata). No pixel positions, masks, silhouettes, waveforms, or code are stored or derived. This provenance statement must be kept visible in `LEGAL.md`/docs and never scrubbed.
+- **L6 — Trademark & branding**: no third-party trademarks, names, logos, splash texts, folder conventions, or edition/update marketing labels; in-game functional vocabulary is generic terms-of-art (the 2026-09-21 owner directive in `docs/LEGAL-COMPLIANCE.md` §3).
+- **L7 — Script enforcement**: committed scripts must not read or reach any reference set; `scripts/legal_audit.py` enforces the L2/L7 script guard on every run and in CI, with its self-test.
+- **L8 — Honest claims**: Verified/Tested/Code-only/Unknown tags; every numerical constant, formula, timing, or mechanic cites an authoritative public source; unsourced values are flagged `[ESTIMATED / APPROXIMATION]`.
+
+### Verification rule V1
+- **V1**: any visual verdict must be based on actually viewing submitted screenshots — the verdict text describes exactly what was seen (never what was expected to be seen). Before trusting any visual verdict engine, describe test images supplied by the owner first.
+
+### Process rules R1–R7
+- **R1**: no history rewrites, force-pushes, or destructive git operations without the owner's explicit confirmation of that exact operation.
+- **R2**: stop and report at the end of every Part; wait for "GO PART N" before starting the next.
+- **R3**: estimates are velocity ranges (slices/week, CI rounds/slice) computed from repo history; no whole-game totals in weeks.
+- **R4**: keep the honest provenance statements (the study corpus was used for fact-level counts and aggregate statistics) in `LEGAL.md` and docs; never scrub them.
+- **R5 DETERMINISM**: world generation uses exact IEEE arithmetic on the CPU, in the numeric type the reference behaviour requires (f64 vs f32). No FMA contraction, no fast-math. World-gen math functions (sin, cos, pow, exp, log) are our own fixed implementations so results are identical on every OS and CPU. SIMD is allowed only if it keeps each value's exact operation order. The golden terrain hash must be identical on Linux, Windows and macOS CI runners.
+- **R6 USER WORLDS**: never modify an original world; import works on a copy; automatic backups; unknown blocks, items, entities, tile entities and NBT are preserved verbatim through load and save; corrupt input never panics.
+- **R7**: one slice per commit (max about 300 changed lines); keep L1–L8, V1 in force at all times.
+

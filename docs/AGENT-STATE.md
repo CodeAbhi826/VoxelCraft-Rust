@@ -24,7 +24,7 @@
 - [x] 1.8b vanilla preset + fresh-profile tiering (`7006495`; all legs exit 0; particle knob pre-existed)
 - [ ] Chunk migration B–G (save.rs, game.rs, gen.rs ranges; A done)
 - [ ] Interleaved: Chunk::get migration batches B–G (compile-verified)
-- [ ] Part 1 REVIEW PACKET + adversarial self-review (10 claims)
+- [ ] Part 1 REVIEW PACKET + adversarial self-review (10 claims) + foreground capture sweep (intro→panorama→every settings page→world select/create→loading→loaded→HUD/inventories/containers + 1fps boot+play bursts; pixel-by-pixel review of EVERY image for unreported issues, V1 described per image) + full-dimension coverage (Overworld/Nether/End), all textures/tiles, and everything visible in a full playthrough as if completing the game
 
 ## TODO — later parts (in order)
 - [ ] Part 2 worlds-first (importer → oracle → arch → writer) — Part 3 gameplay core — Part 4 world-gen parity (4.0 LEGAL GATE hard stop first) — Part 5 colour/lighting/packs/shader — Part 6 art/models — Part 7 remaining gameplay — Part 8 quirk parity — Part 9 release

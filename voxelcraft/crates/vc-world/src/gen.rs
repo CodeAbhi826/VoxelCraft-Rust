@@ -1146,18 +1146,44 @@ impl TerrainGen {
                                 || col_biome == Biome::River)
                             && col_biome != Biome::NetherWastes;
                         for by in by0..=by1 {
-                            let cur = chunk.get(lx, by as usize, lz);
+                            let cur = chunk.get_local(
+                                vc_chunk::chunk::LocalXZ::new(lx, lz),
+                                by as usize,
+                            );
                             if cur == AIR || cur == WATER || cur == BEDROCK || cur == LAVA {
                                 continue; // only carve solids
                             }
                             // liquid guard: never carve adjacent to water
                             let near_water = (lx > 0
-                                && chunk.get(lx - 1, by as usize, lz) == WATER)
-                                || (lx < 15 && chunk.get(lx + 1, by as usize, lz) == WATER)
-                                || (lz > 0 && chunk.get(lx, by as usize, lz - 1) == WATER)
-                                || (lz < 15 && chunk.get(lx, by as usize, lz + 1) == WATER)
-                                || (by > 0 && chunk.get(lx, (by - 1) as usize, lz) == WATER)
-                                || (by < 127 && chunk.get(lx, (by + 1) as usize, lz) == WATER);
+                                && chunk.get_local(
+                                    vc_chunk::chunk::LocalXZ::new(lx - 1, lz),
+                                    by as usize,
+                                ) == WATER)
+                                || (lx < 15
+                                    && chunk.get_local(
+                                        vc_chunk::chunk::LocalXZ::new(lx + 1, lz),
+                                        by as usize,
+                                    ) == WATER)
+                                || (lz > 0
+                                    && chunk.get_local(
+                                        vc_chunk::chunk::LocalXZ::new(lx, lz - 1),
+                                        by as usize,
+                                    ) == WATER)
+                                || (lz < 15
+                                    && chunk.get_local(
+                                        vc_chunk::chunk::LocalXZ::new(lx, lz + 1),
+                                        by as usize,
+                                    ) == WATER)
+                                || (by > 0
+                                    && chunk.get_local(
+                                        vc_chunk::chunk::LocalXZ::new(lx, lz),
+                                        (by - 1) as usize,
+                                    ) == WATER)
+                                || (by < 127
+                                    && chunk.get_local(
+                                        vc_chunk::chunk::LocalXZ::new(lx, lz),
+                                        (by + 1) as usize,
+                                    ) == WATER);
                             if near_water {
                                 continue;
                             }
@@ -1241,7 +1267,10 @@ impl TerrainGen {
                     if !(0..16).contains(&bx) || !(0..16).contains(&bz) {
                         continue;
                     }
-                    let cur = chunk.get(bx as usize, by as usize, bz as usize);
+                    let cur = chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(bx as usize, bz as usize),
+                        by as usize,
+                    );
                     let base_stone =
                         cur == STONE || cur == GRANITE || cur == DIORITE || cur == ANDESITE;
                     if !base_stone {
@@ -1513,7 +1542,7 @@ impl TerrainGen {
                 };
                 for y in (band_bot..=band_top).rev() {
                     let yi = y as usize;
-                    let cur = chunk.get(x, yi, z);
+                    let cur = chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), yi);
                     let is_stone =
                         cur == STONE || cur == GRANITE || cur == DIORITE || cur == ANDESITE;
                     if !is_stone {
@@ -1539,7 +1568,8 @@ impl TerrainGen {
                         if y >= surf {
                             break;
                         }
-                        if chunk.get(x, y as usize, z) == STONE && emerald_ore(self.seed, wx, y, wz)
+                        if chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y as usize) == STONE
+                            && emerald_ore(self.seed, wx, y, wz)
                         {
                             chunk.set(x, y as usize, z, EMERALD_ORE);
                         }
@@ -1562,7 +1592,8 @@ impl TerrainGen {
                 if !ravines.is_empty() {
                     if let Some((rv_top, rv_bottom)) = self.ravine_cut(&ravines, wx, wz, surf) {
                         for y in (rv_bottom + 1)..=(rv_top.min(surf)) {
-                            let cur = chunk.get(x, y as usize, z);
+                            let cur =
+                                chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y as usize);
                             if cur != BEDROCK && cur != WATER && cur != AIR {
                                 chunk.set(x, y as usize, z, AIR);
                             }
@@ -1582,7 +1613,7 @@ impl TerrainGen {
                 let col_idx = z * 16 + x;
                 let mut y = chunk.height[col_idx] as i32;
                 while y > 0 {
-                    let c = chunk.get(x, y as usize, z);
+                    let c = chunk.get_local(vc_chunk::chunk::LocalXZ::new(x, z), y as usize);
                     if c != AIR && c != WATER {
                         break;
                     }
@@ -1621,7 +1652,10 @@ impl TerrainGen {
             let lxi = wx - ox;
             let lzi = wz - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) {
-                let cur = chunk.get(lxi as usize, wy as usize, lzi as usize);
+                let cur = chunk.get_local(
+                    vc_chunk::chunk::LocalXZ::new(lxi as usize, lzi as usize),
+                    wy as usize,
+                );
                 let trunk =
                     id == OAK_LOG || id == DARK_OAK_LOG || id == ACACIA_LOG || id == JUNGLE_LOG;
                 if cur == AIR
@@ -1678,7 +1712,10 @@ impl TerrainGen {
             let lx = 2 + rng.next_range(12) as i32;
             let lz = 2 + rng.next_range(12) as i32;
             let col_idx = lz as usize * 16 + lx as usize;
-            let top = chunk.get(lx as usize, chunk.height[col_idx] as usize, lz as usize);
+            let top = chunk.get_local(
+                vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                chunk.height[col_idx] as usize,
+            );
             if top != GRASS && top != SNOW_GRASS {
                 continue;
             }
@@ -1762,7 +1799,9 @@ impl TerrainGen {
                         }
                     }
                 }
-                if chunk.get(lx as usize, h as usize, lz as usize) == GRASS {
+                if chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), h as usize)
+                    == GRASS
+                {
                     chunk.set(lx as usize, h as usize, lz as usize, DIRT);
                 }
                 continue;
@@ -1839,7 +1878,9 @@ impl TerrainGen {
                     }
                 }
                 // dirt under trunk
-                if chunk.get(lx as usize, h as usize, lz as usize) == GRASS {
+                if chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), h as usize)
+                    == GRASS
+                {
                     chunk.set(lx as usize, h as usize, lz as usize, DIRT);
                 }
                 continue;
@@ -1898,7 +1939,10 @@ impl TerrainGen {
                 // dirt under the 2×2
                 for dx in 0..2 {
                     for dz in 0..2 {
-                        if chunk.get((lx + dx) as usize, h as usize, (lz + dz) as usize) == GRASS {
+                        if chunk.get_local(
+                            vc_chunk::chunk::LocalXZ::new((lx + dx) as usize, (lz + dz) as usize),
+                            h as usize,
+                        ) == GRASS {
                             chunk.set((lx + dx) as usize, h as usize, (lz + dz) as usize, DIRT);
                         }
                     }
@@ -2052,14 +2096,17 @@ impl TerrainGen {
                 let nx = lx + ndx;
                 let nz = lz + ndz;
                 if (0..16).contains(&nx) && (0..16).contains(&nz) {
-                    let cur = chunk.get(nx as usize, ny as usize, nz as usize);
+                    let cur = chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(nx as usize, nz as usize),
+                        ny as usize,
+                    );
                     if matches!(cur, AIR | LEAVES | BIRCH_LEAVES) {
                         chunk.set(nx as usize, ny as usize, nz as usize, BEE_NEST);
                     }
                 }
             }
             // dirt under trunk
-            let under = chunk.get(lx as usize, h as usize, lz as usize);
+            let under = chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), h as usize);
             if under == GRASS || under == SNOW_GRASS {
                 chunk.set(lx as usize, h as usize, lz as usize, DIRT);
             }
@@ -2090,10 +2137,16 @@ impl TerrainGen {
             let lz = rng.next_range(16) as i32;
             let col_idx = lz as usize * 16 + lx as usize;
             let h = chunk.height[col_idx] as i32;
-            if chunk.get(lx as usize, h as usize, lz as usize) != GRASS {
+            if chunk.get_local(vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize), h as usize)
+                != GRASS
+            {
                 continue;
             }
-            if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+            if chunk.get_local(
+                vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                (h + 1) as usize,
+            ) != AIR
+            {
                 continue;
             }
             let b_here = Biome::from_u8(chunk.biome[col_idx]);
@@ -2229,7 +2282,11 @@ impl TerrainGen {
             // round's flora test caught; now the pair places only when
             // both h+1 AND h+2 are air)
             let tall_ok = tall_top == 0
-                || (h + 2 <= 255 && chunk.get(lx as usize, (h + 2) as usize, lz as usize) == AIR);
+                || (h + 2 <= 255
+                    && chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        (h + 2) as usize,
+                    ) == AIR);
             if tall_ok {
                 set_dec(
                     &mut chunk,
@@ -2274,11 +2331,18 @@ impl TerrainGen {
                     let lz = rng.next_range(16) as i32;
                     let col_idx = lz as usize * 16 + lx as usize;
                     let h = chunk.height[col_idx] as i32;
-                    let floor = chunk.get(lx as usize, h as usize, lz as usize);
+                    let floor = chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        h as usize,
+                    );
                     if floor != GRASS && floor != DIRT && floor != PODZOL {
                         continue;
                     }
-                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                    if chunk.get_local(
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                        (h + 1) as usize,
+                    ) != AIR
+                    {
                         continue;
                     }
                     // vanilla jungle shoots are short (1-3 commonly);
@@ -2286,7 +2350,12 @@ impl TerrainGen {
                     let bh = 1 + rng.next_range(4) as i32; // 1..4
                     for dy in 1..=bh {
                         let y = h + dy;
-                        if y < 255 && chunk.get(lx as usize, y as usize, lz as usize) == AIR {
+                        if y < 255
+                            && chunk.get_local(
+                                vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
+                                y as usize,
+                            ) == AIR
+                        {
                             chunk.set(lx as usize, y as usize, lz as usize, BAMBOO);
                         }
                     }

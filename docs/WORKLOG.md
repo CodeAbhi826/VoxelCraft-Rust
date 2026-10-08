@@ -6211,3 +6211,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-08t — slice 1.8b DONE (vanilla preset + fresh-profile tiering)
 - `7006495` (~80 lines): VANILLA button (ID 59, reference defaults + live re-applies), fresh profiles tier rd/ed at first-run write (cores) with a post-probe software-GL correction + re-save, tier-step-down helper + tests. Particle knob already existed and wired (density gate) — verified, not duplicated.
 - linux-game 37808829181: every leg exit 0 + OK (FKEYS/beds/fluids/phases/turntable/streaming JSON); runner correctly tiers Low (2 cores) at boot write, probe correction a silent no-op. Job red only on uploads.
+
+## 2026-10-08u — Chunk batches B+C DONE (CI + 3-OS green)
+- `7576870` (15 sites): save.rs test asserts, chunk_occl walls/planes, nether_floor_y, spawner scan (+stale raw-state comment corrected), chest scan, wet/dry column tests → `get_local`. Fold semantics untouched; double-fold sites noted, not altered.
+- CI 37810333793: code jobs all green (tests incl. migrated sites, clippy, fmt, wasm, golden ubuntu+windows; macOS leg needed one re-run for runner-capacity starvation, then 30s green). Uploads red on quota (known).
+
+## 2026-10-08v — Chunk batches B+C+D (get_local migration)
+- B (save.rs tests) + C (game.rs occlusion/nether/spawner/chest/column tests) in `7576870` (15 sites; fold semantics untouched).
+- D (gen.rs carve/ores/surface/trees/bamboo): same treatment, in-range verified per site (loop 0..16, rng ranges, guarded neighbors).

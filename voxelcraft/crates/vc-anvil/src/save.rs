@@ -571,6 +571,10 @@ fn unpack_nibbles(data: &[i8]) -> [u8; 4096] {
 /// Returns `Err(reason)` only for wholesale unparseable data (callers fall
 /// back to terrain regeneration). A save with no light arrays at all
 /// (pre-Phase-4) yields `None` → the caller re-lights on load.
+///
+/// 2.1b: verbatim palette record for names outside our registry
+/// (`None` = known name; `Some` = preserved for the 2.4 writer).
+type UnknownPaletteEntry = Option<(String, Vec<(String, String)>)>;
 pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::LightData>), String> {
     let (_root_name, root) = nbt::read_root(data).map_err(|e| e.to_string())?;
     let level = root
@@ -599,7 +603,7 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
             let mut palette: Vec<u16> = Vec::new();
             // 2.1b: parallel verbatim record for palette entries outside
             // our registry (re-emitted verbatim by the 2.4 writer)
-            let mut unknown_pal: Vec<Option<(String, Vec<(String, String)>)>> = Vec::new();
+            let mut unknown_pal: Vec<UnknownPaletteEntry> = Vec::new();
             if let Some(pal) = sec.get("Palette").and_then(|p| p.as_list()) {
                 for entry in pal {
                     let name = entry

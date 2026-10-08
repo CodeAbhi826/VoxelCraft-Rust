@@ -6316,3 +6316,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - (Note: 2.1a close-out entry above rode uncommitted into this commit — docs only, code slices stay separate.)
 - Chunk gains `unknown: Vec<UnknownCell>{section, index, name, props}` (single constructor; gen/mesh untouched — worldgen never produces entries). chunk_from_nbt captures unknown palette names verbatim per cell; session still shows air (placeholder presentation = 2.1d; writer re-emit = 2.4).
 - Local (idle): fmt clean; new test passes (future:block{color=red} at (2,0,0) → air cell + exact sidecar record); `check -p vc-chunk --lib` clean.
+
+## 2026-10-09s — 2.1b fix-forward: type alias for clippy (Tested)
+- 2.1b CI (run 37846442811): 8/9 code green; clippy `type_complexity` on the nested `Vec<Option<...>>`. Fix: `UnknownPaletteEntry` alias. Local: fmt clean + `clippy -p vc-anvil --lib -D warnings` clean.

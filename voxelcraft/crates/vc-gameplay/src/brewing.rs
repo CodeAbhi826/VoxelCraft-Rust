@@ -173,6 +173,29 @@ pub const BREW_RECIPES: &[BrewRecipe] = &[
         ingredient: GUNPOWDER,
         output: SPLASH_HARMING_II,
     },
+    // ---- 3.3b: dragon's breath brews splash into lingering (vanilla
+    // chain; breath has no survival source yet — dragon breath attack
+    // deferred — so lingering is creative-only until then, disclosed)
+    BrewRecipe {
+        input: SPLASH_HEALING,
+        ingredient: DRAGON_BREATH,
+        output: LINGERING_HEALING,
+    },
+    BrewRecipe {
+        input: SPLASH_HEALING_II,
+        ingredient: DRAGON_BREATH,
+        output: LINGERING_HEALING_II,
+    },
+    BrewRecipe {
+        input: SPLASH_HARMING,
+        ingredient: DRAGON_BREATH,
+        output: LINGERING_HARMING,
+    },
+    BrewRecipe {
+        input: SPLASH_HARMING_II,
+        ingredient: DRAGON_BREATH,
+        output: LINGERING_HARMING_II,
+    },
 ];
 
 /// look up the brew result for an (input, ingredient) pair
@@ -234,6 +257,12 @@ pub fn potion_heal(b: u16) -> Option<f32> {
         SPLASH_HEALING_II => Some(8.0),
         SPLASH_HARMING => Some(-6.0),
         SPLASH_HARMING_II => Some(-12.0),
+        // 3.3b: lingering forms carry the same magnitudes (the cloud
+        // applies them per pulse)
+        LINGERING_HEALING => Some(4.0),
+        LINGERING_HEALING_II => Some(8.0),
+        LINGERING_HARMING => Some(-6.0),
+        LINGERING_HARMING_II => Some(-12.0),
         _ => None, // water/awkward/mundane have no effect (vanilla)
     }
 }
@@ -750,5 +779,40 @@ mod splash_tests_33a {
         assert_eq!(potion_heal(SPLASH_HEALING_II), Some(8.0));
         assert_eq!(potion_heal(SPLASH_HARMING), Some(-6.0));
         assert_eq!(potion_heal(SPLASH_HARMING_II), Some(-12.0));
+    }
+}
+
+#[cfg(test)]
+mod lingering_tests_33b {
+    use super::*;
+
+    #[test]
+    fn breath_brews_all_four_lingering_forms() {
+        assert_eq!(
+            brew_result(SPLASH_HEALING, DRAGON_BREATH),
+            Some(LINGERING_HEALING)
+        );
+        assert_eq!(
+            brew_result(SPLASH_HEALING_II, DRAGON_BREATH),
+            Some(LINGERING_HEALING_II)
+        );
+        assert_eq!(
+            brew_result(SPLASH_HARMING, DRAGON_BREATH),
+            Some(LINGERING_HARMING)
+        );
+        assert_eq!(
+            brew_result(SPLASH_HARMING_II, DRAGON_BREATH),
+            Some(LINGERING_HARMING_II)
+        );
+        // breath on a drinkable brews nothing (splash step required)
+        assert_eq!(brew_result(POTION_HEALING, DRAGON_BREATH), None);
+    }
+
+    #[test]
+    fn lingering_forms_carry_drinkable_magnitudes() {
+        assert_eq!(potion_heal(LINGERING_HEALING), Some(4.0));
+        assert_eq!(potion_heal(LINGERING_HEALING_II), Some(8.0));
+        assert_eq!(potion_heal(LINGERING_HARMING), Some(-6.0));
+        assert_eq!(potion_heal(LINGERING_HARMING_II), Some(-12.0));
     }
 }

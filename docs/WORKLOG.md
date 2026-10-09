@@ -6611,3 +6611,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z69 — 3.3a2: splash throw + AoE landing (healing/harming, undead inversion)
 - ProjKind::SplashPotion(item): sweep-2 class (knockback-only direct, landing event), Witch attribution arm. Throw arms for 4 ids; landing resolves potion_heal, applies via MobSystem::apply_splash (4m, corpses skipped, hurt-flash only on damage) + thrower in radius (boost-capped). Tests: undead set, heal/hurt inversion both ways, radius cutoff. Machine busy — CI verifies.
+
+## 2026-10-09z70 — 3.3b: lingering potions + effect clouds (creative-only breath)
+- Registry: breath + 4 lingering ids/states/tabs/recipes (splash+breath). Cloud entity in MobSystem (20-tick pulses, radius-hold simplification disclosed, pulse drain for thrower-side). Throw/landing/projectile arms. Local: 6/6 new tests pass.

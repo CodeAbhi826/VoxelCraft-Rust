@@ -2193,6 +2193,18 @@ impl EquineState {
     }
 }
 
+/// 3.3b: lingering-potion area cloud — fixed radius, duration in ticks,
+/// signed instant HP per 20-tick pulse (disclosed simplification:
+/// vanilla shrinks the radius per application; ours holds radius and
+/// dies on duration).
+#[derive(Clone, Copy, Debug)]
+pub struct EffectCloud {
+    pub pos: [f32; 3],
+    pub radius: f32,
+    pub duration: i32,
+    pub amount: f32,
+}
+
 /// One mob instance. Position is feet-center like the player.
 #[derive(Clone, Debug)]
 pub struct Mob {
@@ -2323,6 +2335,9 @@ pub enum ProjKind {
     /// harming ride one variant). Knockback-only on direct hits like
     /// the sweep-2 class; the effect lands as a 4m AoE.
     SplashPotion(u16),
+    /// 3.3b: player-thrown lingering potion — carries the ITEM id (the
+    /// landing spawns an effect cloud instead of an instant AoE).
+    LingeringPotion(u16),
 }
 
 /// the sweep-2 throwables: the owner marker for player-thrown
@@ -2455,6 +2470,12 @@ pub struct MobSystem {
     /// by the game layer. Filled by tick_arrows' block-collision arm
     /// and the mob-hit arm.
     pub landings: Vec<(ProjKind, [f32; 3])>,
+    /// 3.3b: lingering-potion area clouds (ticked with the mobs so the
+    /// effect pulses stay on the 20-tick cadence even with no mobs near)
+    pub clouds: Vec<EffectCloud>,
+    /// 3.3b: cloud pulses awaiting game-layer pickup (pos, radius,
+    /// signed HP) — the game applies the thrower-side effect from these
+    pub pulses: Vec<([f32; 3], f32, f32)>,
     /// Phase E1: zombie villagers whose cure finished (game.rs converts
     /// them to villagers + major_positive gossip — VERIFIED w/Zombie_Villager)
     pub cures: Vec<[f32; 3]>,
@@ -2497,6 +2518,8 @@ impl MobSystem {
             explosions: Vec::new(),
             target_hits: Vec::new(),
             landings: Vec::new(),
+            clouds: Vec::new(),
+            pulses: Vec::new(),
             cures: Vec::new(),
             spawned_total: 0,
             despawned_total: 0,
@@ -2998,6 +3021,8 @@ impl MobSystem {
         self.pending_damage = pending;
         self.target_hits = target_hits;
         self.landings = landings;
+        // 3.3b: lingering clouds pulse on the same tick
+        self.tick_clouds();
     }
 
     // --------------------------------------------------------- spawning --
@@ -3833,6 +3858,11 @@ impl MobSystem {
     /// negative reverses. Corpses (already ≤ 0) are skipped. Returns the
     /// number of mobs touched (E2E evidence).
     pub fn apply_splash(&mut self, center: [f32; 3], amount: f32) -> u32 {
+        self.apply_splash_r(center, amount, 4.0)
+    }
+
+    /// radius-parameterized core (lingering clouds reuse it per pulse).
+    pub fn apply_splash_r(&mut self, center: [f32; 3], amount: f32, radius: f32) -> u32 {
         let mut n = 0u32;
         for m in self.list.iter_mut() {
             if m.health <= 0.0 {
@@ -3841,7 +3871,7 @@ impl MobSystem {
             let dx = m.pos[0] - center[0];
             let dy = m.pos[1] - center[1];
             let dz = m.pos[2] - center[2];
-            if dx * dx + dy * dy + dz * dz > 16.0 {
+            if dx * dx + dy * dy + dz * dz > radius * radius {
                 continue;
             }
             let max = def(m.kind).health;
@@ -3857,6 +3887,46 @@ impl MobSystem {
             n += 1;
         }
         n
+    }
+
+    /// 3.3b: lingering-potion area cloud — fixed radius, duration in
+    /// ticks, signed instant HP per 20-tick pulse (disclosed
+    /// simplification: vanilla shrinks the radius per application;
+    /// ours holds radius and dies on duration).
+
+    /// spawn a cloud (lingering landing); returns the cloud count.
+    pub fn spawn_cloud(&mut self, pos: [f32; 3], radius: f32, duration: i32, amount: f32) -> usize {
+        self.clouds.push(EffectCloud {
+            pos,
+            radius,
+            duration,
+            amount,
+        });
+        self.clouds.len()
+    }
+
+    /// tick clouds: pulse every 20 ticks (mob-side via apply_splash_r,
+    /// game-side via pulses drain), remove at duration 0.
+    pub fn tick_clouds(&mut self) {
+        let mut i = 0;
+        while i < self.clouds.len() {
+            let c = self.clouds[i];
+            if c.duration % 20 == 0 {
+                self.apply_splash_r(c.pos, c.amount, c.radius);
+                self.pulses.push((c.pos, c.radius, c.amount));
+            }
+            self.clouds[i].duration -= 1;
+            if self.clouds[i].duration <= 0 {
+                self.clouds.swap_remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    /// drain game-side pulses (pos, radius, signed HP) for thrower-side application.
+    pub fn take_pulses(&mut self) -> Vec<([f32; 3], f32, f32)> {
+        std::mem::take(&mut self.pulses)
     }
 
     /// Backlog round (weather): the rain-contact pass for the water-weak
@@ -6914,6 +6984,8 @@ fn tick_arrows(
                         // 3.3a2: splash attribution (same never-resolved
                         // class — witches are the splash throwers)
                         ProjKind::SplashPotion(_) => MobKind::Witch,
+                        // 3.3b: lingering attribution (same class)
+                        ProjKind::LingeringPotion(_) => MobKind::Witch,
                     };
                     // snowballs deal 0 damage to the player (VERIFIED),
                     // knockback only
@@ -6953,7 +7025,11 @@ fn tick_arrows(
         // hatch there).
         if matches!(
             a.kind,
-            ProjKind::Snowball | ProjKind::Egg | ProjKind::Pearl | ProjKind::SplashPotion(_)
+            ProjKind::Snowball
+                | ProjKind::Egg
+                | ProjKind::Pearl
+                | ProjKind::SplashPotion(_)
+                | ProjKind::LingeringPotion(_)
         ) {
             let mut hit_mob = false;
             for m in mobs.iter_mut() {
@@ -6973,7 +7049,10 @@ fn tick_arrows(
                     }
                     if matches!(
                         a.kind,
-                        ProjKind::Egg | ProjKind::Pearl | ProjKind::SplashPotion(_)
+                        ProjKind::Egg
+                            | ProjKind::Pearl
+                            | ProjKind::SplashPotion(_)
+                            | ProjKind::LingeringPotion(_)
                     ) {
                         landings.push((a.kind, m.pos));
                     }
@@ -7647,6 +7726,30 @@ mod tests {
         let far = sys.spawn_at(Cow, 200, 65, 200).unwrap();
         assert_eq!(sys.apply_splash([0.5, 65.0, 0.0], 4.0), 2);
         assert!((sys.by_id(far).unwrap().health - 10.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn clouds_pulse_apply_and_expire() {
+        use MobKind::*;
+        let mut sys = MobSystem::new(8);
+        let z = sys.spawn_at(Zombie, 0, 65, 0).unwrap();
+        let c = sys.spawn_at(Cow, 1, 65, 0).unwrap();
+        sys.damage(z, 10.0);
+        sys.damage(c, 4.0);
+        assert_eq!(sys.spawn_cloud([0.5, 65.0, 0.0], 3.0, 40, 4.0), 1);
+        // 39 ticks: pulses at duration 40 and 20 — cow heals (capped),
+        // zombie takes it twice
+        for _ in 0..39 {
+            sys.tick_clouds();
+        }
+        assert!((sys.by_id(c).unwrap().health - 10.0).abs() < 1e-5);
+        assert!((sys.by_id(z).unwrap().health - 2.0).abs() < 1e-5);
+        assert_eq!(sys.take_pulses().len(), 2);
+        assert!(sys.take_pulses().is_empty());
+        // duration hits 0 on the 40th tick: cloud removed
+        sys.tick_clouds();
+        assert!(sys.clouds.is_empty());
+        assert!(sys.take_pulses().is_empty());
     }
 
     #[test]

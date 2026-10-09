@@ -9416,7 +9416,29 @@ impl GameApp {
                         ));
                     }
                 }
+                mobs::ProjKind::LingeringPotion(item) => {
+                    // 3.3b: lingering lands as a 30 s effect cloud (radius
+                    // 3) instead of an instant AoE; pulses apply per tick
+                    if let Some(amount) = vc_gameplay::brewing::potion_heal(item) {
+                        self.sim.mobs.spawn_cloud(pos, 3.0, 600, amount);
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: lingering cloud spawned {amount:+} HP"
+                        ));
+                    }
+                }
                 _ => {}
+            }
+        }
+        // 3.3b: lingering cloud pulses — thrower-side effect for pulses
+        // covering the player (mob-side applied in the sim tick)
+        for (cpos, radius, amount) in self.sim.mobs.take_pulses() {
+            let p = self.player.pos.to_array();
+            let dx = p[0] - cpos[0];
+            let dy = p[1] - cpos[1];
+            let dz = p[2] - cpos[2];
+            if dx * dx + dy * dy + dz * dz <= radius * radius {
+                let max = 20.0 + vc_gameplay::effects::health_boost_bonus(&self.player.effects);
+                self.player.health = (self.player.health + amount).clamp(0.0, max);
             }
         }
         let hits = mobs::take_target_hits(&mut self.sim.mobs);
@@ -22161,6 +22183,10 @@ impl GameApp {
                             EGG => vc_gameplay::mobs::ProjKind::Egg,
                             SPLASH_HEALING | SPLASH_HEALING_II | SPLASH_HARMING
                             | SPLASH_HARMING_II => vc_gameplay::mobs::ProjKind::SplashPotion(b),
+                            LINGERING_HEALING | LINGERING_HEALING_II | LINGERING_HARMING
+                            | LINGERING_HARMING_II => {
+                                vc_gameplay::mobs::ProjKind::LingeringPotion(b)
+                            }
                             _ => vc_gameplay::mobs::ProjKind::Pearl,
                         };
                         self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {

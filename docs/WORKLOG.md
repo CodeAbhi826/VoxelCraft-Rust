@@ -6456,3 +6456,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - mobs.rs: MobKind::all() (single canonical roster) + drift test (66 entries, no dupes, name round-trips; Squid documented as registry-only exception).
 - game.rs: E2E_MOBSURVEY leg reusing turntable rig (setup refactored to take kind; front view @3m with yaw fix; per-mob save e2e_survey_{name}_front.png; verdict + count). Workflow: 600s leg in run9/, 66-file count gate, e2e-mobsurvey artifact.
 - Local (idle→busy): fmt clean; all() test passes; check + lib clippy clean on both crates (--tests-only pre-existing lints untouched).
+
+## 2026-10-09z26 — Survey CI green + AGENTS.md reconciled (Tested)
+- Survey CI (run 37882214844): 10/10 SUCCESS. Dispatching linux-game: 66-mob survey captures + About retry + yaw-fixed turntable → V1 review.
+- AGENTS.md rewritten in place: standing rules preserved, verified commands/layout/gates/audit-tripwires added, stale claims dropped.

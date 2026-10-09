@@ -6430,3 +6430,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z18 — Yaw-fix fix-forward: duplicate let (Tested by CI)
 - Yaw-fix CI (run 37872331834): 8/9 code green (tests pass — E2E logic compiles); clippy `unused variable dz` — my edit left the original declaration above the new block. Removed (both remaining `dz` are used).
+
+## 2026-10-09z19 — Yaw fix CLOSED, fresh captures dispatched (Code-only)
+- Fix-forward CI (run 37872955213): 10/10 SUCCESS. Dispatching linux-game for corrected turntable/iconic captures → download → V1 re-verdict.

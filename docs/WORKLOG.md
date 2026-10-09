@@ -6437,3 +6437,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z20 — About E2E capture leg (Code-only, CI validates)
 - E2E_MENU tour extended: ABOUT... click (id 250) → readback PNG → DONE2 → DONE → title. Capture block disarms if the frame moved on (never shoots the wrong screen). Workflow asserts transition + capture + VERDICT + PNG, uploads e2e-about artifact.
 - Local: edits only (box busy — no compile; CI compiles + runs the leg). V1 viewing on download.
+
+## 2026-10-09z21 — About leg CLOSED (Tested)
+- About-capture CI (run 37873914027): 10/10 SUCCESS. Dispatching linux-game for e2e_about.png + yaw-corrected turntable set → V1 re-verdict.

@@ -6586,3 +6586,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z61 — 3.1a: tool/weapon registry (ids 540-569, 30 d-rows, tabs)
 - Ids material-major sword/pick/axe/shovel/hoe (540%5==0 so offset selects swords); tool_def 1-line rows; placeholder sprites (Part 6 paints); BLOCK_COUNT 570. Tabs: swords→Combat, rest→Tools; census updated (Tools 26, Combat 27, total +30). Tests: contiguity, tab mapping all 30, names. Machine busy (load 11) — CI runs the tests.
+
+## 2026-10-09z62 — 3.1a follow-up: registry pins + tool identity states + GPU LUT
+- 13 failures were count pins (540→570) + missing tool identity states (fold hit glazed terracotta). Fix: pin bumps with 3.1a notes, TOOL window 893..=922 (V17/R13 pattern: base+count+fold table+is_* + both match arms + model-state exclusion + prop-test filter), STATE_COUNT 923, GPU LUT offsets/clamps in gpu_mesh (CPU builder auto-sizes).
+- Local (despite load): 36/36 affected tests pass.

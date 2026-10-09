@@ -113,10 +113,10 @@ const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
 // portal 536, flint-and-steel 537 + the fluids round: bubble column 538),
 // STATE_COUNT=877 (the fluids round: the waterlogging states 874..=875
 // + the bubble column's dedicated state 876)
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=893)
-const L_FL: u32 = 893u;            // lut: block flags           (BLOCK_COUNT=540)
-const L_TC: u32 = 1433u;           // lut: block tint class      (893+540)
-const L_ST: u32 = 1973u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3572)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=923)
+const L_FL: u32 = 923u;            // lut: block flags           (BLOCK_COUNT=570)
+const L_TC: u32 = 1493u;           // lut: block tint class      (923+570)
+const L_ST: u32 = 2063u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3572)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -171,8 +171,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 892u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 539u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 922u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 569u)]; }
 // water level of a STATE: 0 = source, 1..7 = flowing, 255 = not water
 // (port of vc_blocks::blocks::water_level; the flow-state id range
 // 89..=95 is asserted against WATER_FLOW_BASE/END by the Rust-side
@@ -212,7 +212,7 @@ fn face_visible(bf: u32, fnb: u32) -> bool {
 // tint class -> packed tint byte (kind<<6 | slot), port of
 // vc_blocks::tint::block_face_tint_packed's block match
 fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
-    let tc = lut[L_TC + min(b, 539u)];
+    let tc = lut[L_TC + min(b, 569u)];
     var kind = 0u; var slot = 0u;
     if tc == 1u { if top { kind = 1u; slot = biome; } }          // GRASS top
     else if tc == 2u { kind = 1u; slot = biome; }                // TALL_GRASS

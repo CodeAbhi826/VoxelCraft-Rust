@@ -221,9 +221,10 @@ jobs:
           # the real input path (a MUSIC slider click resets it to 1.0)
           grep -q "\[screen\] options -> musicsound" menu.log
           grep -q "\[screen\] musicsound -> options" menu.log
-          # L5: the About screen leg — ABOUT... row from Options, PNG
+          # L5: the About screen leg — ABOUT... 5th title row, PNG
           # capture, DONE2 back (V1 visual for the licensing About page)
-          grep -q "\[screen\] options -> about" menu.log
+          grep -q "\[screen\] title -> about" menu.log
+          grep -q "\[screen\] about -> options" menu.log
           grep -q "e2e: about screen captured" menu.log
           grep -q "ABOUT VERDICT OK" menu.log
           test -s screenshots/e2e_about.png || { echo "FAIL: about screen capture missing"; exit 1; }

@@ -19132,11 +19132,14 @@ impl GameApp {
                             (t + 5.10, ui::ID_OPT_MUSICSND),
                             (t + 5.30, ui::ID_SND_BASE + 1), // the MUSIC slider — click-to-default (1.0)
                             (t + 5.45, ui::ID_SND_DONE),
-                            // L5 About capture: enter About, PNG, DONE
-                            // back to Options, DONE to title
-                            (t + 5.60, ui::ID_OPT_ABOUT),
-                            (t + 5.95, ui::ID_OPT_DONE2),
-                            (t + 6.10, ui::ID_OPT_DONE),
+                            (t + 5.75, ui::ID_OPT_DONE),
+                            // L5 About capture: ABOUT lives on the TITLE
+                            // (5th row — no scale-safe slot on Options),
+                            // so visit it after returning: title→About,
+                            // PNG, DONE2→Options, DONE→title to exit
+                            (t + 6.00, ui::ID_OPT_ABOUT),
+                            (t + 6.35, ui::ID_OPT_DONE2),
+                            (t + 6.60, ui::ID_OPT_DONE),
                         ]
                         .into();
                         self.smoke_menu_e2e = true;

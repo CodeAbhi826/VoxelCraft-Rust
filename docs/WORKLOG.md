@@ -6440,3 +6440,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z21 — About leg CLOSED (Tested)
 - About-capture CI (run 37873914027): 10/10 SUCCESS. Dispatching linux-game for e2e_about.png + yaw-corrected turntable set → V1 re-verdict.
+
+## 2026-10-09z22 — About relocated to title (overlap root cause)
+- CI proved no fixed options row is safe: DONE rides anchor_y(470) to y410 at 854x480 live, eating my y412 row (WARN gate fired correctly). ABOUT is now a disclosed 5th title row (y360, vanilla 4 rows pixel-identical); title test updated 4→5 + relative-position asserts (absolute x is live-size-dependent); options asserts absence.
+- E2E tail reworked (ABOUT visited from title at end); workflow greps title->about + about->options. Local: fmt only (box busy; CI compiles/runs).

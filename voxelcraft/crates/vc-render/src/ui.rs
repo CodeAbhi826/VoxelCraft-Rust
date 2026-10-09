@@ -813,6 +813,12 @@ pub fn layout_title(is_web: bool) -> Vec<Widget> {
             true,
         ));
     }
+    // L5 (licensing): the About screen entry — a disclosed 5th title
+    // row BELOW the vanilla stack (all 4 vanilla rows pixel-identical).
+    // y360: clear of the stack (ends 345) and of the corner texts
+    // (live_h−20) at every E2E/CI live size; the options screen has no
+    // scale-safe slot (DONE rides anchor_y into any fixed row there).
+    v.push(btn_h(ID_OPT_ABOUT, cx, 360, 300, 30, "ABOUT...", "", true));
     v
 }
 
@@ -924,9 +930,6 @@ pub fn layout_options() -> Vec<Widget> {
             "",
             true,
         ),
-        // L5 (licensing): the About screen entry — sits in the empty
-        // band between SKIN (ends 402) and DONE (626); no overlap
-        btn_h(ID_OPT_ABOUT, l, 412, 465, 30, "ABOUT...", "", true),
         btn_h(
             ID_OPT_DONE,
             (live_ui_w() as i32 - 300) / 2,
@@ -6906,19 +6909,12 @@ mod tests {
     }
 
     #[test]
-    fn options_about_row_present_once_and_below_skin() {
-        // L5: the ABOUT... row lives in the empty band (SKIN ends y402,
-        // DONE sits at anchor_y(470)) — exactly once, below SKIN.
+    fn options_has_no_about_row() {
+        // L5 fix: ABOUT lives on the title (5th row), NOT on Options —
+        // no fixed options row survives DONE's anchor_y ride at small
+        // live heights (CI caught the y412 overlap at 854x480)
         let v = layout_options();
-        let rows: Vec<_> = v.iter().filter(|w| w.id == ID_OPT_ABOUT).collect();
-        assert_eq!(rows.len(), 1, "one ABOUT row on Options");
-        let skin = v.iter().find(|w| w.id == ID_OPT_SKIN).unwrap();
-        assert!(
-            rows[0].y > skin.y,
-            "ABOUT below SKIN ({} <= {})",
-            rows[0].y,
-            skin.y
-        );
+        assert_eq!(v.iter().filter(|w| w.id == ID_OPT_ABOUT).count(), 0);
     }
 
     /// The dynamic row ranges (pack lists, resource-pack panes, world
@@ -7651,7 +7647,10 @@ mod screen_tests {
     #[test]
     fn title_layout_is_vanilla_stack() {
         let ws = layout_title(false);
-        assert_eq!(ws.len(), 4);
+        // the 4 vanilla rows pixel-identical + the disclosed L5 ABOUT
+        // row below the stack (no scale-safe slot exists on Options:
+        // DONE rides anchor_y into any fixed row there)
+        assert_eq!(ws.len(), 5);
         let play = ws.iter().find(|w| w.id == ID_TITLE_PLAY).unwrap();
         assert_eq!((play.w, play.h), (300, 30));
         assert_eq!(play.y, 225);
@@ -7669,6 +7668,14 @@ mod screen_tests {
         // web layout: no quit button, options full-width
         let web = layout_title(true);
         assert!(web.iter().all(|w| w.id != ID_TITLE_QUIT));
+        // L5: ABOUT row present on both layouts, below the stack,
+        // full-width and centered exactly like SINGLEPLAYER (absolute
+        // x is live-size-dependent, so assert relative to PLAY)
+        for lay in [&ws, &web] {
+            let about = lay.iter().find(|w| w.id == ID_OPT_ABOUT).unwrap();
+            assert_eq!((about.y, about.w, about.h), (360, 300, 30));
+            assert_eq!(about.x, play.x, "ABOUT centered with the stack");
+        }
     }
 
     /// Optional visual dump for inspection (never set in CI):

@@ -15459,19 +15459,22 @@ impl GameApp {
         let to_c = (glam::Vec3::new(c[0], c[1] + 1.5, c[2]) - pos).normalize();
         self.player.pos = pos;
         self.player.vel = glam::Vec3::ZERO;
+        // Same renderer-convention targeting as the turntable (see
+        // e2e_turntable_view): Y = atan2(to_c.x, −to_c.z). The old
+        // x-negated form framed sky on a0/a180 (the "90° off" note
+        // below was the same sign bug misdiagnosed as atan2 speck).
         // IEEE atan2(y, −0.0) = ±π: at exactly 0°/180° the view vector
-        // lands on the signed zero (or a sin(π) rounding speck) and the
-        // yaw comes out 90° off — the first capture run's a0/a180 framed
-        // ocean/plains instead of the cast. Pin due-east/west to ±π/2.
+        // lands on the signed zero (or a sin(π) rounding speck), so pin
+        // due-east/west explicitly.
         let dz = -to_c.z;
         self.player.yaw = if dz.abs() < 1e-5 {
-            if -to_c.x >= 0.0 {
+            if to_c.x >= 0.0 {
                 std::f32::consts::FRAC_PI_2
             } else {
                 -std::f32::consts::FRAC_PI_2
             }
         } else {
-            f32::atan2(-to_c.x, dz)
+            f32::atan2(to_c.x, dz)
         };
         self.player.flying = true;
         self.player.on_ground = false;
@@ -15589,18 +15592,41 @@ impl GameApp {
         self.player.pos = pos;
         self.player.vel = glam::Vec3::ZERO;
         let dz = -to_c.z;
+        // E2E cameras target the RENDERER convention (render.rs: dir =
+        // (sin yaw, ·, −cos yaw); engine yaw 0 = north). The yaw that
+        // faces to_c satisfies sin Y ∝ to_c.x, −cos Y ∝ −to_c.z, i.e.
+        // Y = atan2(to_c.x, −to_c.z) — the pre-fix code negated x and
+        // framed empty horizon on every view (found via V1 review of
+        // the turntable set: no mob in any of the 5 captures).
+        let dz = -to_c.z;
         self.player.yaw = if dz.abs() < 1e-5 {
-            if -to_c.x >= 0.0 {
+            if to_c.x >= 0.0 {
                 std::f32::consts::FRAC_PI_2
             } else {
                 -std::f32::consts::FRAC_PI_2
             }
         } else {
-            f32::atan2(-to_c.x, dz)
+            f32::atan2(to_c.x, dz)
         };
         self.player.pitch = 0.0;
         self.player.flying = true;
         self.player.on_ground = false;
+        // re-pin every view (AI idles with player=None, but physics
+        // still settles) + re-hide the HUD (a flapping hide cost one
+        // pig run its HUD-less contract) + telemetry for the log
+        self.hide_hud = true;
+        if let Some(m) = self.sim.mobs.list.iter().find(|m| m.id == id) {
+            vc_render::render::report_boot_log(&format!(
+                "e2e: turntable view@{angle_deg} mob=({:.1},{:.1},{:.1}) cam=({:.1},{:.1},{:.1}) yaw={:.1}",
+                m.pos[0],
+                m.pos[1],
+                m.pos[2],
+                pos.x,
+                pos.y,
+                pos.z,
+                self.player.yaw.to_degrees()
+            ));
+        }
         self.e2e_turntable_settle = 0;
     }
 
@@ -25854,11 +25880,22 @@ impl GameApp {
             // the view-model in third-person, exactly vanilla's behavior)
             // 1A.6: and never during the E2E_ICONIC capture ladder — the
             // character plates must not be photobombed by the hand
+            // Turntable: same — the solo subject must not share the
+            // frame with a giant arm (V1: the arm filled a quarter of
+            // every turntable capture).
             #[cfg(not(target_arch = "wasm32"))]
             let iconic_shot = std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
             #[cfg(target_arch = "wasm32")]
             let iconic_shot = false;
-            if self.screen == Screen::Game && self.camera_mode == 0 && !iconic_shot {
+            #[cfg(not(target_arch = "wasm32"))]
+            let turntable_shot = std::env::var("E2E_TURNTABLE").is_ok() && !self.e2e_turntable_done;
+            #[cfg(target_arch = "wasm32")]
+            let turntable_shot = false;
+            if self.screen == Screen::Game
+                && self.camera_mode == 0
+                && !iconic_shot
+                && !turntable_shot
+            {
                 let e = self.player.eye();
                 self.push_held_item(right, up, dir, [e.x, e.y, e.z]);
             }

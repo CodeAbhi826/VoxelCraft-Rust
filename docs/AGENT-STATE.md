@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **2 WORLDS FIRST**. Current slice: **2.2c codec fidelity** (committed; CI watch armed).
-- HEAD: 2.2c commit (QUEUE VALIDATED 10/10 on rerun 37869400104).
+- Part: **2 WORLDS FIRST**. Current slice: **turntable yaw fix** (committed; CI validates compile + legs).
+- HEAD: yaw-fix commit (review claim 5 withdrawn; re-verdict on fresh captures).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices

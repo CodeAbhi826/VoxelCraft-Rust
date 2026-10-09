@@ -6407,3 +6407,23 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z13 — QUEUE VALIDATED + 2.2c (Tested)
 - Rerun 37869400104: 10/10 SUCCESS (bench + uploads too). BACKLOG CLEARED: 2.2b + 2.3a + 2.4a + 2.4b + scrub ALL code-green in CI. Quota confirmed clear (uploads landing).
 - 2.2c: codec-fidelity oracle — generated chunks (0,0) + (-3,5) write→read IDENTICAL (states, biomes, zero sidecars). Local: 1/1 pass. The mapping both ways is faithful on real generator output.
+
+## 2026-10-09z14 — V1 CORRECTION: turntable captures show no mob (Investigating)
+- Viewed all 5 CI turntable PNGs (fresh binary, lavapipe): NO creeper in any view — landscape + an oversized first-person arm bottom-right. Claim 5 of the 10-claim review ("turntable covers 5 views solo — VERIFIED") is FALSIFIED by viewing; V1 worked as designed. The CI VERDICT OK only proves files saved (hollow gate).
+- Fresh F3 viewed: phase row + CPU/GPU split visible ("CPU: 52.0 ms / GPU: n/a" — honest lavapipe readout); Mem:0MB bug again (CI env); E:0/0; arm oversized (same note as local views).
+- Fresh CI streaming JSON: avg 56.5/median 49.3/p99 100.7/worst 105.9 ms, 148 chunks/84 meshed, draw 38.5, gpu 14.6 (lavapipe). Reference-hardware local: avg 158.6, draw 7.9, stream 148.8 — CPU-bound on both.
+- Turntable hypotheses (mob staged per log, despawn guarded by player=None): fall-through, invisible mesh, or camera miss. Running fresh binary locally to observe.
+
+## 2026-10-09z15 — Entity render audit + full mob sweep launched (Investigating)
+- Non-mob entities: ItemEntity/XpOrb live ONLY in vc-sim (zero refs in vc-render/game.rs rendering) — dropped items + XP orbs are simulated but NEVER rendered (invisible pickups). Arrow struct likewise unreferenced by render. FINDING for the function matrix (needs render slices, Part 7).
+- Mob sweep: all 65 from_name kinds × turntable leg with the fresh binary (sequential background loop, one GPU job at a time). Front views get V1 eyes; full 5-view sets kept per mob.
+- Blocks: registry fully CI-pinned (counts/folds/tiles≤MAX green); in-world terrain blocks visible in captures; per-block staging harness does not exist (noted gap — creative-screen capture needs X input or engine dumps).
+
+## 2026-10-09z16 — CORRECTION: items/XP DO render (audit error caught pre-commit)
+- Wrong claim (drafted, never committed): "ItemEntity/XpOrb never rendered". Code re-read: game.rs pushes items (25783), villagers (25789), mobs (25796), TNT (25838), XP/dragon/crystals (25832) into particle_verts, drained into the particle pass every frame. Only Arrow lacks a confirmed path. Correction logged before it reached any commit.
+- Turntable status: creeper/pig/zombie fronts ALL mob-less (viewed V1); arm oversized in every view; pig run showed HUD (hide_hud race). Mob in list (mobs 1), mesh exists, camera math sane → rendering-path or placement bug under live fire (E2E_ICONIC cast lineup running).
+
+## 2026-10-09z17 — Turntable yaw fix (Code-only, CI validates)
+- Root cause (verified against F3's own convention comment: engine yaw 0 = north): E2E orbit math used atan2(-x) against the renderer's (sin yaw, -cos yaw) — x-negated, framing empty horizon on all 5 turntable + 4 iconic views. F3 label was innocent. Fix: atan2(+x) + pin flip in BOTH e2e_turntable_view and e2e_iconic_orbit + per-view mob/cam/yaw telemetry.
+- Plus: view-model hidden during turntable captures (arm photobomb, V1 evidence); hide_hud re-pinned per view (pig HUD flap).
+- Local: fmt clean only (box busy at 2.96 — no compile; CI compiles). V1 re-verdict waits fresh captures post-CI.

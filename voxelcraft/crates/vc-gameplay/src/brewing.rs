@@ -150,6 +150,29 @@ pub const BREW_RECIPES: &[BrewRecipe] = &[
         ingredient: GLOWSTONE,
         output: POTION_REGEN_II,
     },
+    // ---- 3.3a: gunpowder brews any drinkable into its splash form
+    // (vanilla brewing chain; the four combat-relevant pair land
+    // first, the rest ride the same rule in later rounds)
+    BrewRecipe {
+        input: POTION_HEALING,
+        ingredient: GUNPOWDER,
+        output: SPLASH_HEALING,
+    },
+    BrewRecipe {
+        input: POTION_HEALING_II,
+        ingredient: GUNPOWDER,
+        output: SPLASH_HEALING_II,
+    },
+    BrewRecipe {
+        input: POTION_HARMING,
+        ingredient: GUNPOWDER,
+        output: SPLASH_HARMING,
+    },
+    BrewRecipe {
+        input: POTION_HARMING_II,
+        ingredient: GUNPOWDER,
+        output: SPLASH_HARMING_II,
+    },
 ];
 
 /// look up the brew result for an (input, ingredient) pair
@@ -205,6 +228,12 @@ pub fn potion_heal(b: u16) -> Option<f32> {
         POTION_HEALING_II => Some(8.0),
         POTION_HARMING => Some(-6.0),
         POTION_HARMING_II => Some(-12.0),
+        // 3.3a: splash forms carry the drinkable magnitudes (the AoE
+        // application scales them, never redefines them)
+        SPLASH_HEALING => Some(4.0),
+        SPLASH_HEALING_II => Some(8.0),
+        SPLASH_HARMING => Some(-6.0),
+        SPLASH_HARMING_II => Some(-12.0),
         _ => None, // water/awkward/mundane have no effect (vanilla)
     }
 }
@@ -692,5 +721,34 @@ mod tests {
                 }
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod splash_tests_33a {
+    use super::*;
+
+    #[test]
+    fn gunpowder_brews_all_four_splash_forms() {
+        assert_eq!(brew_result(POTION_HEALING, GUNPOWDER), Some(SPLASH_HEALING));
+        assert_eq!(
+            brew_result(POTION_HEALING_II, GUNPOWDER),
+            Some(SPLASH_HEALING_II)
+        );
+        assert_eq!(brew_result(POTION_HARMING, GUNPOWDER), Some(SPLASH_HARMING));
+        assert_eq!(
+            brew_result(POTION_HARMING_II, GUNPOWDER),
+            Some(SPLASH_HARMING_II)
+        );
+        // gunpowder on a non-potion brews nothing
+        assert_eq!(brew_result(GUNPOWDER, GUNPOWDER), None);
+    }
+
+    #[test]
+    fn splash_forms_carry_drinkable_magnitudes() {
+        assert_eq!(potion_heal(SPLASH_HEALING), Some(4.0));
+        assert_eq!(potion_heal(SPLASH_HEALING_II), Some(8.0));
+        assert_eq!(potion_heal(SPLASH_HARMING), Some(-6.0));
+        assert_eq!(potion_heal(SPLASH_HARMING_II), Some(-12.0));
     }
 }

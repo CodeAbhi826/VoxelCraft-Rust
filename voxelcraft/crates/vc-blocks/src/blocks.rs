@@ -2467,6 +2467,10 @@ pub fn v15_state(b: u16) -> Option<u16> {
         b if (WOODEN_SWORD..=NETHERITE_HOE).contains(&b) => {
             Some(TOOL_STATE_BASE + (b - WOODEN_SWORD))
         }
+        // 3.3a: the 4 splash potion items' identity states (923..=926)
+        b if (SPLASH_HEALING..=SPLASH_HARMING_II).contains(&b) => {
+            Some(SPLASH_STATE_BASE + (b - SPLASH_HEALING))
+        }
         _ => None,
     }
 }
@@ -2662,6 +2666,23 @@ pub const TOOL_STATE_TO_BLOCK: [u16; TOOL_COUNT as usize] = [
 #[inline]
 pub fn is_tool_state(s: u16) -> bool {
     (TOOL_STATE_BASE..TOOL_STATE_BASE + TOOL_COUNT).contains(&s)
+}
+
+/// 3.3a: splash identity window (923..=926, never world-stored; same
+/// class as the tool window).
+pub const SPLASH_STATE_BASE: u16 = 923;
+pub const SPLASH_COUNT: u16 = 4;
+/// SPLASH state -> block fold: index = state − SPLASH_STATE_BASE.
+pub const SPLASH_STATE_TO_BLOCK: [u16; SPLASH_COUNT as usize] = [
+    SPLASH_HEALING,
+    SPLASH_HEALING_II,
+    SPLASH_HARMING,
+    SPLASH_HARMING_II,
+];
+
+#[inline]
+pub fn is_splash_state(s: u16) -> bool {
+    (SPLASH_STATE_BASE..SPLASH_STATE_BASE + SPLASH_COUNT).contains(&s)
 }
 
 /// Round K (the Nether portal): the portal + flint-and-steel identity
@@ -3645,13 +3666,14 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 570; // + the backlog fire (506) + the farming set (507-514: farmland, 4
+pub const BLOCK_COUNT: usize = 574; // + the backlog fire (506) + the farming set (507-514: farmland, 4
                                     // crops, wheat, bread, hoe) + the 16 armor items (515-530,
                                     // sub-round 3) + the TNT round: the TNT block (533)
                                     // + the beds round: the bed's two halves (534/535)
                                     // + the fluids round: the bubble column (538)
                                     // + 2.1e placeholder (539)
                                     // + 3.1a tools/weapons (540..=569)
+                                    // + 3.3a splash potions (570..=573)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -3685,7 +3707,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 923; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
+pub const STATE_COUNT: usize = 927; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
                                     // states + the V17 armor identity window (845..=860, sub-round 3)
                                     // + Round 13's BOOK/GRINDSTONE identity states (861..=862)
                                     // + the TNT round: TNT's dedicated state (863)
@@ -3696,6 +3718,7 @@ pub const STATE_COUNT: usize = 923; // the V16 window: 805 fire + 806-841 farmin
                                     // age 1..15 — FIRE 805 is age 0)
                                     // + 2.1e placeholder identity (892)
                                     // + 3.1a tool/weapon identity window (893..=922)
+                                    // + 3.3a splash identity window (923..=926)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -4565,6 +4588,10 @@ pub fn state_block(s: u16) -> u16 {
         s if is_tool_state(s) => {
             return TOOL_STATE_TO_BLOCK[(s - TOOL_STATE_BASE) as usize];
         }
+        // 3.3a: the splash identity window
+        s if is_splash_state(s) => {
+            return SPLASH_STATE_TO_BLOCK[(s - SPLASH_STATE_BASE) as usize];
+        }
         s if is_v15_state(s) => {
             return V15_STATE_TO_BLOCK[(s - V15_STATE_BASE) as usize];
         }
@@ -4733,6 +4760,8 @@ pub fn is_model_state(s: u16) -> bool {
         // 3.1a: the tool/weapon identity window (893..=922) — BlockDef
         // flags like the armor/station windows, never model states
         || is_tool_state(s)
+        // 3.3a: the splash identity window (923..=926) — same class
+        || is_splash_state(s)
         // TNT round: TNT's dedicated state — a full-cube BlockDef block
         // (the V17 pattern: never model states)
         || s == TNT_STATE
@@ -6056,6 +6085,13 @@ pub const NETHERITE_PICKAXE: u16 = 566;
 pub const NETHERITE_AXE: u16 = 567;
 pub const NETHERITE_SHOVEL: u16 = 568;
 pub const NETHERITE_HOE: u16 = 569;
+// ---- 3.3a: splash potions (ids 570..=573) — gunpowder-brewed throwable
+// forms of the healing/harming pair. Sprites stay TILE_PLACEHOLDER
+// until Part 6 (blank = safe).
+pub const SPLASH_HEALING: u16 = 570;
+pub const SPLASH_HEALING_II: u16 = 571;
+pub const SPLASH_HARMING: u16 = 572;
+pub const SPLASH_HARMING_II: u16 = 573;
 
 /// armor piece kind (for slot routing + art): 0 helmet, 1 chestplate,
 /// 2 leggings, 3 boots. None for non-armor blocks.
@@ -12948,6 +12984,11 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     tool_def("Netherite Axe", SoundFamily::Metal),
     tool_def("Netherite Shovel", SoundFamily::Metal),
     tool_def("Netherite Hoe", SoundFamily::Metal),
+    // ---- 3.3a: splash potion items (placeholder sprites, Part 6 paints)
+    tool_def("Splash Potion of Healing", SoundFamily::Glass),
+    tool_def("Splash Potion of Healing II", SoundFamily::Glass),
+    tool_def("Splash Potion of Harming", SoundFamily::Glass),
+    tool_def("Splash Potion of Harming II", SoundFamily::Glass),
 ];
 
 #[inline]
@@ -13762,6 +13803,8 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         RABBIT_FOOT | GOLDEN_CARROT | PHANTOM_MEMBRANE | POTION_SLOW_FALLING | POTION_SLOW_FALLING_EXT => CreativeTab::Brewing,
         POTION_TURTLE_MASTER | POTION_TURTLE_MASTER_II | SUGAR | GHAST_TEAR | POTION_LEAPING => CreativeTab::Brewing,
         POTION_LEAPING_II | POTION_LEAPING_LONG | POTION_REGEN | POTION_REGEN_II | POTION_REGEN_LONG => CreativeTab::Brewing,
+        // 3.3a: splash potions ride Brewing (their vanilla home)
+        SPLASH_HEALING | SPLASH_HEALING_II | SPLASH_HARMING | SPLASH_HARMING_II => CreativeTab::Brewing,
         // everything else — items, spawn eggs, station blocks, future
         // registry additions: the vanilla catch-all tab
         _ => CreativeTab::Miscellaneous,
@@ -13808,6 +13851,10 @@ pub fn creative_tab_items(tab: CreativeTab) -> Vec<u16> {
         // 3.1a: the non-sword tools
         out.extend((WOODEN_SWORD..=NETHERITE_HOE).filter(|id| *id % 5 != 0));
     }
+    if tab == CreativeTab::Brewing {
+        // 3.3a: splash potions (they postdate PICKER_BLOCKS like armor)
+        out.extend(SPLASH_HEALING..=SPLASH_HARMING_II);
+    }
     out
 }
 
@@ -13838,10 +13885,10 @@ mod creative_tab_tests {
             total += items.len();
         }
         // picker entries + the 10 redstone extras + the 16 armor items
-        // + the 30 3.1a tools
+        // + the 30 3.1a tools + the 4 3.3a splash potions
         assert_eq!(
             total,
-            PICKER_BLOCKS.len() + CREATIVE_REDSTONE_EXTRA.len() + 16 + 30
+            PICKER_BLOCKS.len() + CREATIVE_REDSTONE_EXTRA.len() + 16 + 30 + 4
         );
         // per-tab census (regenerates with the table; pins drift)
         assert_eq!(creative_tab_items(CreativeTab::BuildingBlocks).len(), 155);
@@ -13857,7 +13904,7 @@ mod creative_tab_tests {
         // + the 6 3.1a swords (21 -> 27)
         assert_eq!(creative_tab_items(CreativeTab::Combat).len(), 27);
         assert!(creative_tab_items(CreativeTab::Combat).contains(&DIAMOND_CHESTPLATE));
-        assert_eq!(creative_tab_items(CreativeTab::Brewing).len(), 25);
+        assert_eq!(creative_tab_items(CreativeTab::Brewing).len(), 29);
         // Round K/TNT/beds: the new picker entries' tab homes
         assert!(creative_tab_items(CreativeTab::Tools).contains(&FLINT_AND_STEEL));
         assert!(creative_tab_items(CreativeTab::Redstone).contains(&TNT));
@@ -13935,7 +13982,7 @@ mod creative_tab_tests {
         // the 16 ids are contiguous 515..=530 and past the old registry
         assert_eq!(LEATHER_CAP, 515);
         assert_eq!(DIAMOND_BOOTS, 530);
-        assert_eq!(BLOCK_COUNT, 570);
+        assert_eq!(BLOCK_COUNT, 574);
         for b in LEATHER_CAP..=DIAMOND_BOOTS {
             // every armor item is an inventory-only item block
             assert!(is_item_block(b), "armor {b} must be an item block");
@@ -14522,6 +14569,8 @@ mod state_tests {
                 || is_r13_state(s)
                 // 3.1a: the tool/weapon identity window (893..=922)
                 || is_tool_state(s)
+                // 3.3a: the splash identity window (923..=926)
+                || is_splash_state(s)
                 // Phase 3 Round K/TNT/beds: the dedicated world-block
                 // states (the TNT identity 863, the bed foot/head ×
                 // facing 864..871, the nether portal 872, the
@@ -14927,8 +14976,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 570, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone + the TNT block + 2.1e placeholder + 3.1a tools");
-        assert_eq!(STATE_COUNT, 923, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities + 3.1a tool identities");
+        assert_eq!(BLOCK_COUNT, 574, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone + the TNT block + 2.1e placeholder + 3.1a tools + 3.3a splash");
+        assert_eq!(STATE_COUNT, 927, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities + 3.1a tool identities + 3.3a splash identities");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -14979,8 +15028,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 570); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 923); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 574); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 927); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
     }
 
     /// magma emits light level 3 (VERIFIED — reference wiki /Magma_Block,
@@ -15020,8 +15069,8 @@ mod auditfix_tests {
             );
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 570); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 923); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 574); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 927); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // solidity classes: log/planks solid-opaque (hardness family 2
                                       // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
                                       // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -15079,8 +15128,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 570); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 923); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 574); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 927); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_CLEAVER), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -15209,8 +15258,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 570);
-        assert_eq!(STATE_COUNT, 923); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 574);
+        assert_eq!(STATE_COUNT, 927); // + the Round-13 station identities (861..=862)
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -15375,8 +15424,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 570);
-        assert_eq!(STATE_COUNT, 923); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 574);
+        assert_eq!(STATE_COUNT, 927); // + the Round-13 station identities (861..=862)
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -15510,8 +15559,8 @@ mod v114_tests {
         );
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 570);
-        assert_eq!(STATE_COUNT, 923); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 574);
+        assert_eq!(STATE_COUNT, 927); // + the Round-13 station identities (861..=862)
     }
 }
 
@@ -15611,8 +15660,8 @@ mod v115_tests {
         );
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
-        assert_eq!(BLOCK_COUNT, 570);
-        assert_eq!(STATE_COUNT, 923); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 574);
+        assert_eq!(STATE_COUNT, 927); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 471);
     }
 }
@@ -15777,8 +15826,8 @@ mod v116_tests {
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
-        assert_eq!(BLOCK_COUNT, 570);
-        assert_eq!(STATE_COUNT, 923); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 574);
+        assert_eq!(STATE_COUNT, 927); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 471);
     }
 
@@ -15972,8 +16021,8 @@ mod v116_tests {
         // spawner states)
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
-        assert_eq!(BLOCK_COUNT, 570);
-        assert_eq!(STATE_COUNT, 923); // + the Round-13 station identities (861..=862)
+        assert_eq!(BLOCK_COUNT, 574);
+        assert_eq!(STATE_COUNT, 927); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 471);
     }
 
@@ -16245,8 +16294,8 @@ mod tnt_tests {
         // the picker carries it (the Redstone tab)
         assert!(PICKER_BLOCKS.contains(&TNT), "picker missing TNT");
         assert_eq!(creative_tab(TNT), CreativeTab::Redstone);
-        assert_eq!(BLOCK_COUNT, 570);
-        assert_eq!(STATE_COUNT, 923);
+        assert_eq!(BLOCK_COUNT, 574);
+        assert_eq!(STATE_COUNT, 927);
         // the per-state tiles fold to the same three faces (the HUD/hotbar
         // blit path through state_tiles's fallback)
         assert_eq!(

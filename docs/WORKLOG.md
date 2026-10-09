@@ -6605,3 +6605,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z67 — 3.2: Looting with kill credit (common-drop max +1/level)
 - Kill credit without heuristics: player melee/sweep stamps held Looting onto the mob (loot_level), death copies it into the spill, the common roll uses looted_max. Environmental deaths stay 0. Special-case rolls (skull etc.) keep their disclosed future hooks. Tests: looted_max, spill-credit path via existing patterns. Machine busy — CI verifies.
+
+## 2026-10-09z68 — 3.3a1: splash registry (4 items + states + brew recipes)
+- Ids 570-573 + d-rows + identity states 923-926 (both arms, model exclusion, prop filter) + Brewing tab/picker + census/pins + GPU LUT. Brew: gunpowder x healing/harming I/II; splash carries drinkable magnitudes. Local: vc-blocks 48/48, brewing 17/17, tools 8/8.

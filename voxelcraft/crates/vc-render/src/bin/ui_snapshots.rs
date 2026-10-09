@@ -153,4 +153,36 @@ fn main() {
             false,
         );
     });
+    // search tab (index 9): the text field lives in the title strip
+    snap_at("creative-search", &|ui| {
+        ui.creative_screen(
+            (0.0, 0.0),
+            &atlas,
+            9,
+            0,
+            "",
+            true,
+            &[1, 2, 3],
+            &hotbar,
+            0,
+            &vc_inventory::inventory::ItemStack::EMPTY,
+            false,
+        );
+    });
+    // survival inventory tab (index 11): player preview, armor/offhand
+    snap_at("creative-inventory", &|ui| {
+        ui.creative_screen(
+            (0.0, 0.0),
+            &atlas,
+            11,
+            0,
+            "",
+            false,
+            &[1, 2, 3],
+            &hotbar,
+            0,
+            &vc_inventory::inventory::ItemStack::EMPTY,
+            false,
+        );
+    });
 }

@@ -6551,3 +6551,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z51 — UI snapshots: creative/engine/access/musicsound + CI job
 - Extended ui_snapshots bin (was: title/options/video/shaders/pause/packs; never wired to CI). Creative gets demo blocks + empty hotbar (layout proof). New ci.yml job ui-snaps (CPU-only, debug) uploads ci-ui-snaps artifact → remaining Part-1 screens.
+
+## 2026-10-09z52 — UI snapshots V1: engine/access/musicsound PASS, creative partial
+- Viewed: engine (13 rows, DONE), access (7 rows + sliders, DONE), musicsound (10 sliders + subtitles, DONE — the 10-slider claim visually verified).
+- creative tab 0: panel/grid/hotbar/tabs/trash/title proven; NO preview/armor/search (they live on tabs 9/11 per painter comments) — added creative-search (tab 9) + creative-inventory (tab 11) snapshots. Local check clean.

@@ -6577,3 +6577,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z58 — 2.3b: ticket wiring (player disc + spawn pins + unload consult)
 - sync_player_disc (pure, tested: disc geometry, idempotence, forced-untouched) runs every stream(); unload filter consults is_loaded (player disc < margin so only Forced pins hold); repin_spawn_tickets on reset_world + spawn relocation (25-pin 5x5, no cross-world leaks); "tickets:" boot line + smoke.log grep = CI wiring proof.
 - Local (idle): check clean; 5/5 tickets tests pass.
+
+## 2026-10-09z59 — 2.3b CI green incl. wasm (37931341854 12/12); dispatching live proof
+- linux-game smoke leg asserts the tickets: boot line; full run also guards regressions.

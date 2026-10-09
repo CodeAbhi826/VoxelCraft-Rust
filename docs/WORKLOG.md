@@ -6513,3 +6513,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z41 — Survey died at hoglin #45 (death screen → timeout); god-heal added
 - CI-proven: `game -> death` right after hoglin/front (accumulated contact damage from 45 hostile swaps); survey gates on Game/Pause so it stalled 19 min to timeout 124. Stage-reuse itself worked (45 saves in ~15s).
 - Fix: player.health=20 every update in both E2E capture blocks. Death-screen stall class noted for other legs (out of scope).
+
+## 2026-10-09z42 — Claim 5 RE-INSTATED: 5/5 framed creeper V1 (run 37897165634)
+- V1-viewed all 5 (feet-level camera): full body centered every view, flat platform, HUD hidden, neutral daylight. Withdrawal lifted.
+- Honest notes: views are camera-orbit positions (mob holds yaw 0, doesn't face camera — "front" is camera-relative); face detail unresolved at 720p capture scale; platform edges visible against natural terrain.
+- V1 tally ≈ 42 images. About: PASS (prior). Remaining Part-1: settings/title/inventory/eye/F3-gpu + packet close-out.
+
+## 2026-10-09z43 — God-heal CI green (37899895233 11/11); dispatching full-survey run
+- Expects SURVEY VERDICT OK (66/66) + About + turntable re-confirmation.

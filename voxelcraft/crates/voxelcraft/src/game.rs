@@ -2304,10 +2304,6 @@ pub struct GameApp {
     /// use button is held with a bow; release fires
     bow_charge: f32,
     bow_drawing: bool,
-    /// 3.3c: bow draw state — charge 0..1 (full draw 1 s) while the
-    /// use button is held with a bow; release fires
-    bow_charge: f32,
-    bow_drawing: bool,
     /// persisted spawn point (level.dat SpawnX/Y/Z)
     #[cfg(not(target_arch = "wasm32"))]
     level_spawn: (i32, i32, i32),
@@ -3535,8 +3531,6 @@ impl GameApp {
             ws_selected: None,
             web_shift: false,
             swing_t: 99.0,
-            bow_charge: 0.0,
-            bow_drawing: false,
             bow_charge: 0.0,
             bow_drawing: false,
             #[cfg(not(target_arch = "wasm32"))]

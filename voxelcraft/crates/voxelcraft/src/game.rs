@@ -15608,9 +15608,14 @@ impl GameApp {
             m.yaw = 0.0;
         }
         let a = (angle_deg as f32).to_radians();
+        // V1-proven 2026-10-09: pos.y is the FEET — the renderer adds
+        // EYE_HEIGHT (1.62) on top. The old home[1]+1.6 put the eye at
+        // +3.2 looking horizontal: all 5 views showed head-only/empty
+        // with the body 37° below frame. Feet-level pos lands the eye
+        // at mob head height, full body in frame at pitch 0.
         let pos = glam::Vec3::new(
             home[0] + a.cos() * dist,
-            home[1] + 1.6,
+            home[1],
             home[2] + a.sin() * dist,
         );
         let to_c = (glam::Vec3::new(home[0], home[1] + 1.0, home[2]) - pos).normalize();

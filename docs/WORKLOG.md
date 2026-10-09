@@ -6499,3 +6499,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z37 — Dumper-guard fix CI green (37893374254 11/11); dispatching V1 batch
 - linux-game carries all three Part-1 fixes: stage height (framing), dumper guard (About delivery), survey exit-hold. Expect: e2e_about.png real, 5 framed creeper views, 66 survey fronts.
+
+## 2026-10-09z38 — Turntable framing root cause: double eye height (V1-PROVEN)
+- V1-viewed new set (run 37893880395): platform now flat on surface (stage fix works) but mob still head-only/empty. Geometry: view() set player.pos.y=home+1.6 AND renderer adds EYE_HEIGHT 1.62 → eye at +3.22, body 37° below frame at pitch 0. Matches all 5 images exactly (side/back/threequarter: head bottom-center; front/closeup: empty).
+- Fix: pos.y=home[1] (feet) → eye at head height. Survey inherits via shared view fn.

@@ -14,7 +14,7 @@ flagged [ESTIMATED]; measured numbers cite their artifact.
   scene GPU 8.9 ms vs CPU frame → CPU-bound on the runner.
 - Series note: gen 11.44 → 10.96 → 8.43 ms across runs (1.4 landed
   between); runner variance is ±20%, so no single delta is claimed —
-  the direction is consistent, the proof waits for 1.10/N4000 numbers.
+  the direction is consistent, the proof waits for reference-hardware numbers.
 
 ## Classification (code refs are the current tree)
 | System | Cost | Class | Notes |

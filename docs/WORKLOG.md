@@ -6173,7 +6173,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - NOT done: pushed git history still names the hardware in old commit messages. Rewriting history needs the owner's explicit confirmation of that exact operation (R1) — asked, awaiting.
 
 ## 2026-10-08l — history rewrite done (verified) + workspace cleanup
-- Rewrite (explicitly confirmed): filter-repo over the branch with content+message replacements and the N4000→REFHW filename rule. Verified: branch messages zero hits, file contents zero hits across history (one bun.lock base64 coincidence, not a spec), filenames zero hits, 444 commits. Pushed with --force. Safety bundle kept uncommitted locally until post-push CI is green. Untouched by design: parked/round-b, stash, main/legacy, remote tags (none exist).
+- Rewrite (explicitly confirmed): filter-repo over the branch with content+message replacements and the hardware-model→REFHW filename rule. Verified: branch messages zero hits, file contents zero hits across history (one bun.lock base64 coincidence, not a spec), filenames zero hits, 444 commits. Pushed with --force. Safety bundle kept uncommitted locally until post-push CI is green. Untouched by design: parked/round-b, stash, main/legacy, remote tags (none exist).
 - Method scar (honest): first attempt used only --replace-text (contents; messages need the separate --replace-message flag) plus a path-as-callback that did nothing — churned hashes with zero benefit. Proven on a bundle clone, then redone correctly.
 - Cleanup (owner order): removed regenerable/ignored junk — 10 GB target/, 6 root session PNGs, the superseded PLAN-v3.1 placeholder, local session screenshots/worlds/ingame-test, the 69 MB trial clone. Kept: node_modules (wrapper dependency), the 36 MB safety bundle + recent CI artifacts, stash/parked branch. Local test-run worlds only; no user content touched.
 - Repo is PRIVATE (verified via API). Pushed history: no spec terms.
@@ -6196,7 +6196,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-08q — slice 1.10 DONE (re-measure matrix + verdict + CI gate)
 - Gate: structural python check on streaming-bench.json (fields, frames≥100, camera; REPORTS avg/p99/worst — no lavapipe timing thresholds by design). First live pass: `PERF GATE OK — frames=148 avg=78.0 median=78.3 p99=95.9 worst=99.4ms` (run 37794453631; job red only on uploads).
-- Matrix (streaming/lavapipe): 268.4 (pre-budget) → 52–53 (1.3) → 83.2 (1.5) → 69.2 (1.6) → 78.0 (gate run). Orbit/N4000 static: 127.5 ms pre-Part-1 (owner-era). Scene GPU: 8.9/11.7/30.5 ms across runs (lavapipe variance is 3x — noisy).
+- Matrix (streaming/lavapipe): 268.4 (pre-budget) → 52–53 (1.3) → 83.2 (1.5) → 69.2 (1.6) → 78.0 (gate run). Reference-hardware static scene: 127.5 ms pre-Part-1 (owner-era). Scene GPU: 8.9/11.7/30.5 ms across runs (lavapipe variance is 3x — noisy).
 - VERDICT: CPU-bound on every measured tier (gen + lighting + mesh-apply dominate; scene GPU ≪ CPU frame in all samples). Owner hardware gives the final word; the gate + gpu_ms artifact carry every future run's numbers.
 
 ## 2026-10-08r — slice 1.11 leg green (V1 viewing pending quota)

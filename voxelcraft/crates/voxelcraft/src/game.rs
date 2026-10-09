@@ -16730,12 +16730,6 @@ impl GameApp {
             if self.screen == Screen::About {
                 self.smoke_about_settle += 1;
                 if let Some(png) = self.renderer.take_screenshot_png() {
-                    // TEMP diagnostic 2026-10-09 (take()=None on menus —
-                    // remove once the cause is found)
-                    vc_render::render::report_boot_log(&format!(
-                        "e2e dbg: about take Some({})",
-                        png.len()
-                    ));
                     let dir = std::path::Path::new("screenshots");
                     let _ = std::fs::create_dir_all(dir);
                     let _ = std::fs::write(dir.join("e2e_about.png"), &png);
@@ -16753,13 +16747,6 @@ impl GameApp {
                     }
                 } else {
                     self.renderer.screenshot_request = true;
-                    // TEMP diagnostic (paired with the take-Some line)
-                    if self.smoke_about_settle.is_multiple_of(30) {
-                        vc_render::render::report_boot_log(&format!(
-                            "e2e dbg: about take None (settle {})",
-                            self.smoke_about_settle
-                        ));
-                    }
                     if self.smoke_about_settle > 200 {
                         vc_render::render::report_boot_log(
                             "e2e: about capture TIMEOUT — disarming",
@@ -26215,6 +26202,10 @@ impl GameApp {
             // 1.11: same for the E2E_TURNTABLE captures (stages 1..5)
             && self.e2e_phases_stage == 0
             && self.e2e_turntable_stage == 0
+            // L5: same for the About capture — while armed the PNG
+            // belongs to the leg (CI-proven: the dumper ate 42 readbacks
+            // in one About window, starving take() forever)
+            && !self.smoke_about_capture
         {
             self.take_screenshot();
         }

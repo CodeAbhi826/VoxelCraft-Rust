@@ -5653,8 +5653,6 @@ impl Renderer {
                 px.push(255);
             }
         }
-        // TEMP diagnostic 2026-10-09 (About take()=None — remove with it)
-        report_boot_log(&format!("e2e dbg: capture stored {} bytes", px.len()));
         self.screenshot_png = Some(px);
     }
 

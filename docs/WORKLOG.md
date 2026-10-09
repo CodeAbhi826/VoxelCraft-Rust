@@ -6492,3 +6492,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z35 — Clippy lint green (37892214529 11/11); dispatching stage-fix + telemetry build
 - linux-game will show: (a) whether the column-height stage frames the creeper (claim 5), (b) take Some/None + capture-stored lines (About delivery diagnosis).
+
+## 2026-10-09z36 — About root cause: F2 dumper ate 42 readbacks (PROVEN in CI log)
+- Telemetry verdict: captures stored fine (~30/s, 3686400B); take()=None throughout; 42 `screenshot: screenshots/<stamp>.png` lines in the About window. The draw-phase F2 auto-dumper (game.rs:~26205) consumed every buffer — its guard covered fkeys/iconic/phases/turntable but not the About arm.
+- Fix: `&& !self.smoke_about_capture` in the dumper guard. TEMP telemetry removed in the same slice. All prior theories (menu readback broken, timing, instances) recorded as wrong.

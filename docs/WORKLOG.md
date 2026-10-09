@@ -6397,3 +6397,13 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z11 — 2.4b region .bak backups (Tested locally, CI queued behind billing)
 - anvil.rs rewrite_region: previous .mca rotates to .mca.bak before atomic replace (level.dat _old pattern for regions; R6 automatic backups). First write: no backup. Test pins both + live content.
 - Local (idle): fmt clean; 1/1 pass; clippy lib+tests clean.
+
+## 2026-10-09z12 — PUBLIC repo: CI compute restored (Verified)
+- Owner call executed: audited (no secrets/tokens; binaries clean of model IDs; 3 hardware-model strings scrubbed), then flipped visibility private→public (gh repo edit + consequences flag).
+- Billing docs verified the premise: public repos get free standard-runner minutes; storage frees via deletion+recalc. Rerun 37861089919: jobs STARTED and going green (bench full-success = uploads working again).
+- HARD STOP LIFTED for compute. Queued slices (2.2b/2.3a/2.4a/2.4b) validate now; fresh-binary linux-game dispatch unblocked → Part 1 review completion next.
+- Residual notes (morning): default branch is stale `main` (public landing shows old code until branch decision executes); owner gmail in commit history (leave or explicit rewrite order); generic vendor strings in probe tests kept as fixtures by design.
+
+## 2026-10-09z13 — QUEUE VALIDATED + 2.2c (Tested)
+- Rerun 37869400104: 10/10 SUCCESS (bench + uploads too). BACKLOG CLEARED: 2.2b + 2.3a + 2.4a + 2.4b + scrub ALL code-green in CI. Quota confirmed clear (uploads landing).
+- 2.2c: codec-fidelity oracle — generated chunks (0,0) + (-3,5) write→read IDENTICAL (states, biomes, zero sidecars). Local: 1/1 pass. The mapping both ways is faithful on real generator output.

@@ -1,13 +1,8 @@
 # BLOCKERS.md — soft blockers (need owner input/checks) and hard stops
 
-HARD STOP: GitHub Actions billing block (2026-10-09) — every CI job
-fails unstarted in 2–5s: "recent account payments have failed or your
-spending limit needs to be increased". No CI validation possible until
-the owner clears billing. Letter of A4(f) is recorded here; work
-continues ONLY on CI-independent tracks (local checks, design,
-foreground runs with the existing binary) per the sleep-shift order —
-no slice is marked done without CI green, and commits queue for
-validation when runners return.
+HARD STOP: GitHub Actions billing block (2026-10-09) — RESOLVED via
+public visibility (owner-ordered): runners accepted work at once,
+bench uploads succeeding. Compute gate green; queued slices validating.
 
 (A3: each entry carries the exact ask + the default the work continues under.
 HARD STOP OPEN (see top): CI billing block. The STOP file is absent.)

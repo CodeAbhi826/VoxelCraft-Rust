@@ -304,4 +304,24 @@ mod tests {
         // empty imported: zeros, no division
         assert_eq!(structure_match_rate(&[], &pred, 0), (0, 0, 0));
     }
+
+    /// 2.2c: codec-fidelity oracle — a generated chunk written with
+    /// chunk_to_nbt and read back must be IDENTICAL (states, biomes,
+    /// no sidecars). This exercises the full mapping both ways on
+    /// real generator output; any gap fails loudly with its locator.
+    #[test]
+    fn generated_chunk_roundtrips_identical() {
+        let g = TerrainGen::new(0xC0FFEE);
+        for (cx, cz) in [(0, 0), (-3, 5)] {
+            let (orig, _) = g.generate_chunk(cx, cz, Vec::new());
+            let bytes = crate::save::chunk_to_nbt(cx, cz, &orig, 99, None);
+            let (back, _) = crate::save::chunk_from_nbt(&bytes).unwrap();
+            let d = diff_chunks(&orig, &back);
+            assert_eq!(d.first_mismatch, None, "chunk ({cx},{cz}) differs");
+            assert_eq!(d.block_rate(), 1.0);
+            assert_eq!(d.biome_rate(), 1.0);
+            assert!(back.unknown.is_empty());
+            assert!(back.unknown_tiles.is_empty());
+        }
+    }
 }

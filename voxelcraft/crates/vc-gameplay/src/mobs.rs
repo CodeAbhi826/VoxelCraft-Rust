@@ -7634,19 +7634,19 @@ mod tests {
         let z = sys.spawn_at(Zombie, 0, 65, 0).unwrap();
         let c = sys.spawn_at(Cow, 1, 65, 0).unwrap();
         sys.damage(z, 10.0);
-        sys.damage(c, 10.0);
-        // healing 4: cow recovers, zombie takes damage instead
+        sys.damage(c, 4.0);
+        // healing 4: cow recovers to its 10 max, zombie takes damage instead
         assert_eq!(sys.apply_splash([0.5, 65.0, 0.0], 4.0), 2);
-        assert!((sys.by_id(c).unwrap().health - 14.0).abs() < 1e-5);
+        assert!((sys.by_id(c).unwrap().health - 10.0).abs() < 1e-5);
         assert!((sys.by_id(z).unwrap().health - 6.0).abs() < 1e-5);
         // harming 6: cow takes it, zombie is healed by it (capped at max)
         assert_eq!(sys.apply_splash([0.5, 65.0, 0.0], -6.0), 2);
-        assert!((sys.by_id(c).unwrap().health - 8.0).abs() < 1e-5);
+        assert!((sys.by_id(c).unwrap().health - 4.0).abs() < 1e-5);
         assert!((sys.by_id(z).unwrap().health - 12.0).abs() < 1e-5);
         // out of range: untouched (far cow at 200,65,200)
         let far = sys.spawn_at(Cow, 200, 65, 200).unwrap();
         assert_eq!(sys.apply_splash([0.5, 65.0, 0.0], 4.0), 2);
-        assert!((sys.by_id(far).unwrap().health - 20.0).abs() < 1e-5);
+        assert!((sys.by_id(far).unwrap().health - 10.0).abs() < 1e-5);
     }
 
     #[test]

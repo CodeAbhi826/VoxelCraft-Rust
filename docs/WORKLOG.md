@@ -6387,3 +6387,9 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z9 — 2.3a tick order + tickets (Tested locally, CI queued behind billing)
 - sim.rs step(): authoritative fixed-order doc table (1,2,3,3a-c,4,4b-d,5,6,6b,7,8 — matches body comments). New vc-world::tickets: TicketTable{Player,Forced} (acquire/release saturating, is_loaded/is_forced; consulted in 2.3b — arch lands unwired, no behavior change).
 - Local (idle): fmt clean; 2/2 ticket tests pass; lib clippy clean (own is_some lint fixed; pre-existing --tests-only lints elsewhere left alone).
+
+## 2026-10-09z10 — 2.4a writer re-emit (Tested locally, CI queued behind billing)
+- chunk_to_nbt: merged palette (State + Verbatim deduped by value; sidecar-less checkers fall back to ours-named entries) + TileEntities/Entities/Structures re-emitted when sidecars non-empty (tags omitted when empty; loader already tolerant).
+- Round-trip test: shared + solo unknowns + tile + structures → identical states/sidecars/names. Local (idle): fmt clean; 1/1 pass; full anvil suite green; clippy clean.
+- Reference-hardware streaming (Oct-8 binary, real iGPU, no gpu-timing): 148 frames avg 158.6 / median 123.1 / p99 364.6 / worst 367.0 ms; stream 148.8 + results 148.1 + draw 7.9; 146 chunks / 23 meshed; MDI path. lavapipe CI avg was 52–83 (more workers) — CPU-bound verdict holds on both (draw « stream). gpu_ms null (flag off).
+- NEW BUG (queued slice): --gpu-timing panics on Intel (`ts-stage` buffer still mapped, wgpu 22) — lavapipe never hit it. Queued as timestamp-race fix; gpu_ms stays optional until then.

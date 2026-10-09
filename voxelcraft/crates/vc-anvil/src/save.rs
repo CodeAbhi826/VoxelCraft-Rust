@@ -409,14 +409,39 @@ pub fn chunk_to_nbt(
         let flat = sec.states_flat();
 
         // palette in first-appearance order (deterministic over the YZX scan)
-        let mut palette: Vec<u16> = Vec::new(); // palette index → our state id
+        // 2.4a: MERGED palette — our states plus verbatim unknown records.
+        // Placeholder cells consult the sidecar FIRST (keyed (sy, i)):
+        // hit → the verbatim (name, props), deduped by value; miss
+        // (creative-placed checker, no sidecar) → the state's own
+        // vanilla mapping (an honest ours-named entry, never silent air).
+        #[derive(PartialEq)]
+        enum PalEntry {
+            State(u16),
+            Verbatim(String, Vec<(String, String)>),
+        }
+        let mut side_map: std::collections::HashMap<u16, (String, Vec<(String, String)>)> =
+            std::collections::HashMap::new();
+        for u in chunk.unknown.iter().filter(|u| u.section == sy as u8) {
+            side_map
+                .entry(u.index)
+                .or_insert_with(|| (u.name.clone(), u.props.clone()));
+        }
+        let mut palette: Vec<PalEntry> = Vec::new(); // palette index → entry
         let mut indices = [0u16; SECTION_LEN];
         for (i, &s) in flat.iter().enumerate() {
-            match palette.iter().position(|&p| p == s) {
+            let entry = if s == PLACEHOLDER_STATE {
+                match side_map.get(&(i as u16)) {
+                    Some((n, p)) => PalEntry::Verbatim(n.clone(), p.clone()),
+                    None => PalEntry::State(s),
+                }
+            } else {
+                PalEntry::State(s)
+            };
+            match palette.iter().position(|p| p == &entry) {
                 Some(pi) => indices[i] = pi as u16,
                 None => {
                     indices[i] = palette.len() as u16;
-                    palette.push(s);
+                    palette.push(entry);
                 }
             }
         }
@@ -432,10 +457,14 @@ pub fn chunk_to_nbt(
         }
 
         // palette compounds: {Name, Properties?} — properties omitted for
-        // property-less blocks, exactly like vanilla
+        // property-less blocks, exactly like vanilla; verbatim entries
+        // write their preserved name+props untouched
         let mut palette_nbt: Vec<Nbt> = Vec::with_capacity(palette.len());
-        for &s in &palette {
-            let (name, props) = state_to_vanilla(s);
+        for e in &palette {
+            let (name, props) = match e {
+                PalEntry::State(s) => state_to_vanilla(*s),
+                PalEntry::Verbatim(n, p) => (n.clone(), p.clone()),
+            };
             let mut entry = Nbt::compound();
             entry.set("Name", Nbt::String(name));
             if !props.is_empty() {
@@ -512,6 +541,19 @@ pub fn chunk_to_nbt(
         Nbt::LongArray(pack_heightmap(&chunk.height)),
     );
     level.set("Heightmaps", heightmaps);
+
+    // 2.4a: verbatim foreign records ride back out untouched (R6) —
+    // tags omitted when their sidecar is empty (the loader already
+    // treats absent as empty, §46)
+    if !chunk.unknown_tiles.is_empty() {
+        level.set("TileEntities", Nbt::List(chunk.unknown_tiles.clone()));
+    }
+    if !chunk.unknown_entities.is_empty() {
+        level.set("Entities", Nbt::List(chunk.unknown_entities.clone()));
+    }
+    if let Some(structs) = chunk.unknown_structures.first() {
+        level.set("Structures", structs.clone());
+    }
 
     let mut root = Nbt::compound();
     root.set("DataVersion", Nbt::Int(DATA_VERSION));
@@ -1885,6 +1927,83 @@ mod tests {
         assert!(bare.unknown_entities.is_empty());
         assert!(bare.unknown_structures.is_empty());
         assert!(bare.unknown.is_empty());
+    }
+
+    /// 2.4a: the writer re-emits sidecars verbatim (R6) — placeholder
+    /// cells with records round-trip name+props+position; records ride
+    /// their tags; a sidecar-less checker falls back to an ours-named
+    /// entry (never silent air).
+    #[test]
+    fn writer_reemits_sidecars_verbatim() {
+        use vc_chunk::chunk::UnknownCell;
+        let mut c = Chunk::empty();
+        // two cells share one unknown record, one has its own
+        c.set(2, 5, 3, PLACEHOLDER);
+        c.set(4, 5, 3, PLACEHOLDER);
+        c.set(6, 40, 7, PLACEHOLDER);
+        let shared = (
+            "future:block".to_string(),
+            vec![("color".to_string(), "red".to_string())],
+        );
+        let solo = ("future:gear".to_string(), Vec::new());
+        c.unknown.push(UnknownCell {
+            section: 0,
+            index: idx(2, 5, 3) as u16,
+            name: shared.0.clone(),
+            props: shared.1.clone(),
+        });
+        c.unknown.push(UnknownCell {
+            section: 0,
+            index: idx(4, 5, 3) as u16,
+            name: shared.0.clone(),
+            props: shared.1.clone(),
+        });
+        c.unknown.push(UnknownCell {
+            section: 2,
+            index: idx(6, 8, 7) as u16,
+            name: solo.0.clone(),
+            props: solo.1.clone(),
+        });
+        let mut tile = Nbt::compound();
+        tile.set("id", Nbt::String("future:chest".into()));
+        c.unknown_tiles.push(tile.clone());
+        let mut structs = Nbt::compound();
+        let mut starts = Nbt::compound();
+        let mut v = Nbt::compound();
+        v.set("ChunkX", Nbt::Int(9));
+        v.set("ChunkZ", Nbt::Int(9));
+        starts.set("future:village", v);
+        structs.set("Starts", starts);
+        c.unknown_structures.push(structs.clone());
+
+        let bytes = chunk_to_nbt(3, -2, &c, 77, None);
+        let (back, _) = chunk_from_nbt(&bytes).unwrap();
+        // states round-trip as placeholders at the same cells
+        assert_eq!(back.get_state(2, 5, 3), PLACEHOLDER_STATE);
+        assert_eq!(back.get_state(4, 5, 3), PLACEHOLDER_STATE);
+        assert_eq!(back.get_state(6, 40, 7), PLACEHOLDER_STATE);
+        // verbatim records round-trip (positions, names, props)
+        assert_eq!(back.unknown.len(), 3);
+        assert!(back.unknown.contains(&UnknownCell {
+            section: 0,
+            index: idx(2, 5, 3) as u16,
+            name: shared.0.clone(),
+            props: shared.1.clone(),
+        }));
+        assert_eq!(back.unknown_tiles, vec![tile]);
+        assert_eq!(back.unknown_structures, vec![structs]);
+        // and the emitted palette names are the verbatim ones
+        let (_, root) = nbt::read_root(&bytes).unwrap();
+        let level = root.get("Level").unwrap();
+        let secs = level.get("Sections").unwrap().as_list().unwrap();
+        let mut names: Vec<String> = Vec::new();
+        for sec in secs {
+            for e in sec.get("Palette").unwrap().as_list().unwrap() {
+                names.push(e.get("Name").unwrap().as_str().unwrap().to_string());
+            }
+        }
+        assert!(names.contains(&"future:block".to_string()));
+        assert!(names.contains(&"future:gear".to_string()));
     }
 
     /// 2.1d: deterministic garbage across every importer entry point —

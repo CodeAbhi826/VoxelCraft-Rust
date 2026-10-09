@@ -16712,8 +16712,9 @@ impl GameApp {
         // dump attempt proved black: px holds alpha masks with RGB=0,
         // final colors are GPU-shaded, so only the swapchain image is
         // real). While armed and on About, request every update until
-        // take() lands (up to ~600 frames); the DONE2 script step
-        // defers while armed so slow frames can't close the window.
+        // take() lands (settle is u8: ~200-frame timeout); the DONE2
+        // script step defers while armed so slow frames can't close
+        // the window.
         if self.smoke_about_capture {
             if self.screen == Screen::About {
                 self.smoke_about_settle += 1;
@@ -16735,7 +16736,7 @@ impl GameApp {
                     }
                 } else {
                     self.renderer.screenshot_request = true;
-                    if self.smoke_about_settle > 600 {
+                    if self.smoke_about_settle > 200 {
                         vc_render::render::report_boot_log(
                             "e2e: about capture TIMEOUT — disarming",
                         );

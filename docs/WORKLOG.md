@@ -6478,3 +6478,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z31 — About capture back on GPU readback + DONE2 deferral (CI 37888734416 green on survey fix)
 - V1 (viewed /tmp/opencode/about-art/e2e_about.png): 2560x1440 all-black; stats RGB=0, alpha-only glyph masks. Canvas dumps structurally blind on menus — correction of the z27 "menus never complete readback" theory (log shows 1.0s armed→MISSED timing race).
 - New slice: readback requested every update while armed (600-frame timeout, >1000B gate, same grep strings); script DONE2 defers +0.25s while armed (settle<40 cap, MISSED fallback preserved).
+
+## 2026-10-09z32 — About slice compile break: u8 settle vs 600 (CI 37889174437 red)
+- `smoke_about_settle` is u8; `> 600` = deny(overflowing_literals) hard error (broke test/clippy/check/bench uniformly). Fix: timeout 200 (comment corrected too). fmt clean; machine busy (load ~5) so CI verifies compilation.

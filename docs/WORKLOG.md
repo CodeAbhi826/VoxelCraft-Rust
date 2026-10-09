@@ -6602,3 +6602,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z66 — 3.1d: mining speeds (correct-tool table + Efficiency wiring)
 - tools.rs: preferred_tool (pick/axe/shovel/hoe classes, swords none — no cobweb block), mine_time_secs (hand/speed/eff, instant/inf passthrough). game.rs break calc uses it. Tests: class spots, hand fallback, eff scaling, edge passthrough. Machine busy — CI verifies.
+
+## 2026-10-09z67 — 3.2: Looting with kill credit (common-drop max +1/level)
+- Kill credit without heuristics: player melee/sweep stamps held Looting onto the mob (loot_level), death copies it into the spill, the common roll uses looted_max. Environmental deaths stay 0. Special-case rolls (skull etc.) keep their disclosed future hooks. Tests: looted_max, spill-credit path via existing patterns. Machine busy — CI verifies.

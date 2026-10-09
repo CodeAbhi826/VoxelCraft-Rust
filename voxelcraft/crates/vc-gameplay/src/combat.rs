@@ -230,6 +230,12 @@ pub fn sweep_damage(base_weapon_damage: f32, sweeping_level: u32) -> f32 {
     1.0 + base_weapon_damage * (sweeping_level as f32 / (sweeping_level as f32 + 1.0))
 }
 
+/// Looting common-drop cap: the table max plus one per level
+/// (saturating — the vanilla "+1 per level" common-drop rule).
+pub fn looted_max(max_n: u8, looting: u8) -> u8 {
+    max_n.saturating_add(looting)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -261,6 +267,13 @@ mod tests {
         assert!((sweep_damage(6.0, 0) - 1.0).abs() < 1e-6);
         assert!((sweep_damage(6.0, 1) - 4.0).abs() < 1e-6);
         assert!((sweep_damage(6.0, 3) - 5.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn looted_max_adds_one_per_level() {
+        assert_eq!(looted_max(2, 0), 2);
+        assert_eq!(looted_max(2, 3), 5);
+        assert_eq!(looted_max(255, 3), 255);
     }
 
     #[test]

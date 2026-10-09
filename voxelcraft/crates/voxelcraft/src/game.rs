@@ -7641,6 +7641,18 @@ impl GameApp {
     /// 0.2 + 0.8·p², crits ×1.5 (falling + ≥84.8% + not sprinting),
     /// armor reduction. Returns true when a mob was hit (block breaking
     /// then yields this click).
+    /// 3.2: stamp killer-held Looting onto a player-damaged mob (death
+    /// copies it into the spill for the common-drop roll; environmental
+    /// deaths keep 0 and get no bonus)
+    fn credit_loot(&mut self, id: u32) {
+        let held = self.player.held();
+        let loot_id = vc_gameplay::enchanting::enchant_by_id("looting").unwrap_or(255);
+        let lvl = vc_gameplay::tools::ench_level(held.ench, held.ench2, loot_id);
+        if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == id) {
+            m.loot_level = lvl.min(255) as u8;
+        }
+    }
+
     fn try_attack_mob(&mut self) -> bool {
         if self.screen != Screen::Game || self.picker_open || self.container.is_some() {
             return false;
@@ -7871,6 +7883,9 @@ impl GameApp {
         outcome.damage = (outcome.damage + weak).max(0.0);
 
         let applied = self.sim.mobs.damage(id, outcome.damage);
+        // 3.2: killer-held Looting credit (contact counts, even at 0 —
+        // the spill carries it only if THIS kill follows player contact)
+        self.credit_loot(id);
         // 3.1c: sweep arc + held-item wear on a connected hit (boss and
         // special entities excluded from the arc — disclosed)
         if applied > 0.0 {
@@ -7897,6 +7912,7 @@ impl GameApp {
                 for (oid, armor) in others {
                     let a = combat::armor_reduce(sdmg, armor, 0.0);
                     self.sim.mobs.damage(oid, a);
+                    self.credit_loot(oid);
                 }
             }
             if !self.mode.picks_creative() {
@@ -9141,7 +9157,11 @@ impl GameApp {
                 );
             }
             for (block, max_n) in drops {
-                let n = 1 + (self.audio_rng.next_f32() * *max_n as f32) as u8;
+                // 3.2: Looting +1 max per level on player-credited kills
+                // (spill.looting is 0 for environmental deaths); the
+                // special-case rolls below keep their own chances
+                let cap = vc_gameplay::combat::looted_max(*max_n, spill.looting);
+                let n = 1 + (self.audio_rng.next_f32() * cap as f32) as u8;
                 for _ in 0..n {
                     self.sim.items.drop_block(
                         pos[0].floor() as i32,

@@ -2147,6 +2147,9 @@ pub struct DeathSpill {
     pub chest: bool,
     /// the non-empty storage stacks, in slot order
     pub slots: Vec<vc_inventory::inventory::ItemStack>,
+    /// 3.2: killer-held Looting level (copied from the mob at death;
+    /// 0 = environmental death, no Looting bonus)
+    pub looting: u8,
 }
 
 impl MountStorage {
@@ -2202,6 +2205,9 @@ pub struct Mob {
     pub on_ground: bool,
     /// hurt flash (ticks remaining) — red tint during rendering
     pub hurt_t: i32,
+    /// 3.2: killer-held Looting level at the last player hit (death
+    /// copies it into the spill for the drop roll; 0 = not player-credited)
+    pub loot_level: u8,
     /// melee/ranged attack cooldown (ticks)
     pub attack_cd: i32,
     /// creeper fuse: <0 idle, 0..=30 counting, i32::MAX consumed
@@ -2567,6 +2573,7 @@ impl MobSystem {
             health,
             on_ground: false,
             hurt_t: 0,
+            loot_level: 0,
             attack_cd: 0,
             fuse: -1,
             provoked: false,
@@ -2938,8 +2945,12 @@ impl MobSystem {
                     Some(st) => DeathSpill {
                         chest: st.chest,
                         slots: st.slots.into_iter().filter(|s| !s.is_empty()).collect(),
+                        looting: m.loot_level,
                     },
-                    None => DeathSpill::default(),
+                    None => DeathSpill {
+                        looting: m.loot_level,
+                        ..Default::default()
+                    },
                 };
                 self.deaths.push((m.kind, m.pos, variant, spill));
                 self.killed_total += 1;
@@ -7771,6 +7782,7 @@ mod tests {
                 health: 20.0,
                 on_ground: false,
                 hurt_t: 0,
+                loot_level: 0,
                 attack_cd: 0,
                 fuse: -1,
                 provoked: false,
@@ -7812,6 +7824,7 @@ mod tests {
                 health: 20.0,
                 on_ground: false,
                 hurt_t: 0,
+                loot_level: 0,
                 attack_cd: 0,
                 fuse: -1,
                 provoked: false,
@@ -7860,6 +7873,7 @@ mod tests {
             health: 20.0,
             on_ground: true,
             hurt_t: 0,
+            loot_level: 0,
             attack_cd: 0,
             fuse: -1,
             provoked: false,
@@ -7922,6 +7936,7 @@ mod tests {
             health: 20.0,
             on_ground: false,
             hurt_t: 0,
+            loot_level: 0,
             attack_cd: 0,
             fuse: -1,
             provoked: false,
@@ -8063,6 +8078,7 @@ mod tests {
             health: 4.0,
             on_ground: true,
             hurt_t: 0,
+            loot_level: 0,
             attack_cd: 0,
             fuse: -1,
             provoked: false,

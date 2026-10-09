@@ -1,12 +1,12 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 REVIEW CLOSE-OUT first** (owner directive 2026-10-09: finish Part 1 fully before any Part 2 slice — 2.2c/2.3b deferred).
+- Part: **1 CLOSED** (packet z56, 2026-10-09) — **2 WORLDS FIRST open**: 2.2c validation next, then 2.3b wiring.
 - Owner directive 2026-10-09: when the plan is over, ship a downloadable build for testing on the owner's PC (local verification pass after CI).
 - HEAD: survey V1 done (48 framed / 17 unknowns logged); ui-snaps slice staged (uncommitted).
 - Repo is PUBLIC since 2026-10-09 (owner-ordered). Default branch still stale `main`.
 - Last known CI: run 37907738410 (linux-game) — FULL SUCCESS incl. SURVEY VERDICT OK.
-- V1 tally: ~110 cells/images. Claim 5 RE-INSTATED (z42).
+- V1 tally: ~110 cells/images. Claim 5 RE-INSTATED (z42). Part-1 packet written (z56).
 
 ## TODO — now (in order)
 - [x] About capture: dumper-guard fix CI-green; real About PNG V1-PASSED (2560×1440, title + 8 lines + DONE)

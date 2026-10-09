@@ -6566,3 +6566,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z55 — F3 gpu-split: phases leg gets --gpu-timing (1 word)
 - f3_cpu_gpu_line shows GPU n/a without timestamp queries; lavapipe supports them (streaming bench precedent; Intel panic is local-only). Next linux-game's phases F3 PNG carries the populated split → verdict.
 - Eye close-up: no dedicated leg; dozens of first-person captures already prove the eye path — packet states coverage honestly, no macro shot.
+
+## 2026-10-09z56 — PART 1 IN-GAME REVIEW CLOSED (packet in CHECKPOINTS.md)
+- F3 split V1: CPU 49.8 / GPU 26.3 live + arm visible. Last capture verdict done.
+- Packet: ≤400-word body + 10-claim self-review (1 re-instated, 8 verified, 1 rule). Part 2 (2.2c/2.3b) unlocked per owner directive.

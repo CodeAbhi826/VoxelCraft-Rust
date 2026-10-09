@@ -45,3 +45,41 @@ streaming-bench.json (camera/world/gpu_ms keys).
     only trap tests/internals/NBT gets).
 No failures. Two honest corrections folded in above: lavapipe GPU variance
 (~3x) stated, gen −4% stated inside noise.
+
+## IN-GAME REVIEW — CLOSE-OUT PACKET (2026-10-09)
+
+Scope: pixel-verified visual review of the running game (menus, mobs,
+HUD, F3), closing the withdrawn-claim era. All verdicts below are V1
+(viewed pixels, ~130 cells/images); CI VERDICT OKs alone were proven
+hollow twice (empty turntable set, black About dump).
+Landed E2E (all CI-green): yaw-fixed turntable orbit + per-view
+telemetry; column-height stage; feet-level camera (eye double-count
+fixed); survey exit-hold + stage-reuse + god-heal + Squid skip (65
+views); About readback + DONE2 deferral + F2-dumper guard; phases
+--gpu-timing; ui-snaps job (14 layouts). Head: linux-game full green
+37925743272; CI green throughout.
+V1 verdicts: turntable 5/5 framed creeper (HUD hidden); About real
+(title + 8 lines + DONE); survey 48/65 framed (ghast/spider/zombie
+families/livestock all render); F3 two-column with live CPU 49.8 /
+GPU 26.3 split; settings layouts all pass (incl. 10-slider music);
+creative picker + search + survival preview/armor/offhand all render.
+Known unknowns (Part-2 mob work, NOT re-chased): 17 kinds unframed
+(fox/guardian/hoglin/magma/ocelot/phantom/evoker/pillager/ravager/
+shulker/slime/vex/vindicator/witch/brute/rabbit/silverfish — spawned,
+pinned, captured, but absent; art painted, sizes sane, no theory
+survived); horse rig scatters parts; parrot renders doubled.
+Eye close-up: no macro leg; first-person path proven in dozens of
+captures (crosshair/arm/HUD incl. this F3 shot). Part 2 worlds-first
+slices (2.2c/2.3b) UNLOCKED by this packet per owner directive.
+
+### Adversarial self-review — 10 claims (2026-10-09)
+1. Turntable frames all 5 views — RE-INSTATED (was withdrawn; V1 set).
+2. About captured with real pixels — VERIFIED (1.66 MB PNG viewed).
+3. Survey 65/65 green, 48 framed — VERIFIED + 17 disclosed unknowns.
+4. F3 live CPU/GPU split — VERIFIED (49.8/26.3 viewed).
+5. Settings layouts pass — VERIFIED (ui-snaps viewed).
+6. Creative + survival inventory render — VERIFIED (tabs/search/preview).
+7. Headless readback healthy — VERIFIED (in-game + menu pixels).
+8. First-person eye path proven — VERIFIED (crosshair/arm/HUD).
+9. E2E verdicts need V1 — ACKNOWLEDGED (rule going forward).
+10. Part 1 fully closed — CLAIMED (all items above have verdicts).

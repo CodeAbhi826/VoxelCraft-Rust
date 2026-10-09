@@ -118,4 +118,37 @@ fn main() {
     snap_at("packs", &|ui| {
         ui.resource_pack_screen(&packs, None, &[]);
     });
+    // engine / accessibility / music & sound (same titles the game uses)
+    let engine = ui::layout_engine();
+    snap_at("engine", &|ui| {
+        ui.settings_screen(&engine, None, "ENGINE SETTINGS", &[]);
+    });
+    let access = ui::layout_access();
+    snap_at("access", &|ui| {
+        ui.settings_screen(&access, None, "ACCESSIBILITY SETTINGS", &[]);
+    });
+    let musicsound = ui::layout_music_sound();
+    snap_at("musicsound", &|ui| {
+        ui.settings_screen(&musicsound, None, "MUSIC & SOUND", &[]);
+    });
+    // creative inventory (tab 0, top of the list, demo blocks in the
+    // grid, empty hotbar — layout proof: 12 tabs, player preview,
+    // armor/offhand, 9x5 grid + scrollbar, search, hotbar, trash)
+    let atlas = vec![0u8; 16 * 16 * 4];
+    let hotbar = vec![vc_inventory::inventory::ItemStack::EMPTY; 9];
+    snap_at("creative", &|ui| {
+        ui.creative_screen(
+            (0.0, 0.0),
+            &atlas,
+            0,
+            0,
+            "",
+            false,
+            &[1, 2, 3],
+            &hotbar,
+            0,
+            &vc_inventory::inventory::ItemStack::EMPTY,
+            false,
+        );
+    });
 }

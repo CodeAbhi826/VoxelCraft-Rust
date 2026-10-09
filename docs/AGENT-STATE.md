@@ -3,10 +3,10 @@
 ## Current
 - Part: **1 REVIEW CLOSE-OUT first** (owner directive 2026-10-09: finish Part 1 fully before any Part 2 slice — 2.2c/2.3b deferred).
 - Owner directive 2026-10-09: when the plan is over, ship a downloadable build for testing on the owner's PC (local verification pass after CI).
-- HEAD: `e5b146c` (feet-level camera fix + fmt; CI 37895771107 11/11 green).
-- Repo is PUBLIC since 2026-10-09 (owner-ordered; CI compute restored). Default branch still stale `main`.
-- Last known CI: run 37895771107 — 11/11 SUCCESS.
-- V1 tally: ~37 images viewed (12 this session: black About, 5+5 turntable, real About, new front). Claim 5 still WITHDRAWN.
+- HEAD: survey V1 done (48 framed / 17 unknowns logged); ui-snaps slice staged (uncommitted).
+- Repo is PUBLIC since 2026-10-09 (owner-ordered). Default branch still stale `main`.
+- Last known CI: run 37907738410 (linux-game) — FULL SUCCESS incl. SURVEY VERDICT OK.
+- V1 tally: ~110 cells/images. Claim 5 RE-INSTATED (z42).
 
 ## TODO — now (in order)
 - [x] About capture: dumper-guard fix CI-green; real About PNG V1-PASSED (2560×1440, title + 8 lines + DONE)

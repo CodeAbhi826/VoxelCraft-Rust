@@ -6543,3 +6543,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z49 — Freeze-store fix CI green (37907010847 11/11); dispatching re-run
 - Expects 65 distinctly-framed mobs (no more origin-fog duplicates).
+
+## 2026-10-09z50 — Survey V1 verdicts: 48 framed, 17 missing (logged, not chased)
+- Viewed all 65 via 5 contact sheets + full-size horse/parrot/hoglin. Framed: 48 incl. ghast, enderman, spider, zombie family, all livestock. Missing: fox, guardian, hoglin, magma_cube, ocelot, phantom, evoker, pillager, ravager, shulker, slime, vex, vindicator, witch, piglin_brute, rabbit, silverfish (+strider/turtle odd). Hoglin full-size: definitively absent (platform + arm render fine). No structural theory survived evidence (art painted, sizes sane, spawn/pin/verdict all OK) — logged as Unknowns for Part-2 mob work, not another blind cycle.
+- Anomalies: horse rig scatters parts (detached legs + sky fragment — quadruped bone offsets); parrot renders TWO birds (red + blue-gray — flock spawn or render duplication?).
+- V1 tally ≈ 110 cells/images.
+
+## 2026-10-09z51 — UI snapshots: creative/engine/access/musicsound + CI job
+- Extended ui_snapshots bin (was: title/options/video/shaders/pause/packs; never wired to CI). Creative gets demo blocks + empty hotbar (layout proof). New ci.yml job ui-snaps (CPU-only, debug) uploads ci-ui-snaps artifact → remaining Part-1 screens.

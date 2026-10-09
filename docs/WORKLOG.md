@@ -6506,3 +6506,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z39 — Survey stage-reuse + timeout 1200 (E2E infra for Part-1 verification)
 - Swap-subject-only after the first kind (full 2.8k-edit setup once); spawn-fail falls back to the FAIL path. Leg timeout 600→1200 as margin. No new fields.
+
+## 2026-10-09z40 — Survey-opt CI green (37896597227 11/11); dispatching verification run
+- Expects: framed creeper 5 views (feet-level camera), full 66 survey (stage-reuse), About re-capture.

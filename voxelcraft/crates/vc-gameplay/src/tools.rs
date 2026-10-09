@@ -107,6 +107,34 @@ pub fn melee_profile(item: u16) -> Option<(f32, f32)> {
     Some((damage, speed))
 }
 
+/// Apply `amount` wear to a stack against its `max` durability; returns
+/// true when the item BROKE (stack zeroed, vanilla: the item shatters).
+/// max 0 (non-tools, and callers pass armor maxima from the anvil table
+/// for armor pieces) never breaks.
+pub fn damage_item(stack: &mut vc_inventory::inventory::ItemStack, amount: u16, max: u16) -> bool {
+    if max == 0 {
+        return false;
+    }
+    let next = stack.dmg.saturating_add(amount);
+    if next >= max {
+        *stack = vc_inventory::inventory::ItemStack::EMPTY;
+        return true;
+    }
+    stack.dmg = next;
+    false
+}
+
+/// Enchant level on a stack's two slots for registry `id`
+/// (ItemStack encoding: (id << 8) | level); 0 when absent.
+pub fn ench_level(ench: u16, ench2: u16, id: u8) -> u32 {
+    for e in [ench, ench2] {
+        if (e >> 8) as u8 == id {
+            return (e & 0xFF) as u32;
+        }
+    }
+    0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,5 +195,41 @@ mod tests {
         assert_eq!(melee_profile(blk::DIAMOND_PICKAXE), Some((5.0, 1.2)));
         assert_eq!(melee_profile(blk::STONE_HOE), Some((1.0, 2.0)));
         assert_eq!(melee_profile(blk::STONE), None);
+    }
+
+    #[test]
+    fn damage_item_accumulates_and_breaks() {
+        use vc_inventory::inventory::ItemStack;
+        let mut s = ItemStack::new(blk::IRON_PICKAXE, 1);
+        // 250 max: 249 hits survive, the 250th breaks (stack zeroed)
+        for _ in 0..249 {
+            assert!(!damage_item(&mut s, 1, durability_max(s.block)));
+        }
+        assert_eq!(s.dmg, 249);
+        assert!(damage_item(&mut s, 1, durability_max(blk::IRON_PICKAXE)));
+        assert_eq!(s, ItemStack::EMPTY);
+        // non-tools never break (max 0)
+        let mut stone = ItemStack::new(blk::STONE, 64);
+        assert!(!damage_item(&mut stone, 1, durability_max(blk::STONE)));
+        assert_eq!(stone.dmg, 0);
+        // overkill in one hit still just breaks
+        let mut wood = ItemStack::new(blk::WOODEN_SWORD, 1);
+        assert!(damage_item(
+            &mut wood,
+            1000,
+            durability_max(blk::WOODEN_SWORD)
+        ));
+        assert_eq!(wood, ItemStack::EMPTY);
+    }
+
+    #[test]
+    fn ench_level_reads_both_slots() {
+        let id = crate::enchanting::enchant_by_id("sweeping").unwrap();
+        let enc = ((id as u16) << 8) | 3;
+        assert_eq!(ench_level(enc, 0, id), 3);
+        assert_eq!(ench_level(0, enc, id), 3);
+        assert_eq!(ench_level(0, 0, id), 0);
+        // wrong enchant id in the slot reads 0
+        assert_eq!(ench_level(((id as u16 + 1) << 8) | 3, 0, id), 0);
     }
 }

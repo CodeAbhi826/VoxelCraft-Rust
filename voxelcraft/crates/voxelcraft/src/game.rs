@@ -7871,6 +7871,39 @@ impl GameApp {
         outcome.damage = (outcome.damage + weak).max(0.0);
 
         let applied = self.sim.mobs.damage(id, outcome.damage);
+        // 3.1c: sweep arc + held-item wear on a connected hit (boss and
+        // special entities excluded from the arc — disclosed)
+        if applied > 0.0 {
+            let held = self.player.held();
+            if combat::can_sweep(held.block, sprinting) {
+                let (base, _) = combat::held_attack(held.block);
+                let sweep_id = vc_gameplay::enchanting::enchant_by_id("sweeping").unwrap_or(255);
+                let lvl = vc_gameplay::tools::ench_level(held.ench, held.ench2, sweep_id);
+                let sdmg = combat::sweep_damage(base, lvl);
+                let others: Vec<(u32, f32)> = self
+                    .sim
+                    .mobs
+                    .list
+                    .iter()
+                    .filter(|m| m.id != id)
+                    .filter(|m| {
+                        let dx = m.pos[0] - m_pos[0];
+                        let dy = m.pos[1] - m_pos[1];
+                        let dz = m.pos[2] - m_pos[2];
+                        dx * dx + dy * dy + dz * dz <= 9.0
+                    })
+                    .map(|m| (m.id, vc_gameplay::mobs::def(m.kind).armor))
+                    .collect();
+                for (oid, armor) in others {
+                    let a = combat::armor_reduce(sdmg, armor, 0.0);
+                    self.sim.mobs.damage(oid, a);
+                }
+            }
+            if !self.mode.picks_creative() {
+                let max = vc_gameplay::tools::durability_max(held.block);
+                vc_gameplay::tools::damage_item(self.player.held_mut(), 1, max);
+            }
+        }
         // 1.15 (Buzzy Bees): "All bees nearby are angered when an
         // individual bee is attacked (unless the bee attacked is
         // killed in one hit)" — the family + the 16-block neighbors
@@ -10404,6 +10437,18 @@ impl GameApp {
         // mining is free, like the item drops above)
         if !self.mode.invulnerable() {
             self.player.hunger.add_exhaustion(0.005);
+        }
+        // 3.1c: breaking blocks wears the held tool (swords take 2 —
+        // vanilla; creative tools never wear). Armor wear rides incoming
+        // hits, not this path.
+        if !self.mode.picks_creative() {
+            let held = self.player.held();
+            let sword = matches!(
+                vc_gameplay::tools::tool_kind(held.block),
+                Some((_, vc_gameplay::tools::ToolClass::Sword))
+            );
+            let max = vc_gameplay::tools::durability_max(held.block);
+            vc_gameplay::tools::damage_item(self.player.held_mut(), if sword { 2 } else { 1 }, max);
         }
         // 1.14: the pre-break state (the berry bush's
         // age — captured BEFORE the AIR write clears it)

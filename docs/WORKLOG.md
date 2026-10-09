@@ -6593,3 +6593,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z63 — 3.1b: tool stats tables + melee wiring (vanilla 1.16.5 set)
 - New tools.rs: tier/class mapping, dig speeds, durability max, melee profiles + 4 tests. combat tool_profile delegates (fist fallback unchanged for blocks). Machine busy — CI runs the tests.
+
+## 2026-10-09z64 — 3.1c: durability-on-use + sweep arc (strike consequences)
+- tools.rs: damage_item (accumulate vs max, break zeroes, max-0 immune) + ench_level decoder; combat.rs: can_sweep (swords, not sprinting) + sweep_damage (1 + base*lvl/(lvl+1)); game.rs: sweep arc (3m, armor-reduced, bosses excluded) + held wear on hits (+1) and breaks (swords 2) in survival-like modes. Tests: damage/break, gate/damage, decode. Machine busy — CI verifies.

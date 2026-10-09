@@ -213,6 +213,23 @@ pub fn player_melee(
     }
 }
 
+/// Sweep gating: swords only, never while sprinting (sprint attacks
+/// knock back instead) — fists never sweep, exactly like vanilla.
+pub fn can_sweep(held_block: u16, sprinting: bool) -> bool {
+    !sprinting
+        && matches!(
+            crate::tools::tool_kind(held_block),
+            Some((_, crate::tools::ToolClass::Sword))
+        )
+}
+
+/// Sweep damage for the arc: 1 HP + weapon base scaled by Sweeping
+/// Edge (level/(level+1) — level 0 deals the flat 1, level III deals
+/// 1 + 75% of base). Generalizes the module-doc formula.
+pub fn sweep_damage(base_weapon_damage: f32, sweeping_level: u32) -> f32 {
+    1.0 + base_weapon_damage * (sweeping_level as f32 / (sweeping_level as f32 + 1.0))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -231,6 +248,19 @@ mod tests {
         assert!((cooldown_damage_scale(1.0) - 1.0).abs() < 1e-6);
         // p=0.5 → 0.2 + 0.8·0.25 = 0.4
         assert!((cooldown_damage_scale(0.5) - 0.4).abs() < 1e-6);
+    }
+
+    #[test]
+    fn sweep_gate_and_damage() {
+        use vc_blocks::blocks as blk;
+        assert!(can_sweep(blk::IRON_SWORD, false));
+        assert!(!can_sweep(blk::IRON_SWORD, true));
+        assert!(!can_sweep(blk::IRON_PICKAXE, false));
+        assert!(!can_sweep(blk::STONE, false));
+        // flat 1 unenchanted; 1 + 75% of base at III
+        assert!((sweep_damage(6.0, 0) - 1.0).abs() < 1e-6);
+        assert!((sweep_damage(6.0, 1) - 4.0).abs() < 1e-6);
+        assert!((sweep_damage(6.0, 3) - 5.5).abs() < 1e-6);
     }
 
     #[test]

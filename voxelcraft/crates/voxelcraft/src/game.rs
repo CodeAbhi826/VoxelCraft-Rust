@@ -16613,6 +16613,11 @@ impl GameApp {
         // owner's art verdicts.
         #[cfg(not(target_arch = "wasm32"))]
         if std::env::var("E2E_TURNTABLE").is_ok() && !self.e2e_turntable_done {
+            // CI-proven 2026-10-09: hostile subjects deal contact damage
+            // next to the camera (the survey died to a hoglin at #45 and
+            // stalled on the death screen to timeout) — E2E capture never
+            // dies
+            self.player.health = 20.0;
             let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
             let (pcx, pcz) = (
                 (self.player.pos.x.floor() as i32).div_euclid(16),
@@ -16673,6 +16678,8 @@ impl GameApp {
         #[cfg(not(target_arch = "wasm32"))]
         if std::env::var("E2E_MOBSURVEY").is_ok() && !self.e2e_survey_done {
             use vc_gameplay::mobs::MobKind;
+            // same god-heal as the turntable block (see above)
+            self.player.health = 20.0;
             let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
             let (pcx, pcz) = (
                 (self.player.pos.x.floor() as i32).div_euclid(16),

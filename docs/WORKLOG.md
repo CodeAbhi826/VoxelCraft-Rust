@@ -6509,3 +6509,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z40 — Survey-opt CI green (37896597227 11/11); dispatching verification run
 - Expects: framed creeper 5 views (feet-level camera), full 66 survey (stage-reuse), About re-capture.
+
+## 2026-10-09z41 — Survey died at hoglin #45 (death screen → timeout); god-heal added
+- CI-proven: `game -> death` right after hoglin/front (accumulated contact damage from 45 hostile swaps); survey gates on Game/Pause so it stalled 19 min to timeout 124. Stage-reuse itself worked (45 saves in ~15s).
+- Fix: player.health=20 every update in both E2E capture blocks. Death-screen stall class noted for other legs (out of scope).

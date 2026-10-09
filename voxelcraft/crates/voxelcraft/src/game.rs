@@ -1951,6 +1951,10 @@ pub struct GameApp {
     e2e_turntable_subject: Option<(u32, [f32; 3])>,
     /// settle frames since the stage's camera move
     e2e_turntable_settle: u8,
+    /// staged camera pos/yaw (re-applied while a capture is pending:
+    /// knockback shoves the camera between staging and readback)
+    e2e_cam_pos: [f32; 3],
+    e2e_cam_yaw: f32,
     /// Mob survey (E2E_MOBSURVEY): index into MobKind::all(), ran once
     e2e_survey_idx: usize,
     /// Mob survey finished (the leg owns the exit)
@@ -3380,6 +3384,8 @@ impl GameApp {
             e2e_turntable_ok: true,
             e2e_turntable_subject: None,
             e2e_turntable_settle: 0,
+            e2e_cam_pos: [0.0; 3],
+            e2e_cam_yaw: 0.0,
             e2e_survey_idx: 0,
             e2e_survey_done: false,
             e2e_survey_ok: true,
@@ -15495,6 +15501,25 @@ impl GameApp {
         };
         self.player.flying = true;
         self.player.on_ground = false;
+        // staged camera for the capture freeze (see e2e_capture_freeze)
+        self.e2e_cam_pos = pos.to_array();
+        self.e2e_cam_yaw = self.player.yaw;
+    }
+
+    /// E2E capture freeze: re-pin subject + camera every update while a
+    /// capture is pending. CI-proven 2026-10-09: chargers/flee-ers/flyers
+    /// leave the frame between staging and readback (missing hoglin,
+    /// fox, ghast…), and knockback shoves the camera itself.
+    fn e2e_capture_freeze(&mut self) {
+        if let Some((id, home)) = self.e2e_turntable_subject {
+            if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == id) {
+                m.pos = home;
+                m.vel = [0.0; 3];
+            }
+            self.player.pos = glam::Vec3::from_array(self.e2e_cam_pos);
+            self.player.yaw = self.e2e_cam_yaw;
+            self.player.vel = glam::Vec3::ZERO;
+        }
     }
 
     /// 1A.6: persist the waiting capture PNG (the same pull-based contract
@@ -15598,7 +15623,7 @@ impl GameApp {
     /// 1.11: put the camera on the view ring (the iconic orbit's yaw/pitch
     /// convention, including its signed-zero pin).
     #[cfg(not(target_arch = "wasm32"))]
-    fn e2e_turntable_view(&mut self, angle_deg: u32, dist: f32) {
+    fn e2e_turntable_view(&mut self, angle_deg: u32, dist: f32, cam_dy: f32) {
         let Some((id, home)) = self.e2e_turntable_subject else {
             return;
         };
@@ -15612,8 +15637,14 @@ impl GameApp {
         // EYE_HEIGHT (1.62) on top. The old home[1]+1.6 put the eye at
         // +3.2 looking horizontal: all 5 views showed head-only/empty
         // with the body 37° below frame. Feet-level pos lands the eye
-        // at mob head height, full body in frame at pitch 0.
-        let pos = glam::Vec3::new(home[0] + a.cos() * dist, home[1], home[2] + a.sin() * dist);
+        // at mob head height, full body in frame at pitch 0. cam_dy
+        // shifts the eye for odd-sized subjects (survey only; the
+        // turntable passes 0.0 — its framing is V1-verified, untouched).
+        let pos = glam::Vec3::new(
+            home[0] + a.cos() * dist,
+            home[1] + cam_dy,
+            home[2] + a.sin() * dist,
+        );
         let to_c = (glam::Vec3::new(home[0], home[1] + 1.0, home[2]) - pos).normalize();
         self.player.pos = pos;
         self.player.vel = glam::Vec3::ZERO;
@@ -16636,7 +16667,7 @@ impl GameApp {
                         vc_render::render::report_boot_log("e2e: turntable FAIL no subject");
                     }
                     let (angle, dist, _) = Self::TURNTABLE_VIEWS[0];
-                    self.e2e_turntable_view(angle, dist);
+                    self.e2e_turntable_view(angle, dist, 0.0);
                     self.e2e_turntable_stage = 1;
                 }
                 n @ 1..=5 => {
@@ -16657,10 +16688,11 @@ impl GameApp {
                             std::process::exit(if ok { 0 } else { 1 });
                         } else {
                             let (angle, dist, _) = Self::TURNTABLE_VIEWS[n as usize];
-                            self.e2e_turntable_view(angle, dist);
+                            self.e2e_turntable_view(angle, dist, 0.0);
                             self.e2e_turntable_stage = n + 1;
                         }
                     } else {
+                        self.e2e_capture_freeze();
                         self.e2e_turntable_settle += 1;
                         if self.e2e_turntable_settle >= 3 {
                             self.renderer.screenshot_request = true;
@@ -16744,7 +16776,14 @@ impl GameApp {
                                 vc_render::render::report_boot_log("e2e: survey FAIL no subject");
                                 self.e2e_survey_idx += 1;
                             } else {
-                                self.e2e_turntable_view(0, 3.0);
+                                // size-scaled framing (fixed 3m leaves small
+                                // mobs as specks: silverfish/rabbit/cod all
+                                // V1-missing-or-speck 2026-10-09): eye rides
+                                // half a meter above mob center
+                                let dd = vc_gameplay::mobs::def(kind);
+                                let dist = (1.8 * dd.width.max(dd.height)).clamp(1.2, 6.0);
+                                let cam_dy = dd.height * 0.55 - 1.12;
+                                self.e2e_turntable_view(0, dist, cam_dy);
                                 self.e2e_turntable_stage = 1;
                             }
                         }
@@ -16759,6 +16798,7 @@ impl GameApp {
                     self.e2e_survey_idx += 1;
                     self.e2e_turntable_stage = 0;
                 } else {
+                    self.e2e_capture_freeze();
                     self.e2e_turntable_settle += 1;
                     if self.e2e_turntable_settle >= 3 {
                         self.renderer.screenshot_request = true;

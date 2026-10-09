@@ -6528,3 +6528,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z45 — Squid fixes CI green (37902209409 11/11); dispatching full run
 - Expects SURVEY VERDICT OK (65) past ghast/squid and all prior legs green.
+
+## 2026-10-09z46 — Survey V1: motion blur class — freeze + size-scaled framing
+- V1-viewed all 65 via 4 contact sheets: ~50 framed, ~15 missing (chargers/flee-ers/flyers/teleport-shoves leave frame; knockback also shoves the camera). Small mobs render as specks at fixed 3m.
+- Fix: e2e_capture_freeze (re-pin subject + camera every update while pending; 2 new fields) in both settle branches; survey dist/height scaled from MobDef (turntable calls pass 0.0 — V1-verified path untouched).
+- Local pre-push: check clean (load ~2).

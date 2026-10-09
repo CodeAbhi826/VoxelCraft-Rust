@@ -6393,3 +6393,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Round-trip test: shared + solo unknowns + tile + structures → identical states/sidecars/names. Local (idle): fmt clean; 1/1 pass; full anvil suite green; clippy clean.
 - Reference-hardware streaming (Oct-8 binary, real iGPU, no gpu-timing): 148 frames avg 158.6 / median 123.1 / p99 364.6 / worst 367.0 ms; stream 148.8 + results 148.1 + draw 7.9; 146 chunks / 23 meshed; MDI path. lavapipe CI avg was 52–83 (more workers) — CPU-bound verdict holds on both (draw « stream). gpu_ms null (flag off).
 - NEW BUG (queued slice): --gpu-timing panics on Intel (`ts-stage` buffer still mapped, wgpu 22) — lavapipe never hit it. Queued as timestamp-race fix; gpu_ms stays optional until then.
+
+## 2026-10-09z11 — 2.4b region .bak backups (Tested locally, CI queued behind billing)
+- anvil.rs rewrite_region: previous .mca rotates to .mca.bak before atomic replace (level.dat _old pattern for regions; R6 automatic backups). First write: no backup. Test pins both + live content.
+- Local (idle): fmt clean; 1/1 pass; clippy lib+tests clean.

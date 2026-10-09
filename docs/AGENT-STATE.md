@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **2 WORLDS FIRST**. Current slice: **2.4a writer re-emit** (committed; CI queued behind billing block).
-- HEAD: 2.4a commit (2.3a + 2.2b UNVALIDATED — billing).
+- Part: **2 WORLDS FIRST**. Current slice: **2.4b region backups** (committed; CI queued behind billing block).
+- HEAD: 2.4b commit (2.4a + 2.3a + 2.2b UNVALIDATED — billing).
 - Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
 
 ## TODO — next 5 slices

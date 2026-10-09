@@ -310,9 +310,13 @@ fn rewrite_region(path: &Path, chunks: &[(i32, i32, &[u8])]) -> std::io::Result<
         next_sector += sectors;
     }
 
-    // 4. atomic replace
+    // 4. atomic replace (2.4b: automatic backup — the previous file
+    // becomes .mca.bak, level.dat's _old pattern for regions; R6)
     let tmp = path.with_extension("mca.tmp");
     fs::write(&tmp, &out)?;
+    if path.exists() {
+        let _ = fs::rename(path, path.with_extension("mca.bak"));
+    }
     fs::rename(&tmp, path)?;
     Ok(())
 }
@@ -356,6 +360,27 @@ mod tests {
         write_chunk(&dir, 0, 0, &bytes).unwrap();
         let back = read_chunk(&dir, 0, 0).unwrap().expect("chunk present");
         assert_eq!(back, bytes);
+    }
+
+    /// 2.4b: rewriting a region keeps the previous file as .mca.bak
+    /// (automatic backups, R6); first write creates no backup.
+    #[test]
+    fn rewrite_keeps_bak_backup() {
+        let dir = tmp_dir("bak");
+        let rp = region_path(&dir, 0, 0);
+        let bak = rp.with_extension("mca.bak");
+        write_chunk(&dir, 0, 0, &demo_chunk_nbt(0, 0, 7)).unwrap();
+        assert!(rp.exists());
+        assert!(!bak.exists(), "first write: no backup yet");
+        let before = fs::read(&rp).unwrap();
+        write_chunk(&dir, 0, 0, &demo_chunk_nbt(0, 0, 8)).unwrap();
+        assert!(bak.exists(), "rewrite: backup materializes");
+        assert_eq!(fs::read(&bak).unwrap(), before);
+        // live file holds the new content
+        assert_eq!(
+            read_chunk(&dir, 0, 0).unwrap().unwrap(),
+            demo_chunk_nbt(0, 0, 8)
+        );
     }
 
     #[test]

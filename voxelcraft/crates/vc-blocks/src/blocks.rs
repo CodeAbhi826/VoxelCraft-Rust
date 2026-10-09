@@ -4064,9 +4064,6 @@ pub fn default_state(b: u16) -> u16 {
         // 3.3c: bow identity (its fallthrough lands in the glazed
         // window like every item since V17)
         BOW => BOW_STATE,
-        // 3.3c: bow identity (its fallthrough lands in the glazed
-        // window like every item since V17)
-        BOW => BOW_STATE,
         // TNT round: TNT's dedicated state (the identity 533 collides
         // with the glazed-terracotta facing window — see TNT_STATE)
         TNT => TNT_STATE,

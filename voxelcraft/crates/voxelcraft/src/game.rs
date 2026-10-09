@@ -2120,6 +2120,9 @@ pub struct GameApp {
     /// About capture: armed when the menu script clicks ABOUT...,
     /// consumed when the About PNG lands (V1 visual for L5)
     smoke_about_capture: bool,
+    /// About capture settle frames on the About screen (canvas must
+    /// have painted at least once — update runs before draw)
+    smoke_about_settle: u8,
     edits: u32,
     #[allow(dead_code)] // read only on wasm32 (the E2E stats publisher)
     stats_t: f32,
@@ -3421,6 +3424,7 @@ impl GameApp {
             smoke: false,
             smoke_menu_e2e: false,
             smoke_about_capture: false,
+            smoke_about_settle: 0,
             e2e_fkeys_stage: 0,
             e2e_fkeys_ok: true,
             e2e_fkeys_behind_on_px: None,
@@ -16246,6 +16250,7 @@ impl GameApp {
             // the About screen (consumed below once the PNG lands)
             if id == ui::ID_OPT_ABOUT {
                 self.smoke_about_capture = true;
+                self.smoke_about_settle = 0;
                 vc_render::render::report_boot_log("e2e: about capture armed");
             }
             // the create screen resets the seed buffer on entry — the
@@ -16689,30 +16694,36 @@ impl GameApp {
             }
         }
         // tree round-tripped back to the title and exit clean
-        // L5 About capture: while armed and sitting on the About
-        // screen, pull one readback PNG (the FKEYS pull contract),
-        // then disarm — the script's DONE2 click already moved on if
-        // the frame was slow, so only capture while still on About
+        // L5 About capture: canvas dump (NOT GPU readback — menus never
+        // complete the swapchain readback; the containers leg proved the
+        // canvas path). Settle 3 so update-before-draw ordering can't
+        // shoot the stale Options canvas, then dump + disarm.
         if self.smoke_about_capture {
             if self.screen == Screen::About {
-                if let Some(png) = self.renderer.take_screenshot_png() {
+                self.smoke_about_settle += 1;
+                if self.smoke_about_settle >= 3 {
                     let dir = std::path::Path::new("screenshots");
                     let _ = std::fs::create_dir_all(dir);
-                    let ok = std::fs::write(dir.join("e2e_about.png"), &png).is_ok();
-                    vc_render::render::report_boot_log(&format!(
-                        "e2e: about screen captured ({} bytes) — ABOUT {}",
-                        png.len(),
-                        if ok { "VERDICT OK" } else { "WRITE FAILED" }
-                    ));
-                    self.smoke_about_capture = false;
-                } else {
-                    self.renderer.screenshot_request = true;
+                    self.ui.dump_png("screenshots/e2e_about.png");
+                    match std::fs::metadata("screenshots/e2e_about.png") {
+                        Ok(m) if m.len() > 1000 => {
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: about screen captured ({} bytes) — ABOUT VERDICT OK",
+                                m.len()
+                            ));
+                            self.smoke_about_capture = false;
+                        }
+                        _ => {
+                            vc_render::render::report_boot_log("e2e: about dump empty — retrying");
+                        }
+                    }
                 }
             } else if self.screen == Screen::Options || self.screen == Screen::Title {
-                // left About before the readback landed (slow frame) —
-                // disarm rather than capturing the wrong screen
+                // left About before the dump landed — disarm rather than
+                // capturing the wrong screen
                 vc_render::render::report_boot_log("e2e: about capture MISSED (left screen)");
                 self.smoke_about_capture = false;
+                self.smoke_about_settle = 0;
             }
         }
         if self.smoke_menu_e2e && self.smoke_script.is_empty() && self.screen == Screen::Title {

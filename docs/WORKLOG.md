@@ -6460,3 +6460,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z26 — Survey CI green + AGENTS.md reconciled (Tested)
 - Survey CI (run 37882214844): 10/10 SUCCESS. Dispatching linux-game: 66-mob survey captures + About retry + yaw-fixed turntable → V1 review.
 - AGENTS.md rewritten in place: standing rules preserved, verified commands/layout/gates/audit-tripwires added, stale claims dropped.
+
+## 2026-10-09z27 — About capture: canvas dump replaces GPU readback (Tested: fmt clean; CI is verifier)
+- Root cause (CI 37882796482 log): menu leg green, "about capture armed" → take_screenshot_png() returned None ~24 frames → "MISSED (left screen)" → test -s gate failed. Menus never complete the swapchain readback (static screens), so GPU pull can never land there.
+- Fix: settle-3 canvas dump_png (containers-leg precedent) + size gate + same log strings ("e2e: about screen captured", "ABOUT VERDICT OK") the workflow greps for. fmt clean; compile verified by CI.

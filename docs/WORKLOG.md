@@ -6489,3 +6489,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - V1-viewed all 5 creeper PNGs (run 37887643618): full 3D renders (readback proven healthy in-game) but framing wrong — giant head bottom-center in side/back/threequarter, sliver in front, empty closeup. Telemetry: mob pinned, cameras orbit correctly. Root cause: stage gy came from find_spawn (spawn point) while the platform builds at the chunk center — platform underground, subject buried to the head. Images also show natural terrain (no flat stage) and HUD in front view only.
 - Fix (this slice): gy = highest solid in the stage column +1; air clear 0..10 (tree canopies); cameras auto-adapt via home pos.
 - About take()=None: TEMP diagnostic lines (take Some(len)/None + capture-stored bytes) ride this slice; removed once diagnosed.
+
+## 2026-10-09z35 — Clippy lint green (37892214529 11/11); dispatching stage-fix + telemetry build
+- linux-game will show: (a) whether the column-height stage frames the creeper (claim 5), (b) take Some/None + capture-stored lines (About delivery diagnosis).

@@ -15613,11 +15613,7 @@ impl GameApp {
         // +3.2 looking horizontal: all 5 views showed head-only/empty
         // with the body 37° below frame. Feet-level pos lands the eye
         // at mob head height, full body in frame at pitch 0.
-        let pos = glam::Vec3::new(
-            home[0] + a.cos() * dist,
-            home[1],
-            home[2] + a.sin() * dist,
-        );
+        let pos = glam::Vec3::new(home[0] + a.cos() * dist, home[1], home[2] + a.sin() * dist);
         let to_c = (glam::Vec3::new(home[0], home[1] + 1.0, home[2]) - pos).normalize();
         self.player.pos = pos;
         self.player.vel = glam::Vec3::ZERO;

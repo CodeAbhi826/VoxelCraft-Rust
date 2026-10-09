@@ -6617,3 +6617,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z71 — 3.3c: bow item + player shooting (charge, arrows, wear)
 - Registry: BOW 579 + state 932 + Combat tab/picker + pins + LUT; tab icons now real tools. Mechanics: hold-draw (1s full), release fire (1+9*charge, 24 b/s, PLAYER_OWNER), offhand-first arrows, creative fires free, bow wears 1/shot, stick+string recipe. Local: 7/7 new tests pass.
+
+## 2026-10-10z01 — 3.3d: tipped arrows end-to-end (registry + hit effects)
+- 4 items + states + Combat tab + 4 crafting rows (lingering+8 arrows); TippedArrow variant (attribution, direct-hit damage + instant effect w/ inversion, spent silently on blocks); bow fires any arrow kind offhand-first; player-side effects out (no PvP producer). Local: gameplay 331/331, blocks 48/48, check+clippy clean.

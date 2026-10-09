@@ -1167,6 +1167,68 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(BOW, 1),
     },
+    // ---- 3.3d: tipped arrows — lingering center + 8 arrows (vanilla
+    // shape) crafts 8 tipped of the matching kind
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(LINGERING_HEALING),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+        ],
+        out: ItemStack::new(TIPPED_HEALING, 8),
+    },
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(LINGERING_HEALING_II),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+        ],
+        out: ItemStack::new(TIPPED_HEALING_II, 8),
+    },
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(LINGERING_HARMING),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+        ],
+        out: ItemStack::new(TIPPED_HARMING, 8),
+    },
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(LINGERING_HARMING_II),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+            Ing::Block(ARROW_ITEM),
+        ],
+        out: ItemStack::new(TIPPED_HARMING_II, 8),
+    },
 ];
 
 /// 1.16 (Nether Update, part 2): the shapeless SOUL-TORCH recipe —
@@ -1501,6 +1563,30 @@ mod tests {
             *slot = ItemStack::new(STRING, 1);
         }
         assert!(match_grid(&bad, 3).is_none(), "string alone crafts nothing");
+    }
+
+    /// 3.3d: lingering center + 8 arrows crafts 8 tipped of the
+    /// matching kind; a drinkable center crafts nothing tipped
+    #[test]
+    fn tipped_arrows_craft_around_lingering() {
+        let mut g = vec![ItemStack::EMPTY; 9];
+        for (i, slot) in g.iter_mut().enumerate() {
+            *slot = ItemStack::new(
+                if i == 4 {
+                    LINGERING_HARMING
+                } else {
+                    ARROW_ITEM
+                },
+                1,
+            );
+        }
+        let out = match_grid(&g, 3).expect("the tipped row");
+        assert_eq!(out.block, TIPPED_HARMING);
+        assert_eq!(out.count, 8);
+        // splash center is not a tipped recipe
+        let mut bad = vec![ItemStack::new(ARROW_ITEM, 1); 9];
+        bad[4] = ItemStack::new(SPLASH_HARMING, 1);
+        assert!(match_grid(&bad, 3).is_none());
     }
 
     /// the 1.13 kitchen chain: bowl/sugar/stews/pie crafting sweep

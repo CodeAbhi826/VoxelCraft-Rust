@@ -139,6 +139,11 @@ pub fn ench_level(ench: u16, ench2: u16, id: u8) -> u32 {
     0
 }
 
+/// 3.3d: any arrow kind (plain + the 4 tipped) — bow ammo selection.
+pub fn is_arrow(item: u16) -> bool {
+    item == blk::ARROW_ITEM || (blk::TIPPED_HEALING..=blk::TIPPED_HARMING_II).contains(&item)
+}
+
 /// The correct tool class for a block (None = bare hand mines at full
 /// hand time). Covers the clear vanilla-preferred cases; everything
 /// else falls back to hand speed (drops-gating for wrong tools is a
@@ -313,6 +318,15 @@ mod tests {
         assert_eq!(ench_level(0, 0, id), 0);
         // wrong enchant id in the slot reads 0
         assert_eq!(ench_level(((id as u16 + 1) << 8) | 3, 0, id), 0);
+    }
+
+    #[test]
+    fn is_arrow_covers_plain_and_tipped() {
+        assert!(is_arrow(blk::ARROW_ITEM));
+        assert!(is_arrow(blk::TIPPED_HEALING));
+        assert!(is_arrow(blk::TIPPED_HARMING_II));
+        assert!(!is_arrow(blk::STONE));
+        assert!(!is_arrow(blk::BOW));
     }
 
     #[test]

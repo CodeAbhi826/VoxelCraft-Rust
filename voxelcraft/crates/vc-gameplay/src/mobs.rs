@@ -2205,6 +2205,27 @@ pub struct EffectCloud {
     pub amount: f32,
 }
 
+/// 3.3d: signed instant HP on one mob with undead inversion + max cap
+/// (shared by MobSystem::apply_instant and the tipped-arrow hit path).
+/// Returns before-minus-after (positive = damage dealt).
+fn apply_instant_to(m: &mut Mob, amount: f32) -> f32 {
+    if m.health <= 0.0 {
+        return 0.0;
+    }
+    let eff = if MobSystem::is_undead(m.kind) {
+        -amount
+    } else {
+        amount
+    };
+    let max = def(m.kind).health;
+    let before = m.health;
+    m.health = (m.health + eff).clamp(0.0, max);
+    if eff < 0.0 {
+        m.hurt_t = 10;
+    }
+    before - m.health
+}
+
 /// One mob instance. Position is feet-center like the player.
 #[derive(Clone, Debug)]
 pub struct Mob {
@@ -2338,6 +2359,9 @@ pub enum ProjKind {
     /// 3.3b: player-thrown lingering potion — carries the ITEM id (the
     /// landing spawns an effect cloud instead of an instant AoE).
     LingeringPotion(u16),
+    /// 3.3d: player-shot tipped arrow — carries the ITEM id (instant
+    /// effect on direct mob hits; block hits spend it silently).
+    TippedArrow(u16),
 }
 
 /// the sweep-2 throwables: the owner marker for player-thrown
@@ -3898,6 +3922,16 @@ impl MobSystem {
             amount,
         });
         self.clouds.len()
+    }
+
+    /// 3.3d: signed instant HP on one mob by id (tipped-arrow hits) —
+    /// same inversion/cap rules as the splash path; 0 when missing or
+    /// already dead. Signed return (positive = damage dealt).
+    pub fn apply_instant(&mut self, id: u32, amount: f32) -> f32 {
+        let Some(m) = self.list.iter_mut().find(|m| m.id == id) else {
+            return 0.0;
+        };
+        apply_instant_to(m, amount)
     }
 
     /// tick clouds: pulse every 20 ticks (mob-side via apply_splash_r,
@@ -6981,6 +7015,10 @@ fn tick_arrows(
                         ProjKind::SplashPotion(_) => MobKind::Witch,
                         // 3.3b: lingering attribution (same class)
                         ProjKind::LingeringPotion(_) => MobKind::Witch,
+                        // 3.3d: tipped attribution (archer archetype;
+                        // same never-resolved class — player shots
+                        // always carry PLAYER_OWNER)
+                        ProjKind::TippedArrow(_) => MobKind::Skeleton,
                     };
                     // snowballs deal 0 damage to the player (VERIFIED),
                     // knockback only
@@ -7008,6 +7046,60 @@ fn tick_arrows(
                     arrows.remove(i);
                     continue;
                 }
+            }
+        }
+        // 3.3d: tipped arrows hurt mobs on direct hits (plain arrows
+        // pass through mobs — pre-existing gap, disclosed) plus their
+        // instant effect with undead inversion. Player-side effects
+        // stay out (no PvP producer in single-player — disclosed).
+        if let ProjKind::TippedArrow(item) = a.kind {
+            let mut hit_mob = false;
+            for m in mobs.iter_mut() {
+                if m.id == a.owner {
+                    continue;
+                }
+                let ddx = a.pos[0] - m.pos[0];
+                let ddy = a.pos[1] - (m.pos[1] + 0.5);
+                let ddz = a.pos[2] - m.pos[2];
+                if ddx * ddx + ddy * ddy + ddz * ddz < 0.8 {
+                    pending.push((m.id, a.damage));
+                    if let Some(amount) = crate::brewing::potion_heal(item) {
+                        apply_instant_to(m, amount);
+                    }
+                    hit_mob = true;
+                    break;
+                }
+            }
+            if hit_mob {
+                arrows.remove(i);
+                continue;
+            }
+        }
+        // 3.3d: tipped arrows hurt mobs on direct hits (plain arrows
+        // pass through mobs — pre-existing gap, disclosed) plus their
+        // instant effect with undead inversion. Player-side effects
+        // stay out (no PvP producer in single-player — disclosed).
+        if let ProjKind::TippedArrow(item) = a.kind {
+            let mut hit_mob = false;
+            for m in mobs.iter_mut() {
+                if m.id == a.owner {
+                    continue;
+                }
+                let ddx = a.pos[0] - m.pos[0];
+                let ddy = a.pos[1] - (m.pos[1] + 0.5);
+                let ddz = a.pos[2] - m.pos[2];
+                if ddx * ddx + ddy * ddy + ddz * ddz < 0.8 {
+                    pending.push((m.id, a.damage));
+                    if let Some(amount) = crate::brewing::potion_heal(item) {
+                        apply_instant_to(m, amount);
+                    }
+                    hit_mob = true;
+                    break;
+                }
+            }
+            if hit_mob {
+                arrows.remove(i);
+                continue;
             }
         }
         // Phase E1: snowball mob hits — 3 damage to blazes, 0 + knockback
@@ -7745,6 +7837,27 @@ mod tests {
         sys.tick_clouds();
         assert!(sys.clouds.is_empty());
         assert!(sys.take_pulses().is_empty());
+    }
+
+    #[test]
+    fn apply_instant_hurts_heals_and_inverts() {
+        use MobKind::*;
+        let mut sys = MobSystem::new(8);
+        let z = sys.spawn_at(Zombie, 0, 65, 0).unwrap();
+        let c = sys.spawn_at(Cow, 1, 65, 0).unwrap();
+        sys.damage(z, 10.0);
+        sys.damage(c, 4.0);
+        // harm 6 on the cow (6 -> 0)
+        assert!((sys.apply_instant(c, -6.0) - 6.0).abs() < 1e-5);
+        assert!((sys.by_id(c).unwrap().health - 0.0).abs() < 1e-5);
+        // harm 6 on the zombie HEALS it instead (10 -> 16)
+        assert!((sys.apply_instant(z, -6.0) - -6.0).abs() < 1e-5);
+        assert!((sys.by_id(z).unwrap().health - 16.0).abs() < 1e-5);
+        // missing id and corpses yield 0
+        assert_eq!(sys.apply_instant(99999, -6.0), 0.0);
+        sys.damage(c, 100.0);
+        sys.tick(&flat_world(), (0, 0), i32::MAX);
+        assert_eq!(sys.apply_instant(c, -6.0), 0.0);
     }
 
     #[test]

@@ -7665,16 +7665,32 @@ impl GameApp {
     fn fire_bow(&mut self, charge: f32) {
         let eye = self.player.eye().to_array();
         let dir = self.player.look_dir().to_array();
-        let use_offhand = self.player.offhand.block == ARROW_ITEM && self.player.offhand.count > 0;
+        // 3.3d: any arrow kind flies — offhand first, else the first
+        // inventory arrow stack (vanilla priority); tipped selection
+        // rides the same order
+        let use_offhand = vc_gameplay::tools::is_arrow(self.player.offhand.block)
+            && self.player.offhand.count > 0;
         let slot = self
             .player
             .inv
             .slots
             .iter()
-            .position(|s| s.block == ARROW_ITEM && s.count > 0);
+            .position(|s| vc_gameplay::tools::is_arrow(s.block) && s.count > 0);
         if !use_offhand && slot.is_none() && !self.mode.picks_creative() {
             return; // clicked with no arrows (vanilla: nothing happens)
         }
+        let item = if use_offhand {
+            self.player.offhand.block
+        } else if let Some(i) = slot {
+            self.player.inv.slots[i].block
+        } else {
+            ARROW_ITEM
+        };
+        let kind = if (TIPPED_HEALING..=TIPPED_HARMING_II).contains(&item) {
+            vc_gameplay::mobs::ProjKind::TippedArrow(item)
+        } else {
+            vc_gameplay::mobs::ProjKind::Arrow
+        };
         self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
             pos: [
                 eye[0] + dir[0] * 0.8,
@@ -7684,7 +7700,7 @@ impl GameApp {
             vel: [dir[0] * 24.0, dir[1] * 24.0, dir[2] * 24.0],
             damage: vc_gameplay::combat::bow_damage(charge),
             age: 0,
-            kind: vc_gameplay::mobs::ProjKind::Arrow,
+            kind,
             owner: vc_gameplay::mobs::PLAYER_OWNER,
         });
         if self.mode.depletes_items() {

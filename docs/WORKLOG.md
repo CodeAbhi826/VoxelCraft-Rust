@@ -6590,3 +6590,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z62 — 3.1a follow-up: registry pins + tool identity states + GPU LUT
 - 13 failures were count pins (540→570) + missing tool identity states (fold hit glazed terracotta). Fix: pin bumps with 3.1a notes, TOOL window 893..=922 (V17/R13 pattern: base+count+fold table+is_* + both match arms + model-state exclusion + prop-test filter), STATE_COUNT 923, GPU LUT offsets/clamps in gpu_mesh (CPU builder auto-sizes).
 - Local (despite load): 36/36 affected tests pass.
+
+## 2026-10-09z63 — 3.1b: tool stats tables + melee wiring (vanilla 1.16.5 set)
+- New tools.rs: tier/class mapping, dig speeds, durability max, melee profiles + 4 tests. combat tool_profile delegates (fist fallback unchanged for blocks). Machine busy — CI runs the tests.

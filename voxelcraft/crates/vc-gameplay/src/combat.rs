@@ -174,13 +174,12 @@ fn melee_profile(held_block: u16) -> (f32, f32) {
 const FIST: (f32, f32) = (1.0, 4.0);
 
 /// Phase 6: the one table that turns a held item into vanilla's two melee
-/// numbers (a wooden sword is 4 HP at 1.6, a diamond axe 7 HP at 1.0, and
-/// so on). It returns `None` for every input today — tool ITEMS do not
-/// exist yet, and the argument here is a *block* id, which is never a
-/// weapon — but the lookup is real and this is where the item arms land.
+/// numbers (a wooden sword is 4 HP at 1.6, a diamond sword 7 HP at 1.6, and
+/// so on). 3.1b arms it from the tools registry; non-tool inputs still
+/// fall through to FIST (a *block* id is never a weapon).
 #[inline]
-fn tool_profile(_held_block: u16) -> Option<(f32, f32)> {
-    None
+fn tool_profile(held_block: u16) -> Option<(f32, f32)> {
+    crate::tools::melee_profile(held_block)
 }
 
 /// One melee hit resolution (player → mob), all modifiers applied.

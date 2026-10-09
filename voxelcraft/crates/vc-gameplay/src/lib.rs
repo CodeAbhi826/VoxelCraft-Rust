@@ -24,6 +24,9 @@ pub mod modes;
 pub mod portal;
 pub mod sleep;
 pub mod spawners;
+/// 3.1b: tool/weapon stats tables (tier speed/damage/durability + the
+/// tool-class mapping for the 540..=569 registry window)
+pub mod tools;
 pub mod villagers;
 pub mod weather;
 pub mod wither;

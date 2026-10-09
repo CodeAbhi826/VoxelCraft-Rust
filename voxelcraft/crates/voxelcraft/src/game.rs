@@ -15591,7 +15591,6 @@ impl GameApp {
         let to_c = (glam::Vec3::new(home[0], home[1] + 1.0, home[2]) - pos).normalize();
         self.player.pos = pos;
         self.player.vel = glam::Vec3::ZERO;
-        let dz = -to_c.z;
         // E2E cameras target the RENDERER convention (render.rs: dir =
         // (sin yaw, ·, −cos yaw); engine yaw 0 = north). The yaw that
         // faces to_c satisfies sin Y ∝ to_c.x, −cos Y ∝ −to_c.z, i.e.

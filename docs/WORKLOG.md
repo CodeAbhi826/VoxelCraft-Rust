@@ -6427,3 +6427,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Root cause (verified against F3's own convention comment: engine yaw 0 = north): E2E orbit math used atan2(-x) against the renderer's (sin yaw, -cos yaw) — x-negated, framing empty horizon on all 5 turntable + 4 iconic views. F3 label was innocent. Fix: atan2(+x) + pin flip in BOTH e2e_turntable_view and e2e_iconic_orbit + per-view mob/cam/yaw telemetry.
 - Plus: view-model hidden during turntable captures (arm photobomb, V1 evidence); hide_hud re-pinned per view (pig HUD flap).
 - Local: fmt clean only (box busy at 2.96 — no compile; CI compiles). V1 re-verdict waits fresh captures post-CI.
+
+## 2026-10-09z18 — Yaw-fix fix-forward: duplicate let (Tested by CI)
+- Yaw-fix CI (run 37872331834): 8/9 code green (tests pass — E2E logic compiles); clippy `unused variable dz` — my edit left the original declaration above the new block. Removed (both remaining `dz` are used).

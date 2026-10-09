@@ -16244,6 +16244,20 @@ impl GameApp {
             if self.time < due {
                 break;
             }
+            // L5: hold the About→Options DONE2 while the capture is
+            // armed (slow frames must not close the readback window;
+            // capped by the settle counter so a dead readback still
+            // exits via MISSED instead of hanging the leg)
+            if id == ui::ID_OPT_DONE2
+                && self.smoke_about_capture
+                && self.screen == Screen::About
+                && self.smoke_about_settle < 40
+            {
+                if let Some(front) = self.smoke_script.front_mut() {
+                    front.0 = self.time + 0.25;
+                }
+                break;
+            }
             self.smoke_script.pop_front();
             self.smoke_click_widget(id);
             // L5 About capture: arm the readback when the script opens
@@ -16694,17 +16708,19 @@ impl GameApp {
             }
         }
         // tree round-tripped back to the title and exit clean
-        // L5 About capture: canvas dump (NOT GPU readback — menus never
-        // complete the swapchain readback; the containers leg proved the
-        // canvas path). Settle 3 so update-before-draw ordering can't
-        // shoot the stale Options canvas, then dump + disarm.
+        // L5 About capture: GPU readback (faithful pixels — the canvas
+        // dump attempt proved black: px holds alpha masks with RGB=0,
+        // final colors are GPU-shaded, so only the swapchain image is
+        // real). While armed and on About, request every update until
+        // take() lands (up to ~600 frames); the DONE2 script step
+        // defers while armed so slow frames can't close the window.
         if self.smoke_about_capture {
             if self.screen == Screen::About {
                 self.smoke_about_settle += 1;
-                if self.smoke_about_settle >= 3 {
+                if let Some(png) = self.renderer.take_screenshot_png() {
                     let dir = std::path::Path::new("screenshots");
                     let _ = std::fs::create_dir_all(dir);
-                    self.ui.dump_png("screenshots/e2e_about.png");
+                    let _ = std::fs::write(dir.join("e2e_about.png"), &png);
                     match std::fs::metadata("screenshots/e2e_about.png") {
                         Ok(m) if m.len() > 1000 => {
                             vc_render::render::report_boot_log(&format!(
@@ -16714,13 +16730,21 @@ impl GameApp {
                             self.smoke_about_capture = false;
                         }
                         _ => {
-                            vc_render::render::report_boot_log("e2e: about dump empty — retrying");
+                            self.renderer.screenshot_request = true;
                         }
+                    }
+                } else {
+                    self.renderer.screenshot_request = true;
+                    if self.smoke_about_settle > 600 {
+                        vc_render::render::report_boot_log(
+                            "e2e: about capture TIMEOUT — disarming",
+                        );
+                        self.smoke_about_capture = false;
                     }
                 }
             } else if self.screen == Screen::Options || self.screen == Screen::Title {
-                // left About before the dump landed — disarm rather than
-                // capturing the wrong screen
+                // left About before the readback landed — disarm rather
+                // than capturing the wrong screen
                 vc_render::render::report_boot_log("e2e: about capture MISSED (left screen)");
                 self.smoke_about_capture = false;
                 self.smoke_about_settle = 0;
@@ -19263,10 +19287,10 @@ impl GameApp {
                             // (5th row — no scale-safe slot on Options),
                             // so visit it after returning: title→About,
                             // PNG, DONE2→Options, DONE→title to exit.
-                            // DONE2 sits a full 1.0s after ABOUT: the
-                            // readback needs several frames and must
-                            // land while still on About (a tight window
-                            // disarms on Options with no PNG — CI-proven).
+                            // The DONE2 runner defers while the capture
+                            // is armed, so the t+7.00 slot is a fallback,
+                            // not a 1.0s hard window (slow frames used to
+                            // disarm on Options with no PNG — CI-proven).
                             (t + 6.00, ui::ID_OPT_ABOUT),
                             (t + 7.00, ui::ID_OPT_DONE2),
                             (t + 7.30, ui::ID_OPT_DONE),

@@ -6474,3 +6474,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z30 — Survey leg never ran: smoke auto-exit raced it (CI 37887643618)
 - Evidence: survey staged kind #0 ("turntable view@0") then "smoke: game entered — exiting 0" ~8s in; zero "e2e: survey" lines, exit 0, verdict grep failed. The exit-hold covered FKEYS/phases/turntable/iconic but not E2E_MOBSURVEY.
 - Fix: survey_pending (E2E_MOBSURVEY && !e2e_survey_done) added to both smoke-exit guards. Side note: About canvas dump VERIFIED in CI log (75003 bytes, VERDICT OK); the 577-byte e2e-about artifact needs an upload-path check before V1 download.
+
+## 2026-10-09z31 — About capture back on GPU readback + DONE2 deferral (CI 37888734416 green on survey fix)
+- V1 (viewed /tmp/opencode/about-art/e2e_about.png): 2560x1440 all-black; stats RGB=0, alpha-only glyph masks. Canvas dumps structurally blind on menus — correction of the z27 "menus never complete readback" theory (log shows 1.0s armed→MISSED timing race).
+- New slice: readback requested every update while armed (600-frame timeout, >1000B gate, same grep strings); script DONE2 defers +0.25s while armed (settle<40 cap, MISSED fallback preserved).

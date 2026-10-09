@@ -202,8 +202,9 @@ mod tests {
         use vc_inventory::inventory::ItemStack;
         let mut s = ItemStack::new(blk::IRON_PICKAXE, 1);
         // 250 max: 249 hits survive, the 250th breaks (stack zeroed)
+        let max = durability_max(s.block);
         for _ in 0..249 {
-            assert!(!damage_item(&mut s, 1, durability_max(s.block)));
+            assert!(!damage_item(&mut s, 1, max));
         }
         assert_eq!(s.dmg, 249);
         assert!(damage_item(&mut s, 1, durability_max(blk::IRON_PICKAXE)));

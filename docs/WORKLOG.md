@@ -6596,3 +6596,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z64 — 3.1c: durability-on-use + sweep arc (strike consequences)
 - tools.rs: damage_item (accumulate vs max, break zeroes, max-0 immune) + ench_level decoder; combat.rs: can_sweep (swords, not sprinting) + sweep_damage (1 + base*lvl/(lvl+1)); game.rs: sweep arc (3m, armor-reduced, bosses excluded) + held wear on hits (+1) and breaks (swords 2) in survival-like modes. Tests: damage/break, gate/damage, decode. Machine busy — CI verifies.
+
+## 2026-10-09z65 — 3.1c red: E0503 in test code (both test jobs)
+- damage_item test passed `&mut s` + `s.block` as two args. Fix: bind max first. Lesson: local pre-push must compile `--tests` too (plain --lib check is blind to test code) — apply when idle; machine busy now, CI verifies.

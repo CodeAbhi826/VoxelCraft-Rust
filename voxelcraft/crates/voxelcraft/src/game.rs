@@ -1697,6 +1697,12 @@ pub struct GameApp {
     pub window: &'static winit::window::Window,
     pub renderer: Renderer,
     pub world: World,
+    /// 2.3b: chunk ticket wiring — Player claims maintained over the
+    /// streaming disc every frame, Forced pins on the spawn area; the
+    /// unload path consults is_loaded and ticket_disc tracks our holder
+    pub tickets: vc_world::tickets::TicketTable,
+    ticket_held: FxHashSet<(i32, i32)>,
+    forced_chunks: Vec<(i32, i32)>,
     pub player: Player,
     pub ui: UiCanvas,
     pub atlas: Vec<u8>,
@@ -3251,6 +3257,9 @@ impl GameApp {
             window,
             renderer,
             world,
+            tickets: vc_world::tickets::TicketTable::new(),
+            ticket_held: FxHashSet::default(),
+            forced_chunks: Vec::new(),
             player,
             ui: UiCanvas::new(),
             atlas,
@@ -7038,6 +7047,8 @@ impl GameApp {
         // world-local system reset (same list as dimension travel)
         self.renderer.clear_meshes();
         self.section_meshes.clear();
+        // 2.3b: Forced spawn pins follow the fresh world
+        self.repin_spawn_tickets();
         self.mesh_inflight.clear();
         self.gen_inflight.clear();
         self.light = vc_world::light::LightEngine::new();
@@ -24060,6 +24071,8 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             {
                 self.level_spawn = (sx, y, sz);
+                // 2.3b: pins track the true (relocated) spawn
+                self.repin_spawn_tickets();
             }
             // Phase 1: survival lands on its feet (snap = no fall damage,
             // fall accumulator resets); creative only "arrives" flying if
@@ -24088,6 +24101,32 @@ impl GameApp {
             self.player.pos.x.div_euclid(16.0) as i32,
             self.player.pos.z.div_euclid(16.0) as i32,
         )
+    }
+
+    /// 2.3b: spawn-chunk Forced pins follow the world — released and
+    /// reacquired on every reset_world so pins never leak across worlds
+    /// (or dimensions: find_spawn is per-dimension).
+    fn repin_spawn_tickets(&mut self) {
+        use vc_world::tickets::TicketKind;
+        for p in std::mem::take(&mut self.forced_chunks) {
+            self.tickets.release(p.0, p.1, TicketKind::Forced);
+        }
+        let sc = (
+            self.level_spawn.0.div_euclid(16),
+            self.level_spawn.2.div_euclid(16),
+        );
+        for dx in -2..=2 {
+            for dz in -2..=2 {
+                let p = (sc.0 + dx, sc.1 + dz);
+                self.tickets.acquire(p.0, p.1, TicketKind::Forced);
+                self.forced_chunks.push(p);
+            }
+        }
+        vc_render::render::report_boot_log(&format!(
+            "tickets: {} claims (forced {})",
+            self.tickets.claims(),
+            self.forced_chunks.len()
+        ));
     }
 
     // ---------------------------------------------------------- streaming --
@@ -24149,6 +24188,8 @@ impl GameApp {
     fn stream(&mut self) {
         let pc = self.player_chunk();
         let rd = self.settings.render_distance;
+        // 2.3b: maintain Player-ticket claims over the streaming disc
+        vc_world::tickets::sync_player_disc(&mut self.tickets, &mut self.ticket_held, pc, rd);
         // 1.3: dispatch caps follow the pool size (small machines,
         // shallow queues); wasm keeps its fixed caps below
         let workers = match &self.work {
@@ -24445,14 +24486,16 @@ impl GameApp {
             }
         }
 
-        // 4. unload far GPU meshes + their section caches
+        // 4. unload far GPU meshes + their section caches (2.3b: a
+        // live ticket holds the chunk — Forced spawn pins outlive the
+        // distance margin by design)
         let unload: Vec<ChunkPos> = self
             .renderer
             .chunks
             .keys()
             .filter(|p| {
                 let d = (p.0 - pc.0).abs().max(p.1 - pc.1);
-                d > rd + 3
+                d > rd + 3 && !self.tickets.is_loaded(p.0, p.1)
             })
             .copied()
             .collect();

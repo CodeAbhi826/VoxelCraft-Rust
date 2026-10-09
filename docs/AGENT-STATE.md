@@ -22,7 +22,8 @@
 - [x] 2.2a oracle primitives, 2.2b structure starts (CI-green)
 - [x] 2.3a tick order + tickets (CI-green)
 - [x] 2.4a writer re-emit, 2.4b region backups (CI-green via rerun 37869400104)
-- [ ] 2.3b ticket wiring, 2.4 writer verification in reference game (soft-blocked)
+- [x] 2.2c codec round-trip (test green in CI 37925048470)
+- [ ] 2.3b ticket wiring (staged, in CI), 2.4 writer verification in reference game (soft-blocked)
 
 ## TODO — morning batch (owner calls)
 - [ ] Branch layout decision (rename → dev? default branch still stale `main` on now-public repo)

@@ -6570,3 +6570,10 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z56 — PART 1 IN-GAME REVIEW CLOSED (packet in CHECKPOINTS.md)
 - F3 split V1: CPU 49.8 / GPU 26.3 live + arm visible. Last capture verdict done.
 - Packet: ≤400-word body + 10-claim self-review (1 re-instated, 8 verified, 1 rule). Part 2 (2.2c/2.3b) unlocked per owner directive.
+
+## 2026-10-09z57 — 2.2c DONE (verified, not just committed)
+- `oracle::tests::generated_chunk_roundtrips_identical ... ok` in CI run 37925048470 today. Codec-fidelity round-trip holds on real generator output.
+
+## 2026-10-09z58 — 2.3b: ticket wiring (player disc + spawn pins + unload consult)
+- sync_player_disc (pure, tested: disc geometry, idempotence, forced-untouched) runs every stream(); unload filter consults is_loaded (player disc < margin so only Forced pins hold); repin_spawn_tickets on reset_world + spawn relocation (25-pin 5x5, no cross-world leaks); "tickets:" boot line + smoke.log grep = CI wiring proof.
+- Local (idle): check clean; 5/5 tickets tests pass.

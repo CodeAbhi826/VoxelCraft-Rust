@@ -128,6 +128,8 @@ jobs:
           grep -q "smoke: title reached" smoke.log
           grep -qE "loading (complete|timeout)" smoke.log
           grep -q "smoke: game entered" smoke.log
+          # 2.3b wiring proof: ticket claims maintained + spawn pins set
+          grep -q "tickets:" smoke.log
           # --verbose regression guard: the raw diagnostic stream engaged and
           # produced its categories (screen transitions, input routing, the
           # 1 Hz perf heartbeat, the exit summary) — the bug-report channel

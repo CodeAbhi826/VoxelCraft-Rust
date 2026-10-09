@@ -16754,7 +16754,7 @@ impl GameApp {
                 } else {
                     self.renderer.screenshot_request = true;
                     // TEMP diagnostic (paired with the take-Some line)
-                    if self.smoke_about_settle % 30 == 0 {
+                    if self.smoke_about_settle.is_multiple_of(30) {
                         vc_render::render::report_boot_log(&format!(
                             "e2e dbg: about take None (settle {})",
                             self.smoke_about_settle

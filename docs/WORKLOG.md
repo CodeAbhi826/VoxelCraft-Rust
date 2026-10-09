@@ -6608,3 +6608,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z68 — 3.3a1: splash registry (4 items + states + brew recipes)
 - Ids 570-573 + d-rows + identity states 923-926 (both arms, model exclusion, prop filter) + Brewing tab/picker + census/pins + GPU LUT. Brew: gunpowder x healing/harming I/II; splash carries drinkable magnitudes. Local: vc-blocks 48/48, brewing 17/17, tools 8/8.
+
+## 2026-10-09z69 — 3.3a2: splash throw + AoE landing (healing/harming, undead inversion)
+- ProjKind::SplashPotion(item): sweep-2 class (knockback-only direct, landing event), Witch attribution arm. Throw arms for 4 ids; landing resolves potion_heal, applies via MobSystem::apply_splash (4m, corpses skipped, hurt-flash only on damage) + thrower in radius (boost-capped). Tests: undead set, heal/hurt inversion both ways, radius cutoff. Machine busy — CI verifies.

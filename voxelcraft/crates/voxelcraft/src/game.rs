@@ -9396,6 +9396,26 @@ impl GameApp {
                         "e2e: pearl teleport -> [{x}, {y}, {z}] + 5 HP (VERIFIED)"
                     ));
                 }
+                mobs::ProjKind::SplashPotion(item) => {
+                    // 3.3a2: instant splash AoE — the item's signed
+                    // magnitude over mobs in 4 m (undead inversion inside
+                    // apply_splash) plus the thrower in the same radius
+                    if let Some(amount) = vc_gameplay::brewing::potion_heal(item) {
+                        let n = self.sim.mobs.apply_splash(pos, amount);
+                        let p = self.player.pos.to_array();
+                        let dx = p[0] - pos[0];
+                        let dy = p[1] - pos[1];
+                        let dz = p[2] - pos[2];
+                        if dx * dx + dy * dy + dz * dz <= 16.0 {
+                            let max = 20.0
+                                + vc_gameplay::effects::health_boost_bonus(&self.player.effects);
+                            self.player.health = (self.player.health + amount).clamp(0.0, max);
+                        }
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: splash landed {amount:+} HP on {n} mob(s)"
+                        ));
+                    }
+                }
                 _ => {}
             }
         }
@@ -22139,6 +22159,8 @@ impl GameApp {
                         let kind = match b {
                             SNOWBALL => vc_gameplay::mobs::ProjKind::Snowball,
                             EGG => vc_gameplay::mobs::ProjKind::Egg,
+                            SPLASH_HEALING | SPLASH_HEALING_II | SPLASH_HARMING
+                            | SPLASH_HARMING_II => vc_gameplay::mobs::ProjKind::SplashPotion(b),
                             _ => vc_gameplay::mobs::ProjKind::Pearl,
                         };
                         self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {

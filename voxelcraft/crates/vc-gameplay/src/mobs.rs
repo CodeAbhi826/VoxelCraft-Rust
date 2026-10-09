@@ -2318,6 +2318,11 @@ pub enum ProjKind {
     /// where the pearl lands, dealing 5 HP damage" + "a cooldown of one
     /// second (20 ticks)" (VERIFIED w/Ender_Pearl, live 2026-09-09)
     Pearl,
+    /// 3.3a2: player-thrown splash potion — carries the ITEM id (the
+    /// landing resolves the magnitude via potion_heal, so healing and
+    /// harming ride one variant). Knockback-only on direct hits like
+    /// the sweep-2 class; the effect lands as a 4m AoE.
+    SplashPotion(u16),
 }
 
 /// the sweep-2 throwables: the owner marker for player-thrown
@@ -3799,6 +3804,59 @@ impl MobSystem {
             }
         }
         struck
+    }
+
+    /// 3.3a2: undead kinds (healing HURTS them, harming HEALS them —
+    /// vanilla Smite/Heal inversion set for the engine's roster; the
+    /// Wither boss rides its own system).
+    pub fn is_undead(kind: MobKind) -> bool {
+        matches!(
+            kind,
+            MobKind::Zombie
+                | MobKind::Husk
+                | MobKind::Skeleton
+                | MobKind::Stray
+                | MobKind::WitherSkeleton
+                | MobKind::Drowned
+                | MobKind::ZombifiedPiglin
+                | MobKind::ZombieVillager
+                | MobKind::ZombieHorse
+                | MobKind::SkeletonHorse
+                | MobKind::Phantom
+                | MobKind::Zoglin
+        )
+    }
+
+    /// 3.3a2: instant splash application over the mob list — full effect
+    /// within 4 m (disclosed simplification: no distance falloff).
+    /// Positive `amount` heals the living and hurts the undead;
+    /// negative reverses. Corpses (already ≤ 0) are skipped. Returns the
+    /// number of mobs touched (E2E evidence).
+    pub fn apply_splash(&mut self, center: [f32; 3], amount: f32) -> u32 {
+        let mut n = 0u32;
+        for m in self.list.iter_mut() {
+            if m.health <= 0.0 {
+                continue;
+            }
+            let dx = m.pos[0] - center[0];
+            let dy = m.pos[1] - center[1];
+            let dz = m.pos[2] - center[2];
+            if dx * dx + dy * dy + dz * dz > 16.0 {
+                continue;
+            }
+            let max = def(m.kind).health;
+            let eff = if Self::is_undead(m.kind) {
+                -amount
+            } else {
+                amount
+            };
+            m.health = (m.health + eff).clamp(0.0, max);
+            if eff < 0.0 {
+                m.hurt_t = 10;
+            }
+            n += 1;
+        }
+        n
     }
 
     /// Backlog round (weather): the rain-contact pass for the water-weak
@@ -6853,6 +6911,9 @@ fn tick_arrows(
                         // never resolved: PLAYER_OWNER skips the sphere)
                         ProjKind::Egg => MobKind::Chicken,
                         ProjKind::Pearl => MobKind::Enderman,
+                        // 3.3a2: splash attribution (same never-resolved
+                        // class — witches are the splash throwers)
+                        ProjKind::SplashPotion(_) => MobKind::Witch,
                     };
                     // snowballs deal 0 damage to the player (VERIFIED),
                     // knockback only
@@ -6890,7 +6951,10 @@ fn tick_arrows(
         // class's rule) and push a LANDING event at the hit (the pearl
         // teleports the thrower to the struck mob, the egg rolls the
         // hatch there).
-        if matches!(a.kind, ProjKind::Snowball | ProjKind::Egg | ProjKind::Pearl) {
+        if matches!(
+            a.kind,
+            ProjKind::Snowball | ProjKind::Egg | ProjKind::Pearl | ProjKind::SplashPotion(_)
+        ) {
             let mut hit_mob = false;
             for m in mobs.iter_mut() {
                 if m.id == a.owner {
@@ -6907,7 +6971,10 @@ fn tick_arrows(
                         m.vel[0] += a.vel[0] * 0.05;
                         m.vel[2] += a.vel[2] * 0.05;
                     }
-                    if matches!(a.kind, ProjKind::Egg | ProjKind::Pearl) {
+                    if matches!(
+                        a.kind,
+                        ProjKind::Egg | ProjKind::Pearl | ProjKind::SplashPotion(_)
+                    ) {
                         landings.push((a.kind, m.pos));
                     }
                     hit_mob = true;
@@ -7551,6 +7618,35 @@ mod tests {
         assert_eq!(sys.ray_hit(eye, [1.0, 0.0, 0.0], 4.0), Some(id));
         assert_eq!(sys.ray_hit(eye, [-1.0, 0.0, 0.0], 4.0), None);
         assert_eq!(sys.ray_hit([40.0, 66.0, 40.0], [1.0, 0.0, 0.0], 4.0), None);
+    }
+
+    #[test]
+    fn splash_heals_living_hurts_undead() {
+        use MobKind::*;
+        assert!(MobSystem::is_undead(Zombie));
+        assert!(MobSystem::is_undead(Skeleton));
+        assert!(MobSystem::is_undead(ZombifiedPiglin));
+        assert!(MobSystem::is_undead(Phantom));
+        assert!(!MobSystem::is_undead(Creeper));
+        assert!(!MobSystem::is_undead(Cow));
+        assert!(!MobSystem::is_undead(Enderman));
+        let mut sys = MobSystem::new(8);
+        let z = sys.spawn_at(Zombie, 0, 65, 0).unwrap();
+        let c = sys.spawn_at(Cow, 1, 65, 0).unwrap();
+        sys.damage(z, 10.0);
+        sys.damage(c, 10.0);
+        // healing 4: cow recovers, zombie takes damage instead
+        assert_eq!(sys.apply_splash([0.5, 65.0, 0.0], 4.0), 2);
+        assert!((sys.by_id(c).unwrap().health - 14.0).abs() < 1e-5);
+        assert!((sys.by_id(z).unwrap().health - 6.0).abs() < 1e-5);
+        // harming 6: cow takes it, zombie is healed by it (capped at max)
+        assert_eq!(sys.apply_splash([0.5, 65.0, 0.0], -6.0), 2);
+        assert!((sys.by_id(c).unwrap().health - 8.0).abs() < 1e-5);
+        assert!((sys.by_id(z).unwrap().health - 12.0).abs() < 1e-5);
+        // out of range: untouched (far cow at 200,65,200)
+        let far = sys.spawn_at(Cow, 200, 65, 200).unwrap();
+        assert_eq!(sys.apply_splash([0.5, 65.0, 0.0], 4.0), 2);
+        assert!((sys.by_id(far).unwrap().health - 20.0).abs() < 1e-5);
     }
 
     #[test]

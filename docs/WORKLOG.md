@@ -6496,3 +6496,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z36 — About root cause: F2 dumper ate 42 readbacks (PROVEN in CI log)
 - Telemetry verdict: captures stored fine (~30/s, 3686400B); take()=None throughout; 42 `screenshot: screenshots/<stamp>.png` lines in the About window. The draw-phase F2 auto-dumper (game.rs:~26205) consumed every buffer — its guard covered fkeys/iconic/phases/turntable but not the About arm.
 - Fix: `&& !self.smoke_about_capture` in the dumper guard. TEMP telemetry removed in the same slice. All prior theories (menu readback broken, timing, instances) recorded as wrong.
+
+## 2026-10-09z37 — Dumper-guard fix CI green (37893374254 11/11); dispatching V1 batch
+- linux-game carries all three Part-1 fixes: stage height (framing), dumper guard (About delivery), survey exit-hold. Expect: e2e_about.png real, 5 framed creeper views, 66 survey fronts.

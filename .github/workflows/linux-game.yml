@@ -415,7 +415,7 @@ jobs:
           # per-mob art verdicts (V1). Count gate: 66 files.
           mkdir -p run9 && pushd run9 >/dev/null
           set +e
-          timeout 600 xvfb-run -a -s "-screen 0 1280x720x24" \
+          timeout 1200 xvfb-run -a -s "-screen 0 1280x720x24" \
             env WGPU_BACKEND=Vulkan E2E_MOBSURVEY=1 \
             "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-survey.log
           CODE=$?

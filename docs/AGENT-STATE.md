@@ -2,14 +2,17 @@
 
 ## Current
 - Part: **1 REVIEW CLOSE-OUT first** (owner directive 2026-10-09: finish Part 1 fully before any Part 2 slice — 2.2c/2.3b deferred).
-- HEAD: `1e03454` (u8 fix green; capture build 37890256136 running, watch armed).
+- Owner directive 2026-10-09: when the plan is over, ship a downloadable build for testing on the owner's PC (local verification pass after CI).
+- HEAD: `e5b146c` (feet-level camera fix + fmt; CI 37895771107 11/11 green).
 - Repo is PUBLIC since 2026-10-09 (owner-ordered; CI compute restored). Default branch still stale `main`.
-- Last known CI: run 37875165005 — 10/10 SUCCESS (bench + uploads green).
+- Last known CI: run 37895771107 — 11/11 SUCCESS.
+- V1 tally: ~37 images viewed (12 this session: black About, 5+5 turntable, real About, new front). Claim 5 still WITHDRAWN.
 
 ## TODO — now (in order)
-- [ ] About capture fix: menu nav reaches About (CI-proven) but no PNG lands — diagnose readback-on-menu path, fix, re-dispatch linux-game, V1-view e2e_about.png
-- [ ] Turntable re-verdict: yaw fix is CI-green; capture fresh 5 views (next linux-game), V1-view every5456:Po7pixel, re-instate or rewrite review claim 5
-- [ ] Part 1 review completion: turntable V1 + About V1 + settings/title/inventory screens (need engine dumps or X-input fix) + player eye close-up + F3 gpu split on real GPU
+- [x] About capture: dumper-guard fix CI-green; real About PNG V1-PASSED (2560×1440, title + 8 lines + DONE)
+- [ ] Turntable re-verdict: feet-level camera fix committed; verify on next linux-game, V1-view all 5, re-instate or rewrite claim 5
+- [ ] Survey leg: stage-reuse optimization (this slice) → full 66 fronts → V1-view batch
+- [ ] Part 1 remaining screens: settings/title/inventory/player-eye/F3-gpu to 30+ viewed, then packet close-out
 - [ ] 2.2c codec fidelity (committed `3aad7f6`; validates on next green CI)
 - [ ] ts-race fix slice (design in /tmp/opencode/ts-race-design.md; needs owner build call for Intel validation)
 - [ ] E2E turntable gate hardening (assert mob-in-frame, not just files-saved)

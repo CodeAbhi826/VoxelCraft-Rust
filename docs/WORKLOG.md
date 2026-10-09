@@ -6503,3 +6503,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z38 — Turntable framing root cause: double eye height (V1-PROVEN)
 - V1-viewed new set (run 37893880395): platform now flat on surface (stage fix works) but mob still head-only/empty. Geometry: view() set player.pos.y=home+1.6 AND renderer adds EYE_HEIGHT 1.62 → eye at +3.22, body 37° below frame at pitch 0. Matches all 5 images exactly (side/back/threequarter: head bottom-center; front/closeup: empty).
 - Fix: pos.y=home[1] (feet) → eye at head height. Survey inherits via shared view fn.
+
+## 2026-10-09z39 — Survey stage-reuse + timeout 1200 (E2E infra for Part-1 verification)
+- Swap-subject-only after the first kind (full 2.8k-edit setup once); spawn-fail falls back to the FAIL path. Leg timeout 600→1200 as margin. No new fields.

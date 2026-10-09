@@ -16693,7 +16693,35 @@ impl GameApp {
             } else if ready {
                 if self.e2e_turntable_stage == 0 {
                     let kind = MobKind::all()[self.e2e_survey_idx];
-                    self.e2e_turntable_setup(pcx, pcz, kind);
+                    if self.e2e_turntable_subject.is_none() {
+                        self.e2e_turntable_setup(pcx, pcz, kind);
+                    } else if let Some((_, home)) = self.e2e_turntable_subject {
+                        // stage stands — swap the subject only (a full
+                        // setup is ~2.8k terrain edits + lighting per
+                        // kind; CI-proven 13s/mob blew the 600s leg
+                        // timeout at 45/66)
+                        match self.sim.mobs.spawn_at(
+                            kind,
+                            home[0].floor() as i32,
+                            home[1].floor() as i32,
+                            home[2].floor() as i32,
+                        ) {
+                            Some(new_id) => {
+                                self.sim.mobs.list.retain(|m| m.id == new_id);
+                                if let Some(m) =
+                                    self.sim.mobs.list.iter_mut().find(|m| m.id == new_id)
+                                {
+                                    m.pos = home;
+                                    m.vel = [0.0; 3];
+                                    m.yaw = 0.0;
+                                }
+                                self.e2e_turntable_subject = Some((new_id, home));
+                            }
+                            None => {
+                                self.e2e_turntable_subject = None;
+                            }
+                        }
+                    }
                     if self.e2e_turntable_subject.is_none() {
                         self.e2e_survey_ok = false;
                         vc_render::render::report_boot_log("e2e: survey FAIL no subject");

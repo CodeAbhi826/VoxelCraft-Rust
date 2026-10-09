@@ -15501,9 +15501,6 @@ impl GameApp {
         };
         self.player.flying = true;
         self.player.on_ground = false;
-        // staged camera for the capture freeze (see e2e_capture_freeze)
-        self.e2e_cam_pos = pos.to_array();
-        self.e2e_cam_yaw = self.player.yaw;
     }
 
     /// E2E capture freeze: re-pin subject + camera every update while a
@@ -15684,6 +15681,10 @@ impl GameApp {
             ));
         }
         self.e2e_turntable_settle = 0;
+        // staged camera for the capture freeze (e2e_capture_freeze
+        // re-applies it while a capture is pending)
+        self.e2e_cam_pos = pos.to_array();
+        self.e2e_cam_yaw = self.player.yaw;
     }
 
     /// 1.11: persist one turntable capture (the iconic pull contract).

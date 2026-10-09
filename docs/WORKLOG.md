@@ -6536,3 +6536,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z47 — Freeze slice CI green (37904627521 11/11); dispatching verification
 - Expects all 65 framed (frozen tableau + size-scaled distances).
+
+## 2026-10-09z48 — Freeze misfire: store landed in iconic_orbit, camera pinned at origin
+- V1 (5 sheets): all 65 cells identical gray fog + blob — the cam store edit anchored on a duplicated `flying/on_ground` pattern and hit e2e_iconic_orbit instead of e2e_turntable_view; freeze pinned every capture camera at [0,0,0]. Lesson: anchor multi-match edits on following-context, verify placement by grep before commit.
+- Fix: store moved into view() (verified lines 15686-87); claim 5 unaffected (stands on the pre-freeze run's V1 set). Local check clean.

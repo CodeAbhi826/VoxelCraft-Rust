@@ -3595,12 +3595,13 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 540; // + the backlog fire (506) + the farming set (507-514: farmland, 4
+pub const BLOCK_COUNT: usize = 570; // + the backlog fire (506) + the farming set (507-514: farmland, 4
                                     // crops, wheat, bread, hoe) + the 16 armor items (515-530,
                                     // sub-round 3) + the TNT round: the TNT block (533)
                                     // + the beds round: the bed's two halves (534/535)
                                     // + the fluids round: the bubble column (538)
                                     // + 2.1e placeholder (539)
+                                    // + 3.1a tools/weapons (540..=569)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -5962,6 +5963,41 @@ pub const PLACEHOLDER: u16 = 539;
 /// 2.1e: the placeholder's dedicated state — appended past the fire-age
 /// window (877..=891), so STATE_COUNT grows 892 → 893.
 pub const PLACEHOLDER_STATE: u16 = 892;
+// ---- 3.1a: tool/weapon items (ids 540..=569). Material-major like the
+// armor range (wood/stone/iron/gold/diamond/netherite), type order per
+// material sword/pickaxe/axe/shovel/hoe. Sprites stay TILE_PLACEHOLDER
+// until Part 6 paints them (blank = safe, the mob-batch precedent);
+// no item states (tools never place blocks).
+pub const WOODEN_SWORD: u16 = 540;
+pub const WOODEN_PICKAXE: u16 = 541;
+pub const WOODEN_AXE: u16 = 542;
+pub const WOODEN_SHOVEL: u16 = 543;
+pub const WOODEN_HOE: u16 = 544;
+pub const STONE_SWORD: u16 = 545;
+pub const STONE_PICKAXE: u16 = 546;
+pub const STONE_AXE: u16 = 547;
+pub const STONE_SHOVEL: u16 = 548;
+pub const STONE_HOE: u16 = 549;
+pub const IRON_SWORD: u16 = 550;
+pub const IRON_PICKAXE: u16 = 551;
+pub const IRON_AXE: u16 = 552;
+pub const IRON_SHOVEL: u16 = 553;
+pub const IRON_HOE: u16 = 554;
+pub const GOLDEN_SWORD: u16 = 555;
+pub const GOLDEN_PICKAXE: u16 = 556;
+pub const GOLDEN_AXE: u16 = 557;
+pub const GOLDEN_SHOVEL: u16 = 558;
+pub const GOLDEN_HOE: u16 = 559;
+pub const DIAMOND_SWORD: u16 = 560;
+pub const DIAMOND_PICKAXE: u16 = 561;
+pub const DIAMOND_AXE: u16 = 562;
+pub const DIAMOND_SHOVEL: u16 = 563;
+pub const DIAMOND_HOE: u16 = 564;
+pub const NETHERITE_SWORD: u16 = 565;
+pub const NETHERITE_PICKAXE: u16 = 566;
+pub const NETHERITE_AXE: u16 = 567;
+pub const NETHERITE_SHOVEL: u16 = 568;
+pub const NETHERITE_HOE: u16 = 569;
 
 /// armor piece kind (for slot routing + art): 0 helmet, 1 chestplate,
 /// 2 leggings, 3 boots. None for non-armor blocks.
@@ -6302,6 +6338,22 @@ const fn d(
         emissive,
         sound,
     }
+}
+
+/// 3.1a: one-line tool/weapon rows — every tool item is a non-solid,
+/// non-opaque cross-rendered inventory sprite with placeholder art
+/// (Part 6 paints real sprites); only the name and break sound vary.
+const fn tool_def(name: &'static str, sound: SoundFamily) -> BlockDef {
+    d(
+        name,
+        [TILE_PLACEHOLDER, TILE_PLACEHOLDER, TILE_PLACEHOLDER],
+        false,
+        false,
+        true,
+        false,
+        0,
+        sound,
+    )
 }
 
 pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
@@ -12805,6 +12857,39 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
         0,
         SoundFamily::Stone,
     ),
+    // ---- 3.1a: the 30 tool/weapon items (ids 540..=569, material-major
+    // sword/pickaxe/axe/shovel/hoe — vanilla names; placeholder sprites
+    // until Part 6). Wood breaks woody, stone stony, metals metallic.
+    tool_def("Wooden Sword", SoundFamily::Wood),
+    tool_def("Wooden Pickaxe", SoundFamily::Wood),
+    tool_def("Wooden Axe", SoundFamily::Wood),
+    tool_def("Wooden Shovel", SoundFamily::Wood),
+    tool_def("Wooden Hoe", SoundFamily::Wood),
+    tool_def("Stone Sword", SoundFamily::Stone),
+    tool_def("Stone Pickaxe", SoundFamily::Stone),
+    tool_def("Stone Axe", SoundFamily::Stone),
+    tool_def("Stone Shovel", SoundFamily::Stone),
+    tool_def("Stone Hoe", SoundFamily::Stone),
+    tool_def("Iron Sword", SoundFamily::Metal),
+    tool_def("Iron Pickaxe", SoundFamily::Metal),
+    tool_def("Iron Axe", SoundFamily::Metal),
+    tool_def("Iron Shovel", SoundFamily::Metal),
+    tool_def("Iron Hoe", SoundFamily::Metal),
+    tool_def("Golden Sword", SoundFamily::Metal),
+    tool_def("Golden Pickaxe", SoundFamily::Metal),
+    tool_def("Golden Axe", SoundFamily::Metal),
+    tool_def("Golden Shovel", SoundFamily::Metal),
+    tool_def("Golden Hoe", SoundFamily::Metal),
+    tool_def("Diamond Sword", SoundFamily::Metal),
+    tool_def("Diamond Pickaxe", SoundFamily::Metal),
+    tool_def("Diamond Axe", SoundFamily::Metal),
+    tool_def("Diamond Shovel", SoundFamily::Metal),
+    tool_def("Diamond Hoe", SoundFamily::Metal),
+    tool_def("Netherite Sword", SoundFamily::Metal),
+    tool_def("Netherite Pickaxe", SoundFamily::Metal),
+    tool_def("Netherite Axe", SoundFamily::Metal),
+    tool_def("Netherite Shovel", SoundFamily::Metal),
+    tool_def("Netherite Hoe", SoundFamily::Metal),
 ];
 
 #[inline]
@@ -13562,6 +13647,15 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         GOLDEN_HELMET | GOLDEN_CHESTPLATE | GOLDEN_LEGGINGS | GOLDEN_BOOTS => CreativeTab::Combat,
         DIAMOND_HELMET | DIAMOND_CHESTPLATE | DIAMOND_LEGGINGS | DIAMOND_BOOTS => CreativeTab::Combat,
         TURTLE_SHELL => CreativeTab::Combat,
+        // 3.1a: the 30 tool/weapon items — swords ride Combat (their
+        // vanilla home), pickaxe/axe/shovel/hoe ride Tools. Id order is
+        // material-major sword/pickaxe/axe/shovel/hoe and 540 % 5 == 0,
+        // so offset%5==0 selects exactly the swords.
+        WOODEN_SWORD | STONE_SWORD | IRON_SWORD | GOLDEN_SWORD | DIAMOND_SWORD | NETHERITE_SWORD => CreativeTab::Combat,
+        WOODEN_PICKAXE | STONE_PICKAXE | IRON_PICKAXE | GOLDEN_PICKAXE | DIAMOND_PICKAXE | NETHERITE_PICKAXE => CreativeTab::Tools,
+        WOODEN_AXE | STONE_AXE | IRON_AXE | GOLDEN_AXE | DIAMOND_AXE | NETHERITE_AXE => CreativeTab::Tools,
+        WOODEN_SHOVEL | STONE_SHOVEL | IRON_SHOVEL | GOLDEN_SHOVEL | DIAMOND_SHOVEL | NETHERITE_SHOVEL => CreativeTab::Tools,
+        WOODEN_HOE | STONE_HOE | IRON_HOE | GOLDEN_HOE | DIAMOND_HOE | NETHERITE_HOE => CreativeTab::Tools,
         // ---- Transportation (1 entries) ----
         SADDLE => CreativeTab::Transportation,
         // ---- Miscellaneous (184 entries) ----
@@ -13649,6 +13743,12 @@ pub fn creative_tab_items(tab: CreativeTab) -> Vec<u16> {
         // Sub-round 3: the 16 armor items (they postdate PICKER_BLOCKS;
         // material order = id order, helmet..boots per material)
         out.extend(LEATHER_CAP..=DIAMOND_BOOTS);
+        // 3.1a: swords (offset%5==0 of the 540..=569 tool range)
+        out.extend((WOODEN_SWORD..=NETHERITE_HOE).step_by(5));
+    }
+    if tab == CreativeTab::Tools {
+        // 3.1a: the non-sword tools
+        out.extend((WOODEN_SWORD..=NETHERITE_HOE).filter(|id| *id % 5 != 0));
     }
     out
 }
@@ -13680,9 +13780,10 @@ mod creative_tab_tests {
             total += items.len();
         }
         // picker entries + the 10 redstone extras + the 16 armor items
+        // + the 30 3.1a tools
         assert_eq!(
             total,
-            PICKER_BLOCKS.len() + CREATIVE_REDSTONE_EXTRA.len() + 16
+            PICKER_BLOCKS.len() + CREATIVE_REDSTONE_EXTRA.len() + 16 + 30
         );
         // per-tab census (regenerates with the table; pins drift)
         assert_eq!(creative_tab_items(CreativeTab::BuildingBlocks).len(), 155);
@@ -13691,10 +13792,12 @@ mod creative_tab_tests {
         assert_eq!(creative_tab_items(CreativeTab::Transportation).len(), 1);
         assert_eq!(creative_tab_items(CreativeTab::Miscellaneous).len(), 184);
         assert_eq!(creative_tab_items(CreativeTab::Foodstuffs).len(), 37);
-        // Round K: the flint-and-steel igniter joins the hoe in Tools
-        assert_eq!(creative_tab_items(CreativeTab::Tools).len(), 2);
+        // Round K: the flint-and-steel igniter joins the hoe in Tools,
+        // 3.1a adds the 24 non-sword tools (2 -> 26)
+        assert_eq!(creative_tab_items(CreativeTab::Tools).len(), 26);
         // Sub-round 3: Combat = the 5 picker entries + the 16 armor items
-        assert_eq!(creative_tab_items(CreativeTab::Combat).len(), 21);
+        // + the 6 3.1a swords (21 -> 27)
+        assert_eq!(creative_tab_items(CreativeTab::Combat).len(), 27);
         assert!(creative_tab_items(CreativeTab::Combat).contains(&DIAMOND_CHESTPLATE));
         assert_eq!(creative_tab_items(CreativeTab::Brewing).len(), 25);
         // Round K/TNT/beds: the new picker entries' tab homes
@@ -13702,6 +13805,24 @@ mod creative_tab_tests {
         assert!(creative_tab_items(CreativeTab::Redstone).contains(&TNT));
         assert!(creative_tab_items(CreativeTab::DecorationBlocks).contains(&BED));
         assert!(creative_tab_items(CreativeTab::DecorationBlocks).contains(&BED_HEAD));
+        // 3.1a: tool id block is contiguous 540..=569, swords in Combat,
+        // the rest in Tools, names resolve from the table
+        assert_eq!(NETHERITE_HOE, WOODEN_SWORD + 29);
+        for id in WOODEN_SWORD..=NETHERITE_HOE {
+            let tab = creative_tab(id);
+            if id % 5 == 0 {
+                assert_eq!(tab, CreativeTab::Combat, "sword {id} not in Combat");
+            } else {
+                assert_eq!(tab, CreativeTab::Tools, "tool {id} not in Tools");
+            }
+        }
+        assert_eq!(BLOCK_TABLE[WOODEN_SWORD as usize].name, "Wooden Sword");
+        assert_eq!(
+            BLOCK_TABLE[NETHERITE_PICKAXE as usize].name,
+            "Netherite Pickaxe"
+        );
+        assert_eq!(BLOCK_TABLE[GOLDEN_AXE as usize].name, "Golden Axe");
+        assert!(!BLOCK_TABLE[IRON_SHOVEL as usize].solid);
     }
 
     /// Sub-round 2: the canonical vanilla anchors — the spot-checks that

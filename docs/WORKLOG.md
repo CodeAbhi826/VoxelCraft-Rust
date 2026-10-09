@@ -6583,3 +6583,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z60 — PART 2 WORLDS FIRST CLOSED (packet written)
 - linux-game 37932048685 green incl. tickets: grep. Packet + 10-claim review in CHECKPOINTS.md. Only owner-blocked items remain (2.4 ref verification, ts-race, morning batch).
+
+## 2026-10-09z61 — 3.1a: tool/weapon registry (ids 540-569, 30 d-rows, tabs)
+- Ids material-major sword/pick/axe/shovel/hoe (540%5==0 so offset selects swords); tool_def 1-line rows; placeholder sprites (Part 6 paints); BLOCK_COUNT 570. Tabs: swords→Combat, rest→Tools; census updated (Tools 26, Combat 27, total +30). Tests: contiguity, tab mapping all 30, names. Machine busy (load 11) — CI runs the tests.

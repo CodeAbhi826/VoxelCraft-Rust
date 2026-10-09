@@ -409,6 +409,28 @@ jobs:
           done
           echo "TURNTABLE OK - solo-mob 5-view capture set saved"
 
+          # Mob survey (E2E_MOBSURVEY=1) — every MobKind::all() entry gets
+          # one front view on the turntable rig (same stage/camera/pull
+          # contract). 66 PNGs to screenshots/; the PNGs are the owner's
+          # per-mob art verdicts (V1). Count gate: 66 files.
+          mkdir -p run9 && pushd run9 >/dev/null
+          set +e
+          timeout 600 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan E2E_MOBSURVEY=1 \
+            "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-survey.log
+          CODE=$?
+          set -e
+          popd >/dev/null
+          echo "survey smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: mob survey E2E exited $CODE"
+            exit 1
+          fi
+          grep -q "SURVEY VERDICT OK" smoke-survey.log || { echo "FAIL: the survey E2E verdict is not OK"; exit 1; }
+          SURVEY_N=$(ls run9/screenshots/e2e_survey_*_front_*.png 2>/dev/null | wc -l)
+          [ "$SURVEY_N" -eq 66 ] || { echo "FAIL: survey captured $SURVEY_N/66 mob views"; exit 1; }
+          echo "SURVEY OK - all 66 mob front views saved"
+
           # 1.2v: streaming benchmark, NON-GATING — the orbit default stays
           # untouched; this leg walks fresh terrain (chunk gen + meshing in
           # the frame cost) and uploads its JSON. Never fails the job: the
@@ -478,6 +500,15 @@ jobs:
         with:
           name: e2e-turntable
           path: run8/screenshots/e2e_turntable_*.png
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload mob survey captures (per-mob V1 evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-mobsurvey
+          path: run9/screenshots/e2e_survey_*.png
           retention-days: 30
           if-no-files-found: warn
 

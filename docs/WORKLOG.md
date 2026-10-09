@@ -6451,3 +6451,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z24 — About capture window widened (Tested locally)
 - Diagnosis: nav reached About (CI-proven) but the 0.35s DONE2 window likely disarmed before the lavapipe readback landed (no capture line at all). DONE2 moved to +1.0s; arming + MISSED telemetry added so the next run distinguishes "never armed" from "too slow".
 - Local (idle): fmt clean; `check -p voxelcraft --lib` clean.
+
+## 2026-10-09z25 — Mob survey leg: all 66 kinds, one front view each (Tested locally)
+- mobs.rs: MobKind::all() (single canonical roster) + drift test (66 entries, no dupes, name round-trips; Squid documented as registry-only exception).
+- game.rs: E2E_MOBSURVEY leg reusing turntable rig (setup refactored to take kind; front view @3m with yaw fix; per-mob save e2e_survey_{name}_front.png; verdict + count). Workflow: 600s leg in run9/, 66-file count gate, e2e-mobsurvey artifact.
+- Local (idle→busy): fmt clean; all() test passes; check + lib clippy clean on both crates (--tests-only pre-existing lints untouched).

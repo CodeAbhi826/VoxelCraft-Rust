@@ -411,6 +411,80 @@ pub enum MobKind {
 }
 
 impl MobKind {
+    /// Every kind, one canonical list — the E2E mob survey iterates
+    /// this (no parallel name tables to drift). The `all_covers_names`
+    /// test pins the length; extend BOTH together when adding a kind.
+    pub fn all() -> &'static [MobKind] {
+        use MobKind::*;
+        &[
+            Zombie,
+            Skeleton,
+            Creeper,
+            Spider,
+            Enderman,
+            Cow,
+            Pig,
+            Sheep,
+            Chicken,
+            SnowGolem,
+            MagmaCube,
+            Blaze,
+            Ocelot,
+            IronGolem,
+            ZombieVillager,
+            Mooshroom,
+            WitherSkeleton,
+            Witch,
+            Bat,
+            Horse,
+            Donkey,
+            Mule,
+            Rabbit,
+            PolarBear,
+            Stray,
+            Husk,
+            Llama,
+            Vindicator,
+            Evoker,
+            Vex,
+            Parrot,
+            Illusioner,
+            Drowned,
+            Phantom,
+            Dolphin,
+            Cod,
+            Salmon,
+            Pufferfish,
+            TropicalFish,
+            Turtle,
+            Fox,
+            Bee,
+            Strider,
+            Piglin,
+            Hoglin,
+            Ghast,
+            CaveSpider,
+            Silverfish,
+            Squid,
+            ZombifiedPiglin,
+            Cat,
+            Wolf,
+            Slime,
+            Panda,
+            Guardian,
+            ElderGuardian,
+            Endermite,
+            Shulker,
+            Pillager,
+            Ravager,
+            WanderingTrader,
+            TraderLlama,
+            PiglinBrute,
+            Zoglin,
+            SkeletonHorse,
+            ZombieHorse,
+        ]
+    }
     /// The bed bracket's monster gate (VERIFIED w/Bed §Sleeping, live
     /// 2026-09-22 — the wiki's JE table filtered to the 1.16.5-era
     /// registry): "If a monster is within 8 blocks of the bed head
@@ -7249,6 +7323,29 @@ pub fn build_arrow_vertices(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `all()` covers the full roster (66: MOB_DATA's 65 spawn-table
+    /// kinds + Squid) with no duplicates — the E2E survey iterates
+    /// this list, so drift here means missed captures. Every name()
+    /// id also round-trips through from_name (namespace-agnostic read
+    /// path covers the rest).
+    #[test]
+    fn all_covers_full_roster_without_dupes() {
+        let all = MobKind::all();
+        assert_eq!(all.len(), 66);
+        let mut seen = std::collections::HashSet::new();
+        for k in all {
+            assert!(seen.insert(k), "duplicate kind in all(): {k:?}");
+            // Squid is the documented exception: registry kind, not a
+            // spawn-table entry — from_name rightly rejects it
+            if *k == MobKind::Squid {
+                assert_eq!(k.name(), "voxelcraft:squid");
+                continue;
+            }
+            let id = k.name().strip_prefix("voxelcraft:").unwrap();
+            assert_eq!(MobKind::from_name(id), Some(*k), "name roundtrip {id}");
+        }
+    }
 
     /// 1A.7: the display-name table is the lang-key precursor. The
     /// invariant that keeps the TWO name tables from drifting: snake_case

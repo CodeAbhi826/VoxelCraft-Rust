@@ -1,9 +1,33 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **2 WORLDS FIRST**. Current slice: **turntable yaw fix** (committed; CI validates compile + legs).
-- HEAD: yaw-fix commit (review claim 5 withdrawn; re-verdict on fresh captures).
-- Last known CI: run 37731681836 at `f0d346a` — 916 passed / 0 failed / 2 ignored.
+- Part: **2 WORLDS FIRST**. Current slice: **mob survey leg** (committed; CI watch armed).
+- HEAD: survey commit (About capture: leg green in CI, linux-game PNG still missing — diagnosis continues on failure).
+- Repo is PUBLIC since 2026-10-09 (owner-ordered; CI compute restored). Default branch still stale `main`.
+- Last known CI: run 37875165005 — 10/10 SUCCESS (bench + uploads green).
+
+## TODO — now (in order)
+- [ ] About capture fix: menu nav reaches About (CI-proven) but no PNG lands — diagnose readback-on-menu path, fix, re-dispatch linux-game, V1-view e2e_about.png
+- [ ] Turntable re-verdict: yaw fix is CI-green; capture fresh 5 views (next linux-game), V1-view every5456:Po7pixel, re-instate or rewrite review claim 5
+- [ ] Part 1 review completion: turntable V1 + About V1 + settings/title/inventory screens (need engine dumps or X-input fix) + player eye close-up + F3 gpu split on real GPU
+- [ ] 2.2c codec fidelity (committed `3aad7f6`; validates on next green CI)
+- [ ] ts-race fix slice (design in /tmp/opencode/ts-race-design.md; needs owner build call for Intel validation)
+- [ ] E2E turntable gate hardening (assert mob-in-frame, not just files-saved)
+
+## TODO — Part 2 queue status
+- [x] 2.1a version gate, 2.1b block sidecar, 2.1c record sidecars, 2.1d fuzz, 2.1e registry/tile/art, 2.1f remap (all CI-green)
+- [x] 2.2a oracle primitives, 2.2b structure starts (CI-green)
+- [x] 2.3a tick order + tickets (CI-green)
+- [x] 2.4a writer re-emit, 2.4b region backups (CI-green via rerun 37869400104)
+- [ ] 2.3b ticket wiring, 2.4 writer verification in reference game (soft-blocked)
+
+## TODO — morning batch (owner calls)
+- [ ] Branch layout decision (rename → dev? default branch still stale `main` on now-public repo)
+- [ ] Docs-license call (BLOCKERS #4 — reuse-lint waits on it)
+- [ ] Provider-terms confirm (BLOCKERS #5, pre-release)
+- [ ] Phases-gate call (BLOCKERS #3 — 0.9 vs 0.88 local)
+- [ ] package.json license scope question
+- [ ] gmail in commit history: leave or explicit rewrite order (R1)
 
 ## TODO — next 5 slices
 - [x] 1.0.5 per-function pinned `to_bits` tests + wide/targeted golden hashes (`30ad6a8`, CI 37743400037 green)
@@ -22,9 +46,8 @@
 - [x] 1.11 turntable capture tool (`7f47f74`; leg green, 5 creeper views; V1 viewing waits quota)
 - [x] 1.12 player torso/face fix (`333b766`; pixel test + all legs green; visual waits foreground)
 - [x] 1.8b vanilla preset + fresh-profile tiering (`7006495`; all legs exit 0; particle knob pre-existed)
-- [ ] Chunk migration B–G (save.rs, game.rs, gen.rs ranges; A done)
-- [ ] Interleaved: Chunk::get migration batches B–G (compile-verified)
-- [ ] Part 1 REVIEW PACKET + adversarial self-review (10 claims) + foreground capture sweep (intro→panorama→every settings page→world select/create→loading→loaded→HUD/inventories/containers + 1fps boot+play bursts; pixel-by-pixel review of EVERY image for unreported issues, V1 described per image) + full-dimension coverage (Overworld/Nether/End), all textures/tiles, and everything visible in a full playthrough as if completing the game
+- [x] Chunk migration B–G (complete workspace-wide; only trap-pinning tests/internals remain)
+- [x] Part 1 REVIEW PACKET + adversarial self-review (10 claims; claim 5 WITHDRAWN after V1 viewing — see re-verdict item above)
 
 ## TODO — later parts (in order)
 - [ ] Part 2 worlds-first (importer → oracle → arch → writer) — Part 3 gameplay core — Part 4 world-gen parity (4.0 LEGAL GATE hard stop first) — Part 5 colour/lighting/packs/shader — Part 6 art/models — Part 7 remaining gameplay — Part 8 quirk parity — Part 9 release

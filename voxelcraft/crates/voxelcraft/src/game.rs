@@ -1951,6 +1951,12 @@ pub struct GameApp {
     e2e_turntable_subject: Option<(u32, [f32; 3])>,
     /// settle frames since the stage's camera move
     e2e_turntable_settle: u8,
+    /// Mob survey (E2E_MOBSURVEY): index into MobKind::all(), ran once
+    e2e_survey_idx: usize,
+    /// Mob survey finished (the leg owns the exit)
+    e2e_survey_done: bool,
+    /// every survey capture verified non-trivial
+    e2e_survey_ok: bool,
     /// E2E_ICONIC stage ladder: 0 = stage-build pending, 1..=4 = the four
     /// cardinal orbit captures, 5 = the third-person player-rig capture,
     /// 6 = done (the leg owns the exit)
@@ -3371,6 +3377,9 @@ impl GameApp {
             e2e_turntable_ok: true,
             e2e_turntable_subject: None,
             e2e_turntable_settle: 0,
+            e2e_survey_idx: 0,
+            e2e_survey_done: false,
+            e2e_survey_ok: true,
             smoke_clicked_ingame: false,
             smoke_game_t: 0.0,
             f3_dump2: false,
@@ -15525,10 +15534,7 @@ impl GameApp {
     /// subject by TURNTABLE_MOB (default creeper); neutral daylight, clear
     /// weather, HUD hidden, natural spawning off, crowd removed.
     #[cfg(not(target_arch = "wasm32"))]
-    fn e2e_turntable_setup(&mut self, pcx: i32, pcz: i32) {
-        use vc_gameplay::mobs::MobKind;
-        let name = std::env::var("TURNTABLE_MOB").unwrap_or_else(|_| "creeper".to_string());
-        let kind = MobKind::from_name(&name.to_lowercase()).unwrap_or(MobKind::Creeper);
+    fn e2e_turntable_setup(&mut self, pcx: i32, pcz: i32, kind: vc_gameplay::mobs::MobKind) {
         let (_, sy, _) = self.world.find_spawn();
         let cx = pcx * 16 + 8;
         let cz = pcz * 16 + 8;
@@ -15656,6 +15662,37 @@ impl GameApp {
             None => {
                 vc_render::render::report_boot_log("e2e: turntable capture MISSING");
                 self.e2e_turntable_ok = false;
+            }
+        }
+    }
+
+    /// Mob survey (E2E_MOBSURVEY=1, native): one front view per
+    /// MobKind::all() entry on the turntable rig (same stage, same
+    /// camera, same pull contract). Filenames carry the registry name
+    /// for V1 review. The mob-in-frame assertion lives with the
+    /// turntable hardening item — this leg counts + sizes captures.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_survey_save(&mut self, name: &str) {
+        let png = self.renderer.take_screenshot_png();
+        match png {
+            Some(bytes) => {
+                let dir = std::path::Path::new("screenshots");
+                let _ = std::fs::create_dir_all(dir);
+                let path = dir.join(format!(
+                    "e2e_survey_{name}_front_{}.png",
+                    chrono_like_stamp()
+                ));
+                let wrote = std::fs::write(&path, &bytes).is_ok();
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: survey {name}/front {} ({} bytes)",
+                    if wrote { "saved" } else { "WRITE FAILED" },
+                    bytes.len()
+                ));
+                self.e2e_survey_ok &= wrote && bytes.len() > 1000;
+            }
+            None => {
+                vc_render::render::report_boot_log("e2e: survey capture MISSING");
+                self.e2e_survey_ok = false;
             }
         }
     }
@@ -16553,7 +16590,11 @@ impl GameApp {
             let ready = in_world && self.world.chunks.contains_key(&(pcx, pcz));
             match self.e2e_turntable_stage {
                 0 if ready => {
-                    self.e2e_turntable_setup(pcx, pcz);
+                    use vc_gameplay::mobs::MobKind;
+                    let name =
+                        std::env::var("TURNTABLE_MOB").unwrap_or_else(|_| "creeper".to_string());
+                    let kind = MobKind::from_name(&name.to_lowercase()).unwrap_or(MobKind::Creeper);
+                    self.e2e_turntable_setup(pcx, pcz, kind);
                     if self.e2e_turntable_subject.is_none() {
                         self.e2e_turntable_ok = false;
                         vc_render::render::report_boot_log("e2e: turntable FAIL no subject");
@@ -16593,7 +16634,60 @@ impl GameApp {
                 _ => {}
             }
         }
-        // E2E_MENU: the settings-tree script ran to the void — verify the
+        // Mob survey (E2E_MOBSURVEY=1, native-only): every MobKind gets
+        // one front view on the turntable rig (reuses setup/view/save
+        // machinery + the yaw fix; single front view per kind keeps the
+        // leg to ~66 × 5 frames). Stages the current kind when the
+        // subject slot is free, settles 3, captures, advances.
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_MOBSURVEY").is_ok() && !self.e2e_survey_done {
+            use vc_gameplay::mobs::MobKind;
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            let (pcx, pcz) = (
+                (self.player.pos.x.floor() as i32).div_euclid(16),
+                (self.player.pos.z.floor() as i32).div_euclid(16),
+            );
+            let ready = in_world && self.world.chunks.contains_key(&(pcx, pcz));
+            let total = MobKind::all().len();
+            if self.e2e_survey_idx >= total {
+                self.e2e_survey_done = true;
+                let ok = self.e2e_survey_ok;
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: survey {} views — SURVEY {}",
+                    total,
+                    if ok { "VERDICT OK" } else { "VERDICT FAILED" }
+                ));
+                self.dbg_exit_summary();
+                std::process::exit(if ok { 0 } else { 1 });
+            } else if ready {
+                if self.e2e_turntable_stage == 0 {
+                    let kind = MobKind::all()[self.e2e_survey_idx];
+                    self.e2e_turntable_setup(pcx, pcz, kind);
+                    if self.e2e_turntable_subject.is_none() {
+                        self.e2e_survey_ok = false;
+                        vc_render::render::report_boot_log("e2e: survey FAIL no subject");
+                        self.e2e_survey_idx += 1;
+                    } else {
+                        self.e2e_turntable_view(0, 3.0);
+                        self.e2e_turntable_stage = 1;
+                    }
+                } else if self.renderer.screenshot_png.is_some() {
+                    let kind = MobKind::all()[self.e2e_survey_idx];
+                    let short = kind
+                        .name()
+                        .strip_prefix("voxelcraft:")
+                        .unwrap_or(kind.name());
+                    self.e2e_survey_save(short);
+                    self.e2e_survey_idx += 1;
+                    self.e2e_turntable_stage = 0;
+                } else {
+                    self.e2e_turntable_settle += 1;
+                    if self.e2e_turntable_settle >= 3 {
+                        self.renderer.screenshot_request = true;
+                    }
+                }
+            }
+        }
         // tree round-tripped back to the title and exit clean
         // L5 About capture: while armed and sitting on the About
         // screen, pull one readback PNG (the FKEYS pull contract),

@@ -3889,11 +3889,6 @@ impl MobSystem {
         n
     }
 
-    /// 3.3b: lingering-potion area cloud — fixed radius, duration in
-    /// ticks, signed instant HP per 20-tick pulse (disclosed
-    /// simplification: vanilla shrinks the radius per application;
-    /// ours holds radius and dies on duration).
-
     /// spawn a cloud (lingering landing); returns the cloud count.
     pub fn spawn_cloud(&mut self, pos: [f32; 3], radius: f32, duration: i32, amount: f32) -> usize {
         self.clouds.push(EffectCloud {

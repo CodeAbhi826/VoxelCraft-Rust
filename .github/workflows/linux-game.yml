@@ -411,7 +411,8 @@ jobs:
 
           # Mob survey (E2E_MOBSURVEY=1) — every MobKind::all() entry gets
           # one front view on the turntable rig (same stage/camera/pull
-          # contract). 66 PNGs to screenshots/; the PNGs are the owner's
+          # contract). 65 PNGs to screenshots/ (66 kinds minus the
+          # registry-only Squid); the PNGs are the owner's
           # per-mob art verdicts (V1). Count gate: 66 files.
           mkdir -p run9 && pushd run9 >/dev/null
           set +e
@@ -428,8 +429,10 @@ jobs:
           fi
           grep -q "SURVEY VERDICT OK" smoke-survey.log || { echo "FAIL: the survey E2E verdict is not OK"; exit 1; }
           SURVEY_N=$(ls run9/screenshots/e2e_survey_*_front_*.png 2>/dev/null | wc -l)
-          [ "$SURVEY_N" -eq 66 ] || { echo "FAIL: survey captured $SURVEY_N/66 mob views"; exit 1; }
-          echo "SURVEY OK - all 66 mob front views saved"
+          # 65, not 66: Squid is registry-only (no spawn row) and is
+          # skipped without failing — see the survey skip + spawn guard
+          [ "$SURVEY_N" -eq 65 ] || { echo "FAIL: survey captured $SURVEY_N/65 mob views"; exit 1; }
+          echo "SURVEY OK - all 65 mob front views saved"
 
           # 1.2v: streaming benchmark, NON-GATING — the orbit default stays
           # untouched; this leg walks fresh terrain (chunk gen + meshing in

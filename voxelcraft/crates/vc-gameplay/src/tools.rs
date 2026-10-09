@@ -73,6 +73,10 @@ pub fn dig_speed(item: u16) -> f32 {
 
 /// Max durability (hits/blocks before breaking); 0 = not a tool.
 pub fn durability_max(item: u16) -> u16 {
+    // 3.3c: the bow is not tiered (vanilla 384)
+    if item == blk::BOW {
+        return 384;
+    }
     let Some((tier, _)) = tool_kind(item) else {
         return 0;
     };

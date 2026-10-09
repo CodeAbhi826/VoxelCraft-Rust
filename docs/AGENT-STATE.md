@@ -87,3 +87,5 @@ Chunk::get double-fold trap (~150 positional sites remain); greedy-key bitfield 
 L1–L8, V1, R1, R3–R7, P1. Autonomy A1–A8 + continuation rule: one slice/commit (≤~300 lines), local `cargo check/test -p <crate>` only, commit→push→wait CI→green→worklog+state→next slice immediately; slice reports live in WORKLOG/AGENT-STATE, never as chat closings. No 1.0.x re-baselines without report. STOP file = halt clean. Repo is PRIVATE.
 Hardware privacy: no owner specs in repo/docs/commits (commit `47acd82` scrubbed
 the tree; pushed history untouched pending explicit rewrite order).
+
+- Owner directive 2026-10-09: 4.0 legal-gate proposal POSTPONED — start Part 4 at 4.1 (biomes) instead. L1 black-box rules stay in force throughout; the 4.0 proposal is deferred debt, not a waiver.

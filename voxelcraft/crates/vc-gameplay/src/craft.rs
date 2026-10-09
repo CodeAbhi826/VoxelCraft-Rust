@@ -1150,6 +1150,23 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(HOE, 1),
     },
+    // ---- 3.3c: the bow — sticks + string in the vanilla column
+    // (mirrored matches accepted by the matcher)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None,
+            Ing::Block(STICK),
+            Ing::Block(STRING),
+            Ing::Block(STICK),
+            Ing::None,
+            Ing::Block(STRING),
+            Ing::None,
+            Ing::Block(STICK),
+            Ing::Block(STRING),
+        ],
+        out: ItemStack::new(BOW, 1),
+    },
 ];
 
 /// 1.16 (Nether Update, part 2): the shapeless SOUL-TORCH recipe —
@@ -1463,6 +1480,27 @@ mod tests {
         let out = match_grid(&one, 3).expect("the slice-to-seeds row");
         assert_eq!(out.block, MELON_SEEDS);
         assert_eq!(out.count, 1);
+    }
+
+    /// 3.3c: the bow — sticks + string column crafts one bow; a
+    /// string-only grid crafts nothing
+    #[test]
+    fn bow_crafts_from_sticks_and_string() {
+        let mut g = vec![ItemStack::EMPTY; 9];
+        g[1] = ItemStack::new(STICK, 1);
+        g[2] = ItemStack::new(STRING, 1);
+        g[3] = ItemStack::new(STICK, 1);
+        g[5] = ItemStack::new(STRING, 1);
+        g[7] = ItemStack::new(STICK, 1);
+        g[8] = ItemStack::new(STRING, 1);
+        let out = match_grid(&g, 3).expect("the bow row");
+        assert_eq!(out.block, BOW);
+        assert_eq!(out.count, 1);
+        let mut bad = vec![ItemStack::EMPTY; 9];
+        for slot in bad.iter_mut() {
+            *slot = ItemStack::new(STRING, 1);
+        }
+        assert!(match_grid(&bad, 3).is_none(), "string alone crafts nothing");
     }
 
     /// the 1.13 kitchen chain: bowl/sugar/stews/pie crafting sweep

@@ -6614,3 +6614,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z70 — 3.3b: lingering potions + effect clouds (creative-only breath)
 - Registry: breath + 4 lingering ids/states/tabs/recipes (splash+breath). Cloud entity in MobSystem (20-tick pulses, radius-hold simplification disclosed, pulse drain for thrower-side). Throw/landing/projectile arms. Local: 6/6 new tests pass.
+
+## 2026-10-09z71 — 3.3c: bow item + player shooting (charge, arrows, wear)
+- Registry: BOW 579 + state 932 + Combat tab/picker + pins + LUT; tab icons now real tools. Mechanics: hold-draw (1s full), release fire (1+9*charge, 24 b/s, PLAYER_OWNER), offhand-first arrows, creative fires free, bow wears 1/shot, stick+string recipe. Local: 7/7 new tests pass.

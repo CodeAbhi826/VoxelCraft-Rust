@@ -236,6 +236,12 @@ pub fn looted_max(max_n: u8, looting: u8) -> u8 {
     max_n.saturating_add(looting)
 }
 
+/// 3.3c: bow arrow damage by draw charge (full draw 1 s → 1 + 9·charge;
+/// vanilla 1–10 range, no crit on arrows in this engine — disclosed).
+pub fn bow_damage(charge: f32) -> f32 {
+    1.0 + 9.0 * charge.clamp(0.0, 1.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,6 +280,14 @@ mod tests {
         assert_eq!(looted_max(2, 0), 2);
         assert_eq!(looted_max(2, 3), 5);
         assert_eq!(looted_max(255, 3), 255);
+    }
+
+    #[test]
+    fn bow_damage_spans_charge() {
+        assert!((bow_damage(0.0) - 1.0).abs() < 1e-6);
+        assert!((bow_damage(1.0) - 10.0).abs() < 1e-6);
+        assert!((bow_damage(0.5) - 5.5).abs() < 1e-6);
+        assert!((bow_damage(2.0) - 10.0).abs() < 1e-6);
     }
 
     #[test]

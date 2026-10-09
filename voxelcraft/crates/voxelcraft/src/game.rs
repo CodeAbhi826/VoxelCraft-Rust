@@ -2300,6 +2300,14 @@ pub struct GameApp {
     /// Phase 2: seconds since the last melee swing (attack-cooldown
     /// recovery — feeds combat::cooldown_damage_scale)
     swing_t: f32,
+    /// 3.3c: bow draw state — charge 0..1 (full draw 1 s) while the
+    /// use button is held with a bow; release fires
+    bow_charge: f32,
+    bow_drawing: bool,
+    /// 3.3c: bow draw state — charge 0..1 (full draw 1 s) while the
+    /// use button is held with a bow; release fires
+    bow_charge: f32,
+    bow_drawing: bool,
     /// persisted spawn point (level.dat SpawnX/Y/Z)
     #[cfg(not(target_arch = "wasm32"))]
     level_spawn: (i32, i32, i32),
@@ -3527,6 +3535,10 @@ impl GameApp {
             ws_selected: None,
             web_shift: false,
             swing_t: 99.0,
+            bow_charge: 0.0,
+            bow_drawing: false,
+            bow_charge: 0.0,
+            bow_drawing: false,
             #[cfg(not(target_arch = "wasm32"))]
             level_spawn,
             autosave_in: 20.0,
@@ -7651,6 +7663,53 @@ impl GameApp {
         if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == id) {
             m.loot_level = lvl.min(255) as u8;
         }
+    }
+
+    /// 3.3c: release a drawn bow — arrow damage scales with the draw
+    /// charge; consumes one arrow (offhand first); creative fires free;
+    /// the bow itself wears 1 per shot outside creative
+    fn fire_bow(&mut self, charge: f32) {
+        let eye = self.player.eye().to_array();
+        let dir = self.player.look_dir().to_array();
+        let use_offhand = self.player.offhand.block == ARROW_ITEM && self.player.offhand.count > 0;
+        let slot = self
+            .player
+            .inv
+            .slots
+            .iter()
+            .position(|s| s.block == ARROW_ITEM && s.count > 0);
+        if !use_offhand && slot.is_none() && !self.mode.picks_creative() {
+            return; // clicked with no arrows (vanilla: nothing happens)
+        }
+        self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
+            pos: [
+                eye[0] + dir[0] * 0.8,
+                eye[1] + dir[1] * 0.8,
+                eye[2] + dir[2] * 0.8,
+            ],
+            vel: [dir[0] * 24.0, dir[1] * 24.0, dir[2] * 24.0],
+            damage: vc_gameplay::combat::bow_damage(charge),
+            age: 0,
+            kind: vc_gameplay::mobs::ProjKind::Arrow,
+            owner: vc_gameplay::mobs::PLAYER_OWNER,
+        });
+        if self.mode.depletes_items() {
+            if use_offhand {
+                self.player.offhand.count -= 1;
+                if self.player.offhand.count == 0 {
+                    self.player.offhand = vc_inventory::inventory::ItemStack::EMPTY;
+                }
+            } else if let Some(i) = slot {
+                let s = &mut self.player.inv.slots[i];
+                s.count -= 1;
+                if s.count == 0 {
+                    *s = vc_inventory::inventory::ItemStack::EMPTY;
+                }
+            }
+            let max = vc_gameplay::tools::durability_max(BOW);
+            vc_gameplay::tools::damage_item(self.player.held_mut(), 1, max);
+        }
+        self.place_timer = 0.3;
     }
 
     fn try_attack_mob(&mut self) -> bool {
@@ -20567,6 +20626,17 @@ impl GameApp {
                 // button released (or out of game) → progress resets
                 self.mining = None;
             }
+            // 3.3c: bow release — fire the drawn arrow (charge from the
+            // hold); switching items mid-draw cancels silently
+            if self.bow_drawing && (!self.input.wants_place() || self.player.held().block != BOW) {
+                let charge = self.bow_charge;
+                let still_bow = self.player.held().block == BOW;
+                self.bow_charge = 0.0;
+                self.bow_drawing = false;
+                if !self.input.wants_place() && still_bow && charge > 0.0 {
+                    self.fire_bow(charge);
+                }
+            }
             if self.input.wants_place()
                 && self.place_timer <= 0.0
                 && self.mode != vc_gameplay::modes::GameMode::Spectator
@@ -22156,6 +22226,12 @@ impl GameApp {
                         }
                         self.place_timer = 0.3;
                         self.ui.dirty = true;
+                    } else if !self.player.held().is_empty() && self.player.held().block == BOW {
+                        // 3.3c: bow draw — hold to charge (full draw
+                        // 1.0 s); release fires (see the release check
+                        // ahead of the use gate)
+                        self.bow_drawing = true;
+                        self.bow_charge = (self.bow_charge + dt).min(1.0);
                     } else if !self.player.held().is_empty()
                         && matches!(self.player.held().block, SNOWBALL | EGG | ENDER_PEARL)
                     {

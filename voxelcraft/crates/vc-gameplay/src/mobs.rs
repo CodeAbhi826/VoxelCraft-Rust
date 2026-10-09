@@ -2537,6 +2537,12 @@ impl MobSystem {
         if self.list.len() >= MAX_MOBS {
             return None;
         }
+        // CI-proven 2026-10-09: registry-only kinds (Squid: in MobKind
+        // and all(), no MobDef row) must degrade to None — def() unwraps
+        // and the survey's Ghast→Squid step crashed the leg (exit 101)
+        if !MOB_DATA.iter().any(|d| d.kind == kind) {
+            return None;
+        }
         let d = def(kind);
         let id = self.next_id;
         self.next_id += 1;

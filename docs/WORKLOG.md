@@ -6521,3 +6521,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z43 — God-heal CI green (37899895233 11/11); dispatching full-survey run
 - Expects SURVEY VERDICT OK (66/66) + About + turntable re-confirmation.
+
+## 2026-10-09z44 — Squid crashed survey (exit 101); spawn graceful + documented skip
+- Panic: def().unwrap() on Squid (registry-only, no MobDef row) at idx 48, right after silverfish. Fix: spawn_variant returns None when no spawn row (all callers already ignore None); survey explicitly skips Squid without failing (fell-through view() would mislabel — nested out); workflow gate 66→65.
+- Local pre-push: check + clippy clean on both touched crates (machine idle, load ~2).

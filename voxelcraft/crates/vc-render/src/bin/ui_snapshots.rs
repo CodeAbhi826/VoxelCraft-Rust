@@ -131,10 +131,12 @@ fn main() {
     snap_at("musicsound", &|ui| {
         ui.settings_screen(&musicsound, None, "MUSIC & SOUND", &[]);
     });
-    // creative inventory (tab 0, top of the list, demo blocks in the
-    // grid, empty hotbar — layout proof: 12 tabs, player preview,
-    // armor/offhand, 9x5 grid + scrollbar, search, hotbar, trash)
-    let atlas = vec![0u8; 16 * 16 * 4];
+    // creative inventory (tab 0, top of the list, demo items, empty
+    // hotbar — layout proof: 12 tabs, player preview, armor/offhand,
+    // 9x5 grid + scrollbar, search, hotbar, trash). The atlas stub is
+    // full-size blank (the painter blits tiles by 512-wide indexing —
+    // a 16x16 stub panics OOB, CI-proven)
+    let atlas = vec![0u8; vc_render::textures::ATLAS_SIZE * vc_render::textures::ATLAS_SIZE * 4];
     let hotbar = vec![vc_inventory::inventory::ItemStack::EMPTY; 9];
     snap_at("creative", &|ui| {
         ui.creative_screen(

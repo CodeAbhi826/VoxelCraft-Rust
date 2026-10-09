@@ -185,4 +185,29 @@ fn main() {
             false,
         );
     });
+    // survival inventory screen (E key): armor column + player-model
+    // preview + offhand + 2x2 craft + storage + hotbar — the preview/
+    // armor/offhand verdict lives HERE, not in the creative picker
+    snap_at("survival-inventory", &|ui| {
+        use vc_render::ui::{ContainerKind, ContainerView};
+        let view = ContainerView {
+            kind: ContainerKind::Inventory,
+            inv: vec![vc_inventory::inventory::ItemStack::EMPTY; 36],
+            grid: vec![vc_inventory::inventory::ItemStack::EMPTY; 4],
+            craft_out: vc_inventory::inventory::ItemStack::EMPTY,
+            furnace: None,
+            brewing: None,
+            enchant: None,
+            chest: vec![],
+            trade: None,
+            anvil: None,
+            beacon: None,
+            grind: None,
+            mount: None,
+            armor: [vc_inventory::inventory::ItemStack::EMPTY; 4],
+            offhand: vc_inventory::inventory::ItemStack::EMPTY,
+            cursor: vc_inventory::inventory::ItemStack::EMPTY,
+        };
+        ui.container_screen(&view, (0.0, 0.0), &atlas, false);
+    });
 }

@@ -1,7 +1,7 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **1 CLOSED** (packet z56, 2026-10-09) — **2 WORLDS FIRST open**: 2.2c validation next, then 2.3b wiring.
+- Part: **2 CLOSED** (packet z60, 2026-10-09) — all slices green; only owner-blocked items remain.
 - Owner directive 2026-10-09: when the plan is over, ship a downloadable build for testing on the owner's PC (local verification pass after CI).
 - HEAD: survey V1 done (48 framed / 17 unknowns logged); ui-snaps slice staged (uncommitted).
 - Repo is PUBLIC since 2026-10-09 (owner-ordered). Default branch still stale `main`.

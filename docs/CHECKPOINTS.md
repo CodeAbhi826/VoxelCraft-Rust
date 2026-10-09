@@ -83,3 +83,33 @@ slices (2.2c/2.3b) UNLOCKED by this packet per owner directive.
 8. First-person eye path proven — VERIFIED (crosshair/arm/HUD).
 9. E2E verdicts need V1 — ACKNOWLEDGED (rule going forward).
 10. Part 1 fully closed — CLAIMED (all items above have verdicts).
+
+## PART 2 WORLDS FIRST — REVIEW PACKET (2026-10-09)
+
+Scope: read-only 1.16.5 importer, world-gen oracle, engine tickets,
+R6 writer. All slices CI-green at commit (tests/clippy/fmt/wasm/
+golden 3-OS/bench/licenses/audit); linux-game legs green incl. the
+2.3b live wiring proof.
+Landed: 2.1a version gate, 2.1b block sidecar, 2.1c record sidecars,
+2.1d fuzz (no panics), 2.1e registry/tile/art, 2.1f remap; 2.2a
+oracle primitives, 2.2b structure starts, 2.2c codec round-trip
+identical; 2.3a tick order + TicketTable, 2.3b wiring (player disc
+sync, 5x5 spawn Forced pins, unload consult); 2.4a verbatim sidecar
+re-emit, 2.4b .mca.bak backups. R6 throughout: originals untouched,
+unknowns preserved verbatim, saturating counters, graceful None.
+Golden worldgen hash identical across every Part-2 slice.
+Open (owner-blocked): reference-game open verification (2.4),
+ts-race Intel validation, morning batch calls. Deferred to Part 6:
+17 unframed mob kinds + horse-rig + parrot-double (art/models).
+
+### Adversarial self-review — 10 claims (2026-10-09)
+1. Importer read-only on copies, refuses versions — TESTED (fuzz/gate).
+2. Unknowns preserved verbatim — TESTED (round-trip tests).
+3. Oracle block/biome/structure match + locator — TESTED (oracle tests).
+4. Codec round-trip identical, no sidecars — TESTED (2.2c green in CI).
+5. Tickets wired (disc, pins, unload) — TESTED (unit + live smoke grep).
+6. Writer verbatim + backups — TESTED (2.4a/b).
+7. R6 holds everywhere — TESTED (refuse/degrade paths, no traps).
+8. Golden hash untouched — VERIFIED (green every slice, 3 OS).
+9. Reference-game verification — OPEN (soft-blocked, owner).
+10. Part 2 complete bar owner blocks — CLAIMED (all above green).

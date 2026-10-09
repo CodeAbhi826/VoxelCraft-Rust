@@ -6580,3 +6580,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z59 — 2.3b CI green incl. wasm (37931341854 12/12); dispatching live proof
 - linux-game smoke leg asserts the tickets: boot line; full run also guards regressions.
+
+## 2026-10-09z60 — PART 2 WORLDS FIRST CLOSED (packet written)
+- linux-game 37932048685 green incl. tickets: grep. Packet + 10-claim review in CHECKPOINTS.md. Only owner-blocked items remain (2.4 ref verification, ts-race, morning batch).

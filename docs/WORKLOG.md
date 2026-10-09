@@ -6467,3 +6467,10 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z28 — AGENTS.md tripwire self-hit (CI 37886694171 legal-audit red)
 - My AGENTS.md rewrite (8afb75d) quoted the audit's forbidden terms to document them; the audit scans docs too → 1 violation. Fix: line now points at the script without quoting any listed term. Local legal_audit.py: [PASS].
+
+## 2026-10-09z29 — CI green on About canvas-dump + AGENTS dequote (Tested: CI 37887201267 11/11 SUCCESS)
+- All gates pass incl. legal audit and fmt. Dispatching linux-game: survey (66 fronts) + About retry (canvas dump) + yaw-fixed turntable → V1 review batch.
+
+## 2026-10-09z30 — Survey leg never ran: smoke auto-exit raced it (CI 37887643618)
+- Evidence: survey staged kind #0 ("turntable view@0") then "smoke: game entered — exiting 0" ~8s in; zero "e2e: survey" lines, exit 0, verdict grep failed. The exit-hold covered FKEYS/phases/turntable/iconic but not E2E_MOBSURVEY.
+- Fix: survey_pending (E2E_MOBSURVEY && !e2e_survey_done) added to both smoke-exit guards. Side note: About canvas dump VERIFIED in CI log (75003 bytes, VERDICT OK); the 577-byte e2e-about artifact needs an upload-path check before V1 download.

@@ -1,8 +1,8 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
 ## Current
-- Part: **2 WORLDS FIRST**. Current slice: **mob survey leg** (committed; CI watch armed).
-- HEAD: survey commit (About capture: leg green in CI, linux-game PNG still missing — diagnosis continues on failure).
+- Part: **2 WORLDS FIRST**. Current slice: **About canvas-dump fix** (committed `6c7107d`; CI 37887201267 11/11 green; linux-game 37887643618 dispatched, watch armed).
+- HEAD: `794efe4` (AGENTS.md tripwire dequote after legal-audit red on 37886694171).
 - Repo is PUBLIC since 2026-10-09 (owner-ordered; CI compute restored). Default branch still stale `main`.
 - Last known CI: run 37875165005 — 10/10 SUCCESS (bench + uploads green).
 

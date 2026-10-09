@@ -16847,13 +16847,25 @@ impl GameApp {
                     std::env::var("E2E_TURNTABLE").is_ok() && self.e2e_turntable_stage < 6;
                 #[cfg(target_arch = "wasm32")]
                 let turntable_pending = false;
+                // Mob survey owns the exit while its 66-view ladder runs
+                // (reuses the turntable stage machinery under E2E_MOBSURVEY)
+                #[cfg(not(target_arch = "wasm32"))]
+                let survey_pending =
+                    std::env::var("E2E_MOBSURVEY").is_ok() && !self.e2e_survey_done;
+                #[cfg(target_arch = "wasm32")]
+                let survey_pending = false;
                 // 1A.6: E2E_ICONIC owns the exit while its capture ladder runs
                 #[cfg(not(target_arch = "wasm32"))]
                 let iconic_pending =
                     std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
                 #[cfg(target_arch = "wasm32")]
                 let iconic_pending = false;
-                if !fkeys_pending && !iconic_pending && !phases_pending && !turntable_pending {
+                if !fkeys_pending
+                    && !iconic_pending
+                    && !phases_pending
+                    && !turntable_pending
+                    && !survey_pending
+                {
                     vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                     self.dbg_exit_summary();
                     std::process::exit(0);
@@ -16907,6 +16919,12 @@ impl GameApp {
                 std::env::var("E2E_TURNTABLE").is_ok() && self.e2e_turntable_stage < 6;
             #[cfg(target_arch = "wasm32")]
             let turntable_pending = false;
+            // Mob survey owns the exit while its 66-view ladder runs
+            // (reuses the turntable stage machinery under E2E_MOBSURVEY)
+            #[cfg(not(target_arch = "wasm32"))]
+            let survey_pending = std::env::var("E2E_MOBSURVEY").is_ok() && !self.e2e_survey_done;
+            #[cfg(target_arch = "wasm32")]
+            let survey_pending = false;
             // 1A.6: E2E_ICONIC owns the exit while its capture ladder runs
             #[cfg(not(target_arch = "wasm32"))]
             let iconic_pending = std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
@@ -16917,6 +16935,7 @@ impl GameApp {
                 && !iconic_pending
                 && !phases_pending
                 && !turntable_pending
+                && !survey_pending
             {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();

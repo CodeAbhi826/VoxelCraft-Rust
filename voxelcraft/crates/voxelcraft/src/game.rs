@@ -16209,6 +16209,7 @@ impl GameApp {
             // the About screen (consumed below once the PNG lands)
             if id == ui::ID_OPT_ABOUT {
                 self.smoke_about_capture = true;
+                vc_render::render::report_boot_log("e2e: about capture armed");
             }
             // the create screen resets the seed buffer on entry — the
             // deterministic seed goes in AFTER that (typing it is the
@@ -16616,6 +16617,7 @@ impl GameApp {
             } else if self.screen == Screen::Options || self.screen == Screen::Title {
                 // left About before the readback landed (slow frame) —
                 // disarm rather than capturing the wrong screen
+                vc_render::render::report_boot_log("e2e: about capture MISSED (left screen)");
                 self.smoke_about_capture = false;
             }
         }
@@ -19136,10 +19138,14 @@ impl GameApp {
                             // L5 About capture: ABOUT lives on the TITLE
                             // (5th row — no scale-safe slot on Options),
                             // so visit it after returning: title→About,
-                            // PNG, DONE2→Options, DONE→title to exit
+                            // PNG, DONE2→Options, DONE→title to exit.
+                            // DONE2 sits a full 1.0s after ABOUT: the
+                            // readback needs several frames and must
+                            // land while still on About (a tight window
+                            // disarms on Options with no PNG — CI-proven).
                             (t + 6.00, ui::ID_OPT_ABOUT),
-                            (t + 6.35, ui::ID_OPT_DONE2),
-                            (t + 6.60, ui::ID_OPT_DONE),
+                            (t + 7.00, ui::ID_OPT_DONE2),
+                            (t + 7.30, ui::ID_OPT_DONE),
                         ]
                         .into();
                         self.smoke_menu_e2e = true;

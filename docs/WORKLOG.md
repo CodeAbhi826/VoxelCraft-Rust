@@ -6447,3 +6447,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z23 — About relocation CLOSED (Tested)
 - Relocation CI (run 37875165005): 10/10 SUCCESS. Dispatching linux-game for e2e_about.png + yaw-corrected turntable → V1 re-verdict.
+
+## 2026-10-09z24 — About capture window widened (Tested locally)
+- Diagnosis: nav reached About (CI-proven) but the 0.35s DONE2 window likely disarmed before the lavapipe readback landed (no capture line at all). DONE2 moved to +1.0s; arming + MISSED telemetry added so the next run distinguishes "never armed" from "too slow".
+- Local (idle): fmt clean; `check -p voxelcraft --lib` clean.

@@ -6620,3 +6620,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z01 — 3.3d: tipped arrows end-to-end (registry + hit effects)
 - 4 items + states + Combat tab + 4 crafting rows (lingering+8 arrows); TippedArrow variant (attribution, direct-hit damage + instant effect w/ inversion, spent silently on blocks); bow fires any arrow kind offhand-first; player-side effects out (no PvP producer). Local: gameplay 331/331, blocks 48/48, check+clippy clean.
+
+## 2026-10-10z02 — 3.4a: lang keys + recipe book unlock tracking
+- lang.rs: key_for/text roundtrip over the whole registry (solid→block key), 3 tests. craft.rs RecipeBook (unlock_for/is_unlocked/sorted list) + pickup hook on Player + test. Local: gameplay 335/335, app check clean.

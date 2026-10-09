@@ -246,6 +246,8 @@ pub struct Player {
     pub xp_level: i32,
     /// 36-slot inventory: 0..9 hotbar, 9..36 storage (Phase 7)
     pub inv: vc_inventory::inventory::Inventory,
+    /// 3.4a: recipe book (unlocks on ingredient pickup; starts empty)
+    pub recipe_book: vc_gameplay::craft::RecipeBook,
     pub selected: usize,
     pub fov: f32,
     pub fov_cur: f32,
@@ -355,6 +357,7 @@ impl Player {
             // mobs/food did not exist) is retired — every progression
             // system it papered over has since shipped.
             inv: vc_inventory::inventory::Inventory::new(vc_inventory::inventory::INV_SLOTS),
+            recipe_book: vc_gameplay::craft::RecipeBook::default(),
             selected: 0,
             fov: 1.2217, // 70 degrees
             fov_cur: 1.2217,

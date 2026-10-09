@@ -17554,6 +17554,8 @@ impl GameApp {
                     self.item_toast = Some((toast.to_string(), 2.0));
                     self.play_event("entity.item.pickup", None, 1.0);
                     self.ui.dirty = true;
+                    // 3.4a: recipe book unlocks on ingredient pickup
+                    self.player.recipe_book.unlock_for(b);
                 }
             }
         }

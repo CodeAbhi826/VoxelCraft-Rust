@@ -1514,6 +1514,61 @@ pub fn consume_grid(slots: &mut [ItemStack]) {
     }
 }
 
+/// 3.4a: the recipe book — unlocked recipe outputs. Unlock rule: picking
+/// up an ingredient unlocks every recipe using it (vanilla uses
+/// advancement triggers per recipe; ingredient-possession is the
+/// disclosed simplification). Starts empty like vanilla.
+#[derive(Default, Debug)]
+pub struct RecipeBook {
+    unlocked: std::collections::HashSet<u16>,
+}
+
+impl RecipeBook {
+    /// unlock all recipes using `ingredient`; returns newly unlocked count.
+    pub fn unlock_for(&mut self, ingredient: u16) -> usize {
+        let mut n = 0;
+        for r in RECIPES {
+            let uses = r.grid.iter().any(|ing| match ing {
+                Ing::None => false,
+                Ing::Block(b) => *b == ingredient,
+                Ing::AnyLog => {
+                    matches!(
+                        ingredient,
+                        OAK_LOG | BIRCH_LOG | SPRUCE_LOG | ACACIA_LOG | DARK_OAK_LOG | JUNGLE_LOG
+                    )
+                }
+                Ing::AnyWood => {
+                    matches!(
+                        ingredient,
+                        OAK_LOG | BIRCH_LOG | SPRUCE_LOG | ACACIA_LOG | DARK_OAK_LOG | JUNGLE_LOG
+                    )
+                }
+                Ing::AnyPlanks => {
+                    matches!(
+                        ingredient,
+                        PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS
+                    )
+                }
+            });
+            if uses && self.unlocked.insert(r.out.block) {
+                n += 1;
+            }
+        }
+        n
+    }
+
+    /// unlocked outputs, sorted (stable UI order).
+    pub fn unlocked_list(&self) -> Vec<u16> {
+        let mut v: Vec<u16> = self.unlocked.iter().copied().collect();
+        v.sort_unstable();
+        v
+    }
+
+    pub fn is_unlocked(&self, out: u16) -> bool {
+        self.unlocked.contains(&out)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1563,6 +1618,23 @@ mod tests {
             *slot = ItemStack::new(STRING, 1);
         }
         assert!(match_grid(&bad, 3).is_none(), "string alone crafts nothing");
+    }
+
+    #[test]
+    fn recipe_book_unlocks_on_ingredient_pickup() {
+        let mut book = RecipeBook::default();
+        assert!(!book.is_unlocked(BOW));
+        // sticks unlock the bow (and anything else using sticks)
+        assert!(book.unlock_for(STICK) > 0);
+        assert!(book.is_unlocked(BOW));
+        // repeat pickup unlocks nothing new
+        assert_eq!(book.unlock_for(STICK), 0);
+        // unknown ingredient unlocks nothing
+        assert_eq!(book.unlock_for(BEDROCK), 0);
+        // list is sorted and contains the bow
+        let list = book.unlocked_list();
+        assert!(list.contains(&BOW));
+        assert!(list.windows(2).all(|w| w[0] <= w[1]));
     }
 
     /// 3.3d: lingering center + 8 arrows crafts 8 tipped of the

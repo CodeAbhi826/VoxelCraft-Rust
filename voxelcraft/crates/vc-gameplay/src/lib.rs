@@ -16,6 +16,8 @@ pub mod fishing;
 pub mod furnace;
 pub mod grindstone;
 pub mod hunger;
+/// 3.4a: lang-key registry + lookup (`block/item.voxelcraft.<snake>`)
+pub mod lang;
 pub mod mobs;
 pub mod modes;
 /// Round K (the Nether portal): the frame validation, the portal search,

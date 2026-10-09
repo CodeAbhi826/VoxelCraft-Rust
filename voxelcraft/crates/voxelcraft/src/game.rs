@@ -15542,11 +15542,22 @@ impl GameApp {
         let (_, sy, _) = self.world.find_spawn();
         let cx = pcx * 16 + 8;
         let cz = pcz * 16 + 8;
-        let gy = sy.floor() as i32;
+        // V1-proven 2026-10-09: gy must come from the STAGE column, not
+        // find_spawn (the spawn point's height). A platform built at the
+        // wrong height ends up underground and buries the subject — all
+        // 5 creeper views showed head-only/empty. Highest solid in the
+        // column recenters the stage onto the real surface.
+        let mut gy = sy.floor() as i32;
+        for y in (gy - 24..=gy + 32).rev() {
+            if self.world.get_block(cx, y, cz) != AIR {
+                gy = y + 1;
+                break;
+            }
+        }
         for dx in -8..=7 {
             for dz in -8..=7 {
                 self.test_place(GRASS, cx + dx, gy - 1, cz + dz);
-                for dy in 0..6 {
+                for dy in 0..10 {
                     self.test_place(AIR, cx + dx, gy + dy, cz + dz);
                 }
             }
@@ -16719,6 +16730,12 @@ impl GameApp {
             if self.screen == Screen::About {
                 self.smoke_about_settle += 1;
                 if let Some(png) = self.renderer.take_screenshot_png() {
+                    // TEMP diagnostic 2026-10-09 (take()=None on menus —
+                    // remove once the cause is found)
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e dbg: about take Some({})",
+                        png.len()
+                    ));
                     let dir = std::path::Path::new("screenshots");
                     let _ = std::fs::create_dir_all(dir);
                     let _ = std::fs::write(dir.join("e2e_about.png"), &png);
@@ -16736,6 +16753,13 @@ impl GameApp {
                     }
                 } else {
                     self.renderer.screenshot_request = true;
+                    // TEMP diagnostic (paired with the take-Some line)
+                    if self.smoke_about_settle % 30 == 0 {
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e dbg: about take None (settle {})",
+                            self.smoke_about_settle
+                        ));
+                    }
                     if self.smoke_about_settle > 200 {
                         vc_render::render::report_boot_log(
                             "e2e: about capture TIMEOUT — disarming",

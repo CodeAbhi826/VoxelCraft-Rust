@@ -20426,7 +20426,14 @@ impl GameApp {
                         // fire/sneak round: Mining Fatigue's mining-speed
                         // factor (the 0.3^min(level,4) form — VERIFIED
                         // w/Mining_Fatigue, live 2026-10-03)
-                        let total = vc_blocks::blocks::break_time_secs(b)
+                        // 3.1d: tool speeds — the correct tier/class digs
+                        // at its multiplier (+30%/Efficiency level);
+                        // wrong tool or bare hand mines at hand time
+                        let held = self.player.held();
+                        let eff = vc_gameplay::enchanting::enchant_by_id("efficiency")
+                            .map(|id| vc_gameplay::tools::ench_level(held.ench, held.ench2, id))
+                            .unwrap_or(0);
+                        let total = vc_gameplay::tools::mine_time_secs(b, held.block, eff)
                             * vc_gameplay::effects::mining_fatigue_factor(&self.player.effects);
                         let instant = self.mode.picks_creative() || total <= 0.0;
                         // (re)start when the crosshair moved to a new block

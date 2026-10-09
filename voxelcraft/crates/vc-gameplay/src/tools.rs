@@ -135,6 +135,83 @@ pub fn ench_level(ench: u16, ench2: u16, id: u8) -> u32 {
     0
 }
 
+/// The correct tool class for a block (None = bare hand mines at full
+/// hand time). Covers the clear vanilla-preferred cases; everything
+/// else falls back to hand speed (drops-gating for wrong tools is a
+/// separate follow-up, disclosed).
+pub fn preferred_tool(block: u16) -> Option<ToolClass> {
+    use vc_blocks::blocks as blk;
+    match block {
+        blk::STONE
+        | blk::COBBLE
+        | blk::GRANITE
+        | blk::DIORITE
+        | blk::ANDESITE
+        | blk::STONE_BRICKS
+        | blk::BRICKS
+        | blk::MOSSY_COBBLE
+        | blk::SMOOTH_STONE
+        | blk::OBSIDIAN
+        | blk::NETHERRACK
+        | blk::END_STONE
+        | blk::NETHER_BRICKS
+        | blk::COAL_ORE
+        | blk::IRON_ORE
+        | blk::GOLD_ORE
+        | blk::DIAMOND_ORE
+        | blk::REDSTONE_ORE
+        | blk::LAPIS_ORE
+        | blk::EMERALD_ORE
+        | blk::NETHER_QUARTZ_ORE => Some(ToolClass::Pickaxe),
+        blk::OAK_LOG
+        | blk::BIRCH_LOG
+        | blk::SPRUCE_LOG
+        | blk::ACACIA_LOG
+        | blk::DARK_OAK_LOG
+        | blk::PLANKS
+        | blk::OAK_FENCE
+        | blk::CRAFTING_TABLE
+        | blk::CHEST
+        | blk::BOOKSHELF
+        | blk::PUMPKIN
+        | blk::MELON => Some(ToolClass::Axe),
+        blk::DIRT
+        | blk::GRASS
+        | blk::SAND
+        | blk::GRAVEL
+        | blk::SOUL_SAND
+        | blk::SNOW
+        | blk::CLAY => Some(ToolClass::Shovel),
+        blk::LEAVES
+        | blk::BIRCH_LEAVES
+        | blk::SPRUCE_LEAVES
+        | blk::ACACIA_LEAVES
+        | blk::DARK_OAK_LEAVES
+        | blk::HAY_BALE => Some(ToolClass::Hoe),
+        _ => None,
+    }
+}
+
+/// Full break time for `block` with `held` in hand: hand time divided
+/// by the tier multiplier when the held class is preferred (+30% per
+/// Efficiency level). Instant (0) and unbreakable (inf) hand times pass
+/// through untouched.
+pub fn mine_time_secs(block: u16, held: u16, efficiency_level: u32) -> f32 {
+    let hand = vc_blocks::blocks::break_time_secs(block);
+    let Some((_, class)) = tool_kind(held) else {
+        return hand;
+    };
+    if preferred_tool(block) != Some(class) {
+        return hand;
+    }
+    let speed = dig_speed(held) * (1.0 + 0.3 * efficiency_level as f32);
+    if speed <= 0.0 {
+        hand
+    } else {
+        hand / speed
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -232,5 +309,42 @@ mod tests {
         assert_eq!(ench_level(0, 0, id), 0);
         // wrong enchant id in the slot reads 0
         assert_eq!(ench_level(((id as u16 + 1) << 8) | 3, 0, id), 0);
+    }
+
+    #[test]
+    fn preferred_tool_covers_the_clear_classes() {
+        use vc_blocks::blocks as blk;
+        assert_eq!(preferred_tool(blk::STONE), Some(ToolClass::Pickaxe));
+        assert_eq!(preferred_tool(blk::DIAMOND_ORE), Some(ToolClass::Pickaxe));
+        assert_eq!(preferred_tool(blk::OAK_LOG), Some(ToolClass::Axe));
+        assert_eq!(preferred_tool(blk::CHEST), Some(ToolClass::Axe));
+        assert_eq!(preferred_tool(blk::DIRT), Some(ToolClass::Shovel));
+        assert_eq!(preferred_tool(blk::SAND), Some(ToolClass::Shovel));
+        assert_eq!(preferred_tool(blk::LEAVES), Some(ToolClass::Hoe));
+        assert_eq!(preferred_tool(blk::HAY_BALE), Some(ToolClass::Hoe));
+        assert_eq!(preferred_tool(blk::BEDROCK), None);
+        assert_eq!(preferred_tool(blk::GLASS), None);
+    }
+
+    #[test]
+    fn mine_time_divides_by_tier_speed() {
+        use vc_blocks::blocks as blk;
+        // stone hand time 2.25 (hardness 1.5 x 1.5); diamond pick
+        // speed 8 -> ~0.28; wrong tool (axe) stays hand time
+        let hand = vc_blocks::blocks::break_time_secs(blk::STONE);
+        assert!((hand - 2.25).abs() < 1e-6);
+        assert!((mine_time_secs(blk::STONE, blk::DIAMOND_PICKAXE, 0) - hand / 8.0).abs() < 1e-6);
+        assert!((mine_time_secs(blk::STONE, blk::DIAMOND_AXE, 0) - hand).abs() < 1e-6);
+        assert!((mine_time_secs(blk::STONE, blk::STONE, 0) - hand).abs() < 1e-6);
+        // efficiency III: x1.9
+        assert!(
+            (mine_time_secs(blk::STONE, blk::DIAMOND_PICKAXE, 3) - hand / 8.0 / 1.9).abs() < 1e-5
+        );
+        // instant (plants) and unbreakable (bedrock) pass through
+        assert_eq!(
+            mine_time_secs(blk::TALL_GRASS, blk::DIAMOND_PICKAXE, 5),
+            0.0
+        );
+        assert!(mine_time_secs(blk::BEDROCK, blk::DIAMOND_PICKAXE, 5).is_infinite());
     }
 }

@@ -6599,3 +6599,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z65 — 3.1c red: E0503 in test code (both test jobs)
 - damage_item test passed `&mut s` + `s.block` as two args. Fix: bind max first. Lesson: local pre-push must compile `--tests` too (plain --lib check is blind to test code) — apply when idle; machine busy now, CI verifies.
+
+## 2026-10-09z66 — 3.1d: mining speeds (correct-tool table + Efficiency wiring)
+- tools.rs: preferred_tool (pick/axe/shovel/hoe classes, swords none — no cobweb block), mine_time_secs (hand/speed/eff, instant/inf passthrough). game.rs break calc uses it. Tests: class spots, hand fallback, eff scaling, edge passthrough. Machine busy — CI verifies.

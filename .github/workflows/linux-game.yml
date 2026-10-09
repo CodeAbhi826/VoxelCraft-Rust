@@ -372,7 +372,7 @@ jobs:
           set +e
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
             env WGPU_BACKEND=Vulkan E2E_PHASES=1 \
-            "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-phases.log
+            "../$BIN_NAME" --smoke --gpu-timing --verbose 2>&1 | tee ../smoke-phases.log
           CODE=$?
           set -e
           popd >/dev/null

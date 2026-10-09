@@ -6558,3 +6558,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z53 — Creative verdict: preview/armor live on survival screen, snapshotted
 - creative-inventory (picker tab 11) is grid-only by design; the preview/armor/offhand painter is container_screen kind=Inventory (E key). Added survival-inventory snapshot (36+4 EMPTY stacks). Local check clean.
+
+## 2026-10-09z54 — Survival inventory V1 PASS (preview/armor/offhand proven)
+- Viewed survival-inventory.png: title, 4 armor wells, front-facing player bake, offhand recess, 2x2 craft + arrow + output, 27 storage + 9 hotbar. The fidelity target is met; creative tab-11 grid-only is by design.
+- V1 tally ≈ 125. Remaining Part-1: eye close-up + F3-gpu confirmation + packet.
+
+## 2026-10-09z55 — F3 gpu-split: phases leg gets --gpu-timing (1 word)
+- f3_cpu_gpu_line shows GPU n/a without timestamp queries; lavapipe supports them (streaming bench precedent; Intel panic is local-only). Next linux-game's phases F3 PNG carries the populated split → verdict.
+- Eye close-up: no dedicated leg; dozens of first-person captures already prove the eye path — packet states coverage honestly, no macro shot.

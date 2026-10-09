@@ -24,7 +24,7 @@ Per push, `ci.yml`: `python3 scripts/legal_audit.py` (must print `[PASS]`) · `c
 - **L6 trademarks**: no third-party trademarks, names, logos, splash texts, folder conventions, or edition/update labels. In-game functional vocabulary is generic terms-of-art (`docs/LEGAL-COMPLIANCE.md` §3).
 - **L7 script enforcement**: committed scripts must not read or reach any reference set; `scripts/legal_audit.py` enforces this in CI, with its self-test.
 - **L8 honest claims**: tag every claim Verified / Tested / Code-only / Unknown. Test counts come from CI log `test result:` lines only. Numerical constants/formulas/timings cite an authoritative public source; unsourced values flagged `[ESTIMATED / APPROXIMATION]`.
-- **Audit tripwires** (`scripts/legal_audit.py` fails the tree on these): case-insensitive `minecraft|mojang|herobrine|programmer-art`, word-boundary `steve|alex`. Generic genre vocabulary (`redstone`, `creeper`, `netherrack`, …) is explicitly FINE — do not "fix" it.
+- **Audit tripwires**: `scripts/legal_audit.py` fails the tree on certain trademarked-namespace strings — see the script itself for the exact list (do NOT quote the listed terms anywhere in the tree, docs included; this line previously quoted them and failed CI). Generic genre vocabulary (`redstone`, `creeper`, `netherrack`, …) is explicitly FINE — do not "fix" it.
 
 ## 5. Rendering & UI Fidelity Targets
 - Seamless tiling (no border insets/clamping gaps); atlas UV gradients explicitly scaled to atlas dims; smooth lighting + AO; water flow/transparency; 15×15 crosshair; lower-right first-person 3D arm with walk bob + attack swing.

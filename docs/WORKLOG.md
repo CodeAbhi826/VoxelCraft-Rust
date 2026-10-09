@@ -6464,3 +6464,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-09z27 — About capture: canvas dump replaces GPU readback (Tested: fmt clean; CI is verifier)
 - Root cause (CI 37882796482 log): menu leg green, "about capture armed" → take_screenshot_png() returned None ~24 frames → "MISSED (left screen)" → test -s gate failed. Menus never complete the swapchain readback (static screens), so GPU pull can never land there.
 - Fix: settle-3 canvas dump_png (containers-leg precedent) + size gate + same log strings ("e2e: about screen captured", "ABOUT VERDICT OK") the workflow greps for. fmt clean; compile verified by CI.
+
+## 2026-10-09z28 — AGENTS.md tripwire self-hit (CI 37886694171 legal-audit red)
+- My AGENTS.md rewrite (8afb75d) quoted the audit's forbidden terms to document them; the audit scans docs too → 1 violation. Fix: line now points at the script without quoting any listed term. Local legal_audit.py: [PASS].

@@ -2111,6 +2111,9 @@ pub struct GameApp {
     /// E2E_MENU=1 smoke mode: the settings-tree click script (exits at the
     /// title after the tree round-trips)
     smoke_menu_e2e: bool,
+    /// About capture: armed when the menu script clicks ABOUT...,
+    /// consumed when the About PNG lands (V1 visual for L5)
+    smoke_about_capture: bool,
     edits: u32,
     #[allow(dead_code)] // read only on wasm32 (the E2E stats publisher)
     stats_t: f32,
@@ -3408,6 +3411,7 @@ impl GameApp {
             intro_start: now_secs(),
             smoke: false,
             smoke_menu_e2e: false,
+            smoke_about_capture: false,
             e2e_fkeys_stage: 0,
             e2e_fkeys_ok: true,
             e2e_fkeys_behind_on_px: None,
@@ -16201,6 +16205,11 @@ impl GameApp {
             }
             self.smoke_script.pop_front();
             self.smoke_click_widget(id);
+            // L5 About capture: arm the readback when the script opens
+            // the About screen (consumed below once the PNG lands)
+            if id == ui::ID_OPT_ABOUT {
+                self.smoke_about_capture = true;
+            }
             // the create screen resets the seed buffer on entry — the
             // deterministic seed goes in AFTER that (typing it is the
             // field's normal path)
@@ -16585,6 +16594,31 @@ impl GameApp {
         }
         // E2E_MENU: the settings-tree script ran to the void — verify the
         // tree round-tripped back to the title and exit clean
+        // L5 About capture: while armed and sitting on the About
+        // screen, pull one readback PNG (the FKEYS pull contract),
+        // then disarm — the script's DONE2 click already moved on if
+        // the frame was slow, so only capture while still on About
+        if self.smoke_about_capture {
+            if self.screen == Screen::About {
+                if let Some(png) = self.renderer.take_screenshot_png() {
+                    let dir = std::path::Path::new("screenshots");
+                    let _ = std::fs::create_dir_all(dir);
+                    let ok = std::fs::write(dir.join("e2e_about.png"), &png).is_ok();
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: about screen captured ({} bytes) — ABOUT {}",
+                        png.len(),
+                        if ok { "VERDICT OK" } else { "WRITE FAILED" }
+                    ));
+                    self.smoke_about_capture = false;
+                } else {
+                    self.renderer.screenshot_request = true;
+                }
+            } else if self.screen == Screen::Options || self.screen == Screen::Title {
+                // left About before the readback landed (slow frame) —
+                // disarm rather than capturing the wrong screen
+                self.smoke_about_capture = false;
+            }
+        }
         if self.smoke_menu_e2e && self.smoke_script.is_empty() && self.screen == Screen::Title {
             vc_render::render::report_boot_log(
                 "e2e: settings tree ok (video/engine/shaders/packs/access/musicsound) — exiting 0",
@@ -19098,7 +19132,11 @@ impl GameApp {
                             (t + 5.10, ui::ID_OPT_MUSICSND),
                             (t + 5.30, ui::ID_SND_BASE + 1), // the MUSIC slider — click-to-default (1.0)
                             (t + 5.45, ui::ID_SND_DONE),
-                            (t + 5.75, ui::ID_OPT_DONE),
+                            // L5 About capture: enter About, PNG, DONE
+                            // back to Options, DONE to title
+                            (t + 5.60, ui::ID_OPT_ABOUT),
+                            (t + 5.95, ui::ID_OPT_DONE2),
+                            (t + 6.10, ui::ID_OPT_DONE),
                         ]
                         .into();
                         self.smoke_menu_e2e = true;

@@ -221,6 +221,12 @@ jobs:
           # the real input path (a MUSIC slider click resets it to 1.0)
           grep -q "\[screen\] options -> musicsound" menu.log
           grep -q "\[screen\] musicsound -> options" menu.log
+          # L5: the About screen leg — ABOUT... row from Options, PNG
+          # capture, DONE2 back (V1 visual for the licensing About page)
+          grep -q "\[screen\] options -> about" menu.log
+          grep -q "e2e: about screen captured" menu.log
+          grep -q "ABOUT VERDICT OK" menu.log
+          test -s screenshots/e2e_about.png || { echo "FAIL: about screen capture missing"; exit 1; }
           grep -q "e2e: settings tree ok (video/engine/shaders/packs/access/musicsound)" menu.log
           echo "SMOKE OK - pointer ladder + boot + world entry + 1.14 nature-half + settings tree all verified"
 
@@ -471,5 +477,14 @@ jobs:
         with:
           name: e2e-turntable
           path: run8/screenshots/e2e_turntable_*.png
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload About screen capture (L5 V1 evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-about
+          path: screenshots/e2e_about.png
           retention-days: 30
           if-no-files-found: warn

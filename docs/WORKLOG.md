@@ -6433,3 +6433,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z19 — Yaw fix CLOSED, fresh captures dispatched (Code-only)
 - Fix-forward CI (run 37872955213): 10/10 SUCCESS. Dispatching linux-game for corrected turntable/iconic captures → download → V1 re-verdict.
+
+## 2026-10-09z20 — About E2E capture leg (Code-only, CI validates)
+- E2E_MENU tour extended: ABOUT... click (id 250) → readback PNG → DONE2 → DONE → title. Capture block disarms if the frame moved on (never shoots the wrong screen). Workflow asserts transition + capture + VERDICT + PNG, uploads e2e-about artifact.
+- Local: edits only (box busy — no compile; CI compiles + runs the leg). V1 viewing on download.

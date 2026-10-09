@@ -7048,6 +7048,7 @@ impl GameApp {
         self.renderer.clear_meshes();
         self.section_meshes.clear();
         // 2.3b: Forced spawn pins follow the fresh world
+        #[cfg(not(target_arch = "wasm32"))]
         self.repin_spawn_tickets();
         self.mesh_inflight.clear();
         self.gen_inflight.clear();
@@ -24105,7 +24106,9 @@ impl GameApp {
 
     /// 2.3b: spawn-chunk Forced pins follow the world — released and
     /// reacquired on every reset_world so pins never leak across worlds
-    /// (or dimensions: find_spawn is per-dimension).
+    /// (or dimensions: find_spawn is per-dimension). Native-only (the
+    /// web build has no level.dat spawn point).
+    #[cfg(not(target_arch = "wasm32"))]
     fn repin_spawn_tickets(&mut self) {
         use vc_world::tickets::TicketKind;
         for p in std::mem::take(&mut self.forced_chunks) {

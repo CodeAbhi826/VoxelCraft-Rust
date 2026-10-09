@@ -6481,3 +6481,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-09z32 — About slice compile break: u8 settle vs 600 (CI 37889174437 red)
 - `smoke_about_settle` is u8; `> 600` = deny(overflowing_literals) hard error (broke test/clippy/check/bench uniformly). Fix: timeout 200 (comment corrected too). fmt clean; machine busy (load ~5) so CI verifies compilation.
+
+## 2026-10-09z33 — u8 fix CI green (37889806336 11/11); dispatching capture build
+- linux-game: survey (exit-hold fix) + About (readback + DONE2 deferral) + yaw-fixed turntable → V1 batch.

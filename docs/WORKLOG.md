@@ -6792,3 +6792,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z45 — 4.1e: hill/deep/shore variants (11)
 - Biome 28..38 (ids from Before-1.18 table): desert/taiga/birch/giant hills, deep oceans x3, stone shore, wooded/gravelly mountains. Names, from_u8, vanilla_id, is_ocean, importer map, classifier gates (deep splits exact; hills elevation/variant gates estimated), tree counts/species mirror base. Local: test green, workspace check clean, audit [PASS].
+
+## 2026-10-10z46 — 4.1e re-pins (hills change biome bytes)
+- 3 overworld mains + ravine/ocean targeted + 5 wide-overworld re-pinned (nether/end identical). Self-caught: nearly wrote a ravine value from memory — reverted, used only locally-measured values. Local: golden x3 green, audit [PASS].

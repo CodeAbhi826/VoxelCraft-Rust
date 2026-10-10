@@ -9208,13 +9208,13 @@ mod golden_determinism_tests {
     /// 2026-10-10): the 3 overworld mains + all overworld targeted pins
     /// move with cross-chunk veins; nether/end pins byte-identical.
     const GOLDEN: [u64; 9] = [
-        0xe7b0_941b_2d28_7e8a, // seed c0ffee12345678, overworld
+        0xb709_c979_d25d_b6fa, // seed c0ffee12345678, overworld
         0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
         0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
-        0xdff3_8025_6b1e_531c, // seed deadbeef00000001, overworld
+        0x3604_033e_de01_0bdc, // seed deadbeef00000001, overworld
         0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
         0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
-        0xc676_9522_289b_3be9, // seed 7, overworld
+        0xb839_e40a_c35b_1439, // seed 7, overworld
         0xbb9f_4859_d4d2_ae6a, // seed 7, nether
         0x821f_f1cc_25ca_21cd, // seed 7, end
     ];
@@ -9278,19 +9278,19 @@ mod golden_determinism_tests {
     const GOLDEN_WIDE: [u64; 15] = [
         // 4.4a re-pin: overworld entries move with cross-chunk veins
         // (nether/end byte-identical)
-        0x9903_27d5_bd6c_d490,
+        0xcfbb_fb20_df74_f270,
         0xc224_973a_dbae_0f7d,
         0x00dc_0ad5_7854_7143,
-        0xd884_6e32_6077_334a,
+        0x89d1_85d0_e8ce_c0d8,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0xe577_f7a1_c7a9_c290,
+        0x246e_f0d6_38b2_4bf4,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
-        0x7ecb_ee04_e9f0_deb2,
+        0xb834_cc65_5e7b_5738,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
-        0x62a7_b09a_097a_ea2b,
+        0x4436_fa12_77fd_c53f,
         0x5675_e557_60cc_6f5a,
         0x12df_709c_8a36_fee3,
     ];
@@ -9325,8 +9325,8 @@ mod golden_determinism_tests {
         // worlds): village spread 34/8/salt-10387312 moved the pinned
         // village to chunk (14,15); 4.4a veins moved it again
         0xf6a4_ce13_72ba_4d4a,
-        0xb96b_6d0d_5a71_b56e,
-        0xe1ec_9628_5115_8dc7,
+        0xe699_6930_9510_04be,
+        0x1636_cf53_2fe2_66d7,
     ];
 
     #[test]

@@ -6891,3 +6891,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z68 - ocean pin, chain complete (run 38078761963, CI-measured)
 - Ocean chunk (-1,1) pinned 9ac140a3. All 4 targeted + 3 mains + 5 wides + spawn pinned. Next: verification census vs copy, then packet + tour.
+
+## 2026-10-11z69 - 4.1p shelf/hills rebalance (verification census lessons)
+- Ocean 1.64x: narrowed to h<60, h60-61 shelf becomes dirt-topped submerged land (biomes feed plains). Deep h<51 to h<52. Mountain gate 73 with taiga-family exemption (hills/giant-hills were zero). Expect full re-pin harvest.

@@ -1093,15 +1093,16 @@ impl TerrainGen {
         let px = lx.div_euclid(4);
         let pz = lz.div_euclid(4);
         let pick2 = Rng::hash3(self.seed ^ LAYER_SALT_OVERLAY, px, 0xB17, pz) % 100;
-        // 4.1o FIT (relief histogram, owner seed, full window): the
-        // waterline pile-up (h61-h63 = 11.9% of columns) forced the
-        // old <=SEA+1 beach band to 3x the copy. Ocean takes h<=61
-        // (+3.5pp: ocean 0.79x -> ~1.1x), beach is the h63 fringe
-        // (4.4%), h62 falls through to land (swamp/plains both needy).
-        let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL {
+        // 4.1p FIT (verification census): the h60-61 shelf is broad
+        // (6.7pp) — ocean kept it all (1.64x). Ocean narrows to h<60;
+        // the shelf becomes submerged land (dirt-topped below, so the
+        // tops read as seabed while the biomes feed needy plains).
+        let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 2 {
             // 4.1i: ocean family from gates + depth (temp retired —
             // uncorrelated per copy measurement)
-            let deep = h < vc_chunk::SEA_LEVEL - 11;
+            // 4.1p: deep h<51 -> h<52 (measured 4.27% vs copy 5.3%;
+            // P(h<52)=9.23% predicts ~5.6%)
+            let deep = h < vc_chunk::SEA_LEVEL - 10;
             if snow {
                 (Biome::FrozenOcean, GRAVEL, GRAVEL)
             } else if warm {
@@ -1147,15 +1148,19 @@ impl TerrainGen {
             } else {
                 (Biome::Beach, SAND, SAND)
             }
-        } else if h > 75 {
-            // 4.1o: mountain gate 84 -> 75 (relief histogram P(h>75)
-            // ~= 10.3% vs copy mountains 10.7%; [ESTIMATED] — verify
-            // share on the next census, pushes plains/taiga down as
-            // the family takes high terrain)
+        } else if h > 73 {
+            // 4.1p: mountain gate 75 -> 73 (P(h>73) ~= 14.7% funds
+            // mountains ~10.7 + taiga-hills 3.1 + giant-hills 2.3;
+            // [ESTIMATED] — verify shares on the next census).
+            // Taiga-base high cells keep their family overlay (the
+            // gate was starving hills/giant-hills to zero); other
+            // families take the mountain split below.
             // 4.1e: mountain family splits by variant field
             // ([ESTIMATED] thresholds — vanilla hills rise with the
             // base; wooded 34 / gravelly 131 from the Before-1.18 table)
-            if h > 112 {
+            if self.layer_base_biome(special, snow, warm, lx, lz) == Biome::Taiga {
+                self.taiga_overlay(h, var, pick2)
+            } else if h > 112 {
                 (Biome::Mountains, SNOW, STONE)
             } else if var > 0.5 {
                 (Biome::WoodedMountains, STONE, STONE)
@@ -1171,7 +1176,7 @@ impl TerrainGen {
         // Height-gated branches above (ocean/river/beach/mountains)
         // are untouched; swamp keeps its wettest-band gate.
         else {
-            if humid > 0.45 && h <= 66 {
+            let land = if humid > 0.45 && h <= 66 {
                 // Swamp: wettest band + low flat terrain (unchanged)
                 (Biome::Swamp, GRASS, DIRT)
             } else if snow {
@@ -1188,6 +1193,14 @@ impl TerrainGen {
             } else {
                 let base = self.layer_base_biome(special, false, warm, lx, lz);
                 self.finish_land_base(base, h, var, pick2)
+            };
+            // 4.1p: submerged shelf (h60-61) tops read as seabed —
+            // biome kept for shares, grass would read wrong underwater
+            let (b, t, f) = land;
+            if h < vc_chunk::SEA_LEVEL {
+                (b, DIRT, DIRT)
+            } else {
+                (b, t, f)
             }
         };
         (biome, top, filler)

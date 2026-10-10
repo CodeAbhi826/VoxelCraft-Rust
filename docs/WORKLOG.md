@@ -6689,3 +6689,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z20 — PART 3 REVIEW PACKET (code complete)
 - 26 slices, 997/0 tests, golden untouched, audit clean. Packet (240 words + 10-claim review) in docs/CHECKPOINTS.md. Deferred: loot/execute/data/NBT/advancement/datapack/function/tab-complete (no engines yet), stat hooks, fill/clone modes, team options, chat formatting, title fade, mob scores. linux-game regression tour dispatched (run 38021703354); Part-3 HUD claims Code-only until V1 captures.
+
+## 2026-10-10z21 — PART 3 TOUR VERDICT: GREEN
+- linux-game run 38021703354 SUCCESS: release binary boots headless, intro→title→loading→game entry, version/menu/container legs all grep-green. Part-3 HUD (chat/sidebar/title/bossbar) remains Code-only until V1 captures — carried as Part-6 visual debt. PART 3 FULLY CLOSED.

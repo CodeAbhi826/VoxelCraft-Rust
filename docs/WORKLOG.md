@@ -6876,3 +6876,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z64 - ravine pin (run 38076685788, CI-measured)
 - Only golden_targeted_features fails now (mains/wides/spawn/content all green). Ravine chunk (0,0) pinned ace9f353. Ocean pin surfaces next.
+
+## 2026-10-10z64 - closed (CI-green 38077137728, 12/12 incl. 3-OS goldens)
+- Pin chain done: ocean pin held through n2/n3 untouched. Overlay fit round fully landed (dark 0.79x, giant 1.14x, birch 0.90x). Remaining Part 4: relief slice (mountains/beach/deep/river), validation census, packet amendment, tour.

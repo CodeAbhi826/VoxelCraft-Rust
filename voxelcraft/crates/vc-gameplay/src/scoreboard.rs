@@ -6,11 +6,11 @@
 
 use std::collections::BTreeMap;
 
+#[derive(Debug)]
 pub struct Objective {
     pub criterion: String,
     pub display: String,
 }
-
 #[derive(Default, Debug)]
 pub struct Scoreboard {
     objectives: BTreeMap<String, Objective>,

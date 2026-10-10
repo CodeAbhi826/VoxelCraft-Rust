@@ -6912,3 +6912,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z75 - 4.1q2 giant-hills to 76 (verification census)
 - 4.1q verified: hills 0.73x, giant-hills only 0.29x (most high taiga h74-77). At h>=76 family splits hills/giant-hills by pick; should also pull giant 1.29x down. Unit probe h80 still passes.
+
+## 2026-10-11z76 - 4.1q2 pins (run 38082884048, CI-measured)
+- Only 2 wides moved (high-terrain gate again); mains/targeted/spawn/content green. Next: verification census, then river-carve slice.

@@ -148,3 +148,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-11: z74 hill-gate pins in CI. Next: verification census + river carve.
 
 - 2026-10-11: z75 giant-hills gate in CI. Next: pins, census, river-carve slice.
+
+- 2026-10-11: z76 q2 pins in CI. Next: verification census + river carve.

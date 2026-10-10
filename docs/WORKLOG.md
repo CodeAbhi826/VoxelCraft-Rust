@@ -6632,3 +6632,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z05 — 3.5a: chat core (log + open/type/send + HUD)
 - chat.rs: ChatLog (100-cap, 10s TTL, say/push/tick/recent) + 3 tests. game.rs: T opens, / opens prefilled, Enter sends, Esc closes first; char routing on all 3 input paths; bottom-left HUD lines + input row; TTL tick. `/` lines stub as unknown (run_command hook for 3.6). Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z06 — 3.5b: chat visibility setting live
+- Settings chat_visibility (vanilla chatVisibility key, persisted) cycles Show/Commands Only/Hidden on the Chat Settings row (now enabled, label patched); ChatLog tracks system lines; HUD gates on visibility; stale "future round" tooltips/comments updated. Local: fmt clean; compile/tests deferred to CI (host busy).

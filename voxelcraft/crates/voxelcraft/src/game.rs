@@ -379,6 +379,9 @@ pub struct Settings {
     /// overlay's detail rows (the right column + the coordinate lines,
     /// the vanilla `reducedDebugInfo` behavior)
     pub reduced_debug: bool,
+    /// 3.5b: chat visibility (vanilla `chatVisibility`: 0 Show, 1
+    /// Commands Only, 2 Hidden)
+    pub chat_visibility: u8,
     /// Round 14b: the Skin Customization layer toggles (vanilla
     /// `modelPart_*` keys — ON defaults per the live wiki table). The
     /// player model has no separately-meshed second layers yet, so the
@@ -491,6 +494,7 @@ impl Default for Settings {
             sprint_toggle: false, // Hold (vanilla default)
             sneak_toggle: false,  // Hold (vanilla default)
             reduced_debug: false, // OFF (vanilla default)
+            chat_visibility: 0,   // Show (vanilla default)
             skin_cape: true,      // the live wiki table's ON defaults
             skin_jacket: true,
             skin_lsleeve: true,
@@ -772,12 +776,13 @@ impl Settings {
         // Hold/Toggle rows, modelPart_* for the layers, mainHand,
         // reducedDebugInfo — plus the round-14 autoJump gap fixed here)
         s.push_str(&format!(
-            ";ajump={};accdistort={:.3};sprinttog={};snektog={};rdebug={}",
+            ";ajump={};accdistort={:.3};sprinttog={};snektog={};rdebug={};chatvis={}",
             self.auto_jump as u8,
             self.acc_distortion,
             self.sprint_toggle as u8,
             self.sneak_toggle as u8,
-            self.reduced_debug as u8
+            self.reduced_debug as u8,
+            self.chat_visibility
         ));
         s.push_str(&format!(
             ";modelPart_capeEnabled={};modelPart_jacketEnabled={};modelPart_leftSleeveEnabled={};modelPart_rightSleeveEnabled={}",
@@ -955,6 +960,7 @@ impl Settings {
                 "sprinttog" => st.sprint_toggle = v == "1",
                 "snektog" => st.sneak_toggle = v == "1",
                 "rdebug" => st.reduced_debug = v == "1",
+                "chatvis" => st.chat_visibility = v.parse::<u8>().unwrap_or(0).min(2),
                 "modelPart_capeEnabled" => st.skin_cape = v == "1",
                 "modelPart_jacketEnabled" => st.skin_jacket = v == "1",
                 "modelPart_leftSleeveEnabled" => st.skin_lsleeve = v == "1",
@@ -5698,7 +5704,7 @@ impl GameApp {
                 "softens the fade-in, OFF pushes fog to the far plane.",
             ),
             ui::ID_ACC_FOVEFF => l("How much the field of view changes while sprinting."),
-            ui::ID_ACC_CHATVIS => l("Chat Visibility needs the chat subsystem (a future round)."),
+            ui::ID_ACC_CHATVIS => l("Chat visibility lives on the Chat Settings screen."),
             ui::ID_CTRL_RESET => l("Restore the classic WASD / Space / Shift / E / F / B layout."),
             ui::ID_CTRL_DONE => l("Back to the options."),
             ui::ID_SND_DONE => l("Back to the options."),
@@ -5728,7 +5734,7 @@ impl GameApp {
                 "Reset Keys restores the classic layout.",
             ),
             ID_OPT_LANG => l("The engine speaks English (US) only."),
-            ID_OPT_CHAT => l("Chat settings need the chat subsystem (a future round)."),
+            ID_OPT_CHAT => l("Chat settings: visibility, colors, scale, links."),
             ID_OPT_MUSICSND => l2(
                 "Ten sliders, one per sound category (vanilla).",
                 "Master scales everything; each category rides its own gain.",
@@ -5854,7 +5860,7 @@ impl GameApp {
             ui::ID_SKIN_DONE => l("Back to Options."),
             ui::ID_CHAT_VIS => l2(
                 "Show: the chat renders. Commands Only: system lines only.",
-                "Hide: nothing shows. No chat subsystem in this engine yet.",
+                "Hide: nothing shows.",
             ),
             ui::ID_CHAT_COLORS => l("Color codes in chat lines. No chat subsystem yet."),
             ui::ID_CHAT_LINKS => l("Click web links in chat. No chat subsystem yet."),
@@ -10205,8 +10211,10 @@ impl GameApp {
                 self.refresh_widgets();
             }
             ui::ID_ACC_CHATVIS | ui::ID_ACC_SUBTITLES => {
-                // grayed stubs (chat/subtitle subsystems are future
-                // rounds) — vanilla grays unavailable options too
+                // grayed stubs (the Access-screen chat-visibility id is
+                // not in the layout; subtitles has no overlay renderer
+                // — vanilla grays unavailable options too). The live
+                // chat-visibility row lives on Chat Settings (3.5b).
             }
             // Round 14b: the accessibility completion
             ui::ID_ACC_SPRINT => {
@@ -10267,9 +10275,16 @@ impl GameApp {
                 self.settings.reduced_debug = !self.settings.reduced_debug;
                 self.refresh_widgets();
             }
+            // 3.5b: chat visibility cycles Show → Commands Only → Hide
+            // (the subsystem exists now; the remaining chat rows stay
+            // grayed — colors/links/scale have no renderer yet)
+            ui::ID_CHAT_VIS => {
+                self.settings.chat_visibility = (self.settings.chat_visibility + 1) % 3;
+                self.after_settings_change();
+                self.refresh_widgets();
+            }
             ui::ID_CHAT_DONE => self.set_screen(Screen::Options),
-            ui::ID_CHAT_VIS
-            | ui::ID_CHAT_COLORS
+            ui::ID_CHAT_COLORS
             | ui::ID_CHAT_LINKS
             | ui::ID_CHAT_LINKSPROMPT
             | ui::ID_CHAT_HIDENAMES
@@ -11803,9 +11818,20 @@ impl GameApp {
                 self.widgets = ui::layout_chat_settings();
                 // the live-value patches (Reduced Debug Info's label)
                 let rdebug = self.settings.reduced_debug;
+                let chatvis = self.settings.chat_visibility;
                 for w in self.widgets.iter_mut() {
                     if w.id == ui::ID_CHAT_REDUCEDDEBUG {
                         ui::set_text(w, if rdebug { "ON" } else { "OFF" });
+                    }
+                    if w.id == ui::ID_CHAT_VIS {
+                        ui::set_text(
+                            w,
+                            match chatvis {
+                                1 => "COMMANDS ONLY",
+                                2 => "HIDDEN",
+                                _ => "SHOW",
+                            },
+                        );
                     }
                 }
             }
@@ -12283,7 +12309,7 @@ impl GameApp {
         if line.starts_with('/') {
             if !self.run_command(&line) {
                 self.chat
-                    .push("Unknown command. Type \"/help\" for a list of commands.".to_string());
+                    .system("Unknown command. Type \"/help\" for a list of commands.".to_string());
             }
         } else {
             self.chat.say("Player", &line);
@@ -25961,15 +25987,20 @@ impl GameApp {
                 .as_ref()
                 .map(|(s, t)| (s.as_str(), (*t * 200.0).clamp(0.0, 220.0) as u8));
             // 3.5a: chat lines bottom-left (vanilla position, newest at
-            // the bottom, 10 max) + the open input row beneath them
+            // the bottom, 10 max) + the open input row beneath them.
+            // 3.5b: the visibility setting gates (Hidden skips all,
+            // Commands Only keeps system lines)
             {
-                let recent = self.chat.recent(10);
-                let n = recent.len();
-                for (i, line) in recent.iter().enumerate() {
-                    let y = self.ui.live_h as i32 - 64 - (n - 1 - i) as i32 * 11;
-                    let w = UiCanvas::text_width(line, 1);
-                    self.ui.rect(6, y - 2, w + 6, 11, [0, 0, 0, 120]);
-                    self.ui.text(9, y, line, [255, 255, 255, 255], 1);
+                let vis = self.settings.chat_visibility;
+                if vis < 2 {
+                    let recent = self.chat.recent_sys(10, vis == 1);
+                    let n = recent.len();
+                    for (i, line) in recent.iter().enumerate() {
+                        let y = self.ui.live_h as i32 - 64 - (n - 1 - i) as i32 * 11;
+                        let w = UiCanvas::text_width(line, 1);
+                        self.ui.rect(6, y - 2, w + 6, 11, [0, 0, 0, 120]);
+                        self.ui.text(9, y, line, [255, 255, 255, 255], 1);
+                    }
                 }
                 if self.chat_open {
                     let y = self.ui.live_h as i32 - 53;

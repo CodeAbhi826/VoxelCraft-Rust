@@ -12,16 +12,25 @@ pub const CHAT_MAX_CHARS: usize = 256;
 
 #[derive(Default, Debug)]
 pub struct ChatLog {
-    lines: std::collections::VecDeque<(String, f32)>,
+    lines: std::collections::VecDeque<(String, f32, bool)>,
 }
 
 impl ChatLog {
     /// player or system line with a fresh TTL; drops oldest past the cap.
     pub fn push(&mut self, text: String) {
+        self.push_sys(text, false);
+    }
+
+    /// system line (survives Commands Only visibility).
+    pub fn system(&mut self, text: String) {
+        self.push_sys(text, true);
+    }
+
+    fn push_sys(&mut self, text: String, sys: bool) {
         if self.lines.len() >= CHAT_CAP {
             self.lines.pop_front();
         }
-        self.lines.push_back((text, CHAT_TTL));
+        self.lines.push_back((text, CHAT_TTL, sys));
     }
 
     /// `<name> text` player line.
@@ -39,13 +48,19 @@ impl ChatLog {
         }
     }
 
-    /// newest-first visible lines, up to `n`.
+    /// newest-first visible lines, up to `n`. Commands Only mode passes
+    /// `only_sys = true` (player lines hidden, system lines stay).
     pub fn recent(&self, n: usize) -> Vec<&str> {
+        self.recent_sys(n, false)
+    }
+
+    pub fn recent_sys(&self, n: usize, only_sys: bool) -> Vec<&str> {
         self.lines
             .iter()
             .rev()
+            .filter(|(_, _, sys)| !only_sys || *sys)
             .take(n)
-            .map(|(s, _)| s.as_str())
+            .map(|(s, _, _)| s.as_str())
             .collect()
     }
 
@@ -88,5 +103,14 @@ mod tests {
         c.push("new".to_string());
         c.tick(1.0);
         assert_eq!(c.len(), 1);
+    }
+
+    #[test]
+    fn commands_only_hides_player_lines() {
+        let mut c = ChatLog::default();
+        c.say("Player", "hi");
+        c.system("Server rules".to_string());
+        assert_eq!(c.recent(2).len(), 2);
+        assert_eq!(c.recent_sys(2, true), vec!["Server rules"]);
     }
 }

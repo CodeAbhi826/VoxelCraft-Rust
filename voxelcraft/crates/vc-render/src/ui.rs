@@ -1477,7 +1477,7 @@ pub fn layout_chat_settings() -> Vec<Widget> {
             30,
             "CHAT VISIBILITY",
             "SHOW",
-            false,
+            true,
         ),
         btn_h(
             ID_CHAT_COLORS,

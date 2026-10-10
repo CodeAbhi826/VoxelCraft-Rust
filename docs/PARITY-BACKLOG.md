@@ -160,3 +160,19 @@ public data/doc source cited in code; [ESTIMATED] = engine tuning.
 
 Rule: no missing structure is built from estimated dimensions without
 owner approval — shapes need documented sources first (4.0 method).
+
+## 4.4c Carver/decoration honesty report (2026-10-10, Part 4)
+
+| System | Status | Provenance |
+|---|---|---|
+| Cave worms | Present: 1/7 per chunk, 10–28 steps, width 1–5, lava ≤ y10 | Documented (configured_carver/cave.json, data extraction) |
+| Ravines | Present: 1/50 per chunk | [ESTIMATED] (unpublished) |
+| Veins | Present, cross-chunk resolved (seam 0.952) | Counts/sizes engine-tuned [ESTIMATED]; salt engine-local |
+| Trees | Present: per-biome counts (forest 8, jungle 10, dark 14, plains ~0.5 …) | Prose-cited where noted, else [ESTIMATED] |
+| Vegetation (flowers/grass) | Present, per-chunk rolls | [ESTIMATED] |
+| Desert well / witch hut | Present, prose-faithful | Materials/placement documented; cells approximate |
+| End outer islands + chorus | Present | Ring/gate/heights [ESTIMATED]; cities/ships deferred (need dims) |
+| 12 missing structures | Absent | Need documented dims (4.2c audit) |
+
+Approval ask (PLAN-FINAL 4.4): leave the [ESTIMATED] rows approximate
+until owner numeric diffs arrive; tune then, not now.

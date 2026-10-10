@@ -6775,3 +6775,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - generate_end_chunk: noise-gated end-stone blobs past dist 1000 ([ESTIMATED] ring/gate/heights), chorus stacks on high islands (no branching), cities/ships deferred. Test: void gap empty, chorus grounded, stable. Local: test green, audit [PASS].
 
 ## 2026-10-10z41 — 4.4b closed (CI-green)
+
+## 2026-10-10z42 — 4.4c: carver/decoration honesty report
+- Appendix in PARITY-BACKLOG.md: documented vs estimated per system + approval ask to leave estimates until diffs arrive. No code (nothing tunable without numbers).

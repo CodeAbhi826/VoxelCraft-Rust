@@ -1,6 +1,8 @@
 //! 4.1a: biome census probe — prints `vanilla_id name count` rows
 //! over a chunk rect for the 4.0 numeric-diff exchange (facts only).
-//! Usage: census [seed] [cx0] [cz0] [w] [h] [dim]  (defaults 0 0 0 8 8 overworld)
+//! 4.3c: `height` mode prints `vanilla_id count mean_height`.
+//! Usage: census [seed] [cx0] [cz0] [w] [h] [dim] [mode]
+//! (defaults 0 0 0 8 8 overworld census)
 
 use vc_world::gen::TerrainGen;
 use vc_world::world::Dimension;
@@ -25,6 +27,13 @@ fn main() {
         _ => Dimension::Overworld,
     };
     let g = TerrainGen::for_dimension(seed, dim);
+    if std::env::args().nth(7).as_deref() == Some("height") {
+        println!("seed={seed} rect=({cx0},{cz0},{w},{h}) heights");
+        for (id, n, mean) in g.height_stats(cx0, cz0, w, h) {
+            println!("{id}: {n} {mean:.1}");
+        }
+        return;
+    }
     let rows = g.biome_census(cx0, cz0, w, h);
     println!("seed={seed} rect=({cx0},{cz0},{w},{h})");
     for (id, n) in &rows {

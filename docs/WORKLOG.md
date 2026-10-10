@@ -6753,3 +6753,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z38 — 4.3b: seam score 0.909 + miss-class identified
 - seam_score (states+heights+biomes along row borders, inbound replay) + floor test (0.85). Measured: 7509/8256; heights/biomes clean, miss class = per-chunk vein blobs clipped at borders (stone vs granite/diorite/andesite/gravel/dirt/ores). Fix = cross-chunk blob resolution in the 4.4 decoration pass. Local: 2/2 green, audit [PASS].
+
+## 2026-10-10z38 — 4.3b closed (CI-green)
+
+## 2026-10-10z39 — 4.3c: height-stats probe
+- height_stats (per-biome count + mean height, overworld-only) + test + census example height mode. Our seed-0 rows: ocean 53.1, taiga 64.0, mushroom 63.0, beach 61.8, cold_ocean 52.8. Local: test green, audit [PASS].

@@ -4712,6 +4712,30 @@ impl TerrainGen {
         (matched, total)
     }
 
+    /// 4.3c: height stats — (vanilla_id, columns, mean_height) per
+    /// biome over a chunk rect, sorted by id. Facts-only exchange
+    /// format for density tuning (L5: aggregates, never positions).
+    /// Overworld-only: column() misreports other dims (see 4.1c).
+    pub fn height_stats(&self, cx0: i32, cz0: i32, w: i32, h: i32) -> Vec<(u8, u64, f64)> {
+        use std::collections::BTreeMap;
+        let mut m: BTreeMap<u8, (u64, i64)> = BTreeMap::new();
+        for cx in cx0..cx0 + w {
+            for cz in cz0..cz0 + h {
+                for lx in 0..16 {
+                    for lz in 0..16 {
+                        let c = self.column(cx * 16 + lx, cz * 16 + lz);
+                        let e = m.entry(c.biome.vanilla_id()).or_default();
+                        e.0 += 1;
+                        e.1 += c.height as i64;
+                    }
+                }
+            }
+        }
+        m.into_iter()
+            .map(|(id, (n, sum))| (id, n, sum as f64 / n as f64))
+            .collect()
+    }
+
     pub fn villages_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
         const RC: i32 = VILLAGE_SPACING_CHUNKS * 16; // region size in blocks
         let mut out = Vec::new();
@@ -9438,6 +9462,21 @@ mod libm_pinned_tests {
             rate >= 0.85,
             "seam score floor 0.85, measured {rate:.3} ({matched}/{total})"
         );
+    }
+
+    /// 4.3c: height stats cover every column, means sit in a sane
+    /// band, rows sort by id, and calls are stable.
+    #[test]
+    fn height_stats_cover_columns() {
+        let gen = TerrainGen::new(PIN_SEED);
+        let rows = gen.height_stats(0, 0, 2, 2);
+        let total: u64 = rows.iter().map(|(_, n, _)| n).sum();
+        assert_eq!(total, 2 * 2 * 256);
+        assert!(rows.windows(2).all(|w| w[0].0 < w[1].0));
+        for (_, _, mean) in &rows {
+            assert!((0.0..256.0).contains(mean), "sane mean {mean}");
+        }
+        assert_eq!(rows, gen.height_stats(0, 0, 2, 2));
     }
 
     /// 4.1a: vanilla ids match the cited registry values.

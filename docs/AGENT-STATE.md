@@ -91,3 +91,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - Owner directive 2026-10-09: 4.0 legal-gate proposal POSTPONED — start Part 4 at 4.1 (biomes) instead. L1 black-box rules stay in force throughout; the 4.0 proposal is deferred debt, not a waiver.
 
 - 2026-10-10: Part 3 progress — recipe book (3.4a-c) + chat (3.5a-b) CI-green. Next: 3.6a command parser + simple commands.
+
+- 2026-10-10: PART 3 CLOSED (packet z20). 20 commands, chat, recipe book, scoreboard/teams/bossbar, locate. Tour run 38021703354 dispatched. Next: Part 4 starting at 4.0 (owner reinstated 4.0 over 4.1) — write the 4.0 black-box proposal after tour verdict.

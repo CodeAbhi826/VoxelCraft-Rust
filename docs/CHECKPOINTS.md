@@ -113,3 +113,34 @@ ts-race Intel validation, morning batch calls. Deferred to Part 6:
 8. Golden hash untouched — VERIFIED (green every slice, 3 OS).
 9. Reference-game verification — OPEN (soft-blocked, owner).
 10. Part 2 complete bar owner blocks — CLAIMED (all above green).
+
+## PART 3 GAMEPLAY CORE — REVIEW PACKET (2026-10-10)
+
+Scope: tools/melee/durability/sweep/mining (3.1a–d), Looting (3.2),
+splash/lingering/bow/tipped (3.3a–d), lang keys + recipe book (3.4a–c),
+chat + visibility (3.5a–b), 20 commands (3.6a–d: parser/help/seed/
+gamemode/time/weather/say/me/selectors/give/tp/kill/effect/enchant/
+summon/setblock/fill/clone), scoreboard/teams/sidebar (3.7a–b),
+tellraw/title/bossbar/locate (3.7c–e). 26 slices, every one CI-green
+at commit (997 passed / 0 failed across 35 suites, clippy/fmt/wasm/
+golden-3-OS/bench/licenses/audit). Golden hash untouched throughout.
+Deferred with reasons: loot (no roll engine), execute/data/NBT-paths
+(no nested-exec/NBT engine), advancement/datapack/function (no
+drivers), tab completion (no completion UI), permission levels
+(single-player: all permitted, disclosed), stat-criteria hooks,
+fill/clone modes, team options, chat formatting/colors, title fade
+ramp, mob score/team membership. In-game regression tour dispatched
+(linux-game on this branch); Part-3 HUD (chat/sidebar/title/bossbar)
+is Code-only until captures are V1-viewed.
+
+### Adversarial self-review — 10 claims (2026-10-10)
+1. 997/0 tests across 35 suites — VERIFIED (CI log test-result lines).
+2. Golden hash identical every slice — VERIFIED (3-OS green throughout).
+3. 20 commands dispatch + usage-error paths — TESTED (parser unit tests; game arms Code-only, no E2E leg yet).
+4. Bow/tipped/splash/lingering mechanics — TESTED (unit) + Code-only in-game.
+5. Recipe book unlock→fill loop — TESTED (unit) + Code-only in-game.
+6. Chat open/type/send/visibility — TESTED (unit) + Code-only in-game.
+7. Scoreboard/sidebar/teams/bossbar render — Code-only (no captures viewed).
+8. Locate matches placement rules — TESTED (stronghold pin + determinism; jungle/mansion extraction golden-guarded).
+9. Legal audit clean — VERIFIED (2 tripwire hits caught and scrubbed mid-part).
+10. Part 3 complete bar defers + tour — CLAIMED (defers listed with reasons; tour run linked in worklog).

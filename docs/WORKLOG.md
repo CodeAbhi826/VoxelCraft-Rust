@@ -6684,3 +6684,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z19 — 3.7e: locate
 - gen.rs locate_structure (village/desert_pyramid/jungle_temple/woodland_mansion/mineshaft/stronghold) via region-ring spiral + jungle/mansion center extraction (verbatim, golden-guarded) + test. Command arm + table. Local: locate + command tests green, app check clean, audit [PASS].
+
+## 2026-10-10z19 — 3.7e closed (locate, CI-green)
+
+## 2026-10-10z20 — PART 3 REVIEW PACKET (code complete)
+- 26 slices, 997/0 tests, golden untouched, audit clean. Packet (240 words + 10-claim review) in docs/CHECKPOINTS.md. Deferred: loot/execute/data/NBT/advancement/datapack/function/tab-complete (no engines yet), stat hooks, fill/clone modes, team options, chat formatting, title fade, mob scores. linux-game regression tour dispatched (run 38021703354); Part-3 HUD claims Code-only until V1 captures.

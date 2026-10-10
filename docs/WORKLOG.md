@@ -6641,3 +6641,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z08 — 3.6a: command parser + help/seed/gamemode/time/weather/say/me
 - command.rs: quote-aware split_args + COMMANDS table + 3 tests. game.rs run_command replaces the 3.5 stub (usage errors print usage, unknown still false). No cheat gate (disclosed). Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z09 — 3.6a closed (parser + 7 commands, CI-green)
+- Next: 3.6b selectors (@p/@s/@a/@e/@r) + give/tp/effect; 3.6c world-edit (fill/clone/setblock/summon); 3.7 scoreboard+teams; then Part-3 packet.

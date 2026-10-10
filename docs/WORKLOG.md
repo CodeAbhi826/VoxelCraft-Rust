@@ -6704,3 +6704,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z25 — 4.1a closed (CI-green) + census published
 - Our rows (rect 0,0 8x8): seed0 {0:5916, 5:158, 14:11, 16:1975, 46:8324}; seed12345 {1:4588, 14:1390, 16:1481, 27:5966, 45:2959}. Awaiting owner reference rows. Meanwhile: 4.1b large-biomes/amplified research from public docs.
+
+## 2026-10-10z26 — 4.1b: large-biomes mode
+- TerrainGen.large_biomes + for_dimension_large: climate fields + continental shelf sample at /4 (rivers/mountain mask/detail untouched per wiki; continental inclusion [ESTIMATED]). Test: histogram moves, totals hold, stable. Local: 3/3 gen tests green.

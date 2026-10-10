@@ -695,6 +695,15 @@ pub struct TerrainGen {
     /// the engine's flat mode generates NO structures, disclosed
     /// adaptation).
     pub flat: bool,
+    /// 4.1b: Large Biomes world type (VERIFIED reference wiki
+    /// /Large_Biomes: pre-1.18 biome layers scaled ×4 XZ, "16 times as
+    /// much area"; rivers NOT larger, mountains NOT larger). Engine
+    /// adaptation: the biome-classification fields (temperature,
+    /// humidity, variant) and the continental shelf sample at ÷4
+    /// coordinates; the river band, mountain mask and detail fields
+    /// are untouched. The continental inclusion is [ESTIMATED /
+    /// APPROXIMATION] — the wiki exempts only rivers explicitly.
+    pub large_biomes: bool,
     /// 2026-09-14 parity round: the vanilla "Generate Structures"
     /// world-create option (options key `generate-structures`, on the
     /// More World Options page — VERIFIED reference wiki /Java_Edition_1.3.1
@@ -746,6 +755,7 @@ impl TerrainGen {
             seed,
             dim,
             flat: false,
+            large_biomes: false,
             structures: true,
             n_cont: Noise::new(seed ^ 0x1000),
             n_mfac: Noise::new(seed ^ 0x2000),
@@ -769,11 +779,23 @@ impl TerrainGen {
         g
     }
 
+    /// 4.1b: large-biomes generator (see the `large_biomes` field).
+    pub fn for_dimension_large(seed: u64, dim: Dimension) -> Self {
+        let mut g = Self::for_dimension(seed, dim);
+        g.large_biomes = true;
+        g
+    }
+
     /// The climate fields (temperature / humidity / variant) — the
     /// pre-rewrite scales, unchanged.
     pub fn climate_fields(&self, x: i32, z: i32) -> (f32, f32, f32) {
-        let xf = x as f32;
-        let zf = z as f32;
+        // 4.1b: large biomes sample the classification fields at ÷4
+        // (the river band keeps its own scale — see large_biomes docs)
+        let (xf, zf) = if self.large_biomes {
+            (x as f32 / 4.0, z as f32 / 4.0)
+        } else {
+            (x as f32, z as f32)
+        };
         let temp = fbm2(
             &self.n_temp,
             (xf + 3000.0) / 1700.0,
@@ -863,7 +885,14 @@ impl TerrainGen {
     fn density_params(&self, x: i32, z: i32, bd: f64, bv: f64) -> (f64, f64, f32) {
         let xf = x as f32;
         let zf = z as f32;
-        let cont = fbm2(&self.n_cont, xf / 1500.0, zf / 1500.0, 4, 2.0, 0.5) * 1.7;
+        // 4.1b: the continental shelf joins the large-biomes scale
+        // ([ESTIMATED / APPROXIMATION] — see large_biomes docs)
+        let (cxf, czf) = if self.large_biomes {
+            (xf / 4.0, zf / 4.0)
+        } else {
+            (xf, zf)
+        };
+        let cont = fbm2(&self.n_cont, cxf / 1500.0, czf / 1500.0, 4, 2.0, 0.5) * 1.7;
         let mmask = smoothstep(
             0.3,
             0.6,
@@ -9007,6 +9036,21 @@ mod libm_pinned_tests {
         assert_eq!(total, 2 * 3 * 256);
         assert!(c.windows(2).all(|w| w[0].0 < w[1].0));
         assert_eq!(c, gen.biome_census(0, 0, 2, 3));
+    }
+
+    /// 4.1b: large biomes rescale the classification (same seed, same
+    /// rect, different histogram — both complete and stable).
+    #[test]
+    fn large_biomes_rescale_classification() {
+        let small = TerrainGen::new(PIN_SEED);
+        let mut large = TerrainGen::new(PIN_SEED);
+        large.large_biomes = true;
+        let a = small.biome_census(0, 0, 4, 4);
+        let b = large.biome_census(0, 0, 4, 4);
+        assert_eq!(a.iter().map(|(_, n)| n).sum::<u64>(), 4 * 4 * 256);
+        assert_eq!(b.iter().map(|(_, n)| n).sum::<u64>(), 4 * 4 * 256);
+        assert_ne!(a, b, "large mode must move biome boundaries");
+        assert_eq!(b, large.biome_census(0, 0, 4, 4));
     }
 
     /// 4.1a: vanilla ids match the cited registry values.

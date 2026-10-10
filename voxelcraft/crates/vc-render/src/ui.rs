@@ -3946,6 +3946,54 @@ impl UiCanvas {
         }
     }
 
+    /// 3.7d: custom boss bar — the dragon-bar look with a caller label
+    /// and y slot (stacked customs sit below the boss bars).
+    pub fn custom_bar(&mut self, name: &str, frac: f32, y: i32) {
+        let w = 9 * 40 + 4;
+        let x = (self.live_w as i32 - w) / 2;
+        let tw = Self::text_width(name, 1);
+        self.text(
+            (self.live_w as i32 - tw) / 2,
+            y - 14,
+            name,
+            [235, 220, 245, 255],
+            1,
+        );
+        let ct = |c: Color| -> [f32; 4] {
+            [
+                c[0] as f32 / 255.0,
+                c[1] as f32 / 255.0,
+                c[2] as f32 / 255.0,
+                c[3] as f32 / 255.0,
+            ]
+        };
+        self.gui_frame
+            .solid_rect(x, y, w, 12, ct([16, 12, 20, 220]));
+        self.gui_frame
+            .solid_rect(x, y, w, 1, ct([90, 70, 110, 255]));
+        self.gui_frame
+            .solid_rect(x, y + 11, w, 1, ct([90, 70, 110, 255]));
+        self.gui_frame
+            .solid_rect(x, y, 1, 12, ct([90, 70, 110, 255]));
+        self.gui_frame
+            .solid_rect(x + w - 1, y, 1, 12, ct([90, 70, 110, 255]));
+        let fill = ((w - 4) as f32 * frac.clamp(0.0, 1.0)) as i32;
+        if fill > 0 {
+            self.gui_frame
+                .solid_rect(x + 2, y + 2, fill, 8, ct([190, 90, 220, 255]));
+            self.gui_frame
+                .solid_rect(x + 2, y + 2, fill, 2, ct([230, 150, 250, 255]));
+        }
+        if self.chrome_enabled {
+            self.rect(x, y, w, 12, [16, 12, 20, 220]);
+            self.frame(x, y, w, 12, [90, 70, 110, 255]);
+            if fill > 0 {
+                self.rect(x + 2, y + 2, fill, 8, [190, 90, 220, 255]);
+                self.rect(x + 2, y + 2, fill, 2, [230, 150, 250, 255]);
+            }
+        }
+    }
+
     /// Held-item name above the XP bar, fading out over ~2 s after the
     /// selection changes (vanilla HUD behavior; the 2 s fade duration is
     /// an unverified-but-trivial UI nicety — the layout position is the

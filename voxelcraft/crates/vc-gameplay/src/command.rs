@@ -82,6 +82,10 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "title",
         "title <target> <title|subtitle|actionbar|clear|times> [...]",
     ),
+    (
+        "bossbar",
+        "bossbar <add|remove|list|get|set> [...]",
+    ),
     ("kill", "kill [target]"),
     ("me", "me <action>"),
     ("say", "say <message>"),
@@ -271,6 +275,7 @@ mod tests {
             "team",
             "tellraw",
             "title",
+            "bossbar",
         ] {
             assert!(names.contains(&need), "missing {need}");
         }

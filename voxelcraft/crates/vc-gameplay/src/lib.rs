@@ -4,6 +4,8 @@
 pub mod anvil;
 pub mod beacon;
 pub mod bees;
+/// 3.7d: custom boss bars (manager; rendering in ui.rs)
+pub mod bossbar;
 pub mod brewing;
 pub mod campfire;
 /// 3.5a: chat log (capped buffer + TTL; HUD/input owned by game.rs)

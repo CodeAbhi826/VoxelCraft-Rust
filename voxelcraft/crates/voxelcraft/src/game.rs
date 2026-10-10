@@ -1785,6 +1785,8 @@ pub struct GameApp {
     chat_input: String,
     /// 3.7a: scoreboard (objectives + scores + sidebar slot)
     scoreboard: vc_gameplay::scoreboard::Scoreboard,
+    /// 3.7d: custom boss bars (/bossbar)
+    bossbars: vc_gameplay::bossbar::BossBars,
     /// 3.7c: title display (main + subtitle with fade timers) and the
     /// actionbar line above the hotbar
     title_main: Option<(String, i32)>,
@@ -3341,6 +3343,7 @@ impl GameApp {
             chat_open: false,
             chat_input: String::new(),
             scoreboard: vc_gameplay::scoreboard::Scoreboard::default(),
+            bossbars: vc_gameplay::bossbar::BossBars::default(),
             title_main: None,
             title_sub: None,
             title_fade: (10, 70, 20),
@@ -13389,6 +13392,132 @@ impl GameApp {
                         self.chat.system(usage.to_string());
                         return true;
                     }
+                }
+                self.ui.dirty = true;
+                true
+            }
+            // 3.7d: boss bars (no players/color/style options —
+            // single viewer, one style, disclosed)
+            "bossbar" => {
+                match argv.get(1).map(|s| s.as_str()) {
+                    Some("add") => {
+                        if argv.len() < 3 {
+                            self.chat
+                                .system("Usage: /bossbar add <id> [name]".to_string());
+                            return true;
+                        }
+                        let name = if argv.len() > 3 {
+                            argv[3..].join(" ")
+                        } else {
+                            String::new()
+                        };
+                        match self.bossbars.add(&argv[2], &name) {
+                            Ok(()) => self.chat.system(format!("Added bar {}", argv[2].as_str())),
+                            Err(e) => self.chat.system(e),
+                        }
+                    }
+                    Some("remove") => {
+                        if argv.len() != 3 {
+                            self.chat.system("Usage: /bossbar remove <id>".to_string());
+                            return true;
+                        }
+                        if self.bossbars.remove(&argv[2]) {
+                            self.chat.system(format!("Removed {}", argv[2].as_str()));
+                        } else {
+                            self.chat.system(format!("Unknown bar: {}", argv[2]));
+                        }
+                    }
+                    Some("list") => {
+                        let bars = self.bossbars.list();
+                        if bars.is_empty() {
+                            self.chat.system("No bars".to_string());
+                        } else {
+                            for (id, b) in bars {
+                                self.chat
+                                    .system(format!("{id} ({}): {}/{}", b.name, b.value, b.max));
+                            }
+                        }
+                    }
+                    Some("get") => {
+                        if argv.len() != 4 {
+                            self.chat
+                                .system("Usage: /bossbar get <id> <value|max>".to_string());
+                            return true;
+                        }
+                        match self.bossbars.get(&argv[2]) {
+                            Some(b) => {
+                                let v = match argv[3].as_str() {
+                                    "value" => b.value,
+                                    "max" => b.max,
+                                    _ => {
+                                        self.chat.system(
+                                            "Usage: /bossbar get <id> <value|max>".to_string(),
+                                        );
+                                        return true;
+                                    }
+                                };
+                                self.chat.system(format!("{} has {v}", argv[2].as_str()));
+                            }
+                            None => self.chat.system(format!("Unknown bar: {}", argv[2])),
+                        }
+                    }
+                    Some("set") => {
+                        if argv.len() < 4 {
+                            self.chat.system(
+                                "Usage: /bossbar set <id> <value|max|visible|name> [...]"
+                                    .to_string(),
+                            );
+                            return true;
+                        }
+                        let r = match argv[3].as_str() {
+                            "value" => match argv.get(4).and_then(|s| s.parse::<i32>().ok()) {
+                                Some(v) => self.bossbars.set_value(&argv[2], v),
+                                None => {
+                                    self.chat.system("Value must be a number".to_string());
+                                    return true;
+                                }
+                            },
+                            "max" => match argv.get(4).and_then(|s| s.parse::<i32>().ok()) {
+                                Some(v) => self.bossbars.set_max(&argv[2], v),
+                                None => {
+                                    self.chat.system("Max must be a number".to_string());
+                                    return true;
+                                }
+                            },
+                            "visible" => match argv.get(4).map(|s| s.as_str()) {
+                                Some("true") => self.bossbars.set_visible(&argv[2], true),
+                                Some("false") => self.bossbars.set_visible(&argv[2], false),
+                                _ => {
+                                    self.chat.system(
+                                        "Usage: /bossbar set <id> visible <true|false>".to_string(),
+                                    );
+                                    return true;
+                                }
+                            },
+                            "name" => {
+                                let name = if argv.len() > 4 {
+                                    argv[4..].join(" ")
+                                } else {
+                                    String::new()
+                                };
+                                self.bossbars.set_name(&argv[2], &name)
+                            }
+                            _ => {
+                                self.chat.system(
+                                    "Usage: /bossbar set <id> <value|max|visible|name> [...]"
+                                        .to_string(),
+                                );
+                                return true;
+                            }
+                        };
+                        match r {
+                            Ok(()) => self.chat.system(format!("Updated {}", argv[2].as_str())),
+                            Err(e) => self.chat.system(e),
+                        }
+                    }
+                    _ => self
+                        .chat
+                        .system("Usage: /bossbar <add|remove|list|get|set>".to_string()),
                 }
                 self.ui.dirty = true;
                 true
@@ -27278,6 +27407,27 @@ impl GameApp {
                         self.ui
                             .boss_bar(w.health / vc_gameplay::wither::WITHER_HEALTH);
                     }
+                }
+            }
+            // 3.7d: custom bars stack below the boss bars (28 px pitch —
+            // the label + bar footprint)
+            {
+                let mut slot = 0;
+                if self.world.dimension == vc_world::world::Dimension::End {
+                    if let Some(d) = self.sim.dragon.dragon.as_ref() {
+                        if d.dying.is_none() {
+                            slot += 1;
+                        }
+                    }
+                }
+                if let Some(w) = self.sim.wither.wither.as_ref() {
+                    if w.alive() {
+                        slot += 1;
+                    }
+                }
+                for (_, b) in self.bossbars.visible() {
+                    self.ui.custom_bar(&b.name, b.frac(), 24 + 28 * slot);
+                    slot += 1;
                 }
             }
 

@@ -6674,3 +6674,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z17 — 3.7c: tellraw + title
 - command.rs tellraw_text (plain passthrough, {"text"}/extra concat, escapes; formatting ignored) + 1 test. Commands: tellraw, title (title/subtitle/actionbar/clear/times). HUD center title (scale 3) + sub + actionbar; tick decay; no fade ramp (disclosed). Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z17 — 3.7c closed (tellraw/title, CI-green)
+
+## 2026-10-10z18 — 3.7d: bossbar
+- bossbar.rs manager (add/remove/get/set value/max/visible/name + frac + test). ui.rs custom_bar (dragon-bar look, label + y slot). Command: bossbar add/remove/list/get/set. HUD stacks visible customs below dragon/wither bars. Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).

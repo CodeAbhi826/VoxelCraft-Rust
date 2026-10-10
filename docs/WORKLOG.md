@@ -6730,3 +6730,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z33 — 4.2d: structure-block registry (sandstone/spruce/cauldron)
 - 3 full-cube blocks (584-586) + identity states (937-939): table rows (placeholder tiles), both fold arms, model/prop exclusions, picker + tabs (BuildingBlocks 157, Decorations 55), counts (587/940), hardness (0.8/2/2 VERIFIED live), tools/fuel/flammability/AnyPlanks wiring, GPU LUT twins, roundtrip test. Cauldron solid-cube + no slab/stairs variants (disclosed). Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z34 — owner Survival world: copy-only import test (IN PROGRESS)
+- Source manifest snapshotted (76 files); cp -a to /tmp/opencode/survival-copy; manifest identical after (SOURCE_UNTOUCHED). Temp probe at vc-anvil/tests/survival_probe_tmp.rs (UNTRACKED, NEVER COMMIT — delete after run). Awaiting idle host to run.
+
+## 2026-10-10z33 — 4.2d closed (CI-green)
+
+## 2026-10-10z35 — owner Survival import test: PASS
+- Copy-only (/tmp/opencode/survival-copy); source manifest identical before/after/after-run (UNTOUCHED). Gate Supported (1.16.5); 20 region files; 11,857 chunks decoded, 0 failed, 139,043,755 non-air cells. Probe file deleted, never committed. No world content enters the tree — counts only.

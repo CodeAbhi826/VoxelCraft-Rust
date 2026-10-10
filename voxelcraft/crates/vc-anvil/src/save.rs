@@ -660,18 +660,27 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
             let mut unknown_pal: Vec<UnknownPaletteEntry> = Vec::new();
             if let Some(pal) = sec.get("Palette").and_then(|p| p.as_list()) {
                 for entry in pal {
-                    let name = entry
-                        .get("Name")
-                        .and_then(|n| n.as_str())
-                        .unwrap_or("voxelcraft:air");
-                    let mut props: Vec<(String, String)> = Vec::new();
-                    if let Some(Nbt::Compound(pr)) = entry.get("Properties") {
-                        for (k, v) in pr {
-                            if let Nbt::String(val) = v {
-                                props.push((k.clone(), val.clone()));
+                    // 1.16 palette entries are compounds; single-default
+                    // states may be bare strings (found live in the
+                    // owner's Survival copy — misread as air before).
+                    let (name, props) = match entry {
+                        Nbt::String(n) => (n.as_str(), Vec::new()),
+                        _ => {
+                            let name = entry
+                                .get("Name")
+                                .and_then(|n| n.as_str())
+                                .unwrap_or("voxelcraft:air");
+                            let mut props: Vec<(String, String)> = Vec::new();
+                            if let Some(Nbt::Compound(pr)) = entry.get("Properties") {
+                                for (k, v) in pr {
+                                    if let Nbt::String(val) = v {
+                                        props.push((k.clone(), val.clone()));
+                                    }
+                                }
                             }
+                            (name, props)
                         }
-                    }
+                    };
                     // 2.1b: unknown names → verbatim sidecar entry
                     // (name+props preserved for the 2.4 writer)
                     // 2.1f: the cell shows the placeholder CHECKER
@@ -739,8 +748,12 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
                 }
                 any_light = true;
             }
-            // (missing BlockStates → flat stays all-air — 1.18-style single
-            // palette entries; harmless to accept)
+            // (missing BlockStates with a single-entry palette fills the
+            // whole section — vanilla omits the field in that case;
+            // multi-entry without data stays all-air)
+            if sec.get("BlockStates").is_none() && palette.len() == 1 {
+                flat = [palette[0]; SECTION_LEN];
+            }
 
             chunk.sections[sy] = Section::from_states(&flat).map(std::sync::Arc::from);
         }
@@ -1796,6 +1809,34 @@ mod tests {
         assert_eq!(chunk.biome[7 * 16 + 5], 4); // desert → ours
         assert_eq!(chunk.biome[0], 2); // plains → ours
         assert_eq!(chunk.biome[15 * 16 + 15], 2);
+    }
+
+    /// 1.16.5 string palettes + omitted single-entry BlockStates
+    /// (found live in the Survival copy — decoded as air before).
+    #[test]
+    fn string_palette_fills_section() {
+        let mut sec = Nbt::compound();
+        sec.set("Y", Nbt::Byte(3));
+        sec.set(
+            "Palette",
+            Nbt::List(vec![Nbt::String("voxelcraft:stone".into())]),
+        );
+        // no BlockStates field at all
+        let mut level = Nbt::compound();
+        level.set("xPos", Nbt::Int(0));
+        level.set("zPos", Nbt::Int(0));
+        level.set("Sections", Nbt::List(vec![sec]));
+        level.set("Biomes", Nbt::IntArray(vec![1; 256]));
+        let mut root = Nbt::compound();
+        root.set("DataVersion", Nbt::Int(2586));
+        root.set("Level", level);
+        let bytes = nbt::write_root("", &root).unwrap();
+
+        let (chunk, _) = chunk_from_nbt(&bytes).unwrap();
+        assert_eq!(
+            chunk.get_local(vc_chunk::chunk::LocalXZ::new(5, 9), 3 * 16 + 2),
+            STONE
+        );
     }
 
     #[test]

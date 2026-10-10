@@ -6795,3 +6795,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z46 — 4.1e re-pins (hills change biome bytes)
 - 3 overworld mains + ravine/ocean targeted + 5 wide-overworld re-pinned (nether/end identical). Self-caught: nearly wrote a ravine value from memory — reverted, used only locally-measured values. Local: golden x3 green, audit [PASS].
+
+## 2026-10-10z47 — 4.1f: climate source doc (gate for rebuild)
+- docs/PART4-LAYERS.md: refusal record (MCP/mapping sources), clean shape from Before-1.18 behaviors, fit list, build plan. Refused 3 tainted sources during research. AWAITING owner approval to build.

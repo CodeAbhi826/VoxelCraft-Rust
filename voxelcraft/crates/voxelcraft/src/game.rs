@@ -12362,10 +12362,8 @@ impl GameApp {
                 if !mode.allows_flight() {
                     self.player.flying = false;
                 }
-                say(
-                    self,
-                    format!("Set own game mode to {} mode", argv[1].as_str()),
-                );
+                self.chat
+                    .system(format!("Set own game mode to {} mode", argv[1].as_str()));
                 self.ui.dirty = true;
                 true
             }
@@ -12390,17 +12388,19 @@ impl GameApp {
                                 self.chat.system(format!("Set the time to {ticks}"));
                                 self.ui.dirty = true;
                             }
-                            None => say(
-                                self,
-                                "Usage: /time <set <day|noon|night|midnight|ticks>|query>"
-                                    .to_string(),
-                            ),
+                            None => {
+                                self.chat.system(
+                                    "Usage: /time <set <day|noon|night|midnight|ticks>|query>"
+                                        .to_string(),
+                                );
+                            }
                         }
                     }
-                    _ => say(
-                        self,
-                        "Usage: /time <set <day|noon|night|midnight|ticks>|query>".to_string(),
-                    ),
+                    _ => {
+                        self.chat.system(
+                            "Usage: /time <set <day|noon|night|midnight|ticks>|query>".to_string(),
+                        );
+                    }
                 }
                 true
             }
@@ -12424,10 +12424,10 @@ impl GameApp {
                         self.weather.force_thunder(secs);
                         self.chat.system("Changing to rainy weather".to_string());
                     }
-                    _ => say(
-                        self,
-                        "Usage: /weather <clear|rain|thunder> [seconds]".to_string(),
-                    ),
+                    _ => {
+                        self.chat
+                            .system("Usage: /weather <clear|rain|thunder> [seconds]".to_string());
+                    }
                 }
                 self.ui.dirty = true;
                 true

@@ -1382,7 +1382,7 @@ impl TerrainGen {
                         let wx = ax * 16 + arng.next_range(16) as i32;
                         let wz = az * 16 + arng.next_range(16) as i32;
                         let wy = y_min + arng.next_range((y_max - y_min + 1) as u32) as i32;
-                        self.ore_blob_world(chunk, cx * 16, cz * 16, wx, wy, wz, state, size);
+                        self.ore_blob_world(chunk, (cx * 16, cz * 16), (wx, wy, wz), state, size);
                     }
                 }
             }
@@ -1399,14 +1399,13 @@ impl TerrainGen {
     fn ore_blob_world(
         &self,
         chunk: &mut Chunk,
-        ox: i32,
-        oz: i32,
-        wx: i32,
-        wy: i32,
-        wz: i32,
+        origin: (i32, i32),
+        center: (i32, i32, i32),
         state: u16,
         size: u32,
     ) {
+        let (ox, oz) = origin;
+        let (wx, wy, wz) = center;
         let a = size as f64 / 8.0;
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0BE5, wx, wy, wz));
         let hx = a * (0.7 + rng.next_f32() as f64 * 0.6);
@@ -8974,7 +8973,7 @@ mod golden_determinism_tests {
     use super::*;
     use vc_chunk::chunk::Chunk;
 
-    const GOLDEN_SEEDS: [u64; 3] = [0xC0FFEE_1234_5678, 0xDEAD_BEEF_0000_0001, 7];
+    const GOLDEN_SEEDS: [u64; 3] = [0x00C0_FFEE_1234_5678, 0xDEAD_BEEF_0000_0001, 7];
 
     /// 3×3 chunk neighborhood per seed per dimension — borders exercise
     /// the outbound-edit path (trees crossing chunk edges) via `inbound`.
@@ -9017,9 +9016,9 @@ mod golden_determinism_tests {
                 None => h = fnv1a(h, &[0]),
             }
         }
-        let biome_bytes: Vec<u8> = c.biome.iter().copied().collect();
+        let biome_bytes: Vec<u8> = c.biome.to_vec();
         h = fnv1a(h, &biome_bytes);
-        let height_bytes: Vec<u8> = c.height.iter().copied().collect();
+        let height_bytes: Vec<u8> = c.height.to_vec();
         h = fnv1a(h, &height_bytes);
         h
     }
@@ -9052,14 +9051,17 @@ mod golden_determinism_tests {
     /// is a determinism regression (R5) until proven an intentional,
     /// reported re-baseline (slice 1.0.3 reports old vs new). The seed /
     /// dimension pairs are in [GOLDEN_SEEDS] × [OVERWORLD, NETHER, END].
+    /// 4.4a re-baseline (owner-approved accuracy-over-history
+    /// 2026-10-10): the 3 overworld mains + all overworld targeted pins
+    /// move with cross-chunk veins; nether/end pins byte-identical.
     const GOLDEN: [u64; 9] = [
-        0xa794_356f_b819_1b75, // seed c0ffee12345678, overworld
+        0xe7b0_941b_2d28_7e8a, // seed c0ffee12345678, overworld
         0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
         0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
-        0xea59_03a5_56d4_c1ba, // seed deadbeef00000001, overworld
+        0xdff3_8025_6b1e_531c, // seed deadbeef00000001, overworld
         0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
         0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
-        0x4434_1912_68f3_5767, // seed 7, overworld
+        0xc676_9522_289b_3be9, // seed 7, overworld
         0xbb9f_4859_d4d2_ae6a, // seed 7, nether
         0x821f_f1cc_25ca_21cd, // seed 7, end
     ];
@@ -9092,7 +9094,7 @@ mod golden_determinism_tests {
     /// 1.0.5: WIDE golden hash — same FNV contract over 5 seeds x 25
     /// chunks (5x5) per dimension. NEW values only, narrow GOLDEN untouched.
     const WIDE_SEEDS: [u64; 5] = [
-        0xC0FFEE_1234_5678,
+        0x00C0_FFEE_1234_5678,
         0xDEAD_BEEF_0000_0001,
         7,
         0x1234_5678_9ABC_DEF0,
@@ -9121,19 +9123,21 @@ mod golden_determinism_tests {
     }
 
     const GOLDEN_WIDE: [u64; 15] = [
-        0x68da_0296_8bca_e76d,
+        // 4.4a re-pin: overworld entries move with cross-chunk veins
+        // (nether/end byte-identical)
+        0x9903_27d5_bd6c_d490,
         0xc224_973a_dbae_0f7d,
         0x00dc_0ad5_7854_7143,
-        0xf6ca_8ed0_9298_c5da,
+        0xd884_6e32_6077_334a,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0xc0a5_4cb4_9cb4_646f,
+        0xe577_f7a1_c7a9_c290,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
-        0x4697_f462_ddf1_0a63,
+        0x7ecb_ee04_e9f0_deb2,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
-        0x9bfd_3b34_24f4_a444,
+        0x62a7_b09a_097a_ea2b,
         0x5675_e557_60cc_6f5a,
         0x12df_709c_8a36_fee3,
     ];
@@ -9161,18 +9165,20 @@ mod golden_determinism_tests {
     /// 1.0.5: targeted feature pins — one chunk per family (village /
     /// stronghold / ravine / ocean) at a fixed seed, fixed-order search.
     const GOLDEN_TARGETED: [u64; 4] = [
-        0xe473_51bf_1af2_59c0,
+        // 4.4a re-pin (owner-approved accuracy-over-history 2026-10-10):
+        // cross-chunk veins moved every overworld pin below
+        0x99aa_87f6_f6e2_915a,
         // 4.2a re-pin (owner-approved 2026-10-10 — pre-1.0.0, no prior
         // worlds): village spread 34/8/salt-10387312 moved the pinned
-        // village to chunk (14,15)
-        0xc4d5_a359_4334_cfb8,
-        0x8801_2d29_cc3d_c3e4,
-        0xbefd_66d3_85fb_a26d,
+        // village to chunk (14,15); 4.4a veins moved it again
+        0xf6a4_ce13_72ba_4d4a,
+        0xb96b_6d0d_5a71_b56e,
+        0xe1ec_9628_5115_8dc7,
     ];
 
     #[test]
     fn golden_targeted_features() {
-        let seed = 0xC0FFEE_1234_5678;
+        let seed = 0x00C0_FFEE_1234_5678;
         let gen = TerrainGen::for_dimension(seed, Dimension::Overworld);
         // stronghold chunk: ring-1 always has 3 strongholds
         let (sx, sz) = gen.strongholds()[0];
@@ -9233,7 +9239,7 @@ mod golden_determinism_tests {
 mod libm_pinned_tests {
     use super::*;
 
-    const PIN_SEED: u64 = 0xC0FFEE_1234_5678;
+    const PIN_SEED: u64 = 0x00C0_FFEE_1234_5678;
 
     fn fold64(mut h: u64, v: u64) -> u64 {
         h ^= v;
@@ -9313,7 +9319,7 @@ mod libm_pinned_tests {
             }
         }
         println!("PIN ore_blob coal={n_coal} hash={h:#018x}");
-        assert_eq!((n_coal, h), (544, 0xe8c6_8c8d_700e_7823), "pin ore_blob");
+        assert_eq!((n_coal, h), (552, 0x49a2_2d41_7181_0e45), "pin ore_blob");
     }
 
     /// village_houses exercises dcos32/dsin32/dround32 per house.

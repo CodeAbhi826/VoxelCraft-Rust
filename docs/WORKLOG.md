@@ -6765,3 +6765,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z40 — 4.4a: cross-chunk veins (EXPECTS RE-PIN)
 - place_ores resolves blobs from anchor-chunk streams (3x3 cover, world-coord shape hash); chunk-rng draws replayed untouched so trees/vegetation don't move. Ore pin + main golden WILL drift (approved). Local: fmt clean, audit [PASS]; pins harvested from CI.
+
+## 2026-10-10z40 — 4.4a CLOSED (vein fix + re-pins, CI-pending)
+- Cross-chunk veins via anchor streams (chunk-rng shim keeps trees/vegetation fixed); ore_blob_world takes world coords. Re-pins: ore (552/49a2...), 3 overworld mains, 4 targeted, 5 wide-overworld (nether/end identical); GOLDEN comment carries the 4.4a note. Lint: hex grouping + collect cleanups (pre-existing). Seam 0.9096 -> 0.9516; residual mixes single-pass canopy staleness + discrete-deco differences (border columns are different columns — no continuity requirement), not blob clipping. Local: golden x3 + seam + clippy green, audit [PASS].

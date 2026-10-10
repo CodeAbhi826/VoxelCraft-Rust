@@ -154,3 +154,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-11: z77 river precedence in CI. Next: harvest + verification census.
 
 - 2026-10-11: z78 river harvest in CI. Next: ocean pin + verification census.
+
+- 2026-10-11: z79 typo fix in CI. Next: verification census grades river fix.

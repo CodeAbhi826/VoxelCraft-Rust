@@ -6921,3 +6921,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z78 - 4.1r harvest (run 38084044401, CI-measured)
 - Pinned 3 mains + 5 wides + ravine. Village/stronghold/spawn/content green. Ocean pin surfaces next, then verification census.
+
+## 2026-10-11z79 - seed7-wide typo fix (my transcription error, NOT nondeterminism)
+- Pinned efff44ac, log said eff744ac; rerun reproduced the log value exactly (determinism holds, no R5 issue). Rule restated: pins by exact copy from logs, never retyped. Ocean targeted held (no river lines in that chunk).

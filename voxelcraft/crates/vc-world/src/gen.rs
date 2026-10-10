@@ -5876,7 +5876,9 @@ impl TerrainGen {
                         }
                         // chorus on high islands (approximate stacks —
                         // no branching, disclosed)
-                        if surface >= 66 && Rng::hash3(self.seed ^ 0xE1D7, wx, 0, wz) % 7 == 0 {
+                        if surface >= 66
+                            && Rng::hash3(self.seed ^ 0xE1D7, wx, 0, wz).is_multiple_of(7)
+                        {
                             let h = 2 + (Rng::hash3(self.seed ^ 0xE1D8, wx, 0, wz) % 3) as i32;
                             for y in surface + 1..=surface + h {
                                 chunk.set(x as usize, y as usize, z as usize, CHORUS_PLANT);

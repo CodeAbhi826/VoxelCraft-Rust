@@ -6808,3 +6808,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z48 — 4.1h: layer deep-ocean wiring
 - classify takes x,z; ocean deep = height rule ∪ layer interior (lazy); allows removed. Measured on copy: no gain on sample (interiors coincide with height-deep there) — honest no-op, kept for the rebuild. Local: 2/2 tests green, audit [PASS].
+
+## 2026-10-10z48 — 4.1h closed (re-pins hold)
+- classify takes pos tuple (clippy 8-arg fix); deep = height ∪ layer interior; re-pins: 2 mains + 4 wide-overworld (targeted untouched). Local: golden x3 + clippy green, audit [PASS].

@@ -1061,15 +1061,14 @@ impl TerrainGen {
         var: f32,
         h: i32,
         rv: f32,
-        x: i32,
-        z: i32,
+        pos: (i32, i32),
     ) -> (Biome, u16, u16) {
         // 4.1h: the layer stack marks deep-ocean interiors (4-block
         // cells); union with the height rule below. Evaluated lazily
         // — land columns skip the ~70-hash walk.
         let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
-            let deep =
-                h < vc_chunk::SEA_LEVEL - 6 || self.layer_cell(x.div_euclid(4), z.div_euclid(4)).1;
+            let deep = h < vc_chunk::SEA_LEVEL - 6
+                || self.layer_cell(pos.0.div_euclid(4), pos.1.div_euclid(4)).1;
             if temp > 0.35 {
                 (Biome::WarmOcean, SAND, SAND)
             } else if temp > 0.0 {
@@ -1280,7 +1279,7 @@ impl TerrainGen {
         }
         let h = y_surf.round().clamp(4.0, 200.0) as i32;
 
-        let (biome, top, filler) = self.classify(temp, humid, var, h, rv, x, z);
+        let (biome, top, filler) = self.classify(temp, humid, var, h, rv, (x, z));
         ColumnInfo {
             height: h,
             biome,
@@ -1800,7 +1799,7 @@ impl TerrainGen {
                 } else {
                     let (temp, humid, var) = self.climate_fields(wx, wz);
                     let rv = self.n_river.noise2(wx as f32 / 640.0, wz as f32 / 640.0);
-                    self.classify(temp, humid, var, surf, rv, wx, wz)
+                    self.classify(temp, humid, var, surf, rv, (wx, wz))
                 };
                 chunk.biome[col_idx] = biome as u8;
                 chunk.height[col_idx] = surf.clamp(0, 255) as u8;
@@ -9276,10 +9275,10 @@ mod golden_determinism_tests {
         0xb709_c979_d25d_b6fa, // seed c0ffee12345678, overworld
         0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
         0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
-        0x3604_033e_de01_0bdc, // seed deadbeef00000001, overworld
+        0x0e60_d991_b54d_5c71, // seed deadbeef00000001, overworld
         0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
         0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
-        0xb839_e40a_c35b_1439, // seed 7, overworld
+        0x393b_e993_5f37_0b71, // seed 7, overworld
         0xbb9f_4859_d4d2_ae6a, // seed 7, nether
         0x821f_f1cc_25ca_21cd, // seed 7, end
     ];
@@ -9346,16 +9345,16 @@ mod golden_determinism_tests {
         0xcfbb_fb20_df74_f270,
         0xc224_973a_dbae_0f7d,
         0x00dc_0ad5_7854_7143,
-        0x89d1_85d0_e8ce_c0d8,
+        0xe547_613a_5a08_8c8c,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0x246e_f0d6_38b2_4bf4,
+        0x33f7_8927_9731_bea9,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
         0xb834_cc65_5e7b_5738,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
-        0x4436_fa12_77fd_c53f,
+        0x87e5_515b_d8f9_68cf,
         0x5675_e557_60cc_6f5a,
         0x12df_709c_8a36_fee3,
     ];
@@ -9821,20 +9820,20 @@ mod libm_pinned_tests {
         let g = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
         // deep lukewarm ocean below the deep line
         assert_eq!(
-            g.classify(0.1, 0.0, 0.0, 55, 1.0, 0, 0).0,
+            g.classify(0.1, 0.0, 0.0, 55, 1.0, (0, 0)).0,
             Biome::DeepLukewarmOcean
         );
         // shallow lukewarm stays flat
         assert_eq!(
-            g.classify(0.1, 0.0, 0.0, 60, 1.0, 0, 0).0,
+            g.classify(0.1, 0.0, 0.0, 60, 1.0, (0, 0)).0,
             Biome::LukewarmOcean
         );
         // raised desert splits to hills
         assert_eq!(
-            g.classify(0.4, 0.0, 0.0, 80, 1.0, 0, 0).0,
+            g.classify(0.4, 0.0, 0.0, 80, 1.0, (0, 0)).0,
             Biome::DesertHills
         );
-        assert_eq!(g.classify(0.4, 0.0, 0.0, 64, 1.0, 0, 0).0, Biome::Desert);
+        assert_eq!(g.classify(0.4, 0.0, 0.0, 64, 1.0, (0, 0)).0, Biome::Desert);
         // deep oceans are ocean family
         assert!(Biome::DeepOcean.is_ocean());
         assert!(Biome::DeepLukewarmOcean.is_ocean());

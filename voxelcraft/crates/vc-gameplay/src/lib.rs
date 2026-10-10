@@ -6,6 +6,8 @@ pub mod beacon;
 pub mod bees;
 pub mod brewing;
 pub mod campfire;
+/// 3.5a: chat log (capped buffer + TTL; HUD/input owned by game.rs)
+pub mod chat;
 pub mod combat;
 pub mod craft;
 pub mod dragon;

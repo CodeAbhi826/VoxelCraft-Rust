@@ -6629,3 +6629,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z04 — 3.4c: recipe-book click-to-fill (crafting table)
 - craft.rs: ing_matches shared predicate (match_grid refactored onto it, audit comment preserved) + recipe_for + tests. ui.rs: BOOK_LIST_W const, x-aware book rows. game.rs: fill_book_recipe (empty-grid-only, silent no-op on missing) + borrow-safe click routing. Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z05 — 3.5a: chat core (log + open/type/send + HUD)
+- chat.rs: ChatLog (100-cap, 10s TTL, say/push/tick/recent) + 3 tests. game.rs: T opens, / opens prefilled, Enter sends, Esc closes first; char routing on all 3 input paths; bottom-left HUD lines + input row; TTL tick. `/` lines stub as unknown (run_command hook for 3.6). Local: fmt clean; compile/tests deferred to CI (host busy).

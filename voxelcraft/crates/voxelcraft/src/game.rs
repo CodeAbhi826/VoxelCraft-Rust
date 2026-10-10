@@ -1773,6 +1773,10 @@ pub struct GameApp {
     anvil_rename: String,
     /// Round 13: the anvil rename field has focus
     anvil_rename_focus: bool,
+    /// 3.5a: chat log (HUD bottom-left) + open input state
+    chat: vc_gameplay::chat::ChatLog,
+    chat_open: bool,
+    chat_input: String,
     /// Round 13: the custom-name pool (renamed items carry a name id;
     /// ids start at 1 — see vc_gameplay::anvil::name_pool_id)
     name_pool: Vec<String>,
@@ -3312,6 +3316,9 @@ impl GameApp {
             cursor_stack: vc_inventory::inventory::ItemStack::EMPTY,
             anvil_rename: String::new(),
             anvil_rename_focus: false,
+            chat: vc_gameplay::chat::ChatLog::default(),
+            chat_open: false,
+            chat_input: String::new(),
             name_pool: Vec::new(),
             beacon_pending: (None, vc_gameplay::beacon::BeaconSecondary::None),
             beacon_pay: vc_inventory::inventory::ItemStack::EMPTY,
@@ -3715,6 +3722,21 @@ impl GameApp {
                             }
                         }
                     }
+                    // 3.5a: open chat eats printable keys into the input
+                    // (256 chars max, the type_char gate)
+                    if pressed && self.chat_open && self.screen == Screen::Game {
+                        if let winit::keyboard::Key::Character(s) = &event.logical_key {
+                            let mut ate = false;
+                            for ch in s.chars() {
+                                if self.type_chat_char(ch) {
+                                    ate = true;
+                                }
+                            }
+                            if ate {
+                                return;
+                            }
+                        }
+                    }
                     // Sub-round 2: the creative screen's search field —
                     // printable keys type into it (auto-switching to the
                     // Search tab first, vanilla behavior)
@@ -4019,6 +4041,14 @@ impl GameApp {
                             }
                         }
                     }
+                    // 3.5a: open chat on web (same gate as native)
+                    if pressed && !repeat && self.chat_open && self.screen == Screen::Game {
+                        if let Some(ch) = web_char_from_code(&code, self.web_shift) {
+                            if self.type_chat_char(ch) {
+                                continue;
+                            }
+                        }
+                    }
                     // Sub-round 2: the creative screen's search field
                     if pressed && !repeat && self.picker_open && self.screen == Screen::Game {
                         if let Some(ch) = web_char_from_code(&code, self.web_shift) {
@@ -4303,6 +4333,11 @@ impl GameApp {
                     self.anvil_rename.pop();
                     self.ui.dirty = true;
                 }
+                // 3.5a: backspace in open chat
+                if pressed && self.chat_open && self.screen == Screen::Game {
+                    self.chat_input.pop();
+                    self.ui.dirty = true;
+                }
                 // Sub-round 2: the creative screen's search field
                 if pressed
                     && self.picker_open
@@ -4319,12 +4354,41 @@ impl GameApp {
                 if pressed && self.screen == Screen::WorldCreate {
                     self.create_world();
                 }
+                // 3.5a: Enter in open chat sends the line
+                if pressed && !repeat && self.chat_open && self.screen == Screen::Game {
+                    self.send_chat();
+                }
+            }
+            KeyCode::KeyT | KeyCode::Slash => {
+                // 3.5a: T opens chat, / opens chat prefilled with the
+                // command prefix (vanilla); opening closes container +
+                // picker like vanilla's screen swap
+                if pressed && !repeat && self.screen == Screen::Game && !self.chat_open {
+                    self.chat_open = true;
+                    self.chat_input = if code == KeyCode::Slash {
+                        "/".to_string()
+                    } else {
+                        String::new()
+                    };
+                    if self.container.is_some() {
+                        self.close_container();
+                    }
+                    if self.picker_open {
+                        self.close_picker();
+                    }
+                    self.ui.dirty = true;
+                }
             }
             KeyCode::Escape => {
                 if pressed {
                     match self.screen {
                         Screen::Game => {
-                            if self.container.is_some() {
+                            // 3.5a: Esc closes open chat first (vanilla)
+                            if self.chat_open {
+                                self.chat_open = false;
+                                self.chat_input.clear();
+                                self.ui.dirty = true;
+                            } else if self.container.is_some() {
                                 self.close_container();
                             } else if self.picker_open {
                                 self.close_picker();
@@ -7129,6 +7193,19 @@ impl GameApp {
     /// Type one character into the focused field (ASCII 32..=126 only —
     /// that is the entire range the 5x7 font renders). Returns true when
     /// the character was consumed.
+    /// 3.5a: printable chars into open chat (vanilla 256-char cap).
+    /// True when the char was eaten.
+    fn type_chat_char(&mut self, ch: char) -> bool {
+        if !(32..=126).contains(&(ch as u32)) {
+            return false;
+        }
+        if self.chat_input.chars().count() < vc_gameplay::chat::CHAT_MAX_CHARS {
+            self.chat_input.push(ch);
+            self.ui.dirty = true;
+        }
+        true
+    }
+
     fn type_char(&mut self, ch: char) -> bool {
         if !(32..=126).contains(&(ch as u32)) {
             return false;
@@ -12193,6 +12270,34 @@ impl GameApp {
 
     /// close the container: craft-grid leftovers return to the inventory
     /// (vanilla behavior), the cursor stack drops back in too
+    /// 3.5a: send the open chat line — `/` lines go to the command
+    /// parser (3.6 fills run_command; unknown until then), anything
+    /// else echoes as a player line.
+    fn send_chat(&mut self) {
+        let line = std::mem::take(&mut self.chat_input);
+        self.chat_open = false;
+        if line.trim().is_empty() {
+            self.ui.dirty = true;
+            return;
+        }
+        if line.starts_with('/') {
+            if !self.run_command(&line) {
+                self.chat.push(format!(
+                    "Unknown command. Type \"/help\" for a list of commands."
+                ));
+            }
+        } else {
+            self.chat.say("Player", &line);
+        }
+        self.ui.dirty = true;
+    }
+
+    /// 3.6 hook: run a `/` command line; false = unknown command.
+    /// (Stub — the parser slice implements it.)
+    fn run_command(&mut self, _line: &str) -> bool {
+        false
+    }
+
     fn close_container(&mut self) {
         if let Some(c) = self.container.take() {
             // Sub-round 5: the vanilla container close sounds
@@ -23318,6 +23423,13 @@ impl GameApp {
                 self.ui.dirty = true;
             }
         }
+        // 3.5a: chat lines fade on the same pattern
+        if !self.chat.is_empty() {
+            self.chat.tick(dt);
+            if self.screen == Screen::Game {
+                self.ui.dirty = true;
+            }
+        }
         if let Some((_, t)) = self.item_toast.as_mut() {
             *t -= dt;
             if *t <= 0.0 {
@@ -25849,6 +25961,25 @@ impl GameApp {
                 .item_toast
                 .as_ref()
                 .map(|(s, t)| (s.as_str(), (*t * 200.0).clamp(0.0, 220.0) as u8));
+            // 3.5a: chat lines bottom-left (vanilla position, newest at
+            // the bottom, 10 max) + the open input row beneath them
+            {
+                let recent = self.chat.recent(10);
+                let n = recent.len();
+                for (i, line) in recent.iter().enumerate() {
+                    let y = self.ui.live_h as i32 - 64 - (n - 1 - i) as i32 * 11;
+                    let w = UiCanvas::text_width(line, 1);
+                    self.ui.rect(6, y - 2, w + 6, 11, [0, 0, 0, 120]);
+                    self.ui.text(9, y, line, [255, 255, 255, 255], 1);
+                }
+                if self.chat_open {
+                    let y = self.ui.live_h as i32 - 53;
+                    let input = format!("> {}", self.chat_input);
+                    let w = UiCanvas::text_width(&input, 1);
+                    self.ui.rect(6, y - 2, w + 6, 11, [0, 0, 0, 160]);
+                    self.ui.text(9, y, &input, [255, 255, 200, 255], 1);
+                }
+            }
             self.ui.hotbar(
                 &self.player.inv.slots[..vc_inventory::inventory::INV_SLOTS.min(9)],
                 self.player.selected,

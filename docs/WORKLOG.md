@@ -6888,3 +6888,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z67 - ravine pin (run 38078331147, CI-measured)
 - Only targeted-ravine fails (mains/wides/spawn/village green). Ravine chunk (0,0) pinned 0cb928d4. Ocean pin surfaces next, then verification census.
+
+## 2026-10-11z68 - ocean pin, chain complete (run 38078761963, CI-measured)
+- Ocean chunk (-1,1) pinned 9ac140a3. All 4 targeted + 3 mains + 5 wides + spawn pinned. Next: verification census vs copy, then packet + tour.

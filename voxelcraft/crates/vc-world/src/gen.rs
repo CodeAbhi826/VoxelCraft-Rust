@@ -698,6 +698,10 @@ pub const LAYER_SALT_SPECIAL: u64 = 0x5EC1A1;
 pub const LAYER_ISLAND_PCT: u64 = 80;
 /// 4.1i: climate-gate salts + FIT percentages (snow/warm shares).
 pub const LAYER_SALT_CLIMATE: u64 = 0xC11A;
+/// 4.1n2: second family roll salt (the within-family overlay splits
+/// need a roll INDEPENDENT of the base-family pick — sharing one
+/// roll made dark/flower/giant unreachable via disjoint ranges).
+pub const LAYER_SALT_OVERLAY: u64 = 0x0E1A;
 pub const LAYER_SNOW_PCT: u64 = 20;
 // 4.1j FIT: warm 15 → 8 (reference copy: no warm land at all in its
 // temperate region; deserts/jungles must still exist globally).
@@ -1079,6 +1083,9 @@ impl TerrainGen {
         let (snow, warm) = self.layer_climate(lx, lz);
         // family pick hash (position-deterministic; proportions FIT)
         let pick = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, lx, 0xB17, lz) % 100;
+        // overlay roll on an independent salt (sharing `pick` for the
+        // within-family splits selected disjoint ranges — unreachable)
+        let pick2 = Rng::hash3(self.seed ^ LAYER_SALT_OVERLAY, lx, 0xB17, lz) % 100;
         let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
             // 4.1i: ocean family from gates + depth (temp retired —
             // uncorrelated per copy measurement)
@@ -1161,13 +1168,13 @@ impl TerrainGen {
                     (Biome::IceSpikes, SNOW, DIRT)
                 } else {
                     match self.layer_base_biome(special, true, false, lx, lz) {
-                        Biome::Taiga => self.taiga_overlay(h, var, pick),
+                        Biome::Taiga => self.taiga_overlay(h, var, pick2),
                         _ => (Biome::Snowy, SNOW_GRASS, DIRT),
                     }
                 }
             } else {
                 let base = self.layer_base_biome(special, false, warm, lx, lz);
-                self.finish_land_base(base, h, var, pick)
+                self.finish_land_base(base, h, var, pick2)
             }
         };
         (biome, top, filler)
@@ -1175,8 +1182,8 @@ impl TerrainGen {
 
     /// 4.1i: land-base finish (hills + variant overlays shared by the
     /// snow and temperate paths). Family-internal splits ride the
-    /// uniform cell roll `pick` (4.1n — the var-field tails gave
-    /// 3%/2%/3% vs copy 33%/28%/67%).
+    /// INDEPENDENT overlay roll `pick2` (4.1n2 — sharing the base
+    /// pick selected disjoint ranges, unreachable).
     fn finish_land_base(&self, base: Biome, h: i32, var: f32, pick: u64) -> (Biome, u16, u16) {
         match base {
             // 4.1k: badlands keeps its red-sand floor (the warm-gate
@@ -8963,20 +8970,32 @@ mod v113_tests {
     #[test]
     fn v114_jungle_carries_bamboo() {
         let g = gen();
-        // jungle: across a 7x7 chunk field the 20% patch rolls must
-        // land at least one patch (49 chunks × 20% ≈ 10 patches)
-        let (cx, cz) = find_biome(&g, Biome::Jungle);
+        // jungle: accumulate bamboo over up to 16 jungle-center
+        // chunks (4.1n: bands interleave, so one 7x7 field may roll
+        // its 20% patches onto off-jungle columns)
         let mut bamboo = 0usize;
-        for dcx in -3..=3 {
-            for dcz in -3..=3 {
-                let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
+        let mut scanned = 0usize;
+        'jungle: for cx in -128..128 {
+            for cz in -128..128 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::Jungle {
+                    continue;
+                }
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                if Biome::from_u8(chunk.biome[8 * 16 + 8]) != Biome::Jungle {
+                    continue;
+                }
                 for i in 0..CHUNK_LEN {
                     if chunk.get_idx(i) == BAMBOO {
                         bamboo += 1;
                     }
                 }
+                scanned += 1;
+                if scanned >= 16 {
+                    break 'jungle;
+                }
             }
         }
+        assert!(scanned > 0, "found jungle chunks to scan");
         assert!(
             bamboo > 0,
             "jungle fields carry bamboo shoots (got {bamboo})"
@@ -9444,13 +9463,13 @@ mod golden_determinism_tests {
     /// 2026-10-10): the 3 overworld mains + all overworld targeted pins
     /// move with cross-chunk veins; nether/end pins byte-identical.
     const GOLDEN: [u64; 9] = [
-        0x68b4_89a3_f7eb_b4c1, // seed c0ffee12345678, overworld
+        0xff16_e10a_d65e_7cf5, // seed c0ffee12345678, overworld
         0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
         0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
-        0x581b_1b63_6902_1bf4, // seed deadbeef00000001, overworld
+        0x40a3_224e_1474_9a65, // seed deadbeef00000001, overworld
         0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
         0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
-        0x6fd9_2850_4b4d_3f85, // seed 7, overworld
+        0xd153_342e_c591_b311, // seed 7, overworld
         0xbb9f_4859_d4d2_ae6a, // seed 7, nether
         0x821f_f1cc_25ca_21cd, // seed 7, end
     ];
@@ -9514,19 +9533,19 @@ mod golden_determinism_tests {
     const GOLDEN_WIDE: [u64; 15] = [
         // 4.4a re-pin: overworld entries move with cross-chunk veins
         // (nether/end byte-identical)
-        0x8e0a_d0f6_fe8f_1619,
+        0xe4cf_4cdc_2f8b_3386,
         0xc224_973a_dbae_0f7d,
         0x00dc_0ad5_7854_7143,
-        0xbd44_1ba0_7562_d837,
+        0x14fa_6bf0_bcf5_f380,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0xf442_84af_788a_6253,
+        0xccee_feb8_1f2e_a6fa,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
-        0x9b07_3a44_09f1_d763,
+        0x9f71_21e4_96d3_55a5,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
-        0xb9f6_833a_ca84_a5ea,
+        0xfe92_2c68_5cb0_7ae2,
         0x5675_e557_60cc_6f5a,
         0x12df_709c_8a36_fee3,
     ];
@@ -9556,7 +9575,7 @@ mod golden_determinism_tests {
     const GOLDEN_TARGETED: [u64; 4] = [
         // 4.4a re-pin (owner-approved accuracy-over-history 2026-10-10):
         // cross-chunk veins moved every overworld pin below
-        0x168f_ce4e_7fc9_c862,
+        0x0cd3_26c1_fd35_3d62,
         // 4.2a re-pin (owner-approved 2026-10-10 — pre-1.0.0, no prior
         // worlds): village spread 34/8/salt-10387312 moved the pinned
         // village; 4.4a veins + 4.1l shares moved it again to chunk
@@ -10141,8 +10160,8 @@ mod libm_pinned_tests {
         let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
         let (x, y, z) = gen.find_spawn();
         println!("PIN find_spawn ({x},{y},{z})");
-        // 4.1m re-pin: the temperate/ocean share refit moved the spawn
-        // search result (new layout, same search rules; CI-measured)
-        assert_eq!((x, y, z), (136.5, 81.0, -143.5), "pin find_spawn");
+        // 4.1n2 re-pin: the overlay-roll fix moved the spawn search
+        // result (new layout, same search rules; CI-measured)
+        assert_eq!((x, y, z), (-31.5, 72.0, -55.5), "pin find_spawn");
     }
 }

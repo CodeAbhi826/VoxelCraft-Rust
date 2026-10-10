@@ -115,3 +115,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-10: z59 shell-removal + L3b in CI (reuse 4386/4386 local). Next: mountain/river measurement when idle, then height means.
 
 - 2026-10-10: z60 fit-round-3 in CI (re-pins expected). Next: re-pin batch, then relief-histogram slice for beach/deep/plains.
+
+- 2026-10-10: z61 overlay-roll fix + re-pins in CI. Next: remaining targeted pins, then verification census.

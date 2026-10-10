@@ -13180,6 +13180,117 @@ impl GameApp {
                 self.ui.dirty = true;
                 true
             }
+            // 3.7b: teams (player-only membership; no team options —
+            // no PvP/nametags in single-player, disclosed)
+            "team" => {
+                match argv.get(1).map(|s| s.as_str()) {
+                    Some("add") => {
+                        if argv.len() < 3 {
+                            self.chat
+                                .system("Usage: /team add <name> [display]".to_string());
+                            return true;
+                        }
+                        let display = if argv.len() > 3 {
+                            argv[3..].join(" ")
+                        } else {
+                            String::new()
+                        };
+                        match self.scoreboard.add_team(&argv[2], &display) {
+                            Ok(()) => self.chat.system(format!("Added team {}", argv[2].as_str())),
+                            Err(e) => self.chat.system(e),
+                        }
+                    }
+                    Some("remove") => {
+                        if argv.len() != 3 {
+                            self.chat.system("Usage: /team remove <name>".to_string());
+                            return true;
+                        }
+                        if self.scoreboard.remove_team(&argv[2]) {
+                            self.chat.system(format!("Removed {}", argv[2].as_str()));
+                        } else {
+                            self.chat.system(format!("Unknown team: {}", argv[2]));
+                        }
+                    }
+                    Some("list") => {
+                        if argv.len() == 3 {
+                            let name = argv[2].as_str();
+                            match self
+                                .scoreboard
+                                .list_teams()
+                                .into_iter()
+                                .find(|(n, _, _)| *n == name)
+                            {
+                                Some((_, d, m)) => {
+                                    self.chat.system(format!("{name} ({d}): {m} members"))
+                                }
+                                None => self.chat.system(format!("Unknown team: {name}")),
+                            }
+                        } else {
+                            let teams = self.scoreboard.list_teams();
+                            if teams.is_empty() {
+                                self.chat.system("No teams".to_string());
+                            } else {
+                                for (n, d, m) in teams {
+                                    self.chat.system(format!("{n} ({d}): {m} members"));
+                                }
+                            }
+                        }
+                    }
+                    Some("join") => {
+                        if argv.len() != 4 {
+                            self.chat
+                                .system("Usage: /team join <team> <target>".to_string());
+                            return true;
+                        }
+                        let entry = match self.resolve_target(&argv[3]) {
+                            Ok(CmdTarget::Me) => "Player".to_string(),
+                            Ok(CmdTarget::Mob(_)) => {
+                                self.chat.system("Entities cannot join teams".to_string());
+                                return true;
+                            }
+                            Err(e) => {
+                                self.chat.system(e);
+                                return true;
+                            }
+                        };
+                        match self.scoreboard.join_team(&argv[2], &entry) {
+                            Ok(()) => self.chat.system(format!(
+                                "Joined {} to {}",
+                                entry,
+                                argv[2].as_str()
+                            )),
+                            Err(e) => self.chat.system(e),
+                        }
+                    }
+                    Some("leave") => {
+                        if argv.len() != 3 {
+                            self.chat.system("Usage: /team leave <target>".to_string());
+                            return true;
+                        }
+                        let entry = match self.resolve_target(&argv[2]) {
+                            Ok(CmdTarget::Me) => "Player".to_string(),
+                            Ok(CmdTarget::Mob(_)) => {
+                                self.chat.system("Entities cannot join teams".to_string());
+                                return true;
+                            }
+                            Err(e) => {
+                                self.chat.system(e);
+                                return true;
+                            }
+                        };
+                        if self.scoreboard.leave_team(&entry) {
+                            self.chat.system(format!("Left team ({entry})"));
+                        } else {
+                            self.chat.system(format!("{entry} is on no team"));
+                        }
+                    }
+                    _ => self
+                        .chat
+                        .system("Usage: /team <add|remove|list|join|leave>".to_string()),
+                }
+                self.ui.dirty = true;
+                true
+            }
             _ => false,
         }
     }

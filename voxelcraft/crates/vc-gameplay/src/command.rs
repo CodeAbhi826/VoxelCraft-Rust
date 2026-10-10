@@ -73,6 +73,10 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "scoreboard",
         "scoreboard <objectives <add|list|remove|setdisplay>|players <set|add|remove|get|list|reset>>",
     ),
+    (
+        "team",
+        "team <add <name> [display]|remove <name>|list [name]|join <team> <target>|leave <target>>",
+    ),
     ("kill", "kill [target]"),
     ("me", "me <action>"),
     ("say", "say <message>"),
@@ -190,6 +194,7 @@ mod tests {
             "fill",
             "clone",
             "scoreboard",
+            "team",
         ] {
             assert!(names.contains(&need), "missing {need}");
         }

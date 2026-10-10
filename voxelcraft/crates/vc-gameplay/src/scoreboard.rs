@@ -4,18 +4,29 @@
 //! hooks — disclosed). Name limits follow vanilla (objective ≤16,
 //! entry ≤40).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug)]
 pub struct Objective {
     pub criterion: String,
     pub display: String,
 }
+
+/// 3.7b: a team — display name + member entries. Options (colors,
+/// friendly fire, nametag rules) are out of scope: single-player has
+/// no PvP or nametag renderer (disclosed).
+#[derive(Debug)]
+pub struct Team {
+    pub display: String,
+    pub members: BTreeSet<String>,
+}
+
 #[derive(Default, Debug)]
 pub struct Scoreboard {
     objectives: BTreeMap<String, Objective>,
     scores: BTreeMap<(String, String), i32>,
     sidebar: Option<String>,
+    teams: BTreeMap<String, Team>,
 }
 
 impl Scoreboard {
@@ -147,6 +158,76 @@ impl Scoreboard {
         lines.truncate(15);
         Some((obj.display.clone(), lines))
     }
+
+    /// 3.7b: create a team; Err when the name exists or breaks the
+    /// 16-char limit.
+    pub fn add_team(&mut self, name: &str, display: &str) -> Result<(), String> {
+        if name.is_empty() || name.len() > 16 {
+            return Err("Team name must be 1..=16 chars".to_string());
+        }
+        if self.teams.contains_key(name) {
+            return Err(format!("Team {name} already exists"));
+        }
+        self.teams.insert(
+            name.to_string(),
+            Team {
+                display: if display.is_empty() {
+                    name.to_string()
+                } else {
+                    display.to_string()
+                },
+                members: BTreeSet::new(),
+            },
+        );
+        Ok(())
+    }
+
+    /// remove a team; false when missing.
+    pub fn remove_team(&mut self, name: &str) -> bool {
+        self.teams.remove(name).is_some()
+    }
+
+    /// (name, display, member count), sorted.
+    pub fn list_teams(&self) -> Vec<(&str, &str, usize)> {
+        self.teams
+            .iter()
+            .map(|(n, t)| (n.as_str(), t.display.as_str(), t.members.len()))
+            .collect()
+    }
+
+    /// move `entry` onto `team` (leaving any previous team); Err when
+    /// the team is missing.
+    pub fn join_team(&mut self, team: &str, entry: &str) -> Result<(), String> {
+        if !self.teams.contains_key(team) {
+            return Err(format!("Unknown team: {team}"));
+        }
+        for t in self.teams.values_mut() {
+            t.members.remove(entry);
+        }
+        self.teams
+            .get_mut(team)
+            .expect("checked")
+            .members
+            .insert(entry.to_string());
+        Ok(())
+    }
+
+    /// pull `entry` off whatever team holds it; false when teamless.
+    pub fn leave_team(&mut self, entry: &str) -> bool {
+        let mut left = false;
+        for t in self.teams.values_mut() {
+            left |= t.members.remove(entry);
+        }
+        left
+    }
+
+    /// the team holding `entry`, if any.
+    pub fn team_of(&self, entry: &str) -> Option<&str> {
+        self.teams
+            .iter()
+            .find(|(_, t)| t.members.contains(entry))
+            .map(|(n, _)| n.as_str())
+    }
 }
 
 #[cfg(test)]
@@ -190,5 +271,23 @@ mod tests {
         assert_eq!(lines[0], ("A".to_string(), 9));
         s.set_display(None).unwrap();
         assert!(s.sidebar_lines().is_none());
+    }
+
+    #[test]
+    fn teams_join_move_leave() {
+        let mut s = Scoreboard::default();
+        assert!(s.add_team("red", "Red").is_ok());
+        assert!(s.add_team("red", "").is_err());
+        s.add_team("blue", "").unwrap();
+        s.join_team("red", "Player").unwrap();
+        assert_eq!(s.team_of("Player"), Some("red"));
+        // moving teams leaves the old one
+        s.join_team("blue", "Player").unwrap();
+        assert_eq!(s.team_of("Player"), Some("blue"));
+        assert!(s.leave_team("Player"));
+        assert!(!s.leave_team("Player"));
+        assert!(s.join_team("nope", "Player").is_err());
+        assert!(s.remove_team("red"));
+        assert_eq!(s.list_teams().len(), 1);
     }
 }

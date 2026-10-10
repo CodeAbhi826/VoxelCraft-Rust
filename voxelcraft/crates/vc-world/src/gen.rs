@@ -9298,7 +9298,8 @@ mod libm_pinned_tests {
         }
         // emits on a scratch chunk: sandstone ring + water plus, and
         // the hut floor + cauldron + table + pot
-        let (mut chunk, _) = g.generate_chunk(0, 0, Vec::new());
+        let (chunk, _) = g.generate_chunk(0, 0, Vec::new());
+        let mut chunk = (*chunk).clone();
         g.emit_well(&mut chunk, 8, 8, 0, 0);
         let base = g.column(8, 8).height;
         let get = |c: &Chunk, x: i32, y: i32, z: i32| c.get(x as usize, y as usize, z as usize);

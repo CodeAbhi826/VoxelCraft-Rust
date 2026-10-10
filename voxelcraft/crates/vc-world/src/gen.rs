@@ -1093,11 +1093,21 @@ impl TerrainGen {
         let px = lx.div_euclid(4);
         let pz = lz.div_euclid(4);
         let pick2 = Rng::hash3(self.seed ^ LAYER_SALT_OVERLAY, px, 0xB17, pz) % 100;
-        // 4.1p FIT (verification census): the h60-61 shelf is broad
-        // (6.7pp) — ocean kept it all (1.64x). Ocean narrows to h<60;
-        // the shelf becomes submerged land (dirt-topped below, so the
-        // tops read as seabed while the biomes feed needy plains).
-        let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 2 {
+        // 4.1r FIT (riverstat probe, owner seed): the carve digs to
+        // bed 58 but the river band sat AFTER ocean (h<60) — cores
+        // classified as ocean, only the h60-61 fringe read as river
+        // (0.34% vs copy 5.7%; core bands 99% wet). River now leads:
+        // |rv|<0.035 & h<=SEA takes carved valleys first (~4.5%,
+        // 0.79x); ocean yields the cores (~9%, 0.80x). Band stops at
+        // 0.035 — the 0.035-0.045 ring is only 56% wet (dry banks
+        // must not read as river). [ESTIMATED], verify by census.
+        let (biome, top, filler) = if rv.abs() < 0.035 && h <= vc_chunk::SEA_LEVEL {
+            // Vanilla-parity terrain round: the river band — carved by
+            // the ridged river field (disclosed adaptation of vanilla's
+            // layer-stack rivers); sand-over-dirt bed, water fills to
+            // sea level through the standard fluid fill.
+            (Biome::River, SAND, DIRT)
+        } else if h < vc_chunk::SEA_LEVEL - 2 {
             // 4.1i: ocean family from gates + depth (temp retired —
             // uncorrelated per copy measurement)
             // 4.1p: deep h<51 -> h<52 (measured 4.27% vs copy 5.3%;
@@ -1129,15 +1139,6 @@ impl TerrainGen {
                 // the neutral temperate ocean (the pre-1.13 "Ocean")
                 (Biome::Ocean, SAND, GRAVEL)
             }
-        } else if rv.abs() < 0.03 && h <= vc_chunk::SEA_LEVEL {
-            // 4.1n: river band widened toward the carve edge (0.06);
-            // copy rivers are 5.7% vs our 0.006% — geometric step one,
-            // carve profile untouched (dedicated slice if still short)
-            // Vanilla-parity terrain round: the river band — carved by
-            // the ridged river field (disclosed adaptation of vanilla's
-            // layer-stack rivers); sand-over-dirt bed, water fills to
-            // sea level through the standard fluid fill.
-            (Biome::River, SAND, DIRT)
         } else if h == vc_chunk::SEA_LEVEL + 1 {
             // 4.1o: beach narrowed to the h63 fringe (see above)
             // 4.1e: high shores split to stone shore (vanilla 25;
@@ -1293,6 +1294,13 @@ impl TerrainGen {
     /// via a direct Newton root-solve at this column — the chunk
     /// pipeline interpolates the same field on the 4×8×4 lattice, and
     /// the two agree within ~1 block.
+    /// 4.1r: river-field probe (dev/test use) — the raw ridged
+    /// field value driving the carve in density_params and the river
+    /// band in classify.
+    pub fn river_field(&self, x: i32, z: i32) -> f32 {
+        self.n_river.noise2(x as f32 / 640.0, z as f32 / 640.0)
+    }
+
     pub fn column(&self, x: i32, z: i32) -> ColumnInfo {
         let xf = x as f32;
         let zf = z as f32;

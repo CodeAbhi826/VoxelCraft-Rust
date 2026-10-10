@@ -6915,3 +6915,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z76 - 4.1q2 pins (run 38082884048, CI-measured)
 - Only 2 wides moved (high-terrain gate again); mains/targeted/spawn/content green. Next: verification census, then river-carve slice.
+
+## 2026-10-11z77 - 4.1r river precedence (riverstat probe)
+- Probe: carve cores 99pct wet but classified ocean (bed 58 < ocean line); only h60-61 fringe read as river. River branch moved before ocean, band 0.035 (outer ring 56pct wet stays out). Predict river ~4.5pct, ocean ~9pct. Probe example + river_field accessor ride along (dev-only).

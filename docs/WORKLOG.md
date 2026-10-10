@@ -6656,3 +6656,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z13 — 3.6c closed (effect/enchant/summon, CI-green)
 - Next: 3.6d fill/clone/setblock, 3.7 scoreboard+teams, Part-3 packet.
+
+## 2026-10-10z13 — 3.6c closed (effect/enchant/summon, CI-green)
+
+## 2026-10-10z14 — 3.6d: setblock/fill/clone
+- Table + arms: setblock (light hook), fill (inclusive region, 32768 cap, replace-only), clone (snapshot-then-write, begin-corner lands on dest). Local: app check, 18 command/effect tests green, clippy clean, audit [PASS].

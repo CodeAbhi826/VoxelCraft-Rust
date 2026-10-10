@@ -12829,6 +12829,152 @@ impl GameApp {
                 self.ui.dirty = true;
                 true
             }
+            // 3.6d: world-edit (replace-only fill, plain clone —
+            // no modes/masks/move-source, disclosed)
+            "setblock" => {
+                if argv.len() != 5 {
+                    self.chat
+                        .system("Usage: /setblock <x> <y> <z> <block>".to_string());
+                    return true;
+                }
+                use vc_gameplay::command::parse_coord;
+                let p = self.player.pos;
+                let (x, y, z) = match (
+                    parse_coord(&argv[1], p.x),
+                    parse_coord(&argv[2], p.y),
+                    parse_coord(&argv[3], p.z),
+                ) {
+                    (Some(x), Some(y), Some(z)) => {
+                        (x.floor() as i32, y.floor() as i32, z.floor() as i32)
+                    }
+                    _ => {
+                        self.chat
+                            .system("Usage: /setblock <x> <y> <z> <block>".to_string());
+                        return true;
+                    }
+                };
+                let block = match vc_gameplay::command::item_by_name(&argv[4]) {
+                    Some(id) => id,
+                    None => {
+                        self.chat.system("Unknown block".to_string());
+                        return true;
+                    }
+                };
+                if let Some((old, new)) = self.world.set_block(x, y, z, block) {
+                    self.light.on_block_changed(&self.world, x, y, z, old, new);
+                }
+                self.chat.system(format!(
+                    "Set [{x}, {y}, {z}] to {}",
+                    vc_blocks::blocks::name(block)
+                ));
+                self.ui.dirty = true;
+                true
+            }
+            "fill" => {
+                if argv.len() != 8 {
+                    self.chat
+                        .system("Usage: /fill <x1> <y1> <z1> <x2> <y2> <z2> <block>".to_string());
+                    return true;
+                }
+                use vc_gameplay::command::{parse_coord, EDIT_VOLUME_LIMIT};
+                let p = self.player.pos;
+                let c: Option<Vec<i32>> = (1..7)
+                    .map(|i| {
+                        let base = [p.x, p.y, p.z][(i - 1) % 3];
+                        parse_coord(&argv[i], base).map(|v| v.floor() as i32)
+                    })
+                    .collect();
+                let (c, block) = match (c, vc_gameplay::command::item_by_name(&argv[7])) {
+                    (Some(c), Some(b)) => (c, b),
+                    _ => {
+                        self.chat.system(
+                            "Usage: /fill <x1> <y1> <z1> <x2> <y2> <z2> <block>".to_string(),
+                        );
+                        return true;
+                    }
+                };
+                let (x0, x1) = (c[0].min(c[3]), c[0].max(c[3]));
+                let (y0, y1) = (c[1].min(c[4]), c[1].max(c[4]));
+                let (z0, z1) = (c[2].min(c[5]), c[2].max(c[5]));
+                let vol = (x1 - x0 + 1) as usize * (y1 - y0 + 1) as usize * (z1 - z0 + 1) as usize;
+                if vol > EDIT_VOLUME_LIMIT {
+                    self.chat
+                        .system(format!("Too many blocks ({vol} > {EDIT_VOLUME_LIMIT})"));
+                    return true;
+                }
+                let mut n = 0;
+                for x in x0..=x1 {
+                    for y in y0..=y1 {
+                        for z in z0..=z1 {
+                            if let Some((old, new)) = self.world.set_block(x, y, z, block) {
+                                self.light.on_block_changed(&self.world, x, y, z, old, new);
+                                n += 1;
+                            }
+                        }
+                    }
+                }
+                self.chat.system(format!("Filled {n} blocks"));
+                self.ui.dirty = true;
+                true
+            }
+            "clone" => {
+                if argv.len() != 10 {
+                    self.chat.system(
+                        "Usage: /clone <x1> <y1> <z1> <x2> <y2> <z2> <dx> <dy> <dz>".to_string(),
+                    );
+                    return true;
+                }
+                use vc_gameplay::command::{parse_coord, EDIT_VOLUME_LIMIT};
+                let p = self.player.pos;
+                let c: Option<Vec<i32>> = (1..10)
+                    .map(|i| {
+                        let base = [p.x, p.y, p.z][(i - 1) % 3];
+                        parse_coord(&argv[i], base).map(|v| v.floor() as i32)
+                    })
+                    .collect();
+                let c = match c {
+                    Some(c) => c,
+                    None => {
+                        self.chat.system(
+                            "Usage: /clone <x1> <y1> <z1> <x2> <y2> <z2> <dx> <dy> <dz>"
+                                .to_string(),
+                        );
+                        return true;
+                    }
+                };
+                let (x0, x1) = (c[0].min(c[3]), c[0].max(c[3]));
+                let (y0, y1) = (c[1].min(c[4]), c[1].max(c[4]));
+                let (z0, z1) = (c[2].min(c[5]), c[2].max(c[5]));
+                let vol = (x1 - x0 + 1) as usize * (y1 - y0 + 1) as usize * (z1 - z0 + 1) as usize;
+                if vol > EDIT_VOLUME_LIMIT {
+                    self.chat
+                        .system(format!("Too many blocks ({vol} > {EDIT_VOLUME_LIMIT})"));
+                    return true;
+                }
+                // snapshot first (overlap-safe — vanilla resolve)
+                let mut snap = Vec::with_capacity(vol);
+                for x in x0..=x1 {
+                    for y in y0..=y1 {
+                        for z in z0..=z1 {
+                            snap.push(((x, y, z), self.world.get_block(x, y, z)));
+                        }
+                    }
+                }
+                let mut n = 0;
+                for ((x, y, z), b) in snap {
+                    // the <begin> corner lands on <destination>
+                    // (the engine's placement rule)
+                    let (dx, dy, dz) = (x + c[6] - c[0], y + c[7] - c[1], z + c[8] - c[2]);
+                    if let Some((old, new)) = self.world.set_block(dx, dy, dz, b) {
+                        self.light
+                            .on_block_changed(&self.world, dx, dy, dz, old, new);
+                        n += 1;
+                    }
+                }
+                self.chat.system(format!("Cloned {n} blocks"));
+                self.ui.dirty = true;
+                true
+            }
             _ => false,
         }
     }

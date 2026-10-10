@@ -63,6 +63,12 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ),
     ("enchant", "enchant <target> <enchantment> [level]"),
     ("summon", "summon <entity> [x y z]"),
+    ("setblock", "setblock <x> <y> <z> <block>"),
+    ("fill", "fill <x1> <y1> <z1> <x2> <y2> <z2> <block>"),
+    (
+        "clone",
+        "clone <x1> <y1> <z1> <x2> <y2> <z2> <dx> <dy> <dz>",
+    ),
     ("kill", "kill [target]"),
     ("me", "me <action>"),
     ("say", "say <message>"),
@@ -124,6 +130,9 @@ pub fn parse_coord(s: &str, base: f32) -> Option<f32> {
     }
 }
 
+/// 3.6d: world-edit volume cap (vanilla fill/clone limit).
+pub const EDIT_VOLUME_LIMIT: usize = 32768;
+
 /// 3.6b: item lookup for `/give` — numeric id or registry snake name
 /// with an optional `namespace:` prefix (`voxelcraft:stone` works).
 pub fn item_by_name(s: &str) -> Option<u16> {
@@ -161,7 +170,7 @@ mod tests {
         let names: Vec<&str> = COMMANDS.iter().map(|(n, _)| *n).collect();
         for need in [
             "help", "seed", "gamemode", "time", "weather", "say", "me", "give", "tp", "kill",
-            "effect", "enchant", "summon",
+            "effect", "enchant", "summon", "setblock", "fill", "clone",
         ] {
             assert!(names.contains(&need), "missing {need}");
         }

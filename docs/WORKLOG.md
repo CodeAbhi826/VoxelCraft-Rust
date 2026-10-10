@@ -6781,3 +6781,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z43 — PART 4 REVIEW PACKET (code complete, tuning open)
 - 240 words + 10-claim review in docs/CHECKPOINTS.md. Tour run 38036732269 dispatched. Part 4 code CLOSED; numeric tuning awaits owner diffs.
+
+## 2026-10-10z43 — Part 4 packet closed (docs-only CI)
+
+## 2026-10-10z44 — 5.1a: colour-space audit
+- docs/COLOR-SPACE.md: 15-row conversion table (9 VERIFIED/PARTIAL in code, 6 TO-VERIFY). No code changes. Next: one slice per TO-VERIFY row.

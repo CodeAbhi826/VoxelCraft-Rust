@@ -6653,3 +6653,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z12 — 3.6c: effect/enchant/summon
 - effects.rs EffectKind::by_name (31 ids) + test. Commands: effect give (seconds/amplifier, instant kinds resolve immediately)/clear, enchant (held item, level clamp, no conflict check), summon (snake/namespace names, coords or feet, cap-safe). Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z13 — 3.6c closed (effect/enchant/summon, CI-green)
+- Next: 3.6d fill/clone/setblock, 3.7 scoreboard+teams, Part-3 packet.

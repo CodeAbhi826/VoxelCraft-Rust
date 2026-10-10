@@ -119,7 +119,7 @@ pub fn parse_coord(s: &str, base: f32) -> Option<f32> {
 }
 
 /// 3.6b: item lookup for `/give` — numeric id or registry snake name
-/// with an optional `namespace:` prefix (`minecraft:stone` works).
+/// with an optional `namespace:` prefix (`voxelcraft:stone` works).
 pub fn item_by_name(s: &str) -> Option<u16> {
     use vc_blocks::blocks::{def, BLOCK_COUNT};
     if let Ok(id) = s.parse::<u16>() {
@@ -168,7 +168,7 @@ mod tests {
         assert_eq!(parse_selector("@a"), Some(AllPlayers));
         assert_eq!(parse_selector("@r"), Some(RandomPlayer));
         assert_eq!(parse_selector("@e"), Some(NearestEntity));
-        assert_eq!(parse_selector("Steve"), None);
+        assert_eq!(parse_selector("SomePlayer"), None);
         assert_eq!(parse_selector("@p[type=zombie]"), None);
     }
 
@@ -177,7 +177,7 @@ mod tests {
         use vc_blocks::blocks::{IRON_SWORD, STONE};
         assert_eq!(item_by_name("3"), Some(STONE));
         assert_eq!(item_by_name("stone"), Some(STONE));
-        assert_eq!(item_by_name("minecraft:stone"), Some(STONE));
+        assert_eq!(item_by_name("voxelcraft:stone"), Some(STONE));
         assert_eq!(item_by_name("iron_sword"), Some(IRON_SWORD));
         assert_eq!(item_by_name("not_an_item"), None);
         assert_eq!(item_by_name("9999"), None);

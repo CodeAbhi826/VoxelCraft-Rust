@@ -6927,3 +6927,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z80 - river verified + Part 4 closing tour dispatched
 - Census: river 0.76x (was 0.06x), ocean 0.93x (was 1.11x). Final: 13/14 families in 0.70-1.21 band; giant-hills 0.40 accepted (thin h76+ budget); plains/forest band documented as regional variance. linux-game tour manually dispatched (branch has no auto-tour). Next: packet amendment while tour runs.
+
+## 2026-10-11z81 - closing tour build red on phases leg (transient-suspect, re-dispatched)
+- Failed run 38085619036: phases min_ratio 0.082, worst ~1020ms every line, meshed frozen at 5, mobs 0. Morning green run 38036732269 (same leg): ratio 0.948, worst ~90ms, meshed 5-62, mobs 0-8. No game errors/panics. My arc adds no loops (branch-predicate swaps only) and CI bench green all day. Suspect loaded evening runner (lavapipe timings = noise per AGENTS.md). Re-dispatched once to discriminate; if red again with same signature, profile for real.

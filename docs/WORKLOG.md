@@ -6748,3 +6748,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z37 — 4.3a: amplified mode
 - TerrainGen.amplified + for_dimension_amplified: density_params applies depth 1+2d / scale 1+4s where depth>0 and continental field > -0.5 ([ESTIMATED] ocean gate). Test: >25% of sampled columns rise + determinism. Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z37 — 4.3a closed (CI-green)
+
+## 2026-10-10z38 — 4.3b: seam score 0.909 + miss-class identified
+- seam_score (states+heights+biomes along row borders, inbound replay) + floor test (0.85). Measured: 7509/8256; heights/biomes clean, miss class = per-chunk vein blobs clipped at borders (stone vs granite/diorite/andesite/gravel/dirt/ores). Fix = cross-chunk blob resolution in the 4.4 decoration pass. Local: 2/2 green, audit [PASS].

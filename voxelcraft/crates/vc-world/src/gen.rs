@@ -4672,6 +4672,46 @@ impl TerrainGen {
         put(chunk, wx, floor + 1, wz - 2, FLOWER_POT);
     }
 
+    /// 4.3b: seam score — (matching, total) cells along the internal
+    /// x-borders of a generated chunk row (block states at every y +
+    /// heights + biomes). Uses the real world flow (outbound replayed
+    /// as inbound), so a perfect score means cross-chunk features
+    /// stitch cleanly.
+    pub fn seam_score(&self, cx0: i32, cz0: i32, n: i32) -> (u64, u64) {
+        let mut matched = 0u64;
+        let mut total = 0u64;
+        let mut outbound: Vec<(i32, i32, i32, u16)> = Vec::new();
+        let mut prev: Option<std::sync::Arc<Chunk>> = None;
+        for cx in cx0..cx0 + n {
+            let inbound: Vec<(u16, u16)> = outbound
+                .iter()
+                .filter(|(x, _, z, _)| x.div_euclid(16) == cx && z.div_euclid(16) == cz0)
+                .map(|(_, i, _, id)| (*i as u16, *id))
+                .collect();
+            let (chunk, out) = self.generate_chunk(cx, cz0, inbound);
+            outbound.extend(out);
+            if let Some(p) = prev {
+                for z in 0..16usize {
+                    for y in 0..256usize {
+                        total += 1;
+                        if p.get(15, y, z) == chunk.get(0, y, z) {
+                            matched += 1;
+                        }
+                    }
+                    total += 2;
+                    if p.height[z * 16 + 15] == chunk.height[z * 16] {
+                        matched += 1;
+                    }
+                    if p.biome[z * 16 + 15] == chunk.biome[z * 16] {
+                        matched += 1;
+                    }
+                }
+            }
+            prev = Some(chunk);
+        }
+        (matched, total)
+    }
+
     pub fn villages_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
         const RC: i32 = VILLAGE_SPACING_CHUNKS * 16; // region size in blocks
         let mut out = Vec::new();
@@ -9380,6 +9420,23 @@ mod libm_pinned_tests {
             amp.column(0, 0).height,
             amp.column(0, 0).height,
             "deterministic"
+        );
+    }
+
+    /// 4.3b: seam score pins above 0.85 (measured 0.909 on PIN_SEED:
+    /// heights/biomes stitch clean; the miss class is per-chunk vein
+    /// blobs clipped at borders — stone vs granite/diorite/andesite/
+    /// gravel/dirt/ores. Fixing means cross-chunk blob resolution,
+    /// which belongs to the 4.4 decoration pass).
+    #[test]
+    fn seams_match_along_a_row() {
+        let gen = TerrainGen::new(PIN_SEED);
+        let (matched, total) = gen.seam_score(0, 0, 3);
+        assert!(total > 0);
+        let rate = matched as f64 / total as f64;
+        assert!(
+            rate >= 0.85,
+            "seam score floor 0.85, measured {rate:.3} ({matched}/{total})"
         );
     }
 

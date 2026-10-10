@@ -6701,3 +6701,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z24 — 4.1a: vanilla ids + biome census probe
 - Biome::vanilla_id (28 ids, sourced in-comment) + TerrainGen::biome_census (chunk-rect histogram, sorted) + 2 tests. Exchange format for the 4.0 loop: seed + rect + census rows. Local: 3/3 gen tests green. AWAITING owner reference numbers to tune against.
+
+## 2026-10-10z25 — 4.1a closed (CI-green) + census published
+- Our rows (rect 0,0 8x8): seed0 {0:5916, 5:158, 14:11, 16:1975, 46:8324}; seed12345 {1:4588, 14:1390, 16:1481, 27:5966, 45:2959}. Awaiting owner reference rows. Meanwhile: 4.1b large-biomes/amplified research from public docs.

@@ -9,6 +9,8 @@ pub mod campfire;
 /// 3.5a: chat log (capped buffer + TTL; HUD/input owned by game.rs)
 pub mod chat;
 pub mod combat;
+/// 3.6a: command line parser (split + table; handlers in game.rs)
+pub mod command;
 pub mod craft;
 pub mod dragon;
 pub mod effects;

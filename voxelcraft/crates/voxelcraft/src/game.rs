@@ -12317,10 +12317,142 @@ impl GameApp {
         self.ui.dirty = true;
     }
 
-    /// 3.6 hook: run a `/` command line; false = unknown command.
-    /// (Stub — the parser slice implements it.)
-    fn run_command(&mut self, _line: &str) -> bool {
-        false
+    /// 3.6a: the command dispatcher — `/help /seed /gamemode /time
+    /// /weather /say /me`. True = handled (even on usage errors —
+    /// those print their usage); false = unknown command.
+    fn run_command(&mut self, line: &str) -> bool {
+        use vc_gameplay::command::COMMANDS;
+        let argv = vc_gameplay::command::split_args(line.strip_prefix('/').unwrap_or(line));
+        if argv.is_empty() {
+            return true; // bare "/" — consumed, nothing to do
+        }
+        match argv[0].as_str() {
+            "help" => {
+                if argv.len() == 2 {
+                    match COMMANDS.iter().find(|(n, _)| *n == argv[1]) {
+                        Some((_, usage)) => self.chat.system(format!("Usage: /{usage}")),
+                        None => self.chat.system(format!("Unknown command: {}", argv[1])),
+                    }
+                } else {
+                    let names: Vec<&str> = COMMANDS.iter().map(|(n, _)| *n).collect();
+                    self.chat
+                        .system(format!("Commands: /{}", names.join(", /")));
+                }
+                true
+            }
+            "seed" => {
+                self.chat.system(format!("Seed: [{}]", self.world.seed));
+                true
+            }
+            "gamemode" => {
+                use vc_gameplay::modes::GameMode;
+                let mode = match argv.get(1).map(|s| s.as_str()) {
+                    Some("survival" | "0") => GameMode::Survival,
+                    Some("creative" | "1") => GameMode::Creative,
+                    Some("adventure" | "2") => GameMode::Adventure,
+                    Some("spectator" | "3") => GameMode::Spectator,
+                    _ => {
+                        self.chat.system(
+                            "Usage: /gamemode <survival|creative|adventure|spectator>".to_string(),
+                        );
+                        return true;
+                    }
+                };
+                self.mode = mode;
+                if !mode.allows_flight() {
+                    self.player.flying = false;
+                }
+                say(
+                    self,
+                    format!("Set own game mode to {} mode", argv[1].as_str()),
+                );
+                self.ui.dirty = true;
+                true
+            }
+            "time" => {
+                match argv.get(1).map(|s| s.as_str()) {
+                    Some("query") => {
+                        let ticks = (self.day_time * 24000.0).round() as i32;
+                        self.chat.system(format!("The time is {ticks}"));
+                    }
+                    Some("set") => {
+                        let t = match argv.get(2).map(|s| s.as_str()) {
+                            Some("day") => Some(1000),
+                            Some("noon") => Some(6000),
+                            Some("night") => Some(13000),
+                            Some("midnight") => Some(18000),
+                            Some(n) => n.parse::<i32>().ok(),
+                            None => None,
+                        };
+                        match t {
+                            Some(ticks) => {
+                                self.day_time = ((ticks % 24000 + 24000) % 24000) as f32 / 24000.0;
+                                self.chat.system(format!("Set the time to {ticks}"));
+                                self.ui.dirty = true;
+                            }
+                            None => say(
+                                self,
+                                "Usage: /time <set <day|noon|night|midnight|ticks>|query>"
+                                    .to_string(),
+                            ),
+                        }
+                    }
+                    _ => say(
+                        self,
+                        "Usage: /time <set <day|noon|night|midnight|ticks>|query>".to_string(),
+                    ),
+                }
+                true
+            }
+            "weather" => {
+                let secs = argv
+                    .get(2)
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .unwrap_or(300)
+                    .min(1_000_000)
+                    * 20;
+                match argv.get(1).map(|s| s.as_str()) {
+                    Some("clear") => {
+                        self.weather.force_clear(secs);
+                        self.chat.system("Changing to clear weather".to_string());
+                    }
+                    Some("rain") => {
+                        self.weather.force_rain(secs);
+                        self.chat.system("Changing to rainy weather".to_string());
+                    }
+                    Some("thunder") => {
+                        self.weather.force_thunder(secs);
+                        self.chat.system("Changing to rainy weather".to_string());
+                    }
+                    _ => say(
+                        self,
+                        "Usage: /weather <clear|rain|thunder> [seconds]".to_string(),
+                    ),
+                }
+                self.ui.dirty = true;
+                true
+            }
+            // 3.6a: /say + /me echo as system lines (the sender-name
+            // bracket format is not reproduced — disclosed)
+            "say" => {
+                if argv.len() < 2 {
+                    self.chat.system("Usage: /say <message>".to_string());
+                } else {
+                    self.chat.system(argv[1..].join(" "));
+                }
+                true
+            }
+            "me" => {
+                if argv.len() < 2 {
+                    self.chat.system("Usage: /me <action>".to_string());
+                } else {
+                    self.chat
+                        .system(format!("* Player {}", argv[1..].join(" ")));
+                }
+                true
+            }
+            _ => false,
+        }
     }
 
     fn close_container(&mut self) {

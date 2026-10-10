@@ -6638,3 +6638,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z07 — 3.5 closed (chat end-to-end)
 - 3.5a chat core + 3.5b visibility setting, both CI-green. Remaining Part 3: 3.6 command parser + commands (split: a=parser/help/seed/gamemode/time/weather/say, b=selectors/give/tp/effect, c=world-edit), 3.7 scoreboard + teams, then Part-3 REVIEW PACKET.
+
+## 2026-10-10z08 — 3.6a: command parser + help/seed/gamemode/time/weather/say/me
+- command.rs: quote-aware split_args + COMMANDS table + 3 tests. game.rs run_command replaces the 3.5 stub (usage errors print usage, unknown still false). No cheat gate (disclosed). Local: fmt clean; compile/tests deferred to CI (host busy).

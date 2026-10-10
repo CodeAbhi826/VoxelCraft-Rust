@@ -1145,13 +1145,13 @@ impl TerrainGen {
                 if var > 0.58 {
                     (Biome::IceSpikes, SNOW, DIRT)
                 } else {
-                    match self.layer_base_biome(true, false, special, true, false, lx, lz) {
+                    match self.layer_base_biome(special, true, false, lx, lz) {
                         Biome::Taiga => self.taiga_overlay(h, var),
                         _ => (Biome::Snowy, SNOW_GRASS, DIRT),
                     }
                 }
             } else {
-                let base = self.layer_base_biome(true, false, special, false, warm, lx, lz);
+                let base = self.layer_base_biome(special, false, warm, lx, lz);
                 self.finish_land_base(base, h, var)
             }
         };
@@ -4693,45 +4693,16 @@ impl TerrainGen {
         self.island_base(x, z)
     }
 
-    /// 4.1i: BiomeInit base biome from the layer stack (land/deep/
-    /// special + snow/warm gate categories). Replaces the temp/humid
-    /// predicates for base selection — measurement shows our fBm
-    /// climate fields are uncorrelated with the reference layout
-    /// (giant taiga reads hot, forest colder than taiga), so no
-    /// threshold tuning can converge them. Category members follow
-    /// documented biome climates; gate percentages are FIT.
-    fn layer_base_biome(
-        &self,
-        land: bool,
-        deep: bool,
-        special: bool,
-        snow: bool,
-        warm: bool,
-        cx4: i32,
-        cz4: i32,
-    ) -> Biome {
+    /// 4.1i: BiomeInit base biome for LAND cells (ocean family is
+    /// resolved by the height-gated branches in classify; the ocean
+    /// map below is retained for reference, not called).
+    /// Category members follow documented biome climates; gate
+    /// percentages are FIT.
+    fn layer_base_biome(&self, special: bool, snow: bool, warm: bool, cx4: i32, cz4: i32) -> Biome {
         let pick = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, cx4, 0xB17, cz4) % 100;
-        if !land {
-            // ocean types by snow/warm gates + depth (documented families)
-            if snow {
-                return Biome::FrozenOcean;
-            }
-            if warm {
-                return Biome::WarmOcean;
-            }
-            if deep {
-                return if pick < 50 {
-                    Biome::DeepColdOcean
-                } else {
-                    Biome::DeepOcean
-                };
-            }
-            return if pick < 50 {
-                Biome::ColdOcean
-            } else {
-                Biome::Ocean
-            };
-        }
+        // ocean reference map (snow → frozen, warm → warm, deep →
+        // deep-cold/deep split, else cold/luke/ocean thirds) — see
+        // classify's ocean branch, which implements it live.
         if snow {
             return if pick < 70 {
                 Biome::Snowy
@@ -9348,13 +9319,13 @@ mod golden_determinism_tests {
     /// 2026-10-10): the 3 overworld mains + all overworld targeted pins
     /// move with cross-chunk veins; nether/end pins byte-identical.
     const GOLDEN: [u64; 9] = [
-        0xb709_c979_d25d_b6fa, // seed c0ffee12345678, overworld
+        0xba9f_0332_e627_c41c, // seed c0ffee12345678, overworld
         0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
         0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
-        0x0e60_d991_b54d_5c71, // seed deadbeef00000001, overworld
+        0x7e21_ed4c_bde0_bf17, // seed deadbeef00000001, overworld
         0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
         0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
-        0x393b_e993_5f37_0b71, // seed 7, overworld
+        0xce11_debd_1262_b584, // seed 7, overworld
         0xbb9f_4859_d4d2_ae6a, // seed 7, nether
         0x821f_f1cc_25ca_21cd, // seed 7, end
     ];
@@ -9418,19 +9389,19 @@ mod golden_determinism_tests {
     const GOLDEN_WIDE: [u64; 15] = [
         // 4.4a re-pin: overworld entries move with cross-chunk veins
         // (nether/end byte-identical)
-        0xcfbb_fb20_df74_f270,
+        0x2f9c_e971_45ca_a4a9,
         0xc224_973a_dbae_0f7d,
         0x00dc_0ad5_7854_7143,
-        0xe547_613a_5a08_8c8c,
+        0x1688_2e21_8881_a925,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0x33f7_8927_9731_bea9,
+        0xd44f_2f3d_845d_1fce,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
-        0xb834_cc65_5e7b_5738,
+        0xd0ac_8708_dc50_0ae6,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
-        0x87e5_515b_d8f9_68cf,
+        0xbcbb_8487_a251_7fb6,
         0x5675_e557_60cc_6f5a,
         0x12df_709c_8a36_fee3,
     ];
@@ -9460,13 +9431,13 @@ mod golden_determinism_tests {
     const GOLDEN_TARGETED: [u64; 4] = [
         // 4.4a re-pin (owner-approved accuracy-over-history 2026-10-10):
         // cross-chunk veins moved every overworld pin below
-        0x99aa_87f6_f6e2_915a,
+        0x06ba_906f_feb3_524b,
         // 4.2a re-pin (owner-approved 2026-10-10 — pre-1.0.0, no prior
         // worlds): village spread 34/8/salt-10387312 moved the pinned
         // village to chunk (14,15); 4.4a veins moved it again
-        0xf6a4_ce13_72ba_4d4a,
-        0xe699_6930_9510_04be,
-        0x1636_cf53_2fe2_66d7,
+        0x42b3_2a56_f6a1_e601,
+        0x02eb_b612_07a5_3bef,
+        0xee5e_ae52_c52c_67a4,
     ];
 
     #[test]

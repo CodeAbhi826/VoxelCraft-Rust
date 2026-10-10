@@ -6824,3 +6824,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z51 — 4.1j: fit round 1 (shares)
 - Mushroom gate 0.63->0.83 + special-pick mushroom 50->8%: 7.6% -> 0.3%. Warm 15->8%: desert 9.2->1.1%, beach 10.8->4.8% (seam-rule removal). Island density 45->80 (land share). Clock-skew lesson: touch+sleep to force cargo rebuilds. Audit caught a leftover temp probe (deleted, never committed).
+
+## 2026-10-10z51 — 4.1j closed (re-pins hold)
+- Fit round 1 shares verified on copy; clippy tuple fix; re-pins: 3 mains + 4 targeted + 5 wide-overworld (nether/end identical, village pin moved to (-180,214)). Local: golden x3 + clippy green, audit [PASS].

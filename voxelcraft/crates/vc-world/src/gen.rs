@@ -1088,14 +1088,22 @@ impl TerrainGen {
             } else if warm {
                 (Biome::WarmOcean, SAND, SAND)
             } else if deep {
-                if pick < 50 {
+                // 4.1l FIT from the owner-copy census (deep-family:
+                // deep ~79%, deep-cold ~6%, deep-lukewarm ~15%; the
+                // old 50/50 made deep-cold 6.6% vs 0.4% in the copy)
+                if pick < 6 {
                     (Biome::DeepColdOcean, GRAVEL, GRAVEL)
+                } else if pick < 21 {
+                    (Biome::DeepLukewarmOcean, SAND, SAND)
                 } else {
                     (Biome::DeepOcean, GRAVEL, GRAVEL)
                 }
-            } else if pick < 34 {
+            } else if pick < 6 {
+                // 4.1l FIT (shallow-family: ocean ~93%, cold ~6%,
+                // lukewarm ~2%; old thirds made cold/luke ~22% vs
+                // under 1% each in the copy)
                 (Biome::ColdOcean, SAND, GRAVEL)
-            } else if pick < 67 {
+            } else if pick < 8 {
                 (Biome::LukewarmOcean, SAND, SAND)
             } else {
                 // the neutral temperate ocean (the pre-1.13 "Ocean")
@@ -4759,9 +4767,16 @@ impl TerrainGen {
                 Biome::Plains
             };
         }
-        match pick % 3 {
-            0 => Biome::Plains,
-            1 => Biome::Forest,
+        match pick % 100 {
+            // 4.1l FIT from the owner-copy census (temperate-land
+            // shares: plains ~28%, taiga family ~30%, forest family
+            // ~14%, birch family ~1%; birch held at 3% so the
+            // flower-forest content stays discoverable). The old
+            // thirds made birch 8.3% vs 0.2% in the copy and left
+            // temperate taiga (12.7%+giants in the copy) absent.
+            0..=35 => Biome::Plains,
+            36..=74 => Biome::Taiga,
+            75..=96 => Biome::Forest,
             _ => Biome::BirchForest,
         }
     }

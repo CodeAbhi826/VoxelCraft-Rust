@@ -6833,3 +6833,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z53 — 4.1k re-pins + flake fixes (from CI 38066287936 values only)
 - Re-pins: main c0ffee-overworld + 4 wide-overworld (badlands arm moved warm cells; targeted + nether/end identical, deadbeef-overworld identical). phase_e3 probe rewritten to chunk-center outward scan (seed 4242 has no badlands in fixed windows — rare-regional reality). v114 cornflower part scans up to 16 plains chunks (first-hit moved under the widened find_biome; single-strip assumption was the flake).
+
+## 2026-10-10z53 — 4.1k closed (CI-green, 12/12 incl. 3-OS goldens)
+
+## 2026-10-10z54 — 4.1l: fit round 2 (temperate + ocean ratios)
+- Reference table decoded to internal ids (importer stores ours): copy is temperate/boreal, no warm/snow at all. Temperate thirds -> pick-split plains 36 / taiga 39 / forest 22 / birch 3 (old: birch 8.3% vs 0.2% copy; temperate taiga 0% vs 21.9% incl. giants). Ocean shallow thirds -> ocean 92 / cold 6 / luke 2; deep 50/50 -> deep 79 / deep-cold 6 / deep-luke 15 (old deep-cold 6.6% vs 0.4%). All FIT from copy shares. Deferred to measurement slice: mountain gate (ours 0.19% vs 10.7% — relief-dependent) + river gate (ours ~0% vs 5.7%). Expect golden re-pins from CI.

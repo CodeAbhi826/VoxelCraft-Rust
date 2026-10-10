@@ -6758,3 +6758,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z39 — 4.3c: height-stats probe
 - height_stats (per-biome count + mean height, overworld-only) + test + census example height mode. Our seed-0 rows: ocean 53.1, taiga 64.0, mushroom 63.0, beach 61.8, cold_ocean 52.8. Local: test green, audit [PASS].
+
+## 2026-10-10z39 — 4.3c closed (CI-green)

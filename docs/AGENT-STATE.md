@@ -95,3 +95,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-10: PART 3 CLOSED (packet z20). 20 commands, chat, recipe book, scoreboard/teams/bossbar, locate. Tour run 38021703354 dispatched. Next: Part 4 starting at 4.0 (owner reinstated 4.0 over 4.1) — write the 4.0 black-box proposal after tour verdict.
 
 - 2026-10-10: PART 4 at 4.0 gate — proposal written (docs/PART4-PROPOSAL.md). AWAITING OWNER APPROVAL; no Part-4 code until approved.
+
+- 2026-10-10: Part 4 status — 4.1 probes/large/Nether done (tuning awaits owner diffs), 4.2 spread/audit/well/hut done, 4.3 amplified/seam/height probes done. Next: 4.4a vein-seam fix (needs main-hash re-pin approval).

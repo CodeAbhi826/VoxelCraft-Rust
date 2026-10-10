@@ -136,3 +136,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-11: z68 ocean pin in CI (chain complete if green). Next: verification census.
 
 - 2026-10-11: z69 shelf/hills rebalance in CI. Next: re-pin harvest + verification census.
+
+- 2026-10-11: z70 hardenings + harvest in CI. Next: ravine/ocean pins, then verification census.

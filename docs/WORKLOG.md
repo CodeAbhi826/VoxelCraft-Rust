@@ -6894,3 +6894,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z69 - 4.1p shelf/hills rebalance (verification census lessons)
 - Ocean 1.64x: narrowed to h<60, h60-61 shelf becomes dirt-topped submerged land (biomes feed plains). Deep h<51 to h<52. Mountain gate 73 with taiga-family exemption (hills/giant-hills were zero). Expect full re-pin harvest.
+
+## 2026-10-11z70 - 4.1p hardenings + harvest (run 38079926723)
+- Mountain-gate move broke 3 tests, all diagnosed: shallow probe h60 now land (moved to h58); fern scan window filled with high podzol taiga (16-chunk accumulation); badlands first-hit relocated (16-chunk floor scan). Pinned 3 mains + 5 wides + village (72,11) + spawn (232.5,71,248.5). Ravine/ocean sequential next.

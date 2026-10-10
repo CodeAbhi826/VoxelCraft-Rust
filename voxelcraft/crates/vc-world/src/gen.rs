@@ -7803,24 +7803,45 @@ mod v172_tests {
         // wiki: "floor similar to a desert, but made of red sand" +
         // "multiple colored hardened clay layered... seven colors"
         let g = gen();
-        let (cx, cz) = find_biome(&g, Biome::Badlands);
-        let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
-        // find an uncarved badlands column (carver cuts legitimately
-        // expose strata; the floor intent needs a surviving surface)
+        // 4.1p: scan up to 16 badlands-center chunks for a surviving
+        // floor (gate moves relocate the first hit; a first-hit chunk
+        // may be fully carved — same pattern as bamboo/sunflower)
         let mut h = None;
-        'col: for czi in 0..16usize {
-            for cxi in 0..16usize {
-                if chunk.biome[czi * 16 + cxi] != Biome::Badlands as u8 {
+        let mut scanned = 0usize;
+        let (mut lx, mut lz) = (0usize, 0usize);
+        let mut chunk = g.generate_chunk(0, 0, Vec::new()).0;
+        'chunks: for cx in -128..128 {
+            for cz in -128..128 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::Badlands {
                     continue;
                 }
-                let hi = chunk.height[czi * 16 + cxi] as usize;
-                if chunk.get_local(vc_chunk::chunk::LocalXZ::new(cxi, czi), hi) == RED_SAND {
-                    h = Some((hi, cxi, czi));
-                    break 'col;
+                let (c, _) = g.generate_chunk(cx, cz, Vec::new());
+                if Biome::from_u8(c.biome[8 * 16 + 8]) != Biome::Badlands {
+                    continue;
+                }
+                scanned += 1;
+                for czi in 0..16usize {
+                    for cxi in 0..16usize {
+                        if c.biome[czi * 16 + cxi] != Biome::Badlands as u8 {
+                            continue;
+                        }
+                        let hi = c.height[czi * 16 + cxi] as usize;
+                        if c.get_local(vc_chunk::chunk::LocalXZ::new(cxi, czi), hi) == RED_SAND {
+                            h = Some(hi);
+                            lx = cxi;
+                            lz = czi;
+                            chunk = c;
+                            break 'chunks;
+                        }
+                    }
+                }
+                if scanned >= 16 {
+                    break 'chunks;
                 }
             }
         }
-        let (h, lx, lz) = h.unwrap_or_else(|| panic!("no uncarved badlands floor column"));
+        let h = h.unwrap_or_else(|| panic!("no uncarved badlands floor column"));
+
         // the banding window below contains at least 3 distinct band
         // colors (the sedimentary look). 1.8: the 4-layer filler directly
         // under the floor is red sandstone now — the band check starts
@@ -8670,19 +8691,25 @@ mod auditfix_tests {
         let g = gen();
         let mut taiga_chunks = 0;
         let mut ferns = 0usize;
-        'scan: for cx in -64..64 {
-            for cz in -64..64 {
+        // 4.1p: accumulate over up to 16 taiga-center chunks (the
+        // mountain-gate move fills the first-hit window with high
+        // podzol taiga; same interleave pattern as bamboo/sunflower)
+        'scan: for cx in -128..128 {
+            for cz in -128..128 {
                 if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::Taiga {
                     continue;
                 }
                 let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                if Biome::from_u8(chunk.biome[8 * 16 + 8]) != Biome::Taiga {
+                    continue;
+                }
                 for i in 0..CHUNK_LEN {
                     if chunk.get_idx(i) == FERN {
                         ferns += 1;
                     }
                 }
                 taiga_chunks += 1;
-                if ferns > 0 || taiga_chunks >= 10 {
+                if ferns > 0 || taiga_chunks >= 16 {
                     break 'scan;
                 }
             }
@@ -9507,13 +9534,13 @@ mod golden_determinism_tests {
     /// 2026-10-10): the 3 overworld mains + all overworld targeted pins
     /// move with cross-chunk veins; nether/end pins byte-identical.
     const GOLDEN: [u64; 9] = [
-        0x17d9_2258_431e_9102, // seed c0ffee12345678, overworld
+        0xc4b9_3891_ba02_ca0a, // seed c0ffee12345678, overworld
         0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
         0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
-        0xc7c7_4a10_1309_a744, // seed deadbeef00000001, overworld
+        0x9203_607f_0e8a_d037, // seed deadbeef00000001, overworld
         0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
         0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
-        0x7e12_e175_d241_202f, // seed 7, overworld
+        0xdff7_6186_066d_3c57, // seed 7, overworld
         0xbb9f_4859_d4d2_ae6a, // seed 7, nether
         0x821f_f1cc_25ca_21cd, // seed 7, end
     ];
@@ -9577,19 +9604,19 @@ mod golden_determinism_tests {
     const GOLDEN_WIDE: [u64; 15] = [
         // 4.4a re-pin: overworld entries move with cross-chunk veins
         // (nether/end byte-identical)
-        0x7447_ad46_0652_6dd2,
+        0x4904_7659_00b3_8cf8,
         0xc224_973a_dbae_0f7d,
         0x00dc_0ad5_7854_7143,
-        0x8ef2_3a04_c4f2_d52b,
+        0xccd3_c97a_85a3_f253,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0x5298_522b_e2d3_bf3b,
+        0xeae3_0ad9_71a7_0179,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
-        0x9d1b_20bf_98fd_89e1,
+        0xcb8a_efa1_b315_a7f5,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
-        0x3980_4584_91b3_9f05,
+        0xbe2f_fe49_ae8f_a49d,
         0x5675_e557_60cc_6f5a,
         0x12df_709c_8a36_fee3,
     ];
@@ -9624,10 +9651,10 @@ mod golden_determinism_tests {
         // worlds): village spread 34/8/salt-10387312 moved the pinned
         // village; 4.4a veins + 4.1l shares moved it again to chunk
         // (8,45) (CI-measured; the search itself is deterministic)
-        // 4.1o re-pin (CI-measured): relief gates moved the pinned
-        // village to chunk (16,76) (search-determined) with new
+        // 4.1p re-pin (CI-measured): shelf gates moved the pinned
+        // village to chunk (72,11) (search-determined) with new
         // contents
-        0x7b74_7aa2_0e67_8a56,
+        0x7399_c8ba_3427_79c2,
         // 4.1o re-pin (CI-measured): relief gates moved ravine
         // chunk (0,0) contents (coords fixed — the ravine roll is
         // position-only, the biome bytes moved)
@@ -10076,8 +10103,9 @@ mod libm_pinned_tests {
             ),
             "deep water is ocean-family, got {deep_biome:?}"
         );
-        // shallow water classifies ocean-family too
-        let shal_biome = g.classify(0.1, 0.0, 0.0, 60, 1.0, (0, 0)).0;
+        // shallow water classifies ocean-family too (4.1p: ocean is
+        // h<60; the probe uses h=58, above the h<52 deep line)
+        let shal_biome = g.classify(0.1, 0.0, 0.0, 58, 1.0, (0, 0)).0;
         assert!(shal_biome.is_ocean(), "got {shal_biome:?}");
         // overlay helpers are pure elevation/variant gates (4.1n: the
         // family splits take the uniform cell roll as 4th arg)
@@ -10207,8 +10235,8 @@ mod libm_pinned_tests {
         let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
         let (x, y, z) = gen.find_spawn();
         println!("PIN find_spawn ({x},{y},{z})");
-        // 4.1o re-pin: relief gates moved the spawn search result
+        // 4.1p re-pin: shelf gates moved the spawn search result
         // (new layout, same search rules; CI-measured)
-        assert_eq!((x, y, z), (-15.5, 80.0, -199.5), "pin find_spawn");
+        assert_eq!((x, y, z), (232.5, 71.0, 248.5), "pin find_spawn");
     }
 }

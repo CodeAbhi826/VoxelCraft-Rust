@@ -27,6 +27,44 @@ fn main() {
         _ => Dimension::Overworld,
     };
     let g = TerrainGen::for_dimension(seed, dim);
+    // 4.1o: `hist` mode prints the land-height histogram + cumulative
+    // shares at candidate gates (relief fitting: mountain/beach/deep).
+    if std::env::args().nth(7).as_deref() == Some("hist") {
+        use std::collections::BTreeMap;
+        let mut m: BTreeMap<i32, u64> = BTreeMap::new();
+        for cx in cx0..cx0 + w {
+            for cz in cz0..cz0 + h {
+                for lx in 0..16 {
+                    for lz in 0..16 {
+                        let c = g.column(cx * 16 + lx, cz * 16 + lz);
+                        *m.entry(c.height).or_default() += 1;
+                    }
+                }
+            }
+        }
+        let total: u64 = m.values().sum();
+        println!("seed={seed} rect=({cx0},{cz0},{w},{h}) hist total={total}");
+        for (hh, n) in &m {
+            println!("h{hh}: {n}");
+        }
+        for gate in [70, 72, 74, 76, 78, 80, 82, 84, 88, 96] {
+            let above: u64 = m.iter().filter(|(hh, _)| **hh > gate).map(|(_, n)| n).sum();
+            println!("P(h>{gate})={:.2}%", 100.0 * above as f64 / total as f64);
+        }
+        for depth in [4, 6, 8, 10] {
+            let below: u64 = m
+                .iter()
+                .filter(|(hh, _)| **hh < 62 - depth)
+                .map(|(_, n)| n)
+                .sum();
+            println!(
+                "P(h<{})={:.2}%",
+                62 - depth,
+                100.0 * below as f64 / total as f64
+            );
+        }
+        return;
+    }
     if std::env::args().nth(7).as_deref() == Some("height") {
         println!("seed={seed} rect=({cx0},{cz0},{w},{h}) heights");
         for (id, n, mean) in g.height_stats(cx0, cz0, w, h) {

@@ -1093,10 +1093,15 @@ impl TerrainGen {
         let px = lx.div_euclid(4);
         let pz = lz.div_euclid(4);
         let pick2 = Rng::hash3(self.seed ^ LAYER_SALT_OVERLAY, px, 0xB17, pz) % 100;
-        let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
+        // 4.1o FIT (relief histogram, owner seed, full window): the
+        // waterline pile-up (h61-h63 = 11.9% of columns) forced the
+        // old <=SEA+1 beach band to 3x the copy. Ocean takes h<=61
+        // (+3.5pp: ocean 0.79x -> ~1.1x), beach is the h63 fringe
+        // (4.4%), h62 falls through to land (swamp/plains both needy).
+        let (biome, top, filler) = if h <= vc_chunk::SEA_LEVEL - 1 {
             // 4.1i: ocean family from gates + depth (temp retired —
             // uncorrelated per copy measurement)
-            let deep = h < vc_chunk::SEA_LEVEL - 6;
+            let deep = h < vc_chunk::SEA_LEVEL - 11;
             if snow {
                 (Biome::FrozenOcean, GRAVEL, GRAVEL)
             } else if warm {
@@ -1132,7 +1137,8 @@ impl TerrainGen {
             // layer-stack rivers); sand-over-dirt bed, water fills to
             // sea level through the standard fluid fill.
             (Biome::River, SAND, DIRT)
-        } else if h <= vc_chunk::SEA_LEVEL + 1 {
+        } else if h == vc_chunk::SEA_LEVEL + 1 {
+            // 4.1o: beach narrowed to the h63 fringe (see above)
             // 4.1e: high shores split to stone shore (vanilla 25;
             // variant gate [ESTIMATED] — single-column classify has no
             // adjacency info for the mountain-foot rule)
@@ -1141,11 +1147,11 @@ impl TerrainGen {
             } else {
                 (Biome::Beach, SAND, SAND)
             }
-        } else if h > 84 {
-            // 4.1n: mountain gate 96 -> 84 (copy mountains mean 84.0
-            // at 10.7% vs our 0.19% of >96 peaks; [ESTIMATED] —
-            // verify share on the next census, pushes plains/taiga
-            // down as the family takes high terrain)
+        } else if h > 75 {
+            // 4.1o: mountain gate 84 -> 75 (relief histogram P(h>75)
+            // ~= 10.3% vs copy mountains 10.7%; [ESTIMATED] — verify
+            // share on the next census, pushes plains/taiga down as
+            // the family takes high terrain)
             // 4.1e: mountain family splits by variant field
             // ([ESTIMATED] thresholds — vanilla hills rise with the
             // base; wooded 34 / gravelly 131 from the Before-1.18 table)
@@ -10044,8 +10050,8 @@ mod libm_pinned_tests {
         }
         let g = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
         // deep water classifies ocean-family regardless of gates
-        // (4.1n: the deep split now includes deep-lukewarm 15%)
-        let deep_biome = g.classify(0.1, 0.0, 0.0, 55, 1.0, (0, 0)).0;
+        // (4.1o: deep is h < SEA-11; the probe uses h=45)
+        let deep_biome = g.classify(0.1, 0.0, 0.0, 45, 1.0, (0, 0)).0;
         assert!(
             matches!(
                 deep_biome,

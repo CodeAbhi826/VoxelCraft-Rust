@@ -6924,3 +6924,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z79 - seed7-wide typo fix (my transcription error, NOT nondeterminism)
 - Pinned efff44ac, log said eff744ac; rerun reproduced the log value exactly (determinism holds, no R5 issue). Rule restated: pins by exact copy from logs, never retyped. Ocean targeted held (no river lines in that chunk).
+
+## 2026-10-11z80 - river verified + Part 4 closing tour dispatched
+- Census: river 0.76x (was 0.06x), ocean 0.93x (was 1.11x). Final: 13/14 families in 0.70-1.21 band; giant-hills 0.40 accepted (thin h76+ budget); plains/forest band documented as regional variance. linux-game tour manually dispatched (branch has no auto-tour). Next: packet amendment while tour runs.

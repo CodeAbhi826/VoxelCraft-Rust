@@ -6819,3 +6819,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z50 — 4.1i: BiomeInit rewire (base from layers)
 - classify: ocean family from gates, land base from layer picks, hills overlays kept, seam rule removed (was flooding beaches 19%). Fixed fBm proven uncorrelated, so thresholds can't converge. Rate 4.8 -> 6.9%. Local: tests green, audit [PASS].
+
+## 2026-10-10z50 — 4.1i closed (CI-green)
+
+## 2026-10-10z51 — 4.1j: fit round 1 (shares)
+- Mushroom gate 0.63->0.83 + special-pick mushroom 50->8%: 7.6% -> 0.3%. Warm 15->8%: desert 9.2->1.1%, beach 10.8->4.8% (seam-rule removal). Island density 45->80 (land share). Clock-skew lesson: touch+sleep to force cargo rebuilds. Audit caught a leftover temp probe (deleted, never committed).

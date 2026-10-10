@@ -699,7 +699,9 @@ pub const LAYER_ISLAND_PCT: u64 = 80;
 /// 4.1i: climate-gate salts + FIT percentages (snow/warm shares).
 pub const LAYER_SALT_CLIMATE: u64 = 0xC11A;
 pub const LAYER_SNOW_PCT: u64 = 20;
-pub const LAYER_WARM_PCT: u64 = 15;
+// 4.1j FIT: warm 15 → 8 (reference copy: no warm land at all in its
+// temperate region; deserts/jungles must still exist globally).
+pub const LAYER_WARM_PCT: u64 = 8;
 
 /// 4.2b: scattered-structure spread parameters. Provenance: village
 /// (34/8/salt) is documented placement-JSON data; pyramid/jungle/
@@ -1237,8 +1239,10 @@ impl TerrainGen {
         // ocean, mycelium surface). A dedicated low-frequency field;
         // where it clears the threshold the column becomes a gentle
         // island above sea level regardless of the climate pick below.
+        // 4.1j FIT: gate 0.63 → 0.78 (measured 7.6% at 0.63 vs rare
+        // in the reference copy).
         let mush = self.n_mush.noise2(xf / 400.0, zf / 400.0);
-        if self.dim == Dimension::Overworld && mush > 0.63 {
+        if self.dim == Dimension::Overworld && mush > 0.83 {
             let h = (vc_chunk::SEA_LEVEL as f32 + 1.0 + (mush - 0.63) * 30.0)
                 .floor()
                 .min(vc_chunk::SEA_LEVEL as f32 + 6.0) as i32;
@@ -1661,7 +1665,7 @@ impl TerrainGen {
                 bd /= 9.0;
                 bv /= 9.0;
                 let mush = self.n_mush.noise2(wx as f32 / 400.0, wz as f32 / 400.0);
-                let island = if self.dim == Dimension::Overworld && mush > 0.63 {
+                let island = if self.dim == Dimension::Overworld && mush > 0.83 {
                     Some(
                         (vc_chunk::SEA_LEVEL as f64 + 1.0 + (mush as f64 - 0.63) * 30.0)
                             .min(vc_chunk::SEA_LEVEL as f64 + 6.0),
@@ -1786,7 +1790,7 @@ impl TerrainGen {
                 // height — a ravine canyon keeps its surface biome)
                 let col_idx = z * 16 + x;
                 let mush = self.n_mush.noise2(wx as f32 / 400.0, wz as f32 / 400.0);
-                let (biome, top, filler) = if self.dim == Dimension::Overworld && mush > 0.63 {
+                let (biome, top, filler) = if self.dim == Dimension::Overworld && mush > 0.83 {
                     (Biome::MushroomFields, MYCELIUM, DIRT)
                 } else {
                     let (temp, humid, var) = self.climate_fields(wx, wz);
@@ -3445,7 +3449,7 @@ impl TerrainGen {
         let xf = x as f32;
         let zf = z as f32;
         let mush = self.n_mush.noise2(xf / 400.0, zf / 400.0);
-        if self.dim == Dimension::Overworld && mush > 0.63 {
+        if self.dim == Dimension::Overworld && mush > 0.83 {
             let isl = (vc_chunk::SEA_LEVEL as f64 + 1.0 + (mush as f64 - 0.63) * 30.0)
                 .min(vc_chunk::SEA_LEVEL as f64 + 6.0);
             return (y as f64) <= isl;
@@ -4743,7 +4747,8 @@ impl TerrainGen {
             };
         }
         if special {
-            return if pick < 50 {
+            // 4.1j FIT: mushroom islands are rare (~0.5% of land)
+            return if pick < 8 {
                 Biome::MushroomFields
             } else {
                 Biome::Plains
@@ -9944,7 +9949,10 @@ mod libm_pinned_tests {
         }
         let land_f = land as f64 / n as f64;
         // island density FIT (80%) — band tracks the constant
-        assert!((0.65..0.95).contains(&land_f), "land fraction sane: {land_f}");
+        assert!(
+            (0.65..0.95).contains(&land_f),
+            "land fraction sane: {land_f}"
+        );
         assert!(deep > 0, "some deep ocean exists");
         let sp_f = special as f64 / land.max(1) as f64;
         assert!(

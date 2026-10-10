@@ -6930,3 +6930,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z81 - closing tour build red on phases leg (transient-suspect, re-dispatched)
 - Failed run 38085619036: phases min_ratio 0.082, worst ~1020ms every line, meshed frozen at 5, mobs 0. Morning green run 38036732269 (same leg): ratio 0.948, worst ~90ms, meshed 5-62, mobs 0-8. No game errors/panics. My arc adds no loops (branch-predicate swaps only) and CI bench green all day. Suspect loaded evening runner (lavapipe timings = noise per AGENTS.md). Re-dispatched once to discriminate; if red again with same signature, profile for real.
+
+## 2026-10-11z82 - tour debug: phases-F3 upload always() (observability, no gate change)
+- World pipeline fully exonerated (gen/mesh/light A/B equal, no poison in full disc, no loops/panics). Failing runs save a 492KB F3 shot that never uploads; making it always-upload like the neighboring evidence steps. Next tour yields the shot (fps/phases/GPU/biome/XYZ) whatever the verdict.

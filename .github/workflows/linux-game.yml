@@ -483,6 +483,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload phases F3 screenshot (1.1v V1 evidence)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: e2e-phases-f3

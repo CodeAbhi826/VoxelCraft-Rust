@@ -28374,8 +28374,8 @@ mod settings_tests {
         assert_eq!(g.inv.len(), 36);
         // canvas fallback: #C6C6C6 body inside the panel rect
         let px = ui.px.as_chunks::<4>().0;
-        let stride = ui.live_w as usize;
-        let mid = px[(ui.live_h as usize / 2) * stride + stride / 2];
+        let stride = ui.live_w;
+        let mid = px[(ui.live_h / 2) * stride + stride / 2];
         assert_eq!([mid[0], mid[1], mid[2]], [0xC6, 0xC6, 0xC6]);
         // GPU layer: the Panel-cell 9-slice quads exist
         assert!(

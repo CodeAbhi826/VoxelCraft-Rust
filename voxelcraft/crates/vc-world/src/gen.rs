@@ -9548,13 +9548,13 @@ mod golden_determinism_tests {
     /// 2026-10-10): the 3 overworld mains + all overworld targeted pins
     /// move with cross-chunk veins; nether/end pins byte-identical.
     const GOLDEN: [u64; 9] = [
-        0xc4b9_3891_ba02_ca0a, // seed c0ffee12345678, overworld
+        0xd42d_04d3_d955_cd22, // seed c0ffee12345678, overworld
         0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
         0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
-        0x9203_607f_0e8a_d037, // seed deadbeef00000001, overworld
+        0xd24f_a15f_934f_8f28, // seed deadbeef00000001, overworld
         0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
         0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
-        0x6444_7c6d_7817_884f, // seed 7, overworld
+        0xe1d3_b3f8_11ef_abd5, // seed 7, overworld
         0xbb9f_4859_d4d2_ae6a, // seed 7, nether
         0x821f_f1cc_25ca_21cd, // seed 7, end
     ];
@@ -9618,19 +9618,19 @@ mod golden_determinism_tests {
     const GOLDEN_WIDE: [u64; 15] = [
         // 4.4a re-pin: overworld entries move with cross-chunk veins
         // (nether/end byte-identical)
-        0x4904_7659_00b3_8cf8,
+        0x697f_3742_9bc0_ef86,
         0xc224_973a_dbae_0f7d,
         0x00dc_0ad5_7854_7143,
-        0xccd3_c97a_85a3_f253,
+        0xad53_a20e_e8cd_33de,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0x060a_3c5b_dfab_707f,
+        0xab7e_3a35_efff_44ac,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
-        0x844f_9cef_ec1d_4acf,
+        0xbc98_c068_8ea4_a352,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
-        0xbe2f_fe49_ae8f_a49d,
+        0x1996_eaa5_7460_9954,
         0x5675_e557_60cc_6f5a,
         0x12df_709c_8a36_fee3,
     ];
@@ -9669,10 +9669,10 @@ mod golden_determinism_tests {
         // village to chunk (72,11) (search-determined) with new
         // contents
         0x7399_c8ba_3427_79c2,
-        // 4.1p re-pin (CI-measured): shelf gates moved ravine
-        // chunk (0,0) contents (coords fixed — the ravine roll is
-        // position-only, the biome bytes moved)
-        0x3c9f_a975_d9cf_3894,
+        // 4.1r re-pin (CI-measured): river precedence reclassed
+        // ravine chunk (0,0) water columns (coords fixed — the ravine
+        // roll is position-only)
+        0x922d_61ee_ddc3_bd70,
         // 4.1p re-pin (CI-measured): shelf gates moved ocean chunk
         // (-1,1) contents (coords fixed — the h60-61 shelf left the
         // ocean split)

@@ -6918,3 +6918,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z77 - 4.1r river precedence (riverstat probe)
 - Probe: carve cores 99pct wet but classified ocean (bed 58 < ocean line); only h60-61 fringe read as river. River branch moved before ocean, band 0.035 (outer ring 56pct wet stays out). Predict river ~4.5pct, ocean ~9pct. Probe example + river_field accessor ride along (dev-only).
+
+## 2026-10-11z78 - 4.1r harvest (run 38084044401, CI-measured)
+- Pinned 3 mains + 5 wides + ravine. Village/stronghold/spawn/content green. Ocean pin surfaces next, then verification census.

@@ -12654,6 +12654,181 @@ impl GameApp {
                 self.ui.dirty = true;
                 true
             }
+            // 3.6c: effect/enchant/summon (targets are player-only —
+            // mobs carry no status-effect or equipment state)
+            "effect" => {
+                match argv.get(1).map(|s| s.as_str()) {
+                    Some("give") => {
+                        let Some(ts) = argv.get(2) else {
+                            self.chat.system(
+                                "Usage: /effect give <target> <effect> [seconds] [amplifier]"
+                                    .to_string(),
+                            );
+                            return true;
+                        };
+                        match self.resolve_target(ts) {
+                            Ok(CmdTarget::Me) => {}
+                            Ok(CmdTarget::Mob(_)) | Err(_) => {
+                                self.chat.system(
+                                    "Only players can hold status effects".to_string(),
+                                );
+                                return true;
+                            }
+                        }
+                        let kind = match argv
+                            .get(3)
+                            .and_then(|s| vc_gameplay::effects::EffectKind::by_name(s))
+                        {
+                            Some(k) => k,
+                            None => {
+                                self.chat.system("Unknown effect".to_string());
+                                return true;
+                            }
+                        };
+                        let secs = argv
+                            .get(4)
+                            .and_then(|s| s.parse::<u32>().ok())
+                            .unwrap_or(30)
+                            .min(1_000_000);
+                        let amp = argv
+                            .get(5)
+                            .and_then(|s| s.parse::<u8>().ok())
+                            .unwrap_or(0);
+                        use vc_gameplay::effects::EffectKind;
+                        match kind {
+                            // instant kinds resolve immediately (2^(amp+1)
+                            // HP — the potion-magnitude shape; damage rides
+                            // the armor path, disclosed)
+                            EffectKind::InstantHealth => {
+                                self.player.heal(2.0_f32.powi(amp as i32 + 1))
+                            }
+                            EffectKind::InstantDamage => {
+                                self.player.damage(2.0_f32.powi(amp as i32 + 1))
+                            }
+                            _ => self.player.effects.apply(
+                                kind,
+                                amp,
+                                (secs * 20).min(i32::MAX as u32) as i32,
+                            ),
+                        }
+                        self.chat.system(format!(
+                            "Gave {} to Player for {secs} seconds",
+                            argv[3].as_str()
+                        ));
+                    }
+                    Some("clear") => {
+                        // `effect clear [target]` (vanilla also takes an
+                        // effect id — disclosed: clears all here)
+                        let ts = argv.get(2).map(|s| s.as_str()).unwrap_or("@s");
+                        match self.resolve_target(ts) {
+                            Ok(CmdTarget::Me) => {}
+                            Ok(CmdTarget::Mob(_)) | Err(_) => {
+                                self.chat.system(
+                                    "Only players can hold status effects".to_string(),
+                                );
+                                return true;
+                            }
+                        }
+                        self.player.effects.clear();
+                        self.chat.system("Cleared Player's effects".to_string());
+                    }
+                    _ => self.chat.system(
+                        "Usage: /effect <give <target> <effect> [seconds] [amplifier]|clear [target]>"
+                            .to_string(),
+                    ),
+                }
+                self.ui.dirty = true;
+                true
+            }
+            "enchant" => {
+                let Some(ts) = argv.get(1) else {
+                    self.chat
+                        .system("Usage: /enchant <target> <enchantment> [level]".to_string());
+                    return true;
+                };
+                match self.resolve_target(ts) {
+                    Ok(CmdTarget::Me) => {}
+                    Ok(CmdTarget::Mob(_)) | Err(_) => {
+                        self.chat
+                            .system("Only players hold enchanted items".to_string());
+                        return true;
+                    }
+                }
+                let id = match argv
+                    .get(2)
+                    .and_then(|s| vc_gameplay::enchanting::enchant_by_id(s))
+                {
+                    Some(id) => id,
+                    None => {
+                        self.chat.system("Unknown enchantment".to_string());
+                        return true;
+                    }
+                };
+                // level defaults to 1, clamps to the registry max
+                // (disclosed: no incompatibility check)
+                let max = vc_gameplay::enchanting::enchant_def(id).max_level;
+                let level = argv
+                    .get(3)
+                    .and_then(|s| s.parse::<u8>().ok())
+                    .unwrap_or(1)
+                    .clamp(1, max);
+                if self.player.held().is_empty() {
+                    self.chat.system("No item held".to_string());
+                    return true;
+                }
+                self.player.held_mut().set_enchant(id, level);
+                self.chat.system(format!(
+                    "Enchanted held item with {} {}",
+                    argv[2].as_str(),
+                    level
+                ));
+                self.ui.dirty = true;
+                true
+            }
+            "summon" => {
+                let Some(name) = argv.get(1) else {
+                    self.chat
+                        .system("Usage: /summon <entity> [x y z]".to_string());
+                    return true;
+                };
+                let bare = name.rsplit(':').next().unwrap_or(name);
+                let kind = match vc_gameplay::mobs::MobKind::from_name(bare) {
+                    Some(k) => k,
+                    None => {
+                        self.chat.system(format!("Unknown entity: {name}"));
+                        return true;
+                    }
+                };
+                let p = self.player.pos;
+                let (x, y, z) = if argv.len() >= 5 {
+                    use vc_gameplay::command::parse_coord;
+                    match (
+                        parse_coord(&argv[2], p.x),
+                        parse_coord(&argv[3], p.y),
+                        parse_coord(&argv[4], p.z),
+                    ) {
+                        (Some(x), Some(y), Some(z)) => (x, y, z),
+                        _ => {
+                            self.chat
+                                .system("Usage: /summon <entity> [x y z]".to_string());
+                            return true;
+                        }
+                    }
+                } else {
+                    (p.x, p.y, p.z)
+                };
+                match self.sim.mobs.spawn_at(
+                    kind,
+                    x.floor() as i32,
+                    y.floor() as i32,
+                    z.floor() as i32,
+                ) {
+                    Some(_) => self.chat.system(format!("Summoned {bare}")),
+                    None => self.chat.system("Cannot spawn here".to_string()),
+                }
+                self.ui.dirty = true;
+                true
+            }
             _ => false,
         }
     }

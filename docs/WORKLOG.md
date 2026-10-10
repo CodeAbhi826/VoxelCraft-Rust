@@ -6650,3 +6650,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z11 — 3.6b closed (selectors/give/tp/kill, CI-green)
 - Legal-audit lesson: two trademark terms in command docs/tests (fixed + local [PASS]). Next: 3.6c effect/enchant/summon, 3.6d world-edit, 3.7 scoreboard, Part-3 packet.
+
+## 2026-10-10z12 — 3.6c: effect/enchant/summon
+- effects.rs EffectKind::by_name (31 ids) + test. Commands: effect give (seconds/amplifier, instant kinds resolve immediately)/clear, enchant (held item, level clamp, no conflict check), summon (snake/namespace names, coords or feet, cap-safe). Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).

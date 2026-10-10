@@ -234,6 +234,43 @@ impl EffectKind {
             EffectKind::HeroOfTheVillage => 32,
         }
     }
+
+    /// 3.6c: lookup by the vanilla id string (`speed`, `jump_boost`…).
+    pub fn by_name(s: &str) -> Option<EffectKind> {
+        Some(match s {
+            "speed" => EffectKind::Speed,
+            "slowness" => EffectKind::Slowness,
+            "haste" => EffectKind::Haste,
+            "mining_fatigue" => EffectKind::MiningFatigue,
+            "strength" => EffectKind::Strength,
+            "instant_health" => EffectKind::InstantHealth,
+            "instant_damage" => EffectKind::InstantDamage,
+            "jump_boost" => EffectKind::JumpBoost,
+            "nausea" => EffectKind::Nausea,
+            "regeneration" => EffectKind::Regeneration,
+            "resistance" => EffectKind::Resistance,
+            "fire_resistance" => EffectKind::FireResistance,
+            "water_breathing" => EffectKind::WaterBreathing,
+            "invisibility" => EffectKind::Invisibility,
+            "blindness" => EffectKind::Blindness,
+            "night_vision" => EffectKind::NightVision,
+            "hunger" => EffectKind::Hunger,
+            "weakness" => EffectKind::Weakness,
+            "poison" => EffectKind::Poison,
+            "wither" => EffectKind::Wither,
+            "health_boost" => EffectKind::HealthBoost,
+            "absorption" => EffectKind::Absorption,
+            "saturation" => EffectKind::Saturation,
+            "glowing" => EffectKind::Glowing,
+            "levitation" => EffectKind::Levitation,
+            "luck" => EffectKind::Luck,
+            "unluck" => EffectKind::BadLuck,
+            "slow_falling" => EffectKind::SlowFalling,
+            "conduit_power" => EffectKind::ConduitPower,
+            "dolphins_grace" => EffectKind::DolphinsGrace,
+            _ => return None,
+        })
+    }
 }
 
 /// One active effect: amplifier 0 = level I, 1 = level II (vanilla
@@ -592,6 +629,18 @@ pub fn hero_of_the_village_active(effects: &Effects) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn by_name_covers_common_ids() {
+        assert_eq!(EffectKind::by_name("speed"), Some(EffectKind::Speed));
+        assert_eq!(
+            EffectKind::by_name("jump_boost"),
+            Some(EffectKind::JumpBoost)
+        );
+        assert_eq!(EffectKind::by_name("unluck"), Some(EffectKind::BadLuck));
+        assert_eq!(EffectKind::by_name("haste_ii"), None);
+        assert_eq!(EffectKind::by_name(""), None);
+    }
 
     #[test]
     fn wither_ticks_damage_every_second_and_can_kill() {

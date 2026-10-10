@@ -57,6 +57,12 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ),
     ("help", "help [<command>]"),
     ("give", "give <target> <item> [count]"),
+    (
+        "effect",
+        "effect <give <target> <effect> [seconds] [amplifier]|clear [target]>",
+    ),
+    ("enchant", "enchant <target> <enchantment> [level]"),
+    ("summon", "summon <entity> [x y z]"),
     ("kill", "kill [target]"),
     ("me", "me <action>"),
     ("say", "say <message>"),
@@ -155,6 +161,7 @@ mod tests {
         let names: Vec<&str> = COMMANDS.iter().map(|(n, _)| *n).collect();
         for need in [
             "help", "seed", "gamemode", "time", "weather", "say", "me", "give", "tp", "kill",
+            "effect", "enchant", "summon",
         ] {
             assert!(names.contains(&need), "missing {need}");
         }

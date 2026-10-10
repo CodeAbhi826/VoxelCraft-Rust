@@ -171,6 +171,48 @@ impl Biome {
         }
     }
 
+    /// 4.1a: vanilla 1.16.5 registry id for the 4.0 numeric-diff
+    /// exchange (census reports these, not internal ids). Sources:
+    /// the ids already cited across this file's comments (taiga 5,
+    /// swamp 6, jungle 21, birch 27, savanna 35, badlands 37,
+    /// mushroom 14, river 7, crimson 171, warped 172, soul 170,
+    /// basalt 173) plus the undisputed base ids (ocean 0, plains 1,
+    /// desert 2, mountains 3, forest 4, beach 16, snowy→12,
+    /// flower 132, sunflower 129, ice spikes 140, dark forest 29,
+    /// warm 44, lukewarm 45, cold 46, frozen 10, nether wastes 8).
+    pub fn vanilla_id(self) -> u8 {
+        match self {
+            Biome::Ocean => 0,
+            Biome::Plains => 1,
+            Biome::Desert => 2,
+            Biome::Mountains => 3,
+            Biome::Forest => 4,
+            Biome::Taiga => 5,
+            Biome::Swamp => 6,
+            Biome::River => 7,
+            Biome::NetherWastes => 8,
+            Biome::FrozenOcean => 10,
+            Biome::Snowy => 12,
+            Biome::MushroomFields => 14,
+            Biome::Beach => 16,
+            Biome::Jungle => 21,
+            Biome::BirchForest => 27,
+            Biome::DarkForest => 29,
+            Biome::Savanna => 35,
+            Biome::Badlands => 37,
+            Biome::WarmOcean => 44,
+            Biome::LukewarmOcean => 45,
+            Biome::ColdOcean => 46,
+            Biome::SunflowerPlains => 129,
+            Biome::FlowerForest => 132,
+            Biome::IceSpikes => 140,
+            Biome::SoulSandValley => 170,
+            Biome::CrimsonForest => 171,
+            Biome::WarpedForest => 172,
+            Biome::BasaltDeltas => 173,
+        }
+    }
+
     /// 1.16 (Nether Update, part 2): the nether biome family — the
     /// wastes + the two forests (region gates for mob spawning and
     /// the snow-golem heat rule: every nether flavor is "hot").
@@ -4347,6 +4389,25 @@ impl TerrainGen {
             }
         }
         best.map(|(_, p)| p)
+    }
+
+    /// 4.1a: biome census — (vanilla_id, columns) over a chunk
+    /// rect, sorted by id. Facts-only exchange format for the 4.0
+    /// numeric-diff loop (L5: counts, never positions).
+    pub fn biome_census(&self, cx0: i32, cz0: i32, w: i32, h: i32) -> Vec<(u8, u64)> {
+        use std::collections::BTreeMap;
+        let mut m: BTreeMap<u8, u64> = BTreeMap::new();
+        for cx in cx0..cx0 + w {
+            for cz in cz0..cz0 + h {
+                for lx in 0..16 {
+                    for lz in 0..16 {
+                        *m.entry(self.column(cx * 16 + lx, cz * 16 + lz).biome.vanilla_id())
+                            .or_default() += 1;
+                    }
+                }
+            }
+        }
+        m.into_iter().collect()
     }
 
     pub fn villages_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
@@ -8935,6 +8996,27 @@ mod libm_pinned_tests {
             gen.locate_structure("village", 100, -40),
             gen.locate_structure("village", 100, -40)
         );
+    }
+
+    /// 4.1a: census covers every column exactly once and is stable.
+    #[test]
+    fn biome_census_counts_columns() {
+        let gen = TerrainGen::new(PIN_SEED);
+        let c = gen.biome_census(0, 0, 2, 3);
+        let total: u64 = c.iter().map(|(_, n)| n).sum();
+        assert_eq!(total, 2 * 3 * 256);
+        assert!(c.windows(2).all(|w| w[0].0 < w[1].0));
+        assert_eq!(c, gen.biome_census(0, 0, 2, 3));
+    }
+
+    /// 4.1a: vanilla ids match the cited registry values.
+    #[test]
+    fn vanilla_ids_spot_checks() {
+        assert_eq!(Biome::Ocean.vanilla_id(), 0);
+        assert_eq!(Biome::River.vanilla_id(), 7);
+        assert_eq!(Biome::MushroomFields.vanilla_id(), 14);
+        assert_eq!(Biome::Jungle.vanilla_id(), 21);
+        assert_eq!(Biome::CrimsonForest.vanilla_id(), 171);
     }
 
     /// ravines_near_chunk exercises dcos32/dsin32 per ravine.

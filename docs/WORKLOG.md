@@ -6698,3 +6698,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z23 — 4.0 APPROVED (owner: "start the part 4")
 - Starting 4.1 biomes (target: 100% on oracle seeds).
+
+## 2026-10-10z24 — 4.1a: vanilla ids + biome census probe
+- Biome::vanilla_id (28 ids, sourced in-comment) + TerrainGen::biome_census (chunk-rect histogram, sorted) + 2 tests. Exchange format for the 4.0 loop: seed + rect + census rows. Local: 3/3 gen tests green. AWAITING owner reference numbers to tune against.

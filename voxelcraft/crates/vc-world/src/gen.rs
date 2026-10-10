@@ -9655,10 +9655,10 @@ mod golden_determinism_tests {
         // village to chunk (72,11) (search-determined) with new
         // contents
         0x7399_c8ba_3427_79c2,
-        // 4.1o re-pin (CI-measured): relief gates moved ravine
+        // 4.1p re-pin (CI-measured): shelf gates moved ravine
         // chunk (0,0) contents (coords fixed — the ravine roll is
         // position-only, the biome bytes moved)
-        0x0cb9_28d4_1bfe_ae3b,
+        0x3c9f_a975_d9cf_3894,
         // 4.1o re-pin (CI-measured): relief gates moved ocean chunk
         // (-1,1) contents (coords fixed — the ocean/land split moved
         // with the h61 shelf)

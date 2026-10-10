@@ -6897,3 +6897,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z70 - 4.1p hardenings + harvest (run 38079926723)
 - Mountain-gate move broke 3 tests, all diagnosed: shallow probe h60 now land (moved to h58); fern scan window filled with high podzol taiga (16-chunk accumulation); badlands first-hit relocated (16-chunk floor scan). Pinned 3 mains + 5 wides + village (72,11) + spawn (232.5,71,248.5). Ravine/ocean sequential next.
+
+## 2026-10-11z71 - ravine pin (run 38080470656, CI-measured)
+- Hardenings hold (ferns/badlands/shallow green). Ravine chunk (0,0) pinned 3c9fa975. Ocean pin surfaces next, then verification census.

@@ -6623,3 +6623,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z02 — 3.4a: lang keys + recipe book unlock tracking
 - lang.rs: key_for/text roundtrip over the whole registry (solid→block key), 3 tests. craft.rs RecipeBook (unlock_for/is_unlocked/sorted list) + pickup hook on Player + test. Local: gameplay 335/335, app check clean.
+
+## 2026-10-10z03 — 3.4b: recipe-book panel on the crafting screen (view-only)
+- Crafting branch: Book toggle button + unlocked-name list (12 rows + overflow count), geom hit-rects for 3.4c; game book_open field (cleared on screen/container reset), pickup unlock hook from 3.4a retained. Local: render+app check clean, fmt clean; tests deferred to CI (host busy).

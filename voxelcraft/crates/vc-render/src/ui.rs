@@ -4365,6 +4365,8 @@ impl UiCanvas {
             beacon: None,
             grind: None,
             mount: None,
+            book_button: (i32::MIN, i32::MIN),
+            book_rows: Vec::new(),
         };
 
         // ---- container-specific top area ----
@@ -4504,6 +4506,45 @@ impl UiCanvas {
                 let oy = cy + 22;
                 self.slot_well(ox, oy, &view.craft_out, atlas);
                 geom.craft_out = (ox, oy);
+                // 3.4b: recipe-book toggle + unlocked list (click fills
+                // the grid in 3.4c; this slice is view-only)
+                let bb = (x0 - 46, cy);
+                self.rect(bb.0, bb.1, 36, 28, [160, 160, 160, 255]);
+                self.text(bb.0 + 4, bb.1 + 8, "Book", [40, 40, 40, 255], 1);
+                geom.book_button = bb;
+                if view.book_open {
+                    let bw = 190i32;
+                    let bx = x0 - 46 - bw - 8;
+                    let by = cy;
+                    self.rect(
+                        bx,
+                        by - 6,
+                        bw,
+                        12 + 16 * view.book.len().min(12) as i32 + 14,
+                        [198, 198, 198, 255],
+                    );
+                    for (i, out) in view.book.iter().take(12).enumerate() {
+                        let ry = by + i as i32 * 16;
+                        let key = vc_gameplay::lang::key_for(*out);
+                        self.text(
+                            bx + 6,
+                            ry,
+                            &vc_gameplay::lang::text(&key),
+                            [40, 40, 40, 255],
+                            1,
+                        );
+                        geom.book_rows.push((ry, *out));
+                    }
+                    if view.book.len() > 12 {
+                        self.text(
+                            bx + 6,
+                            by + 12 * 16,
+                            &format!("+{} more", view.book.len() - 12),
+                            [40, 40, 40, 255],
+                            1,
+                        );
+                    }
+                }
             }
             ContainerKind::Chest | ContainerKind::Barrel => {
                 // Phase 3: 3 rows of 9 slots, centered (the barrel shares
@@ -6272,6 +6313,10 @@ pub struct ContainerView {
     pub offhand: ItemStack,
     /// stack riding the mouse cursor
     pub cursor: ItemStack,
+    /// 3.4b: recipe book — open state + unlocked outputs to list
+    /// (crafting table screen; game passes the player's book)
+    pub book_open: bool,
+    pub book: Vec<u16>,
 }
 
 /// one trade row as the screen serves it (Phase 5: tier + stock state)
@@ -6497,6 +6542,10 @@ pub struct ContainerGeom {
     /// Round 12b: the mount screen's saddle slot (llamas show the
     /// strength badge instead — not a hit target)
     pub mount: Option<MountGeom>,
+    /// 3.4b: recipe-book toggle button origin (i32::MIN when absent)
+    pub book_button: (i32, i32),
+    /// 3.4b: book rows (y origin, recipe output id) for click routing
+    pub book_rows: Vec<(i32, u16)>,
 }
 
 impl ContainerGeom {
@@ -7041,6 +7090,8 @@ mod tests {
             armor: [ItemStack::EMPTY; 4],
             offhand: ItemStack::EMPTY,
             cursor: ItemStack::EMPTY,
+            book_open: false,
+            book: Vec::new(),
             anvil: None,
             beacon: None,
             grind: None,
@@ -8081,10 +8132,14 @@ mod screen_tests {
             ],
             offhand: vc_inventory::inventory::ItemStack::new(vc_blocks::blocks::SHIELD, 1),
             cursor: vc_inventory::inventory::ItemStack::EMPTY,
+            book_open: false,
+            book: Vec::new(),
             anvil: None,
             beacon: None,
             grind: None,
             mount: None,
+            book_button: (i32::MIN, i32::MIN),
+            book_rows: Vec::new(),
         };
         let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
         let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
@@ -8147,10 +8202,14 @@ mod screen_tests {
             armor: [vc_inventory::inventory::ItemStack::EMPTY; 4],
             offhand: vc_inventory::inventory::ItemStack::EMPTY,
             cursor: vc_inventory::inventory::ItemStack::EMPTY,
+            book_open: false,
+            book: Vec::new(),
             anvil: None,
             beacon: None,
             grind: None,
             mount: None,
+            book_button: (i32::MIN, i32::MIN),
+            book_rows: Vec::new(),
         };
         let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
         let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
@@ -8640,6 +8699,8 @@ mod round13_station_tests {
             armor: [ItemStack::EMPTY; 4],
             offhand: ItemStack::EMPTY,
             cursor: ItemStack::EMPTY,
+            book_open: false,
+            book: Vec::new(),
             anvil,
             beacon: None,
             grind: None,
@@ -8810,6 +8871,8 @@ mod round12b_mount_screen_tests {
             armor: [ItemStack::EMPTY; 4],
             offhand: ItemStack::EMPTY,
             cursor: ItemStack::EMPTY,
+            book_open: false,
+            book: Vec::new(),
             anvil: None,
             beacon: None,
             grind: None,

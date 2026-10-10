@@ -207,6 +207,8 @@ fn main() {
             armor: [vc_inventory::inventory::ItemStack::EMPTY; 4],
             offhand: vc_inventory::inventory::ItemStack::EMPTY,
             cursor: vc_inventory::inventory::ItemStack::EMPTY,
+            book_open: false,
+            book: Vec::new(),
         };
         ui.container_screen(&view, (0.0, 0.0), &atlas, false);
     });

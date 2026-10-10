@@ -1763,6 +1763,8 @@ pub struct GameApp {
     container: Option<Container>,
     /// hit-test geometry of the open container screen
     container_geom: Option<vc_render::ui::ContainerGeom>,
+    /// 3.4b: recipe-book panel open (crafting screen; cleared on close)
+    book_open: bool,
     /// stack held by the cursor in a container screen
     cursor_stack: vc_inventory::inventory::ItemStack,
     /// Round 13: the anvil rename field's live buffer (typing goes here
@@ -3305,6 +3307,7 @@ impl GameApp {
             sim: vc_sim::sim::Sim::new(0xC0FF_EE01),
             hives_stats_pollinated: 0,
             container: None,
+            book_open: false,
             container_geom: None,
             cursor_stack: vc_inventory::inventory::ItemStack::EMPTY,
             anvil_rename: String::new(),
@@ -7067,6 +7070,7 @@ impl GameApp {
         self.weather_acc = 0.0;
         self.particle_verts.clear();
         self.container = None;
+        self.book_open = false;
         self.container_geom = None;
         self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
         self.craft_grid = [vc_inventory::inventory::ItemStack::EMPTY; 9];
@@ -12443,6 +12447,15 @@ impl GameApp {
         // rename field are hit-rects OUTSIDE the SlotRef space (they are
         // buttons, not slots) — resolved before the slot scan
         if let Some(g) = self.container_geom.as_ref() {
+            // 3.4b: recipe-book toggle (rows are display-only until
+            // the 3.4c fill; clicks fall through harmlessly)
+            let (bx, by) = g.book_button;
+            if bx != i32::MIN && ux >= bx && ux < bx + 36 && uy >= by && uy < by + 28 {
+                self.book_open = !self.book_open;
+                self.click_sound();
+                self.ui.dirty = true;
+                return;
+            }
             if let Some(b) = g.beacon.as_ref() {
                 let on_confirm = ux >= b.confirm.0
                     && ux < b.confirm.0 + 36
@@ -13632,6 +13645,8 @@ impl GameApp {
             beacon,
             grind,
             mount,
+            book_open: self.book_open,
+            book: self.player.recipe_book.unlocked_list(),
         }
     }
 
@@ -23617,6 +23632,7 @@ impl GameApp {
         self.particles.density = self.settings.particle_density();
         self.particle_verts.clear();
         self.container = None;
+        self.book_open = false;
         self.container_geom = None;
         self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
         self.craft_grid = [vc_inventory::inventory::ItemStack::EMPTY; 9];
@@ -27613,6 +27629,8 @@ mod settings_tests {
             armor: [ItemStack::EMPTY; 4],
             offhand: ItemStack::EMPTY,
             cursor: ItemStack::EMPTY,
+            book_open: false,
+            book: Vec::new(),
         };
         let g = ui.container_screen(&view, (480.0, 270.0), &atlas, false);
         // geometry: 27 chest slots + 36 player slots

@@ -6856,3 +6856,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-10z59 — shell removal (owner-ordered) + L3b reuse gate lands
 - Removed the Next.js template shell + scaffold (src/, examples/websocket/, package.json, bun.lock, configs, .zscripts/, tests/*.sh, Caddyfile, mini-services/, prisma/): zero game references, CI is Rust-only. public/ stays (WASM front). AGENTS.md updated.
 - L3b: REUSE.toml stanzas (docs/prose GPL per owner split; generated art CC-BY-SA; notices to their fonts) — `reuse lint` 4386/4386 locally, gate added to licenses job (pinned reuse==6.2.0). MPL-2.0 text removed (REUSE flags unreferenced texts; symphonia stays allow-listed in deny.toml). Debug icon-dump PNGs removed + `target/` ignore (write-only test debris).
+
+## 2026-10-10z59 — closed (CI-green 38073596968, 12/12 incl. new reuse-lint gate)
+
+## 2026-10-10z60 — 4.1n: fit round 3 (family splits + mountain/river/deep gates)
+- Full-population census (owner seed, 128x128) vs copy ratios drove this round. Family splits to the uniform cell roll (exact): dark 33% of forest, giant 28% of taiga (hills stay height-gated, podzol band kept), flower 45% of a narrowed birch base (3->1), badlands 5% of warm (was 0.001%), mushroom special-pick 8->2 + E1 gate 0.83->0.87 (full-pop read 1.6% vs <0.3%). Mountain gate 96->84 [ESTIMATED]; river band 0.01->0.03 (geometric step one, carve untouched); deep back to height-pure (layer-interior union over-marked 2.3x). Deferred: beach 3x + deep-threshold fine-tune (need relief histogram), plains revisit after mountains settle. Expect golden + spawn re-pins from CI.

@@ -1073,16 +1073,16 @@ impl TerrainGen {
         // snow/warm gates); height branches below stay untouched.
         let (lx, lz) = (pos.0.div_euclid(4), pos.1.div_euclid(4));
         // 4.1i2: height owns the land/ocean split (the layer-ocean
-        // seam rule flooded beaches); the stack owns deep marking +
-        // family picks (special consulted below).
-        let (_, layer_deep, special) = self.layer_cell(lx, lz);
+        // seam rule flooded beaches); deep is height-pure (4.1n: the
+        // 4.1h layer-interior union over-marked deep 2.3x vs the copy).
+        let (_, _, special) = self.layer_cell(lx, lz);
         let (snow, warm) = self.layer_climate(lx, lz);
         // family pick hash (position-deterministic; proportions FIT)
         let pick = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, lx, 0xB17, lz) % 100;
         let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
             // 4.1i: ocean family from gates + depth (temp retired —
             // uncorrelated per copy measurement)
-            let deep = h < vc_chunk::SEA_LEVEL - 6 || layer_deep;
+            let deep = h < vc_chunk::SEA_LEVEL - 6;
             if snow {
                 (Biome::FrozenOcean, GRAVEL, GRAVEL)
             } else if warm {
@@ -1109,7 +1109,10 @@ impl TerrainGen {
                 // the neutral temperate ocean (the pre-1.13 "Ocean")
                 (Biome::Ocean, SAND, GRAVEL)
             }
-        } else if rv.abs() < 0.01 && h <= vc_chunk::SEA_LEVEL {
+        } else if rv.abs() < 0.03 && h <= vc_chunk::SEA_LEVEL {
+            // 4.1n: river band widened toward the carve edge (0.06);
+            // copy rivers are 5.7% vs our 0.006% — geometric step one,
+            // carve profile untouched (dedicated slice if still short)
             // Vanilla-parity terrain round: the river band — carved by
             // the ridged river field (disclosed adaptation of vanilla's
             // layer-stack rivers); sand-over-dirt bed, water fills to
@@ -1124,7 +1127,11 @@ impl TerrainGen {
             } else {
                 (Biome::Beach, SAND, SAND)
             }
-        } else if h > 96 {
+        } else if h > 84 {
+            // 4.1n: mountain gate 96 -> 84 (copy mountains mean 84.0
+            // at 10.7% vs our 0.19% of >96 peaks; [ESTIMATED] —
+            // verify share on the next census, pushes plains/taiga
+            // down as the family takes high terrain)
             // 4.1e: mountain family splits by variant field
             // ([ESTIMATED] thresholds — vanilla hills rise with the
             // base; wooded 34 / gravelly 131 from the Before-1.18 table)
@@ -1153,22 +1160,24 @@ impl TerrainGen {
                 if var > 0.58 {
                     (Biome::IceSpikes, SNOW, DIRT)
                 } else {
-                    match self.layer_base_biome(special, true, false, var, lx, lz) {
-                        Biome::Taiga => self.taiga_overlay(h, var),
+                    match self.layer_base_biome(special, true, false, lx, lz) {
+                        Biome::Taiga => self.taiga_overlay(h, var, pick),
                         _ => (Biome::Snowy, SNOW_GRASS, DIRT),
                     }
                 }
             } else {
-                let base = self.layer_base_biome(special, false, warm, var, lx, lz);
-                self.finish_land_base(base, h, var)
+                let base = self.layer_base_biome(special, false, warm, lx, lz);
+                self.finish_land_base(base, h, var, pick)
             }
         };
         (biome, top, filler)
     }
 
     /// 4.1i: land-base finish (hills + variant overlays shared by the
-    /// snow and temperate paths).
-    fn finish_land_base(&self, base: Biome, h: i32, var: f32) -> (Biome, u16, u16) {
+    /// snow and temperate paths). Family-internal splits ride the
+    /// uniform cell roll `pick` (4.1n — the var-field tails gave
+    /// 3%/2%/3% vs copy 33%/28%/67%).
+    fn finish_land_base(&self, base: Biome, h: i32, var: f32, pick: u32) -> (Biome, u16, u16) {
         match base {
             // 4.1k: badlands keeps its red-sand floor (the warm-gate
             // addition restores it; surface unchanged from 4.1e)
@@ -1188,9 +1197,10 @@ impl TerrainGen {
                 }
             }
             Biome::Jungle => (Biome::Jungle, GRASS, DIRT),
-            Biome::Taiga => self.taiga_overlay(h, var),
+            Biome::Taiga => self.taiga_overlay(h, var, pick),
             Biome::BirchForest => {
-                if var > 0.42 {
+                // flower forest 45% of the narrow birch base
+                if pick < 45 {
                     (Biome::FlowerForest, GRASS, DIRT)
                 } else if h >= 78 {
                     (Biome::BirchHills, GRASS, DIRT)
@@ -1199,7 +1209,8 @@ impl TerrainGen {
                 }
             }
             Biome::Forest => {
-                if var > 0.38 {
+                // dark forest 33% of the forest family (copy share)
+                if pick < 33 {
                     (Biome::DarkForest, GRASS, DIRT)
                 } else {
                     (Biome::Forest, GRASS, DIRT)
@@ -1216,10 +1227,12 @@ impl TerrainGen {
         }
     }
 
-    /// 4.1i: taiga family overlay (giant/hills/pod-zolg) shared by the
-    /// snow and temperate paths.
-    fn taiga_overlay(&self, h: i32, var: f32) -> (Biome, u16, u16) {
-        if var > 0.55 {
+    /// 4.1i: taiga family overlay (giant/hills/pod-zol) shared by the
+    /// snow and temperate paths. Giant membership rides the uniform
+    /// cell roll (4.1n FIT: 28% of the family vs the var-tail 2%);
+    /// hills stay height-gated, lowland podzol keeps its var band.
+    fn taiga_overlay(&self, h: i32, var: f32, pick: u32) -> (Biome, u16, u16) {
+        if pick < 28 {
             if h >= 80 {
                 (Biome::GiantTreeTaigaHills, PODZOL, DIRT)
             } else {
@@ -1253,7 +1266,7 @@ impl TerrainGen {
         // 4.1j FIT: gate 0.63 → 0.78 (measured 7.6% at 0.63 vs rare
         // in the reference copy).
         let mush = self.n_mush.noise2(xf / 400.0, zf / 400.0);
-        if self.dim == Dimension::Overworld && mush > 0.83 {
+        if self.dim == Dimension::Overworld && mush > 0.87 {
             let h = (vc_chunk::SEA_LEVEL as f32 + 1.0 + (mush - 0.63) * 30.0)
                 .floor()
                 .min(vc_chunk::SEA_LEVEL as f32 + 6.0) as i32;
@@ -1676,7 +1689,7 @@ impl TerrainGen {
                 bd /= 9.0;
                 bv /= 9.0;
                 let mush = self.n_mush.noise2(wx as f32 / 400.0, wz as f32 / 400.0);
-                let island = if self.dim == Dimension::Overworld && mush > 0.83 {
+                let island = if self.dim == Dimension::Overworld && mush > 0.87 {
                     Some(
                         (vc_chunk::SEA_LEVEL as f64 + 1.0 + (mush as f64 - 0.63) * 30.0)
                             .min(vc_chunk::SEA_LEVEL as f64 + 6.0),
@@ -1801,7 +1814,7 @@ impl TerrainGen {
                 // height — a ravine canyon keeps its surface biome)
                 let col_idx = z * 16 + x;
                 let mush = self.n_mush.noise2(wx as f32 / 400.0, wz as f32 / 400.0);
-                let (biome, top, filler) = if self.dim == Dimension::Overworld && mush > 0.83 {
+                let (biome, top, filler) = if self.dim == Dimension::Overworld && mush > 0.87 {
                     (Biome::MushroomFields, MYCELIUM, DIRT)
                 } else {
                     let (temp, humid, var) = self.climate_fields(wx, wz);
@@ -3477,7 +3490,7 @@ impl TerrainGen {
         let xf = x as f32;
         let zf = z as f32;
         let mush = self.n_mush.noise2(xf / 400.0, zf / 400.0);
-        if self.dim == Dimension::Overworld && mush > 0.83 {
+        if self.dim == Dimension::Overworld && mush > 0.87 {
             let isl = (vc_chunk::SEA_LEVEL as f64 + 1.0 + (mush as f64 - 0.63) * 30.0)
                 .min(vc_chunk::SEA_LEVEL as f64 + 6.0);
             return (y as f64) <= isl;
@@ -4726,15 +4739,7 @@ impl TerrainGen {
     /// map below is retained for reference, not called).
     /// Category members follow documented biome climates; gate
     /// percentages are FIT.
-    fn layer_base_biome(
-        &self,
-        special: bool,
-        snow: bool,
-        warm: bool,
-        var: f32,
-        cx4: i32,
-        cz4: i32,
-    ) -> Biome {
+    fn layer_base_biome(&self, special: bool, snow: bool, warm: bool, cx4: i32, cz4: i32) -> Biome {
         let pick = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, cx4, 0xB17, cz4) % 100;
         // ocean reference map (snow → frozen, warm → warm, deep →
         // deep-cold/deep split, else cold/luke/ocean thirds) — see
@@ -4747,10 +4752,9 @@ impl TerrainGen {
             };
         }
         if warm {
-            // 4.1k: badlands rides the warm gate by variant (documented
-            // hot-dry family; threshold [ESTIMATED], restores the
-            // badlands content tests)
-            if var > 0.65 {
+            // 4.1n FIT: badlands 5% of warm cells (copy-global ~0.4%;
+            // the var>0.65 tail gave 0.001%) via the uniform cell roll
+            if pick < 5 {
                 return Biome::Badlands;
             }
             return match pick % 3 {
@@ -4760,23 +4764,24 @@ impl TerrainGen {
             };
         }
         if special {
-            // 4.1j FIT: mushroom islands are rare (~0.5% of land)
-            return if pick < 8 {
+            // 4.1n FIT: mushroom 2% of special cells (full-population
+            // read 1.6% vs <0.3% in the copy; the E1 gate drops 0.83
+            // -> 0.87 alongside)
+            return if pick < 2 {
                 Biome::MushroomFields
             } else {
                 Biome::Plains
             };
         }
         match pick % 100 {
-            // 4.1l FIT from the owner-copy census (temperate-land
-            // shares: plains ~28%, taiga family ~30%, forest family
-            // ~14%, birch family ~1%; birch held at 3% so the
-            // flower-forest content stays discoverable). The old
-            // thirds made birch 8.3% vs 0.2% in the copy and left
-            // temperate taiga (12.7%+giants in the copy) absent.
-            0..=35 => Biome::Plains,
-            36..=74 => Biome::Taiga,
-            75..=96 => Biome::Forest,
+            // 4.1n FIT: plains 39 / taiga 38 / forest 22 / birch 1
+            // (copy temperate-land: plains ~28%, taiga family ~30%,
+            // forest family ~14%, birch proper 0.2%; the narrow birch
+            // base plus the 45% flower roll below lands flower forest
+            // at ~0.3% vs 0.4% in the copy).
+            0..=38 => Biome::Plains,
+            39..=76 => Biome::Taiga,
+            77..=98 => Biome::Forest,
             _ => Biome::BirchForest,
         }
     }
@@ -9993,28 +9998,36 @@ mod libm_pinned_tests {
         }
         let g = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
         // deep water classifies ocean-family regardless of gates
+        // (4.1n: the deep split now includes deep-lukewarm 15%)
         let deep_biome = g.classify(0.1, 0.0, 0.0, 55, 1.0, (0, 0)).0;
         assert!(
             matches!(
                 deep_biome,
-                Biome::DeepColdOcean | Biome::DeepOcean | Biome::FrozenOcean
+                Biome::DeepColdOcean
+                    | Biome::DeepOcean
+                    | Biome::DeepLukewarmOcean
+                    | Biome::FrozenOcean
             ),
             "deep water is ocean-family, got {deep_biome:?}"
         );
         // shallow water classifies ocean-family too
         let shal_biome = g.classify(0.1, 0.0, 0.0, 60, 1.0, (0, 0)).0;
         assert!(shal_biome.is_ocean(), "got {shal_biome:?}");
-        // overlay helpers are pure elevation/variant gates
+        // overlay helpers are pure elevation/variant gates (4.1n: the
+        // family splits take the uniform cell roll as 4th arg)
         assert_eq!(
-            g.finish_land_base(Biome::Desert, 80, 0.0).0,
+            g.finish_land_base(Biome::Desert, 80, 0.0, 0).0,
             Biome::DesertHills
         );
-        assert_eq!(g.finish_land_base(Biome::Desert, 64, 0.0).0, Biome::Desert);
         assert_eq!(
-            g.finish_land_base(Biome::Taiga, 80, 0.0).0,
+            g.finish_land_base(Biome::Desert, 64, 0.0, 0).0,
+            Biome::Desert
+        );
+        assert_eq!(
+            g.finish_land_base(Biome::Taiga, 80, 0.0, 50).0,
             Biome::TaigaHills
         );
-        assert_eq!(g.taiga_overlay(80, 0.6).0, Biome::GiantTreeTaigaHills);
+        assert_eq!(g.taiga_overlay(80, 0.6, 10).0, Biome::GiantTreeTaigaHills);
         // deep oceans are ocean family
         assert!(Biome::DeepOcean.is_ocean());
         assert!(Biome::DeepLukewarmOcean.is_ocean());

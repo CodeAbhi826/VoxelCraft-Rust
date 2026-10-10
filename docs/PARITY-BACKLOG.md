@@ -131,3 +131,32 @@ All mechanics, numbers, and constants documented here are verified against autho
    - **Thunderstorm**: 3,600 to 15,600 ticks (3 to 13 minutes), active only during rain.
    - **Transition Intensity**: Smooth linear ramp over 100 ticks (0.01 per tick) for `rain_level` and `thunder_level`.
    - Darkening sky light curve, rain streak particles, splash particles on top block faces, spatial thunder claps.
+
+## 4.2c Structure coverage audit (2026-10-10, Part 4)
+
+Placement provenance per structure (1.16.5 scope). "Documented" =
+public data/doc source cited in code; [ESTIMATED] = engine tuning.
+
+| Structure | Status | Placement rule |
+|---|---|---|
+| Village | Present | Documented (spacing 34 / separation 8 / salt 10387312); margin convention [ESTIMATED] |
+| Desert pyramid | Present | 32-chunk regions [ESTIMATED]; salt engine-local |
+| Jungle temple | Present | 32-chunk regions [ESTIMATED]; salt engine-local |
+| Woodland mansion | Present | 8-chunk regions, 1/5 gate [ESTIMATED] |
+| Mineshaft | Present | 0.4%/chunk VERIFIED + bounds/corridors tested |
+| Stronghold | Present | 3-ring layout, pinned |
+| Dungeon (monster room) | Present | Pre-existing |
+| Nether fortress | Present | Pre-existing region roll |
+| Nether/overworld fossil | Present | 1/64 per chunk VERIFIED |
+| Witch hut | Missing | Needs documented dimensions → 4.2d candidate or Part 6 |
+| Igloo | Missing | Same |
+| Ocean monument | Missing | Same (needs water-aware emit) |
+| Pillager outpost | Missing | Same |
+| Bastion remnant | Missing | Same (4 variants) |
+| Ruined portal | Missing | Same |
+| Shipwreck / ocean ruin / buried treasure | Missing | Same (ocean set) |
+| Desert well | Missing | Same (trivial shape, needs docs) |
+| End city + ship | Missing | Blocked on End outer islands (4.3/4.4) |
+
+Rule: no missing structure is built from estimated dimensions without
+owner approval — shapes need documented sources first (4.0 method).

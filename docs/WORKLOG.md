@@ -6722,3 +6722,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Pyramid/jungle/mansion onto one spread_candidate helper (salt-mixed rng + uniform window + site checks) with named (spacing, margin, salt) consts + provenance notes. Positions byte-identical (live-rng helper after catching a stream-restart bug pre-commit). Local: 10/10 incl. all golden pins green, audit [PASS]. Tuning numbers await owner diffs.
 
 ## 2026-10-10z31 — 4.2b closed (CI-green, pins hold)
+
+## 2026-10-10z32 — 4.2c: structure coverage audit
+- Mineshafts/strongholds/fortresses/fossils verified present + tested; no code needed. Audit table in PARITY-BACKLOG.md: 9 present (with provenance), 12 missing with disposition (documented dims first, else Part 6). Next: 4.2d doc research for the cheapest missing set (well/hut/igloo) or 4.3 terrain.

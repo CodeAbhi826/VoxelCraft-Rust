@@ -6738,3 +6738,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z35 — owner Survival import test: PASS
 - Copy-only (/tmp/opencode/survival-copy); source manifest identical before/after/after-run (UNTOUCHED). Gate Supported (1.16.5); 20 region files; 11,857 chunks decoded, 0 failed, 139,043,755 non-air cells. Probe file deleted, never committed. No world content enters the tree — counts only.
+
+## 2026-10-10z34 — owner Survival import + 4.2d fix CI (see z35)
+
+## 2026-10-10z36 — 4.2e: desert well + witch hut (prose-faithful)
+- wells_near (1/1000/chunk, desert + 5x5 sand site; FEATURE, outside structures gate) + witch_huts_near (32-region spread, swamp-gated) + emit_well (walls/cap/water plus) + emit_hut (stilts/cabin/stepped roof/porch/furniture, no residents/vines). Tests: determinism, swamp gating, emit signature blocks. Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).

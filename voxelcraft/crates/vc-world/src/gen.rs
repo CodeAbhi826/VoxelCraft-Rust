@@ -655,6 +655,17 @@ pub const JUNGLE_SALT: u64 = 0x3E4E;
 pub const MANSION_SPACING: i32 = 8;
 pub const MANSION_MARGIN: i32 = 1;
 pub const MANSION_SALT: u64 = 0xA11C;
+/// 4.2e: desert-well chance per chunk, JE 1/1000 (VERIFIED w/Desert_Well:
+/// "1⁄1000 [JE only]"; the well is a FEATURE — generates with the
+/// structures option off). Position-within-chunk jitter + salt are
+/// engine choices [ESTIMATED]; the salt is unpublished.
+pub const WELL_CHANCE_DENOM: u32 = 1000;
+pub const WELL_SALT: u64 = 0x9E11;
+/// 4.2e: witch-hut spread — temple-family 32-chunk regions (placement
+/// numbers unpublished, [ESTIMATED]); swamp-only site check.
+pub const HUT_SPACING: i32 = 32;
+pub const HUT_MARGIN: i32 = 4;
+pub const HUT_SALT: u64 = 0x9117;
 /// pyramid candidate spacing [tuning value — vanilla's structure spacing
 /// is not published on the wiki; one candidate per 32×32-chunk region]
 pub const PYRAMID_REGION_CHUNKS: i32 = 32;
@@ -3206,6 +3217,15 @@ impl TerrainGen {
                 }
                 self.emit_stronghold(&mut chunk, sx, sz, ox, oz);
             }
+            // 4.2e: witch huts ride the structures gate (scattered)
+            for &(hx, hz) in self.witch_huts_near(ox, oz).iter() {
+                self.emit_hut(&mut chunk, hx, hz, ox, oz);
+            }
+        }
+        // 4.2e: desert wells are FEATURES (generate with the structures
+        // option off — w/Desert_Well) — hooked outside the gate
+        for &(wx, wz) in self.wells_near(ox, oz).iter() {
+            self.emit_well(&mut chunk, wx, wz, ox, oz);
         }
 
         (Arc::new(chunk), outbound)
@@ -4472,6 +4492,161 @@ impl TerrainGen {
             }
         }
         m.into_iter().collect()
+    }
+
+    /// 4.2e: desert-well candidates near world position (ox, oz) —
+    /// 1/1000 per chunk, desert biome, 5×5 sand-ground site check
+    /// (prose-faithful: center sand + level ground; the two-levels-
+    /// below rule is approximated by the ±2 level window).
+    pub fn wells_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
+        let mut out = Vec::new();
+        let ccx = ox.div_euclid(16);
+        let ccz = oz.div_euclid(16);
+        for dcx in -1..=1 {
+            for dcz in -1..=1 {
+                let (cx, cz) = (ccx + dcx, ccz + dcz);
+                let mut rng = Rng::new(Rng::hash3(self.seed ^ WELL_SALT, cx, 0, cz));
+                if rng.next_range(WELL_CHANCE_DENOM) != 0 {
+                    continue;
+                }
+                let wx = cx * 16 + rng.next_range(12) as i32 + 2;
+                let wz = cz * 16 + rng.next_range(12) as i32 + 2;
+                let c0 = self.column(wx, wz);
+                if c0.biome != Biome::Desert {
+                    continue;
+                }
+                let mut ok = true;
+                'site: for dx in -2..=2 {
+                    for dz in -2..=2 {
+                        let c = self.column(wx + dx, wz + dz);
+                        if c.top != SAND || (c.height - c0.height).abs() > 2 {
+                            ok = false;
+                            break 'site;
+                        }
+                    }
+                }
+                if ok {
+                    out.push((wx, wz));
+                }
+            }
+        }
+        out
+    }
+
+    /// 4.2e: witch-hut centers near world position (ox, oz) — spread
+    /// cells with a swamp site check.
+    pub fn witch_huts_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
+        let mut out = Vec::new();
+        let r0x = floor_div(ox - 24, HUT_SPACING * 16);
+        let r1x = floor_div(ox + 24, HUT_SPACING * 16);
+        let r0z = floor_div(oz - 24, HUT_SPACING * 16);
+        let r1z = floor_div(oz + 24, HUT_SPACING * 16);
+        for rx in r0x..=r1x {
+            for rz in r0z..=r1z {
+                if let Some(c) = self.witch_hut_center(rx, rz) {
+                    out.push(c);
+                }
+            }
+        }
+        out
+    }
+
+    /// 4.2e: hut center for one spread cell (swamp-gated).
+    fn witch_hut_center(&self, rx: i32, rz: i32) -> Option<(i32, i32)> {
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ HUT_SALT, rx, 0, rz));
+        let (cx, cz) = Self::spread_candidate(rx, rz, HUT_SPACING, HUT_MARGIN, &mut rng);
+        let (wx, wz) = (cx * 16 + 8, cz * 16 + 8);
+        if self.column(wx, wz).biome != Biome::Swamp {
+            return None;
+        }
+        Some((wx, wz))
+    }
+
+    /// 4.2e: desert-well emit — prose-faithful approximation (w/Desert_Well
+    /// materials: sandstone walls, slab cap ring, 5-water plus, sand
+    /// corners). Slabs render as full sandstone (no slab variant yet) and
+    /// the exact cell blueprint is approximated — both disclosed.
+    fn emit_well(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
+        let base = self.column(wx, wz).height;
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
+            let lxi = x - ox;
+            let lzi = z - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
+                chunk.set(lxi as usize, y as usize, lzi as usize, id);
+            }
+        };
+        for dx in -2..=2 {
+            for dz in -2..=2 {
+                let (x, z) = (wx + dx, wz + dz);
+                let corner = dx.abs() == 2 && dz.abs() == 2;
+                let edge = dx.abs() == 2 || dz.abs() == 2;
+                if corner {
+                    put(chunk, x, base, z, SAND);
+                }
+                if edge {
+                    for y in base + 1..=base + 3 {
+                        put(chunk, x, y, z, SANDSTONE);
+                    }
+                    // cap ring (full-block substitution for slabs)
+                    put(chunk, x, base + 4, z, SANDSTONE);
+                }
+            }
+        }
+        // the 5-water plus at layer 2
+        for (dx, dz) in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)] {
+            put(chunk, wx + dx, base + 2, wz + dz, WATER);
+        }
+    }
+
+    /// 4.2e: witch-hut emit — prose-faithful approximation (w/Swamp_Hut:
+    /// 7×7 spruce cabin on oak stilts, plank stepped roof for the stair
+    /// roof, cauldron + crafting table + flower pot inside, porch
+    /// platform). No residents (no gen-time mob spawn path) and no
+    /// vines — both disclosed.
+    fn emit_hut(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
+        let floor = self.column(wx, wz).height + 3;
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
+            let lxi = x - ox;
+            let lzi = z - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
+                chunk.set(lxi as usize, y as usize, lzi as usize, id);
+            }
+        };
+        // stilts: oak logs at the 7×7 corners, ground to floor
+        for (dx, dz) in [(-3, -3), (3, -3), (-3, 3), (3, 3)] {
+            let g = self.column(wx + dx, wz + dz).height;
+            for y in g..floor {
+                put(chunk, wx + dx, y, wz + dz, OAK_LOG);
+            }
+        }
+        // floor + walls (2 high, south door gap) + stepped plank roof
+        for dx in -3..=3 {
+            for dz in -3..=3 {
+                put(chunk, wx + dx, floor, wz + dz, SPRUCE_PLANKS);
+                let edge = dx.abs() == 3 || dz.abs() == 3;
+                let door = dz == 3 && dx == 0;
+                if edge && !door {
+                    put(chunk, wx + dx, floor + 1, wz + dz, SPRUCE_PLANKS);
+                    put(chunk, wx + dx, floor + 2, wz + dz, SPRUCE_PLANKS);
+                }
+                put(chunk, wx + dx, floor + 3, wz + dz, SPRUCE_PLANKS);
+            }
+        }
+        for dx in -2..=2 {
+            for dz in -2..=2 {
+                put(chunk, wx + dx, floor + 4, wz + dz, SPRUCE_PLANKS);
+            }
+        }
+        // porch: 3-wide platform south of the door
+        for dx in -1..=1 {
+            for dz in 4..=5 {
+                put(chunk, wx + dx, floor, wz + dz, SPRUCE_PLANKS);
+            }
+        }
+        // interior: cauldron, crafting table, flower pot (empty)
+        put(chunk, wx - 2, floor + 1, wz - 2, CAULDRON);
+        put(chunk, wx + 2, floor + 1, wz - 2, CRAFTING_TABLE);
+        put(chunk, wx, floor + 1, wz - 2, FLOWER_POT);
     }
 
     pub fn villages_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
@@ -9100,6 +9275,41 @@ mod libm_pinned_tests {
         }
         let wastes = c.iter().find(|(id, _)| *id == 8).unwrap().1;
         assert!(wastes > total / 4, "wastes plurality");
+    }
+
+    /// 4.2e: well/hut placement is deterministic; hut centers sit on
+    /// swamp; emits write their signature blocks into a scratch chunk.
+    #[test]
+    fn well_and_hut_placement_and_emit() {
+        let g = TerrainGen::new(PIN_SEED);
+        assert_eq!(g.wells_near(0, 0), g.wells_near(0, 0));
+        assert_eq!(g.witch_huts_near(0, 0), g.witch_huts_near(0, 0));
+        // every hut center in a ±4-region scan sits on swamp
+        for rx in -4..=4 {
+            for rz in -4..=4 {
+                if let Some((wx, wz)) = g.witch_hut_center(rx, rz) {
+                    assert_eq!(
+                        g.column(wx, wz).biome,
+                        Biome::Swamp,
+                        "hut at ({wx},{wz}) must sit on swamp"
+                    );
+                }
+            }
+        }
+        // emits on a scratch chunk: sandstone ring + water plus, and
+        // the hut floor + cauldron + table + pot
+        let (mut chunk, _) = g.generate_chunk(0, 0, Vec::new());
+        g.emit_well(&mut chunk, 8, 8, 0, 0);
+        let base = g.column(8, 8).height;
+        let get = |c: &Chunk, x: i32, y: i32, z: i32| c.get(x as usize, y as usize, z as usize);
+        assert_eq!(get(&chunk, 8 + 2, base + 1, 8), SANDSTONE, "well wall");
+        assert_eq!(get(&chunk, 8, base + 2, 8), WATER, "well water");
+        g.emit_hut(&mut chunk, 8, 40, 0, 0);
+        let floor = g.column(8, 40).height + 3;
+        assert_eq!(get(&chunk, 8, floor, 40), SPRUCE_PLANKS, "hut floor");
+        assert_eq!(get(&chunk, 8 - 2, floor + 1, 40 - 2), CAULDRON);
+        assert_eq!(get(&chunk, 8 + 2, floor + 1, 40 - 2), CRAFTING_TABLE);
+        assert_eq!(get(&chunk, 8, floor + 1, 40 - 2), FLOWER_POT);
     }
 
     /// 4.1b: large biomes rescale the classification (same seed, same

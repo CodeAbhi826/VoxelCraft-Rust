@@ -144,3 +144,32 @@ is Code-only until captures are V1-viewed.
 8. Locate matches placement rules — TESTED (stronghold pin + determinism; jungle/mansion extraction golden-guarded).
 9. Legal audit clean — VERIFIED (2 tripwire hits caught and scrubbed mid-part).
 10. Part 3 complete bar defers + tour — CLAIMED (defers listed with reasons; tour run linked in worklog).
+
+## PART 4 WORLD-GEN PARITY — REVIEW PACKET (2026-10-10)
+
+Scope: 4.0 black-box gate (approved), biome ids/census/large/Nether
+(4.1a–c), village spread + normalization + audit + blocks + well/hut
+(4.2a–e), amplified/seam/height probes (4.3a–c), vein fix + End
+islands + honesty report (4.4a–c). Every slice CI-green at commit
+(1007 passed / 0 failed, 35 suites; clippy/fmt/wasm/golden-3-OS/
+bench/licenses/audit). Golden re-pins (owner-approved pre-1.0.0):
+village spread, vein rewrite (mains + targeted + wide-overworld;
+nether/end identical). Seam 0.9096 → 0.9516 (miss class: vein clips,
+fixed; residual = canopy timing + discrete deco). Census + height
+rows published for seeds 0/12345; owner reference numbers pending —
+the 100%/99% tuning targets stay open until they arrive. Deferred
+with reasons: 12 structures (need dims), End cities/ships (need
+dims + islands first), stat hooks n/a. Tour dispatched with this
+packet; worldgen visuals are Code-only until V1 captures.
+
+### Adversarial self-review — 10 claims (2026-10-10)
+1. 1007/0 across 35 suites — VERIFIED (CI log lines).
+2. Golden identical 3-OS post-re-pin — VERIFIED (this run).
+3. Village spread documented (34/8/salt) — TESTED (pins + locate).
+4. Well/hut prose-faithful + gated — TESTED (determinism/emit).
+5. Amplified/large modes reshape — TESTED (lift + histogram move).
+6. Seam 0.952 measured, miss classed — TESTED (probe + breakdown).
+7. Nether 5 families at shares — TESTED (census).
+8. Legal audit clean every slice — VERIFIED (2 prior hits scrubbed).
+9. Tuning targets open, not silent — CLAIMED (blocked on owner diffs).
+10. Part 4 code complete bar tuning — CLAIMED (defers listed).

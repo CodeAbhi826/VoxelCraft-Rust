@@ -97,3 +97,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-10: PART 4 at 4.0 gate — proposal written (docs/PART4-PROPOSAL.md). AWAITING OWNER APPROVAL; no Part-4 code until approved.
 
 - 2026-10-10: Part 4 status — 4.1 probes/large/Nether done (tuning awaits owner diffs), 4.2 spread/audit/well/hut done, 4.3 amplified/seam/height probes done. Next: 4.4a vein-seam fix (needs main-hash re-pin approval).
+
+- 2026-10-10: PART 4 CODE CLOSED (packet z43, tour 38036732269 running). Tuning targets open pending owner diffs. Next: Part 5 colour/lighting/packs (doc-driven slices first).

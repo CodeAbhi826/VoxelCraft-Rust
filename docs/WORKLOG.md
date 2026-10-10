@@ -6778,3 +6778,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z42 — 4.4c: carver/decoration honesty report
 - Appendix in PARITY-BACKLOG.md: documented vs estimated per system + approval ask to leave estimates until diffs arrive. No code (nothing tunable without numbers).
+
+## 2026-10-10z43 — PART 4 REVIEW PACKET (code complete, tuning open)
+- 240 words + 10-claim review in docs/CHECKPOINTS.md. Tour run 38036732269 dispatched. Part 4 code CLOSED; numeric tuning awaits owner diffs.

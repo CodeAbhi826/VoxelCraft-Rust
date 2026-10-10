@@ -6707,3 +6707,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z26 — 4.1b: large-biomes mode
 - TerrainGen.large_biomes + for_dimension_large: climate fields + continental shelf sample at /4 (rivers/mountain mask/detail untouched per wiki; continental inclusion [ESTIMATED]). Test: histogram moves, totals hold, stable. Local: 3/3 gen tests green.
+
+## 2026-10-10z26 — 4.1b closed (CI-green)
+
+## 2026-10-10z27 — 4.1c: Nether census + dim-aware probe
+- Found live: column() is overworld-only (Nether test caught it reporting beaches). biome_census now branches per dim (Nether region roll, End single id 9). Test: 16x16 Nether rect holds all 5 families + wastes plurality. Probe takes dim arg. Local: 2/2 census tests green, audit [PASS].

@@ -4422,16 +4422,26 @@ impl TerrainGen {
 
     /// 4.1a: biome census — (vanilla_id, columns) over a chunk
     /// rect, sorted by id. Facts-only exchange format for the 4.0
-    /// numeric-diff loop (L5: counts, never positions).
+    /// numeric-diff loop (L5: counts, never positions). Dimension
+    /// aware: Nether reads the region roll (column() is
+    /// overworld-only); the End is single-biome id 9.
     pub fn biome_census(&self, cx0: i32, cz0: i32, w: i32, h: i32) -> Vec<(u8, u64)> {
         use std::collections::BTreeMap;
         let mut m: BTreeMap<u8, u64> = BTreeMap::new();
         for cx in cx0..cx0 + w {
             for cz in cz0..cz0 + h {
+                let region_id = match self.dim {
+                    Dimension::Nether => Some(nether_region_biome(self.seed, cx, cz).vanilla_id()),
+                    Dimension::End => Some(9),
+                    _ => None,
+                };
                 for lx in 0..16 {
                     for lz in 0..16 {
-                        *m.entry(self.column(cx * 16 + lx, cz * 16 + lz).biome.vanilla_id())
-                            .or_default() += 1;
+                        let id = match region_id {
+                            Some(id) => id,
+                            None => self.column(cx * 16 + lx, cz * 16 + lz).biome.vanilla_id(),
+                        };
+                        *m.entry(id).or_default() += 1;
                     }
                 }
             }
@@ -9036,6 +9046,23 @@ mod libm_pinned_tests {
         assert_eq!(total, 2 * 3 * 256);
         assert!(c.windows(2).all(|w| w[0].0 < w[1].0));
         assert_eq!(c, gen.biome_census(0, 0, 2, 3));
+    }
+
+    /// 4.1c: Nether census over 16×16 chunks holds all five
+    /// families with the wastes plurality (shares pinned by the
+    /// region roll; warped is rarest at 8%, hence the wide rect).
+    #[test]
+    fn nether_census_holds_five_families() {
+        let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Nether);
+        let c = gen.biome_census(0, 0, 16, 16);
+        let total: u64 = c.iter().map(|(_, n)| n).sum();
+        assert_eq!(total, 16 * 16 * 256);
+        let ids: Vec<u8> = c.iter().map(|(id, _)| *id).collect();
+        for want in [8, 171, 172, 170, 173] {
+            assert!(ids.contains(&want), "missing vanilla id {want}: {c:?}");
+        }
+        let wastes = c.iter().find(|(id, _)| *id == 8).unwrap().1;
+        assert!(wastes > total / 4, "wastes plurality");
     }
 
     /// 4.1b: large biomes rescale the classification (same seed, same

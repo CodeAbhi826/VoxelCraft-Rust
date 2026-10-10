@@ -4647,10 +4647,12 @@ impl TerrainGen {
     /// quartiles). Returns (land, deep_ocean, special) per cell:
     /// island grid → 6 doubling zooms with jittered parent picks →
     /// deep marking for ocean interiors → 1-in-13 special marking.
+    /// Wired into assignment in 4.1h (tests only until then).
+    #[allow(dead_code)]
     fn layer_cell(&self, cx4: i32, cz4: i32) -> (bool, bool, bool) {
         let land = self.zoomed_island(cx4, cz4);
         if land {
-            let special = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, cx4, 0, cz4) % 13 == 0;
+            let special = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, cx4, 0, cz4).is_multiple_of(13);
             return (true, false, special);
         }
         // deep marking: ocean interiors (3×3 all ocean) read deep
@@ -4665,6 +4667,8 @@ impl TerrainGen {
     }
 
     /// island base value at 256-block cells (ix, iz).
+    /// Wired into assignment in 4.1h (tests only until then).
+    #[allow(dead_code)]
     fn island_base(&self, ix: i32, iz: i32) -> bool {
         Rng::hash3(self.seed ^ LAYER_SALT_ISLAND, ix, 0, iz) % 100 < LAYER_ISLAND_PCT
     }
@@ -4672,6 +4676,8 @@ impl TerrainGen {
     /// zoom the island grid down to 4-block cells: 6 halvings with a
     /// 0/1 sampling jitter per level (documented zoom behavior —
     /// each child samples its parents with offset).
+    /// Wired into assignment in 4.1h (tests only until then).
+    #[allow(dead_code)]
     fn zoomed_island(&self, cx4: i32, cz4: i32) -> bool {
         let (mut x, mut z) = (cx4, cz4);
         for level in 0..6 {

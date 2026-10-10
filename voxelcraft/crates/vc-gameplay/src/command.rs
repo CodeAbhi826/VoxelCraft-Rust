@@ -77,6 +77,11 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "team",
         "team <add <name> [display]|remove <name>|list [name]|join <team> <target>|leave <target>>",
     ),
+    ("tellraw", "tellraw <target> <json>"),
+    (
+        "title",
+        "title <target> <title|subtitle|actionbar|clear|times> [...]",
+    ),
     ("kill", "kill [target]"),
     ("me", "me <action>"),
     ("say", "say <message>"),
@@ -141,6 +146,75 @@ pub fn parse_coord(s: &str, base: f32) -> Option<f32> {
 /// 3.6d: world-edit volume cap (vanilla fill/clone limit).
 pub const EDIT_VOLUME_LIMIT: usize = 32768;
 
+/// 3.7c: tellraw text extraction — plain strings pass through;
+/// objects/arrays concatenate every `"text"` value in order.
+/// Formatting keys (color/bold/hover...) are ignored: the chat
+/// renderer is unformatted (disclosed — nested `text` keys leak
+/// into the output by the same rule).
+pub fn tellraw_text(json: &str) -> String {
+    let t = json.trim();
+    if !(t.starts_with('{') || t.starts_with('[')) {
+        return unquote(t);
+    }
+    let c: Vec<char> = t.chars().collect();
+    let key: Vec<char> = vec!['"', 't', 'e', 'x', 't', '"'];
+    let mut out = String::new();
+    let mut i = 0;
+    while i + key.len() <= c.len() {
+        if c[i..i + key.len()] == key {
+            let mut j = i + key.len();
+            while j < c.len() && c[j].is_whitespace() {
+                j += 1;
+            }
+            if c.get(j) == Some(&':') {
+                j += 1;
+                while j < c.len() && c[j].is_whitespace() {
+                    j += 1;
+                }
+                if c.get(j) == Some(&'"') {
+                    j += 1;
+                    let mut val = String::new();
+                    let mut esc = false;
+                    while j < c.len() {
+                        let ch = c[j];
+                        if esc {
+                            val.push(match ch {
+                                'n' => '\n',
+                                _ => ch,
+                            });
+                            esc = false;
+                        } else if ch == '\\' {
+                            esc = true;
+                        } else if ch == '"' {
+                            break;
+                        } else {
+                            val.push(ch);
+                        }
+                        j += 1;
+                    }
+                    out.push_str(&val);
+                    i = j + 1;
+                    continue;
+                }
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+/// strip surrounding quotes + unescape `\"`/`\\` (tellraw plain form).
+fn unquote(s: &str) -> String {
+    let t = s.trim();
+    if t.len() >= 2 && t.starts_with('"') && t.ends_with('"') {
+        t[1..t.len() - 1]
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+    } else {
+        t.to_string()
+    }
+}
+
 /// 3.6b: item lookup for `/give` — numeric id or registry snake name
 /// with an optional `namespace:` prefix (`voxelcraft:stone` works).
 pub fn item_by_name(s: &str) -> Option<u16> {
@@ -195,6 +269,8 @@ mod tests {
             "clone",
             "scoreboard",
             "team",
+            "tellraw",
+            "title",
         ] {
             assert!(names.contains(&need), "missing {need}");
         }
@@ -230,5 +306,18 @@ mod tests {
         assert_eq!(parse_coord("~-3", 5.0), Some(2.0));
         assert_eq!(parse_coord("~2.5", 5.0), Some(7.5));
         assert_eq!(parse_coord("abc", 5.0), None);
+    }
+
+    #[test]
+    fn tellraw_extracts_text() {
+        assert_eq!(tellraw_text("hello"), "hello");
+        assert_eq!(tellraw_text("\"quoted\""), "quoted");
+        assert_eq!(tellraw_text("{\"text\":\"hi\"}"), "hi");
+        assert_eq!(
+            tellraw_text("{\"text\":\"a\",\"extra\":[{\"text\":\"b\"}]}"),
+            "ab"
+        );
+        assert_eq!(tellraw_text("[\"\",{\"text\":\"x\"}]"), "x");
+        assert_eq!(tellraw_text("{\"text\":\"a\\\"b\"}"), "a\"b");
     }
 }

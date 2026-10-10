@@ -6669,3 +6669,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z16 — 3.7b: teams
 - scoreboard.rs Team (display + members) + add/remove/list/join/leave/team_of + test. Command: team add/remove/list/join/leave (player-only membership, no team options). Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z16 — 3.7b closed (teams, CI-green)
+
+## 2026-10-10z17 — 3.7c: tellraw + title
+- command.rs tellraw_text (plain passthrough, {"text"}/extra concat, escapes; formatting ignored) + 1 test. Commands: tellraw, title (title/subtitle/actionbar/clear/times). HUD center title (scale 3) + sub + actionbar; tick decay; no fade ramp (disclosed). Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).

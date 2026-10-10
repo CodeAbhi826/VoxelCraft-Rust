@@ -1785,6 +1785,12 @@ pub struct GameApp {
     chat_input: String,
     /// 3.7a: scoreboard (objectives + scores + sidebar slot)
     scoreboard: vc_gameplay::scoreboard::Scoreboard,
+    /// 3.7c: title display (main + subtitle with fade timers) and the
+    /// actionbar line above the hotbar
+    title_main: Option<(String, i32)>,
+    title_sub: Option<(String, i32)>,
+    title_fade: (i32, i32, i32),
+    actionbar: Option<(String, f32)>,
     /// Round 13: the custom-name pool (renamed items carry a name id;
     /// ids start at 1 — see vc_gameplay::anvil::name_pool_id)
     name_pool: Vec<String>,
@@ -3335,6 +3341,10 @@ impl GameApp {
             chat_open: false,
             chat_input: String::new(),
             scoreboard: vc_gameplay::scoreboard::Scoreboard::default(),
+            title_main: None,
+            title_sub: None,
+            title_fade: (10, 70, 20),
+            actionbar: None,
             name_pool: Vec::new(),
             beacon_pending: (None, vc_gameplay::beacon::BeaconSecondary::None),
             beacon_pay: vc_inventory::inventory::ItemStack::EMPTY,
@@ -13287,6 +13297,98 @@ impl GameApp {
                     _ => self
                         .chat
                         .system("Usage: /team <add|remove|list|join|leave>".to_string()),
+                }
+                self.ui.dirty = true;
+                true
+            }
+            // 3.7c: tellraw + title (player-only targets; JSON is
+            // the text-subset extractor — formatting ignored)
+            "tellraw" => {
+                if argv.len() < 3 {
+                    self.chat
+                        .system("Usage: /tellraw <target> <json>".to_string());
+                    return true;
+                }
+                match self.resolve_target(&argv[1]) {
+                    Ok(CmdTarget::Me) => {}
+                    Ok(CmdTarget::Mob(_)) => {
+                        self.chat.system("Only players read chat".to_string());
+                        return true;
+                    }
+                    Err(e) => {
+                        self.chat.system(e);
+                        return true;
+                    }
+                }
+                let text = vc_gameplay::command::tellraw_text(&argv[2..].join(" "));
+                if !text.is_empty() {
+                    self.chat.system(text);
+                }
+                self.ui.dirty = true;
+                true
+            }
+            "title" => {
+                let usage = "Usage: /title <target> <title|subtitle|actionbar|clear|times> [...]";
+                if argv.len() < 3 {
+                    self.chat.system(usage.to_string());
+                    return true;
+                }
+                match self.resolve_target(&argv[1]) {
+                    Ok(CmdTarget::Me) => {}
+                    Ok(CmdTarget::Mob(_)) => {
+                        self.chat.system("Only players see titles".to_string());
+                        return true;
+                    }
+                    Err(e) => {
+                        self.chat.system(e);
+                        return true;
+                    }
+                }
+                // title times are ticks (vanilla fadeIn/stay/fadeOut)
+                let stay = self.title_fade.0 + self.title_fade.1 + self.title_fade.2;
+                match argv[2].as_str() {
+                    "title" => {
+                        let text = vc_gameplay::command::tellraw_text(&argv[3..].join(" "));
+                        self.title_main = Some((text, stay));
+                    }
+                    "subtitle" => {
+                        let text = vc_gameplay::command::tellraw_text(&argv[3..].join(" "));
+                        self.title_sub = Some((text, stay));
+                    }
+                    "actionbar" => {
+                        let text = vc_gameplay::command::tellraw_text(&argv[3..].join(" "));
+                        self.actionbar = Some((text, 3.0));
+                    }
+                    "clear" => {
+                        self.title_main = None;
+                        self.title_sub = None;
+                        self.actionbar = None;
+                    }
+                    "times" => {
+                        if argv.len() != 6 {
+                            self.chat.system(
+                                "Usage: /title <target> times <fadeIn> <stay> <fadeOut>"
+                                    .to_string(),
+                            );
+                            return true;
+                        }
+                        let nums: Option<Vec<i32>> = argv[3..6]
+                            .iter()
+                            .map(|s| s.parse::<i32>().ok().filter(|v| *v >= 0))
+                            .collect();
+                        match nums {
+                            Some(v) => self.title_fade = (v[0], v[1], v[2]),
+                            None => {
+                                self.chat
+                                    .system("Times must be non-negative numbers".to_string());
+                                return true;
+                            }
+                        }
+                    }
+                    _ => {
+                        self.chat.system(usage.to_string());
+                        return true;
+                    }
                 }
                 self.ui.dirty = true;
                 true
@@ -24427,6 +24529,30 @@ impl GameApp {
                 self.ui.dirty = true;
             }
         }
+        // 3.7c: title/actionbar decay (tick units at 20 Hz)
+        {
+            let step = (dt * 20.0) as i32;
+            let mut touched = false;
+            for slot in [&mut self.title_main, &mut self.title_sub] {
+                if let Some((_, t)) = slot {
+                    *t -= step;
+                    if *t <= 0 {
+                        *slot = None;
+                    }
+                    touched = true;
+                }
+            }
+            if let Some((_, t)) = self.actionbar.as_mut() {
+                *t -= dt;
+                if *t <= 0.0 {
+                    self.actionbar = None;
+                }
+                touched = true;
+            }
+            if touched && self.screen == Screen::Game {
+                self.ui.dirty = true;
+            }
+        }
         if let Some((_, t)) = self.item_toast.as_mut() {
             *t -= dt;
             if *t <= 0.0 {
@@ -26980,6 +27106,40 @@ impl GameApp {
                     let vs = v.to_string();
                     let vw = UiCanvas::text_width(&vs, 1);
                     self.ui.text(x + w - 6 - vw, ry, &vs, [255, 85, 85, 255], 1);
+                }
+            }
+            // 3.7c: title block (centered; no fade ramp — appears for
+            // the stay window, disclosed) + actionbar above the hotbar
+            if let Some((text, _)) = self.title_main.as_ref() {
+                if !text.is_empty() {
+                    let w = UiCanvas::text_width(text, 3);
+                    let x = (self.ui.live_w as i32 - w) / 2;
+                    let y = self.ui.live_h as i32 / 2 - 30;
+                    self.ui.text(x, y, text, [255, 255, 255, 255], 3);
+                    if let Some((sub, _)) = self.title_sub.as_ref() {
+                        if !sub.is_empty() {
+                            let sw = UiCanvas::text_width(sub, 1);
+                            self.ui.text(
+                                (self.ui.live_w as i32 - sw) / 2,
+                                y + 34,
+                                sub,
+                                [255, 255, 255, 255],
+                                1,
+                            );
+                        }
+                    }
+                }
+            }
+            if let Some((text, _)) = self.actionbar.as_ref() {
+                if !text.is_empty() {
+                    let w = UiCanvas::text_width(text, 1);
+                    self.ui.text(
+                        (self.ui.live_w as i32 - w) / 2,
+                        self.ui.live_h as i32 - 80,
+                        text,
+                        [255, 255, 255, 255],
+                        1,
+                    );
                 }
             }
             // 3.5a: chat lines bottom-left (vanilla position, newest at

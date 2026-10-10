@@ -4652,7 +4652,8 @@ impl TerrainGen {
     fn layer_cell(&self, cx4: i32, cz4: i32) -> (bool, bool, bool) {
         let land = self.zoomed_island(cx4, cz4);
         if land {
-            let special = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, cx4, 0, cz4).is_multiple_of(13);
+            let special =
+                Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, cx4, 0, cz4).is_multiple_of(13);
             return (true, false, special);
         }
         // deep marking: ocean interiors (3×3 all ocean) read deep

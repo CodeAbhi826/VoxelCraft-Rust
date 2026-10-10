@@ -254,3 +254,6 @@ jobs:
         with:
           manifest-path: voxelcraft/Cargo.toml
           command: check licenses
+
+      - name: reuse lint (REUSE.toml — every tracked file licensed)
+        run: pipx run --spec reuse==6.2.0 reuse lint

@@ -22,6 +22,9 @@ HARD STOP OPEN (see top): CI billing block. The STOP file is absent.)
 - Decision: custom art stays CC-BY-SA-4.0; repo docs/prose
   (`docs/**`, root `*.md`) go GPL-3.0-or-later. Queued: L3b
   `reuse lint` gate + REUSE.toml annotations for prose.
+- L3b LANDED 2026-10-10 (z59): owner chose removal over
+  re-licensing — the template shell is gone, so no authorship
+  question remains. `reuse lint` gates in CI (4386/4386 local).
 - (Split read from owner's "combine" answer; correct this entry if
   misread.)
 

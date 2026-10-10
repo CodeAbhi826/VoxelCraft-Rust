@@ -156,3 +156,6 @@ docs/REPO-AUDIT-*.md
 
 # plan autonomy protocol: STOP file = halt signal (section 0)
 /STOP
+
+# cargo build dirs (any depth — debug dumps must never commit)
+target/

@@ -6850,3 +6850,9 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z58 — ocean-targeted re-pin (last of the refit pins)
 - Ocean (-1,1) contents 0xee5e..->0xac97.. (CI-measured; coords fixed). All 4 targeted + 3 mains + 5 wides now CI-measured green-expectant.
+
+## 2026-10-10z58 — closed (CI-green 38071738069, 12/12 incl. 3-OS goldens + 106 lib tests)
+
+## 2026-10-10z59 — shell removal (owner-ordered) + L3b reuse gate lands
+- Removed the Next.js template shell + scaffold (src/, examples/websocket/, package.json, bun.lock, configs, .zscripts/, tests/*.sh, Caddyfile, mini-services/, prisma/): zero game references, CI is Rust-only. public/ stays (WASM front). AGENTS.md updated.
+- L3b: REUSE.toml stanzas (docs/prose GPL per owner split; generated art CC-BY-SA; notices to their fonts) — `reuse lint` 4386/4386 locally, gate added to licenses job (pinned reuse==6.2.0). MPL-2.0 text removed (REUSE flags unreferenced texts; symphonia stays allow-listed in deny.toml). Debug icon-dump PNGs removed + `target/` ignore (write-only test debris).

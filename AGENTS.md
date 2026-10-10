@@ -8,7 +8,7 @@
 
 ## 2. Workspace Layout (verified)
 - Rust workspace root is **`voxelcraft/`** — every cargo command runs there (CI uses `working-directory: voxelcraft`). 15 crates under `voxelcraft/crates/*`; default member `crates/voxelcraft`. License: **GPL-3.0-or-later** (`deny.toml` allow-list enforced by cargo-deny `check licenses`).
-- Root `package.json` is a separate Next.js shell (`bun`/`next`); don't confuse it with the game workspace.
+- (2026-10-10, owner-ordered: the Next.js template shell + its scaffold — `src/`, `package.json`, configs, `examples/websocket/`, `.zscripts/`, `tests/*.sh`, `Caddyfile`, `mini-services/` — was removed from the tree. `public/` stays: it is the game's WASM front.)
 
 ## 3. CI Gates (what must stay green)
 Per push, `ci.yml`: `python3 scripts/legal_audit.py` (must print `[PASS]`) · `cargo fmt --check` · `cargo test --release --no-default-features --workspace` · golden hash `cargo test -p vc-world --lib golden_determinism` (exactly 9 `GOLDEN seed=` lines, identical on ubuntu/windows/macos) · wasm32 check · `cargo clippy -- -D warnings` · bench (`--features bench-bin --bin vc_bench`, uploads JSON + binary artifacts) · cargo-deny licenses.

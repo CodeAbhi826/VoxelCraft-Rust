@@ -107,3 +107,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-10: 4.1l ratio slice in CI (temperate/ocean pick-splits; re-pins expected). Next: mountain/river measurement slice when machine idle, then height means.
 
 - 2026-10-10: 4.1m re-pin slice in CI (9 hashes from CI logs + 3 test-only hardenings). Next: remaining targeted pins if any, then mountain/river measurement slice.
+
+- 2026-10-10: village-targeted re-pin in CI. Next: ravine/ocean pins if moved, then mountain/river measurement.

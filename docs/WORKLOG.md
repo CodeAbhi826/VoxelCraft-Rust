@@ -6841,3 +6841,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z55 — 4.1m: refit re-pins + flake hardening (from CI 38067595352 values only)
 - Re-pins: 3 mains + 5 wides + stronghold-targeted + spawn (136.5,81,-143.5). Village/ravine/ocean targeted actuals still hidden behind the sequential assert — next CI reveals them. Flower-density accumulates over 8 flower-forest chunks; lily scans 16 forest chunks (both: single-strip zero-flakes after the refit); village test takes the first village WITH houses (first-found ring failed flatness — seed luck).
+
+## 2026-10-10z56 — village-targeted re-pin (CI 38068247089: only failure left)
+- Village target moved (-180,214)->(8,45), hash from CI log. All mains/wides/stronghold already hold. Ravine/ocean actuals still behind the sequential assert — next CI reveals.

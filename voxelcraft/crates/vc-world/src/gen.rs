@@ -9554,8 +9554,9 @@ mod golden_determinism_tests {
         0x168f_ce4e_7fc9_c862,
         // 4.2a re-pin (owner-approved 2026-10-10 — pre-1.0.0, no prior
         // worlds): village spread 34/8/salt-10387312 moved the pinned
-        // village to chunk (14,15); 4.4a veins moved it again
-        0x42b3_2a56_f6a1_e601,
+        // village; 4.4a veins + 4.1l shares moved it again to chunk
+        // (8,45) (CI-measured; the search itself is deterministic)
+        0xc4bb_b783_1833_d3a3,
         0x02eb_b612_07a5_3bef,
         0xee5e_ae52_c52c_67a4,
     ];

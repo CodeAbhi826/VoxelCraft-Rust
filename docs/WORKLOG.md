@@ -6661,3 +6661,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z14 — 3.6d: setblock/fill/clone
 - Table + arms: setblock (light hook), fill (inclusive region, 32768 cap, replace-only), clone (snapshot-then-write, begin-corner lands on dest). Local: app check, 18 command/effect tests green, clippy clean, audit [PASS].
+
+## 2026-10-10z15 — 3.7a: scoreboard objectives/players + sidebar HUD
+- scoreboard.rs: objectives (16-char limit), set/add/get/reset/clear, sidebar top-15 desc + 4 tests. Commands: objectives add/list/remove/setdisplay (sidebar only), players set/add/remove/get/list/reset. HUD right-edge sidebar. Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).

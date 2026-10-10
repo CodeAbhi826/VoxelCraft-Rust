@@ -28,6 +28,8 @@ pub mod modes;
 /// and the far-side build-spot scan (pure over the World; the game layer
 /// owns the world edits + the light hooks)
 pub mod portal;
+/// 3.7a: scoreboard (objectives + scores + sidebar; teams in 3.7b)
+pub mod scoreboard;
 pub mod sleep;
 pub mod spawners;
 /// 3.1b: tool/weapon stats tables (tier speed/damage/durability + the

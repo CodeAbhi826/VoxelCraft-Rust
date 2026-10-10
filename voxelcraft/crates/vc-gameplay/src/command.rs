@@ -69,6 +69,10 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "clone",
         "clone <x1> <y1> <z1> <x2> <y2> <z2> <dx> <dy> <dz>",
     ),
+    (
+        "scoreboard",
+        "scoreboard <objectives <add|list|remove|setdisplay>|players <set|add|remove|get|list|reset>>",
+    ),
     ("kill", "kill [target]"),
     ("me", "me <action>"),
     ("say", "say <message>"),
@@ -169,8 +173,23 @@ mod tests {
     fn table_covers_implemented_commands() {
         let names: Vec<&str> = COMMANDS.iter().map(|(n, _)| *n).collect();
         for need in [
-            "help", "seed", "gamemode", "time", "weather", "say", "me", "give", "tp", "kill",
-            "effect", "enchant", "summon", "setblock", "fill", "clone",
+            "help",
+            "seed",
+            "gamemode",
+            "time",
+            "weather",
+            "say",
+            "me",
+            "give",
+            "tp",
+            "kill",
+            "effect",
+            "enchant",
+            "summon",
+            "setblock",
+            "fill",
+            "clone",
+            "scoreboard",
         ] {
             assert!(names.contains(&need), "missing {need}");
         }

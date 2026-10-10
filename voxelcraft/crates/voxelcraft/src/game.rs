@@ -1783,6 +1783,8 @@ pub struct GameApp {
     chat: vc_gameplay::chat::ChatLog,
     chat_open: bool,
     chat_input: String,
+    /// 3.7a: scoreboard (objectives + scores + sidebar slot)
+    scoreboard: vc_gameplay::scoreboard::Scoreboard,
     /// Round 13: the custom-name pool (renamed items carry a name id;
     /// ids start at 1 — see vc_gameplay::anvil::name_pool_id)
     name_pool: Vec<String>,
@@ -3332,6 +3334,7 @@ impl GameApp {
             chat: vc_gameplay::chat::ChatLog::default(),
             chat_open: false,
             chat_input: String::new(),
+            scoreboard: vc_gameplay::scoreboard::Scoreboard::default(),
             name_pool: Vec::new(),
             beacon_pending: (None, vc_gameplay::beacon::BeaconSecondary::None),
             beacon_pay: vc_inventory::inventory::ItemStack::EMPTY,
@@ -12972,6 +12975,208 @@ impl GameApp {
                     }
                 }
                 self.chat.system(format!("Cloned {n} blocks"));
+                self.ui.dirty = true;
+                true
+            }
+            // 3.7a: scoreboard (objectives + players; teams in 3.7b;
+            // no stat-criterion hooks, no list/belowname slots)
+            "scoreboard" => {
+                match argv.get(1).map(|s| s.as_str()) {
+                    Some("objectives") => match argv.get(2).map(|s| s.as_str()) {
+                        Some("add") => {
+                            if argv.len() < 4 {
+                                self.chat.system(
+                                    "Usage: /scoreboard objectives add <name> <criterion> [display]"
+                                        .to_string(),
+                                );
+                                return true;
+                            }
+                            let display = if argv.len() > 5 {
+                                argv[5..].join(" ")
+                            } else {
+                                String::new()
+                            };
+                            match self.scoreboard.add_objective(&argv[3], &argv[4], &display) {
+                                Ok(()) => self
+                                    .chat
+                                    .system(format!("Added objective {}", argv[3].as_str())),
+                                Err(e) => self.chat.system(e),
+                            }
+                        }
+                        Some("list") => {
+                            let objs = self.scoreboard.list_objectives();
+                            if objs.is_empty() {
+                                self.chat.system("No objectives".to_string());
+                            } else {
+                                for (n, c, d) in objs {
+                                    self.chat.system(format!("{n} ({c}): {d}"));
+                                }
+                            }
+                        }
+                        Some("remove") => {
+                            if argv.len() != 4 {
+                                self.chat.system(
+                                    "Usage: /scoreboard objectives remove <name>".to_string(),
+                                );
+                                return true;
+                            }
+                            if self.scoreboard.remove_objective(&argv[3]) {
+                                self.chat.system(format!("Removed {}", argv[3].as_str()));
+                            } else {
+                                self.chat.system(format!("Unknown objective: {}", argv[3]));
+                            }
+                        }
+                        Some("setdisplay") => {
+                            // setdisplay <sidebar> [objective]
+                            if argv.get(3).map(|s| s.as_str()) != Some("sidebar") {
+                                self.chat
+                                    .system("Only the sidebar slot is supported".to_string());
+                                return true;
+                            }
+                            let obj = argv.get(4).map(|s| s.as_str());
+                            match self.scoreboard.set_display(obj) {
+                                Ok(()) => self.chat.system("Sidebar updated".to_string()),
+                                Err(e) => self.chat.system(e),
+                            }
+                        }
+                        _ => self.chat.system(
+                            "Usage: /scoreboard objectives <add|list|remove|setdisplay>"
+                                .to_string(),
+                        ),
+                    },
+                    Some("players") => {
+                        // entry = the target's name (player selectors are
+                        // all the local player; @e has no scores)
+                        let entry_of = |game: &Self, ts: &str| -> Result<String, String> {
+                            match game.resolve_target(ts) {
+                                Ok(CmdTarget::Me) => Ok("Player".to_string()),
+                                Ok(CmdTarget::Mob(_)) => Err("Entities hold no scores".to_string()),
+                                Err(e) => Err(e),
+                            }
+                        };
+                        match argv.get(2).map(|s| s.as_str()) {
+                            Some("set") | Some("add") | Some("remove") => {
+                                if argv.len() != 6 {
+                                    self.chat.system(
+                                        "Usage: /scoreboard players <set|add|remove> <target> <objective> <count>"
+                                            .to_string(),
+                                    );
+                                    return true;
+                                }
+                                let entry = match entry_of(self, &argv[3]) {
+                                    Ok(e) => e,
+                                    Err(e) => {
+                                        self.chat.system(e);
+                                        return true;
+                                    }
+                                };
+                                let count = match argv[5].parse::<i32>() {
+                                    Ok(v) => v,
+                                    Err(_) => {
+                                        self.chat.system("Count must be a number".to_string());
+                                        return true;
+                                    }
+                                };
+                                let r = match argv[2].as_str() {
+                                    "set" => self
+                                        .scoreboard
+                                        .set_score(&argv[4], &entry, count)
+                                        .map(|_| count),
+                                    "add" => self.scoreboard.add_score(&argv[4], &entry, count),
+                                    _ => self.scoreboard.add_score(&argv[4], &entry, -count),
+                                };
+                                match r {
+                                    Ok(v) => self.chat.system(format!(
+                                        "Set {} score for {} to {v}",
+                                        argv[4].as_str(),
+                                        entry
+                                    )),
+                                    Err(e) => self.chat.system(e),
+                                }
+                            }
+                            Some("get") => {
+                                if argv.len() != 5 {
+                                    self.chat.system(
+                                        "Usage: /scoreboard players get <target> <objective>"
+                                            .to_string(),
+                                    );
+                                    return true;
+                                }
+                                let entry = match entry_of(self, &argv[3]) {
+                                    Ok(e) => e,
+                                    Err(e) => {
+                                        self.chat.system(e);
+                                        return true;
+                                    }
+                                };
+                                match self.scoreboard.get_score(&argv[4], &entry) {
+                                    Some(v) => self
+                                        .chat
+                                        .system(format!("{entry} has {v} [{}]", argv[4].as_str())),
+                                    None => self.chat.system("No score found".to_string()),
+                                }
+                            }
+                            Some("list") => {
+                                // list [target] — all scores or one entry's
+                                if argv.len() == 4 {
+                                    let entry = match entry_of(self, &argv[3]) {
+                                        Ok(e) => e,
+                                        Err(e) => {
+                                            self.chat.system(e);
+                                            return true;
+                                        }
+                                    };
+                                    let mut any = false;
+                                    for (n, _, _) in self.scoreboard.list_objectives() {
+                                        if let Some(v) = self.scoreboard.get_score(n, &entry) {
+                                            self.chat.system(format!("{entry}: {v} [{n}]"));
+                                            any = true;
+                                        }
+                                    }
+                                    if !any {
+                                        self.chat.system("No scores found".to_string());
+                                    }
+                                } else {
+                                    self.chat.system("Tracked entries: Player".to_string());
+                                }
+                            }
+                            Some("reset") => {
+                                if argv.len() != 4 && argv.len() != 5 {
+                                    self.chat.system(
+                                        "Usage: /scoreboard players reset <target> [objective]"
+                                            .to_string(),
+                                    );
+                                    return true;
+                                }
+                                let entry = match entry_of(self, &argv[3]) {
+                                    Ok(e) => e,
+                                    Err(e) => {
+                                        self.chat.system(e);
+                                        return true;
+                                    }
+                                };
+                                if argv.len() == 5 {
+                                    let obj = argv[4].clone();
+                                    if self.scoreboard.clear_score(&obj, &entry) {
+                                        self.chat.system(format!("Reset {entry} [{obj}]"));
+                                    } else {
+                                        self.chat.system("No score found".to_string());
+                                    }
+                                } else {
+                                    let n = self.scoreboard.reset_scores(Some(&entry));
+                                    self.chat.system(format!("Reset {n} scores for {entry}"));
+                                }
+                            }
+                            _ => self.chat.system(
+                                "Usage: /scoreboard players <set|add|remove|get|list|reset>"
+                                    .to_string(),
+                            ),
+                        }
+                    }
+                    _ => self
+                        .chat
+                        .system("Usage: /scoreboard <objectives|players>".to_string()),
+                }
                 self.ui.dirty = true;
                 true
             }
@@ -26642,6 +26847,30 @@ impl GameApp {
                 .item_toast
                 .as_ref()
                 .map(|(s, t)| (s.as_str(), (*t * 200.0).clamp(0.0, 220.0) as u8));
+            // 3.7a: scoreboard sidebar (vanilla: right edge, display
+            // name on top, scores desc, entry left + value right)
+            if let Some((title, lines)) = self.scoreboard.sidebar_lines() {
+                let tw = UiCanvas::text_width(&title, 1);
+                let w = lines
+                    .iter()
+                    .map(|(e, v)| UiCanvas::text_width(&format!("{e} {v}"), 1))
+                    .max()
+                    .unwrap_or(0)
+                    .max(tw)
+                    + 12;
+                let h = 14 + lines.len() as i32 * 11;
+                let x = self.ui.live_w as i32 - 8 - w;
+                let y = self.ui.live_h as i32 / 2 - h / 2;
+                self.ui.rect(x, y, w, h, [0, 0, 0, 120]);
+                self.ui.text(x + 6, y + 3, &title, [255, 255, 255, 255], 1);
+                for (i, (e, v)) in lines.iter().enumerate() {
+                    let ry = y + 14 + i as i32 * 11;
+                    self.ui.text(x + 6, ry, e, [255, 255, 255, 255], 1);
+                    let vs = v.to_string();
+                    let vw = UiCanvas::text_width(&vs, 1);
+                    self.ui.text(x + w - 6 - vw, ry, &vs, [255, 85, 85, 255], 1);
+                }
+            }
             // 3.5a: chat lines bottom-left (vanilla position, newest at
             // the bottom, 10 max) + the open input row beneath them.
             // 3.5b: the visibility setting gates (Hidden skips all,

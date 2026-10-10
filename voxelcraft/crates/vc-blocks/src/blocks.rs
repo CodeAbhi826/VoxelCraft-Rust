@@ -15545,7 +15545,7 @@ mod v112_tests {
             TILE_MAX >= TILE_ILLUSIONER,
             "1.12 tiles within the atlas guard"
         );
-        assert_eq!(PICKER_BLOCKS.len(), 471);
+        assert_eq!(PICKER_BLOCKS.len(), 474);
         // the V9 + V10 windows are all present (the picker-gap fix)
         for want in [
             SEA_PICKLE,
@@ -15863,7 +15863,7 @@ mod v115_tests {
         assert_eq!(V12_COUNT, 18);
         assert_eq!(BLOCK_COUNT, 587);
         assert_eq!(STATE_COUNT, 940); // + the Round-13 station identities (861..=862)
-        assert_eq!(PICKER_BLOCKS.len(), 471);
+        assert_eq!(PICKER_BLOCKS.len(), 474);
     }
 }
 #[cfg(test)]
@@ -16029,7 +16029,7 @@ mod v116_tests {
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
         assert_eq!(BLOCK_COUNT, 587);
         assert_eq!(STATE_COUNT, 940); // + the Round-13 station identities (861..=862)
-        assert_eq!(PICKER_BLOCKS.len(), 471);
+        assert_eq!(PICKER_BLOCKS.len(), 474);
     }
 
     /// the V14 window (ids 454..=478, states 750..=775): the
@@ -16224,7 +16224,7 @@ mod v116_tests {
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
         assert_eq!(BLOCK_COUNT, 587);
         assert_eq!(STATE_COUNT, 940); // + the Round-13 station identities (861..=862)
-        assert_eq!(PICKER_BLOCKS.len(), 471);
+        assert_eq!(PICKER_BLOCKS.len(), 474);
     }
 
     /// the V15 window (ids 479..=504, states 776..=803): the

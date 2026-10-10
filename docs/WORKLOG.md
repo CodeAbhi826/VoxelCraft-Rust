@@ -6870,3 +6870,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-10z62 - 4.1n3: patch-coherent overlays + sunflower hardening
 - Full-window census FIT-confirmed: dark 0.79x, giant 1.14x, birch 0.90x; mountains/river/beach/deep stay queued (relief + carve slices). No pins taken, n3 moves hashes again.
 - Mansion root cause: per-cell pick2 is spatial noise, triple-column check needs patch agreement. Fix: pick2 at 16-block patches (marginal unchanged). Sunflower test to 16-chunk accumulation. z61 pins stale, fresh harvest next cycle.
+
+## 2026-10-10z63 - 4.1n3 re-pin harvest (run 38076339624, all CI-measured)
+- Pinned: 2 mains (deadbeef/seed7 ow), 5 wides, village targeted, spawn (96.5,78,-159.5). c0ffee ow + stronghold carried (n3 preserved them). Content green: mansions pass with patches, flower/sunflower/bamboo pass. Ravine/ocean pins surface next (sequential asserts).

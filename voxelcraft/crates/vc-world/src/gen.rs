@@ -9491,10 +9491,10 @@ mod golden_determinism_tests {
         0xff16_e10a_d65e_7cf5, // seed c0ffee12345678, overworld
         0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
         0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
-        0x40a3_224e_1474_9a65, // seed deadbeef00000001, overworld
+        0xa849_c9e4_3a06_2d8e, // seed deadbeef00000001, overworld
         0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
         0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
-        0xd153_342e_c591_b311, // seed 7, overworld
+        0x4b1b_7989_e8b5_e329, // seed 7, overworld
         0xbb9f_4859_d4d2_ae6a, // seed 7, nether
         0x821f_f1cc_25ca_21cd, // seed 7, end
     ];
@@ -9558,19 +9558,19 @@ mod golden_determinism_tests {
     const GOLDEN_WIDE: [u64; 15] = [
         // 4.4a re-pin: overworld entries move with cross-chunk veins
         // (nether/end byte-identical)
-        0xe4cf_4cdc_2f8b_3386,
+        0x6154_afe3_25fb_e0a5,
         0xc224_973a_dbae_0f7d,
         0x00dc_0ad5_7854_7143,
-        0x14fa_6bf0_bcf5_f380,
+        0x653d_d65e_a6f4_3f30,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0xccee_feb8_1f2e_a6fa,
+        0x93e2_4637_113a_fabd,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
-        0x9f71_21e4_96d3_55a5,
+        0xda3b_7f12_165e_a456,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
-        0xfe92_2c68_5cb0_7ae2,
+        0xc0fe_67d9_d629_19f8,
         0x5675_e557_60cc_6f5a,
         0x12df_709c_8a36_fee3,
     ];
@@ -9605,7 +9605,9 @@ mod golden_determinism_tests {
         // worlds): village spread 34/8/salt-10387312 moved the pinned
         // village; 4.4a veins + 4.1l shares moved it again to chunk
         // (8,45) (CI-measured; the search itself is deterministic)
-        0xc4bb_b783_1833_d3a3,
+        // 4.1n3 re-pin (CI-measured): patch overlays moved the pinned
+        // village chunk contents (coords fixed — deterministic search)
+        0xfe24_67ed_230f_2999,
         // 4.1m re-pin (CI-measured): the share refit moved ravine
         // chunk (0,0) contents (coords fixed — the ravine roll is
         // position-only, the biome bytes moved)
@@ -10185,8 +10187,8 @@ mod libm_pinned_tests {
         let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
         let (x, y, z) = gen.find_spawn();
         println!("PIN find_spawn ({x},{y},{z})");
-        // 4.1n2 re-pin: the overlay-roll fix moved the spawn search
-        // result (new layout, same search rules; CI-measured)
-        assert_eq!((x, y, z), (-31.5, 72.0, -55.5), "pin find_spawn");
+        // 4.1n3 re-pin: patch overlays moved the spawn search result
+        // (new layout, same search rules; CI-measured)
+        assert_eq!((x, y, z), (96.5, 78.0, -159.5), "pin find_spawn");
     }
 }

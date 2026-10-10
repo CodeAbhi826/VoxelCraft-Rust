@@ -4258,6 +4258,97 @@ impl TerrainGen {
 
     /// all village centers whose structures can reach into the 16×16 block
     /// area at (ox, oz): village regions overlapping [ox-40, ox+56)
+    /// 3.7e: nearest structure center of a named kind to (x, z) —
+    /// (x, y, z); y is the surface height (mineshafts: the parlor
+    /// floor). Kinds: village, desert_pyramid, jungle_temple,
+    /// woodland_mansion, mineshaft, stronghold (case-insensitive, an
+    /// optional `namespace:` prefix is stripped). None = unknown kind
+    /// or nothing in range (48 region-rings).
+    pub fn locate_structure(&self, kind: &str, x: i32, z: i32) -> Option<(i32, i32, i32)> {
+        let bare = kind.rsplit(':').next().unwrap_or(kind).to_ascii_lowercase();
+        let surf = |wx: i32, wz: i32| self.column(wx, wz).height;
+        match bare.as_str() {
+            "stronghold" => self
+                .strongholds()
+                .into_iter()
+                .map(|(sx, sz)| {
+                    let d = (sx as i64 - x as i64).pow(2) + (sz as i64 - z as i64).pow(2);
+                    (d, (sx, surf(sx, sz), sz))
+                })
+                .min_by_key(|(d, _)| *d)
+                .map(|(_, p)| p),
+            "village" => self.spiral(384, 48, x, z, |s, rx, rz| {
+                s.village_center(rx, rz)
+                    .map(|(wx, wz)| (wx, surf(wx, wz), wz))
+            }),
+            "desert_pyramid" => self.spiral(512, 48, x, z, |s, rx, rz| {
+                s.pyramid_center_pub(rx, rz)
+                    .map(|(wx, wz)| (wx, surf(wx, wz), wz))
+            }),
+            "jungle_temple" => self.spiral(512, 48, x, z, |s, rx, rz| {
+                s.jungle_temple_center(rx, rz)
+                    .map(|(wx, wz)| (wx, surf(wx, wz), wz))
+            }),
+            "woodland_mansion" => self.spiral(128, 64, x, z, |s, rx, rz| {
+                s.woodland_mansion_center(rx, rz)
+                    .map(|(wx, wz)| (wx, surf(wx, wz), wz))
+            }),
+            "mineshaft" => self.spiral(16, 64, x, z, |s, cx, cz| {
+                // parlor anchor math mirrors mineshafts_near exactly
+                // (rng call order: chance, y, px, pz)
+                let mut rng = Rng::new(Rng::hash3(s.seed ^ 0x411E5, cx, 0, cz));
+                if rng.next_f32() >= MINESHAFT_CHANCE {
+                    return None;
+                }
+                let y = 10 + rng.next_range(31) as i32;
+                let px = cx * 16 + 3 + rng.next_range(10) as i32;
+                let pz = cz * 16 + 3 + rng.next_range(10) as i32;
+                Some((px, y, pz))
+            }),
+            _ => None,
+        }
+    }
+
+    /// region-ring spiral returning the nearest center (early stop
+    /// once the next ring outruns the best hit).
+    fn spiral<F>(
+        &self,
+        region: i32,
+        rings: i32,
+        x: i32,
+        z: i32,
+        mut center: F,
+    ) -> Option<(i32, i32, i32)>
+    where
+        F: FnMut(&Self, i32, i32) -> Option<(i32, i32, i32)>,
+    {
+        let crx = x.div_euclid(region);
+        let crz = z.div_euclid(region);
+        let mut best: Option<(i64, (i32, i32, i32))> = None;
+        for ring in 0..=rings {
+            for dx in -ring..=ring {
+                for dz in -ring..=ring {
+                    if ring > 0 && dx.abs() < ring && dz.abs() < ring {
+                        continue; // perimeter only
+                    }
+                    if let Some(p) = center(self, crx + dx, crz + dz) {
+                        let d = (p.0 as i64 - x as i64).pow(2) + (p.2 as i64 - z as i64).pow(2);
+                        if best.map_or(true, |(bd, _)| d < bd) {
+                            best = Some((d, p));
+                        }
+                    }
+                }
+            }
+            if let Some((bd, _)) = best {
+                let edge = (ring + 1) as i64 * region as i64;
+                if edge * edge >= bd {
+                    break;
+                }
+            }
+        }
+        best.map(|(_, p)| p)
+    }
+
     pub fn villages_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
         const RC: i32 = VILLAGE_REGION_CHUNKS * 16; // region size in blocks
         let mut out = Vec::new();
@@ -4794,23 +4885,27 @@ impl TerrainGen {
         let rz1 = floor_div(oz + 16, 32 * 16);
         for rx in rx0..=rx1 {
             for rz in rz0..=rz1 {
-                let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x3E4E, rx, 0, rz));
-                let cx = rx * 32 + 4 + rng.next_range(24) as i32;
-                let cz = rz * 32 + 4 + rng.next_range(24) as i32;
-                let mut ok = true;
-                for d in [0i32, 4, -4] {
-                    let c = self.column(cx * 16 + 8 + d, cz * 16 + 8 + d);
-                    if c.biome != Biome::Jungle || c.height <= vc_chunk::SEA_LEVEL + 1 {
-                        ok = false;
-                        break;
-                    }
-                }
-                if ok {
-                    out.push((cx * 16 + 8, cz * 16 + 8));
+                if let Some(c) = self.jungle_temple_center(rx, rz) {
+                    out.push(c);
                 }
             }
         }
         out
+    }
+
+    /// 3.7e: deterministic jungle-temple center for one region
+    /// (extracted verbatim from jungle_temples_near for /locate).
+    fn jungle_temple_center(&self, rx: i32, rz: i32) -> Option<(i32, i32)> {
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x3E4E, rx, 0, rz));
+        let cx = rx * 32 + 4 + rng.next_range(24) as i32;
+        let cz = rz * 32 + 4 + rng.next_range(24) as i32;
+        for d in [0i32, 4, -4] {
+            let c = self.column(cx * 16 + 8 + d, cz * 16 + 8 + d);
+            if c.biome != Biome::Jungle || c.height <= vc_chunk::SEA_LEVEL + 1 {
+                return None;
+            }
+        }
+        Some((cx * 16 + 8, cz * 16 + 8))
     }
 
     // ---- 1.11 woodland mansion (VERIFIED live 2026-09-07,
@@ -4834,27 +4929,31 @@ impl TerrainGen {
         let rz1 = floor_div(oz + 24, 8 * 16);
         for rx in rx0..=rx1 {
             for rz in rz0..=rz1 {
-                let mut rng = Rng::new(Rng::hash3(self.seed ^ 0xA11C, rx, 0, rz));
-                if rng.next_range(5) != 0 {
-                    continue; // rare (VERIFIED "rarely")
-                }
-                let cx = rx * 8 + 1 + rng.next_range(6) as i32;
-                let cz = rz * 8 + 1 + rng.next_range(6) as i32;
-                // dark-forest ground check
-                let mut ok = true;
-                for d in [0i32, 5, -5] {
-                    let c = self.column(cx * 16 + 8 + d, cz * 16 + 8 + d);
-                    if c.biome != Biome::DarkForest || c.height <= vc_chunk::SEA_LEVEL + 2 {
-                        ok = false;
-                        break;
-                    }
-                }
-                if ok {
-                    out.push((cx * 16 + 8, cz * 16 + 8));
+                if let Some(c) = self.woodland_mansion_center(rx, rz) {
+                    out.push(c);
                 }
             }
         }
         out
+    }
+
+    /// 3.7e: deterministic mansion center for one region (extracted
+    /// verbatim from woodland_mansions_near for /locate).
+    fn woodland_mansion_center(&self, rx: i32, rz: i32) -> Option<(i32, i32)> {
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0xA11C, rx, 0, rz));
+        if rng.next_range(5) != 0 {
+            return None; // rare (VERIFIED "rarely")
+        }
+        let cx = rx * 8 + 1 + rng.next_range(6) as i32;
+        let cz = rz * 8 + 1 + rng.next_range(6) as i32;
+        // dark-forest ground check
+        for d in [0i32, 5, -5] {
+            let c = self.column(cx * 16 + 8 + d, cz * 16 + 8 + d);
+            if c.biome != Biome::DarkForest || c.height <= vc_chunk::SEA_LEVEL + 2 {
+                return None;
+            }
+        }
+        Some((cx * 16 + 8, cz * 16 + 8))
     }
 
     fn emit_woodland_mansion(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
@@ -8816,6 +8915,26 @@ mod libm_pinned_tests {
         }
         println!("PIN strongholds {sh:?} hash={h:#018x}");
         assert_eq!(h, 0x53b0_bd4e_7de0_7709, "pin strongholds");
+    }
+
+    /// 3.7e: locate agrees with the fixed ring, rejects unknown
+    /// kinds, and is deterministic across calls.
+    #[test]
+    fn locate_finds_nearest_stronghold() {
+        let gen = TerrainGen::new(PIN_SEED);
+        let found = gen.locate_structure("stronghold", 0, 0).unwrap();
+        let best = gen
+            .strongholds()
+            .into_iter()
+            .min_by_key(|(sx, sz)| (sx.pow(2) + sz.pow(2)) as i64)
+            .unwrap();
+        assert_eq!((found.0, found.2), best);
+        assert_eq!(gen.locate_structure("Stronghold", 0, 0), Some(found));
+        assert_eq!(gen.locate_structure("castle", 0, 0), None);
+        assert_eq!(
+            gen.locate_structure("village", 100, -40),
+            gen.locate_structure("village", 100, -40)
+        );
     }
 
     /// ravines_near_chunk exercises dcos32/dsin32 per ravine.

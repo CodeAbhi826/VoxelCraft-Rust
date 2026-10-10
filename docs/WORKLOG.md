@@ -6679,3 +6679,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z18 — 3.7d: bossbar
 - bossbar.rs manager (add/remove/get/set value/max/visible/name + frac + test). ui.rs custom_bar (dragon-bar look, label + y slot). Command: bossbar add/remove/list/get/set. HUD stacks visible customs below dragon/wither bars. Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z18 — 3.7d closed (bossbar, CI-green)
+
+## 2026-10-10z19 — 3.7e: locate
+- gen.rs locate_structure (village/desert_pyramid/jungle_temple/woodland_mansion/mineshaft/stronghold) via region-ring spiral + jungle/mansion center extraction (verbatim, golden-guarded) + test. Command arm + table. Local: locate + command tests green, app check clean, audit [PASS].

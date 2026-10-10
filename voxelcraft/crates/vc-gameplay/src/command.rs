@@ -86,6 +86,10 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "bossbar",
         "bossbar <add|remove|list|get|set> [...]",
     ),
+    (
+        "locate",
+        "locate <village|desert_pyramid|jungle_temple|woodland_mansion|mineshaft|stronghold>",
+    ),
     ("kill", "kill [target]"),
     ("me", "me <action>"),
     ("say", "say <message>"),
@@ -276,6 +280,7 @@ mod tests {
             "tellraw",
             "title",
             "bossbar",
+            "locate",
         ] {
             assert!(names.contains(&need), "missing {need}");
         }

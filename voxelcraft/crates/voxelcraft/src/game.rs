@@ -13522,6 +13522,32 @@ impl GameApp {
                 self.ui.dirty = true;
                 true
             }
+            // 3.7e: locate (deterministic placement rules; y is the
+            // surface height, mineshafts the parlor floor)
+            "locate" => {
+                if argv.len() != 2 {
+                    self.chat.system(
+                        "Usage: /locate <village|desert_pyramid|jungle_temple|woodland_mansion|mineshaft|stronghold>"
+                            .to_string(),
+                    );
+                    return true;
+                }
+                let p = self.player.pos;
+                match self.world.gen.locate_structure(
+                    &argv[1],
+                    p.x.floor() as i32,
+                    p.z.floor() as i32,
+                ) {
+                    Some((x, y, z)) => self
+                        .chat
+                        .system(format!("Located {} at [{x}, {y}, {z}]", argv[1].as_str())),
+                    None => self
+                        .chat
+                        .system(format!("Could not find {}", argv[1].as_str())),
+                }
+                self.ui.dirty = true;
+                true
+            }
             _ => false,
         }
     }

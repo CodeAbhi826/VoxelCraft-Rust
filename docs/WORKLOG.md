@@ -6786,3 +6786,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z44 — 5.1a: colour-space audit
 - docs/COLOR-SPACE.md: 15-row conversion table (9 VERIFIED/PARTIAL in code, 6 TO-VERIFY). No code changes. Next: one slice per TO-VERIFY row.
+
+## 2026-10-10z44 — 4.1d: importer fixes from the Survival copy (REAL BUGS)
+- chunk_from_nbt misread 1.16.5 Biomes (assumed 256, real is 1024): order-A surface-quartile decode, verified 85% on 3547 beach columns. read_level_dat read a nonexistent RandomSeed (seed 0!): now prefers WorldGenSettings.seed (their seed 7998960918674860355) + test. Bonus: structure starts readable (4 villages, 51 mineshafts...); village 34-grid supported (nearest ours within 72 blocks once). Source manifest identical through the whole session. Temp probes deleted, never committed. Local: 39/39 vc-anvil green, audit [PASS].

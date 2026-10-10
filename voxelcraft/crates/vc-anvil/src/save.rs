@@ -735,9 +735,17 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
     }
 
     // ---- biomes ----
+    // 1.16.5 stores 1024 ints (64 height-quartiles × 16 entries over
+    // 4×4 columns); legacy/synthetic fixtures carry 256 (one per
+    // column). Order A (idx = q*16 + (z/4)*4 + (x/4)) verified against
+    // 3547 sand-at-sea-level columns in a real 1.16.5 save: 85% read
+    // beach(16) vs 58% transposed (the rest are ocean floors, correctly
+    // non-beach). Surface quartile from the recomputed height.
     if let Some(bi) = level.get("Biomes").and_then(|b| b.as_i32_slice()) {
-        for (slot, b) in chunk.biome.iter_mut().zip(bi.iter()) {
-            *slot = vanilla_biome_to_ours(*b);
+        if bi.len() != 1024 {
+            for (slot, b) in chunk.biome.iter_mut().zip(bi.iter()) {
+                *slot = vanilla_biome_to_ours(*b);
+            }
         }
     }
 
@@ -756,6 +764,19 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
     }
 
     recompute_height(&mut chunk);
+    // 1.16.5 1024-layout surface decode (see the biomes note above).
+    if let Some(bi) = level.get("Biomes").and_then(|b| b.as_i32_slice()) {
+        if bi.len() == 1024 {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    let h = chunk.height[z * 16 + x] as usize;
+                    let q = (h >> 2).min(63);
+                    let idx = q * 16 + (z / 4) * 4 + (x / 4);
+                    chunk.biome[z * 16 + x] = vanilla_biome_to_ours(bi[idx]);
+                }
+            }
+        }
+    }
     Ok((
         chunk,
         if any_light {
@@ -1061,7 +1082,15 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
         .map(|v| v != 0)
         .unwrap_or(false);
     let mut meta = WorldMeta {
-        seed: get_i64("RandomSeed").unwrap_or(0) as u64,
+        // 1.16.5 keeps the seed in WorldGenSettings.seed (no top-level
+        // RandomSeed — found live: a real Survival level.dat carries
+        // only the WGS seed; legacy RandomSeed stays as fallback).
+        seed: data
+            .get("WorldGenSettings")
+            .and_then(|w| w.get("seed"))
+            .and_then(|v| v.as_i64())
+            .map(|v| v as u64)
+            .unwrap_or_else(|| get_i64("RandomSeed").unwrap_or(0) as u64),
         name: data
             .get("LevelName")
             .and_then(|v| v.as_str())
@@ -1723,6 +1752,40 @@ mod tests {
         assert_eq!(hm.as_i64_slice().unwrap().len(), 37);
     }
 
+    /// 1.16.5 1024-layout biome decode: surface quartile, order A.
+    /// Band 0 of the fixture holds desert(2) in coarse cell (1,1),
+    /// plains(1) elsewhere; the flat test chunk's surface sits in
+    /// quartile 0, so column (5,7) decodes desert and (0,0) plains.
+    #[test]
+    fn biome_1024_layout_decodes_surface_quartile() {
+        let mut sec = Nbt::compound();
+        sec.set("Y", Nbt::Byte(0));
+        let mut pal_air = Nbt::compound();
+        pal_air.set("Name", Nbt::String("voxelcraft:air".into()));
+        let mut pal_stone = Nbt::compound();
+        pal_stone.set("Name", Nbt::String("voxelcraft:stone".into()));
+        sec.set("Palette", Nbt::List(vec![pal_air, pal_stone]));
+        let mut data = vec![0i64; 256];
+        data[0] = 0x1111_1111_1111_1111u64 as i64; // bottom row stone
+        sec.set("BlockStates", Nbt::LongArray(data));
+        let mut level = Nbt::compound();
+        level.set("xPos", Nbt::Int(0));
+        level.set("zPos", Nbt::Int(0));
+        level.set("Sections", Nbt::List(vec![sec]));
+        let mut biomes = vec![1i32; 1024];
+        biomes[(1 << 2) | 1] = 2; // band 0, coarse (x/4=1, z/4=1)
+        level.set("Biomes", Nbt::IntArray(biomes));
+        let mut root = Nbt::compound();
+        root.set("DataVersion", Nbt::Int(2586));
+        root.set("Level", level);
+        let bytes = nbt::write_root("", &root).unwrap();
+
+        let (chunk, _) = chunk_from_nbt(&bytes).unwrap();
+        assert_eq!(chunk.biome[7 * 16 + 5], 4); // desert → ours
+        assert_eq!(chunk.biome[0], 2); // plains → ours
+        assert_eq!(chunk.biome[15 * 16 + 15], 2);
+    }
+
     #[test]
     fn foreign_vanilla_chunk_parses() {
         // hand-built 1.16.5-style section: palette [air, stone, oak_log
@@ -2132,6 +2195,32 @@ mod tests {
         // the death lock survives the save cycle — a dead hardcore world
         // must never come back as playable
         assert!(back.hardcore_dead);
+    }
+
+    /// 1.16.5 keeps the seed in WorldGenSettings.seed (no top-level
+    /// RandomSeed): a synthetic level.dat in the real shape must read
+    /// its seed back.
+    #[test]
+    fn read_level_dat_prefers_worldgensettings_seed() {
+        let dir = tmp_dir("wgs-seed");
+        let mut data = Nbt::compound();
+        let mut wgs = Nbt::compound();
+        wgs.set("seed", Nbt::Long(7998960918674860355));
+        data.set("WorldGenSettings", wgs);
+        data.set("LevelName", Nbt::String("WGS".into()));
+        data.set("DataVersion", Nbt::Int(DATA_VERSION));
+        let mut root = Nbt::compound();
+        root.set("Data", data);
+        let bytes = nbt::write_root("", &root).unwrap();
+        let gz = {
+            use std::io::Write;
+            let mut enc = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+            enc.write_all(&bytes).unwrap();
+            enc.finish().unwrap()
+        };
+        std::fs::write(dir.join("level.dat"), gz).unwrap();
+        let back = read_level_dat(&dir).unwrap().expect("level.dat present");
+        assert_eq!(back.seed, 7998960918674860355);
     }
 
     #[test]

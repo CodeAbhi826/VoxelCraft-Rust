@@ -695,7 +695,11 @@ pub const VEIN_SALT: u64 = 0x6E15;
 pub const LAYER_SALT_ISLAND: u64 = 0x1A4D;
 pub const LAYER_SALT_ZOOM: u64 = 0x2001;
 pub const LAYER_SALT_SPECIAL: u64 = 0x5EC1A1;
-pub const LAYER_ISLAND_PCT: u64 = 45;
+pub const LAYER_ISLAND_PCT: u64 = 80;
+/// 4.1i: climate-gate salts + FIT percentages (snow/warm shares).
+pub const LAYER_SALT_CLIMATE: u64 = 0xC11A;
+pub const LAYER_SNOW_PCT: u64 = 20;
+pub const LAYER_WARM_PCT: u64 = 15;
 
 /// 4.2b: scattered-structure spread parameters. Provenance: village
 /// (34/8/salt) is documented placement-JSON data; pyramid/jungle/
@@ -1056,44 +1060,44 @@ impl TerrainGen {
     /// beach).
     fn classify(
         &self,
-        temp: f32,
+        _temp: f32,
         humid: f32,
         var: f32,
         h: i32,
         rv: f32,
         pos: (i32, i32),
     ) -> (Biome, u16, u16) {
-        // 4.1h: the layer stack marks deep-ocean interiors (4-block
-        // cells); union with the height rule below. Evaluated lazily
-        // — land columns skip the ~70-hash walk.
+        // 4.1i: layer values computed once (land/deep/special +
+        // snow/warm gates); height branches below stay untouched.
+        let (lx, lz) = (pos.0.div_euclid(4), pos.1.div_euclid(4));
+        // 4.1i2: height owns the land/ocean split (the layer-ocean
+        // seam rule flooded beaches); the stack owns deep marking +
+        // family picks (special consulted below).
+        let (_, layer_deep, special) = self.layer_cell(lx, lz);
+        let (snow, warm) = self.layer_climate(lx, lz);
+        // family pick hash (position-deterministic; proportions FIT)
+        let pick = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, lx, 0xB17, lz) % 100;
         let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
-            let deep = h < vc_chunk::SEA_LEVEL - 6
-                || self.layer_cell(pos.0.div_euclid(4), pos.1.div_euclid(4)).1;
-            if temp > 0.35 {
+            // 4.1i: ocean family from gates + depth (temp retired —
+            // uncorrelated per copy measurement)
+            let deep = h < vc_chunk::SEA_LEVEL - 6 || layer_deep;
+            if snow {
+                (Biome::FrozenOcean, GRAVEL, GRAVEL)
+            } else if warm {
                 (Biome::WarmOcean, SAND, SAND)
-            } else if temp > 0.0 {
-                // 4.1e: deep lukewarm splits out (vanilla 48)
-                if deep {
-                    (Biome::DeepLukewarmOcean, SAND, GRAVEL)
-                } else {
-                    (Biome::LukewarmOcean, SAND, SAND)
-                }
-            } else if temp > -0.25 {
-                // 4.1e: deep cold splits out (vanilla 49)
-                if deep {
+            } else if deep {
+                if pick < 50 {
                     (Biome::DeepColdOcean, GRAVEL, GRAVEL)
                 } else {
-                    (Biome::ColdOcean, SAND, GRAVEL)
-                }
-            } else if temp < -0.45 {
-                (Biome::FrozenOcean, GRAVEL, GRAVEL)
-            } else {
-                // 4.1e: deep temperate splits out (vanilla 24)
-                if deep {
                     (Biome::DeepOcean, GRAVEL, GRAVEL)
-                } else {
-                    (Biome::Ocean, SAND, GRAVEL)
                 }
+            } else if pick < 34 {
+                (Biome::ColdOcean, SAND, GRAVEL)
+            } else if pick < 67 {
+                (Biome::LukewarmOcean, SAND, SAND)
+            } else {
+                // the neutral temperate ocean (the pre-1.13 "Ocean")
+                (Biome::Ocean, SAND, GRAVEL)
             }
         } else if rv.abs() < 0.01 && h <= vc_chunk::SEA_LEVEL {
             // Vanilla-parity terrain round: the river band — carved by
@@ -1123,110 +1127,98 @@ impl TerrainGen {
             } else {
                 (Biome::Mountains, STONE, STONE)
             }
-        } else if temp < -0.32 {
-            // 1.7.2: ice plains spikes — the rare frozen variant of the
-            // snowy climate (wiki: tall packed-ice spires, snow-block
-            // surface instead of grass)
-            if var > 0.58 {
-                (Biome::IceSpikes, SNOW, DIRT)
-            } else {
-                (Biome::Snowy, SNOW_GRASS, DIRT)
-            }
         }
-        // ---- Phase 10 climate biomes: our temp/humid predicates are the
-        // documented climate adaptation (vanilla 1.16.5 selects biomes
-        // through a biome lattice, not two noises); the BIOME CONTENT
-        // (surface, trees, tint) follows the wiki descriptions ----
-        else if temp < -0.1 {
-            // Taiga: cold enough for spruce but not snow-locked.
-            // 1.7.2: mega-taiga flavor — podzol floor patches (the wiki's
-            // mega taiga is a variant; our single Taiga carries its podzol
-            // patches via the variant noise)
-            // 4.1e: giant-tree-taiga family splits (vanilla 32/33/19 —
-            // Before-1.18 table; elevation/variant gates [ESTIMATED])
-            if var > 0.55 {
-                if h >= 80 {
-                    (Biome::GiantTreeTaigaHills, PODZOL, DIRT)
+        // ---- 4.1i: land base from the layer stack (replaces the
+        // temp/humid predicate chain — measurement showed the fBm
+        // climate fields uncorrelated with the reference layout).
+        // Height-gated branches above (ocean/river/beach/mountains)
+        // are untouched; swamp keeps its wettest-band gate.
+        else {
+            if humid > 0.45 && h <= 66 {
+                // Swamp: wettest band + low flat terrain (unchanged)
+                (Biome::Swamp, GRASS, DIRT)
+            } else if snow {
+                // snow-land: ice spikes by variant, else the layer
+                // Snowy/Taiga pick with taiga overlays
+                if var > 0.58 {
+                    (Biome::IceSpikes, SNOW, DIRT)
                 } else {
-                    (Biome::GiantTreeTaiga, PODZOL, DIRT)
+                    match self.layer_base_biome(true, false, special, true, false, lx, lz) {
+                        Biome::Taiga => self.taiga_overlay(h, var),
+                        _ => (Biome::Snowy, SNOW_GRASS, DIRT),
+                    }
                 }
-            } else if h >= 78 {
-                (Biome::TaigaHills, GRASS, DIRT)
-            } else if var > 0.45 {
-                (Biome::Taiga, PODZOL, DIRT)
             } else {
-                (Biome::Taiga, GRASS, DIRT)
-            }
-        } else if temp > 0.25 && humid < -0.12 {
-            // Badlands: hot AND the driest climate band — red-sand floor
-            // over layered terracotta (1.7.2 wiki: "floor similar to a
-            // desert, but made of red sand"; the colored banding below is
-            // painted in the terrain fill, see badlands_band).
-            // 1.8: red sandstone directly under the red sand floor (the
-            // Bountiful-era update's companion block, wiki /w/Red_Sandstone)
-            (Biome::Badlands, RED_SAND, RED_SANDSTONE)
-        } else if temp > 0.3 && humid < 0.05 {
-            // 4.1e: raised desert splits to desert hills (vanilla 17;
-            // elevation gate [ESTIMATED])
-            if h >= 74 {
-                (Biome::DesertHills, SAND, SAND)
-            } else {
-                (Biome::Desert, SAND, SAND)
-            }
-        } else if temp > 0.25 && humid > 0.3 {
-            // Jungle: hot + wet (dense oak canopy + melons — vanilla's
-            // jungle wood/melon patches adapted to our palette)
-            (Biome::Jungle, GRASS, DIRT)
-        } else if temp > 0.35 {
-            // Savanna: hot, mid-dry — yellow-tinted grass, sparse trees.
-            // 1.8: coarse-dirt patches (the wiki's savanna-plateau floors
-            // — "grassless dirt", renamed coarse dirt in the Bountiful
-            // Update: "Replaces the grassless dirt variant found in mega
-            // taiga, mesa and savanna biomes")
-            if var > 0.72 {
-                (Biome::Savanna, COARSE_DIRT, DIRT)
-            } else {
-                (Biome::Savanna, GRASS, DIRT)
-            }
-        } else if humid > 0.45 && h <= 66 {
-            // Swamp: wettest band + low flat terrain — murky grass,
-            // water pools (vanilla 1.16.5 swamps sit at low elevation)
-            (Biome::Swamp, GRASS, DIRT)
-        } else if humid > 0.12 && temp < 0.2 {
-            // 1.7.2: flower forest — the wet-cool forest band's flowery
-            // variant (wiki: "very densely packed with the various new
-            // flowers... excluding sunflowers")
-            if var > 0.42 {
-                (Biome::FlowerForest, GRASS, DIRT)
-            } else if h >= 78 {
-                // 4.1e: raised birch splits to birch hills (vanilla 28;
-                // elevation gate [ESTIMATED])
-                (Biome::BirchHills, GRASS, DIRT)
-            } else {
-                (Biome::BirchForest, GRASS, DIRT)
-            }
-        } else if humid > 0.12 && temp <= 0.25 {
-            // 1.7.2: dark forest (roofed forest) — the warm-wet forest
-            // band's dark variant: dense dark-oak canopy (wiki: dark oak
-            // trees closely packed, giant mushrooms)
-            if var > 0.38 {
-                (Biome::DarkForest, GRASS, DIRT)
-            } else {
-                (Biome::Forest, GRASS, DIRT)
-            }
-        } else if humid > 0.12 {
-            (Biome::Forest, GRASS, DIRT)
-        } else {
-            // 1.7.2: sunflower plains — the dry-neutral plains band's
-            // variant (wiki: "exactly the same as plains, but can spawn
-            // sunflowers")
-            if var > 0.5 {
-                (Biome::SunflowerPlains, GRASS, DIRT)
-            } else {
-                (Biome::Plains, GRASS, DIRT)
+                let base = self.layer_base_biome(true, false, special, false, warm, lx, lz);
+                self.finish_land_base(base, h, var)
             }
         };
         (biome, top, filler)
+    }
+
+    /// 4.1i: land-base finish (hills + variant overlays shared by the
+    /// snow and temperate paths).
+    fn finish_land_base(&self, base: Biome, h: i32, var: f32) -> (Biome, u16, u16) {
+        match base {
+            Biome::Desert => {
+                if h >= 74 {
+                    (Biome::DesertHills, SAND, SAND)
+                } else {
+                    (Biome::Desert, SAND, SAND)
+                }
+            }
+            Biome::Savanna => {
+                if var > 0.72 {
+                    (Biome::Savanna, COARSE_DIRT, DIRT)
+                } else {
+                    (Biome::Savanna, GRASS, DIRT)
+                }
+            }
+            Biome::Jungle => (Biome::Jungle, GRASS, DIRT),
+            Biome::Taiga => self.taiga_overlay(h, var),
+            Biome::BirchForest => {
+                if var > 0.42 {
+                    (Biome::FlowerForest, GRASS, DIRT)
+                } else if h >= 78 {
+                    (Biome::BirchHills, GRASS, DIRT)
+                } else {
+                    (Biome::BirchForest, GRASS, DIRT)
+                }
+            }
+            Biome::Forest => {
+                if var > 0.38 {
+                    (Biome::DarkForest, GRASS, DIRT)
+                } else {
+                    (Biome::Forest, GRASS, DIRT)
+                }
+            }
+            Biome::MushroomFields => (Biome::MushroomFields, MYCELIUM, DIRT),
+            _ => {
+                if var > 0.5 {
+                    (Biome::SunflowerPlains, GRASS, DIRT)
+                } else {
+                    (Biome::Plains, GRASS, DIRT)
+                }
+            }
+        }
+    }
+
+    /// 4.1i: taiga family overlay (giant/hills/pod-zolg) shared by the
+    /// snow and temperate paths.
+    fn taiga_overlay(&self, h: i32, var: f32) -> (Biome, u16, u16) {
+        if var > 0.55 {
+            if h >= 80 {
+                (Biome::GiantTreeTaigaHills, PODZOL, DIRT)
+            } else {
+                (Biome::GiantTreeTaiga, PODZOL, DIRT)
+            }
+        } else if h >= 78 {
+            (Biome::TaigaHills, GRASS, DIRT)
+        } else if var > 0.45 {
+            (Biome::Taiga, PODZOL, DIRT)
+        } else {
+            (Biome::Taiga, GRASS, DIRT)
+        }
     }
 
     /// Terrain height + climate classification for one column.
@@ -4695,6 +4687,85 @@ impl TerrainGen {
             z = (z + jz).div_euclid(2);
         }
         self.island_base(x, z)
+    }
+
+    /// 4.1i: BiomeInit base biome from the layer stack (land/deep/
+    /// special + snow/warm gate categories). Replaces the temp/humid
+    /// predicates for base selection — measurement shows our fBm
+    /// climate fields are uncorrelated with the reference layout
+    /// (giant taiga reads hot, forest colder than taiga), so no
+    /// threshold tuning can converge them. Category members follow
+    /// documented biome climates; gate percentages are FIT.
+    fn layer_base_biome(
+        &self,
+        land: bool,
+        deep: bool,
+        special: bool,
+        snow: bool,
+        warm: bool,
+        cx4: i32,
+        cz4: i32,
+    ) -> Biome {
+        let pick = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, cx4, 0xB17, cz4) % 100;
+        if !land {
+            // ocean types by snow/warm gates + depth (documented families)
+            if snow {
+                return Biome::FrozenOcean;
+            }
+            if warm {
+                return Biome::WarmOcean;
+            }
+            if deep {
+                return if pick < 50 {
+                    Biome::DeepColdOcean
+                } else {
+                    Biome::DeepOcean
+                };
+            }
+            return if pick < 50 {
+                Biome::ColdOcean
+            } else {
+                Biome::Ocean
+            };
+        }
+        if snow {
+            return if pick < 70 {
+                Biome::Snowy
+            } else {
+                Biome::Taiga
+            };
+        }
+        if warm {
+            return match pick % 3 {
+                0 => Biome::Desert,
+                1 => Biome::Savanna,
+                _ => Biome::Jungle,
+            };
+        }
+        if special {
+            return if pick < 50 {
+                Biome::MushroomFields
+            } else {
+                Biome::Plains
+            };
+        }
+        match pick % 3 {
+            0 => Biome::Plains,
+            1 => Biome::Forest,
+            _ => Biome::BirchForest,
+        }
+    }
+
+    /// 4.1i: climate gates per 4-block cell (snow/warm shares at
+    /// 64-block coherence — FIT percentages, engine-local salt).
+    fn layer_climate(&self, cx4: i32, cz4: i32) -> (bool, bool) {
+        let h = Rng::hash3(
+            self.seed ^ LAYER_SALT_CLIMATE,
+            cx4.div_euclid(16),
+            0,
+            cz4.div_euclid(16),
+        ) % 100;
+        (h < LAYER_SNOW_PCT, h >= 100 - LAYER_WARM_PCT)
     }
 
     /// 4.1a: biome census — (vanilla_id, columns) over a chunk
@@ -9818,22 +9889,29 @@ mod libm_pinned_tests {
             assert_eq!(Biome::from_u8(i as u8), *b);
         }
         let g = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
-        // deep lukewarm ocean below the deep line
-        assert_eq!(
-            g.classify(0.1, 0.0, 0.0, 55, 1.0, (0, 0)).0,
-            Biome::DeepLukewarmOcean
+        // deep water classifies ocean-family regardless of gates
+        let deep_biome = g.classify(0.1, 0.0, 0.0, 55, 1.0, (0, 0)).0;
+        assert!(
+            matches!(
+                deep_biome,
+                Biome::DeepColdOcean | Biome::DeepOcean | Biome::FrozenOcean
+            ),
+            "deep water is ocean-family, got {deep_biome:?}"
         );
-        // shallow lukewarm stays flat
+        // shallow water classifies ocean-family too
+        let shal_biome = g.classify(0.1, 0.0, 0.0, 60, 1.0, (0, 0)).0;
+        assert!(shal_biome.is_ocean(), "got {shal_biome:?}");
+        // overlay helpers are pure elevation/variant gates
         assert_eq!(
-            g.classify(0.1, 0.0, 0.0, 60, 1.0, (0, 0)).0,
-            Biome::LukewarmOcean
-        );
-        // raised desert splits to hills
-        assert_eq!(
-            g.classify(0.4, 0.0, 0.0, 80, 1.0, (0, 0)).0,
+            g.finish_land_base(Biome::Desert, 80, 0.0).0,
             Biome::DesertHills
         );
-        assert_eq!(g.classify(0.4, 0.0, 0.0, 64, 1.0, (0, 0)).0, Biome::Desert);
+        assert_eq!(g.finish_land_base(Biome::Desert, 64, 0.0).0, Biome::Desert);
+        assert_eq!(
+            g.finish_land_base(Biome::Taiga, 80, 0.0).0,
+            Biome::TaigaHills
+        );
+        assert_eq!(g.taiga_overlay(80, 0.6).0, Biome::GiantTreeTaigaHills);
         // deep oceans are ocean family
         assert!(Biome::DeepOcean.is_ocean());
         assert!(Biome::DeepLukewarmOcean.is_ocean());
@@ -9865,7 +9943,8 @@ mod libm_pinned_tests {
             }
         }
         let land_f = land as f64 / n as f64;
-        assert!((0.2..0.7).contains(&land_f), "land fraction sane: {land_f}");
+        // island density FIT (80%) — band tracks the constant
+        assert!((0.65..0.95).contains(&land_f), "land fraction sane: {land_f}");
         assert!(deep > 0, "some deep ocean exists");
         let sp_f = special as f64 / land.max(1) as f64;
         assert!(

@@ -6816,3 +6816,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z49 — importer robustness from Survival copy (2 bugs)
 - String palettes decoded as air: single-default states may be bare strings; single-entry palette without BlockStates fills the section. Tests for both. Proto-chunks (status structure_starts, no sections) identified: oracle skips non-full chunks; game-importer handling noted as follow-up. Oracle now honest: 5.8% biome, +6.6 signed height on 233 full chunks. Source untouched throughout; all probes deleted. Local: 40/40 green, audit [PASS].
+
+## 2026-10-10z50 — 4.1i: BiomeInit rewire (base from layers)
+- classify: ocean family from gates, land base from layer picks, hills overlays kept, seam rule removed (was flooding beaches 19%). Fixed fBm proven uncorrelated, so thresholds can't converge. Rate 4.8 -> 6.9%. Local: tests green, audit [PASS].

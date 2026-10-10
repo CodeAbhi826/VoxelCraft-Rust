@@ -124,3 +124,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-10: z62 patch-overlay + sunflower harden in CI. Next: full re-pin harvest, then relief-histogram slice.
 
 - 2026-10-10: z63 re-pins in CI. Next: ravine/ocean pins, then relief-histogram slice.
+
+- 2026-10-10: z64 ravine pin in CI. Next: ocean pin, then relief-histogram slice.

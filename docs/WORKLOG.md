@@ -6873,3 +6873,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z63 - 4.1n3 re-pin harvest (run 38076339624, all CI-measured)
 - Pinned: 2 mains (deadbeef/seed7 ow), 5 wides, village targeted, spawn (96.5,78,-159.5). c0ffee ow + stronghold carried (n3 preserved them). Content green: mansions pass with patches, flower/sunflower/bamboo pass. Ravine/ocean pins surface next (sequential asserts).
+
+## 2026-10-10z64 - ravine pin (run 38076685788, CI-measured)
+- Only golden_targeted_features fails now (mains/wides/spawn/content all green). Ravine chunk (0,0) pinned ace9f353. Ocean pin surfaces next.

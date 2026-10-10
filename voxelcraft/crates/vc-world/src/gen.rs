@@ -1054,9 +1054,22 @@ impl TerrainGen {
     /// Column classification (the pre-rewrite bracket chain, heights now
     /// from the density stack; the river band inserted between ocean and
     /// beach).
-    fn classify(&self, temp: f32, humid: f32, var: f32, h: i32, rv: f32) -> (Biome, u16, u16) {
+    fn classify(
+        &self,
+        temp: f32,
+        humid: f32,
+        var: f32,
+        h: i32,
+        rv: f32,
+        x: i32,
+        z: i32,
+    ) -> (Biome, u16, u16) {
+        // 4.1h: the layer stack marks deep-ocean interiors (4-block
+        // cells); union with the height rule below. Evaluated lazily
+        // — land columns skip the ~70-hash walk.
         let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
-            let deep = h < vc_chunk::SEA_LEVEL - 6;
+            let deep =
+                h < vc_chunk::SEA_LEVEL - 6 || self.layer_cell(x.div_euclid(4), z.div_euclid(4)).1;
             if temp > 0.35 {
                 (Biome::WarmOcean, SAND, SAND)
             } else if temp > 0.0 {
@@ -1267,7 +1280,7 @@ impl TerrainGen {
         }
         let h = y_surf.round().clamp(4.0, 200.0) as i32;
 
-        let (biome, top, filler) = self.classify(temp, humid, var, h, rv);
+        let (biome, top, filler) = self.classify(temp, humid, var, h, rv, x, z);
         ColumnInfo {
             height: h,
             biome,
@@ -1787,7 +1800,7 @@ impl TerrainGen {
                 } else {
                     let (temp, humid, var) = self.climate_fields(wx, wz);
                     let rv = self.n_river.noise2(wx as f32 / 640.0, wz as f32 / 640.0);
-                    self.classify(temp, humid, var, surf, rv)
+                    self.classify(temp, humid, var, surf, rv, wx, wz)
                 };
                 chunk.biome[col_idx] = biome as u8;
                 chunk.height[col_idx] = surf.clamp(0, 255) as u8;
@@ -4647,8 +4660,6 @@ impl TerrainGen {
     /// quartiles). Returns (land, deep_ocean, special) per cell:
     /// island grid → 6 doubling zooms with jittered parent picks →
     /// deep marking for ocean interiors → 1-in-13 special marking.
-    /// Wired into assignment in 4.1h (tests only until then).
-    #[allow(dead_code)]
     fn layer_cell(&self, cx4: i32, cz4: i32) -> (bool, bool, bool) {
         let land = self.zoomed_island(cx4, cz4);
         if land {
@@ -4668,8 +4679,6 @@ impl TerrainGen {
     }
 
     /// island base value at 256-block cells (ix, iz).
-    /// Wired into assignment in 4.1h (tests only until then).
-    #[allow(dead_code)]
     fn island_base(&self, ix: i32, iz: i32) -> bool {
         Rng::hash3(self.seed ^ LAYER_SALT_ISLAND, ix, 0, iz) % 100 < LAYER_ISLAND_PCT
     }
@@ -4677,8 +4686,6 @@ impl TerrainGen {
     /// zoom the island grid down to 4-block cells: 6 halvings with a
     /// 0/1 sampling jitter per level (documented zoom behavior —
     /// each child samples its parents with offset).
-    /// Wired into assignment in 4.1h (tests only until then).
-    #[allow(dead_code)]
     fn zoomed_island(&self, cx4: i32, cz4: i32) -> bool {
         let (mut x, mut z) = (cx4, cz4);
         for level in 0..6 {
@@ -9814,14 +9821,20 @@ mod libm_pinned_tests {
         let g = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
         // deep lukewarm ocean below the deep line
         assert_eq!(
-            g.classify(0.1, 0.0, 0.0, 55, 1.0).0,
+            g.classify(0.1, 0.0, 0.0, 55, 1.0, 0, 0).0,
             Biome::DeepLukewarmOcean
         );
         // shallow lukewarm stays flat
-        assert_eq!(g.classify(0.1, 0.0, 0.0, 60, 1.0).0, Biome::LukewarmOcean);
+        assert_eq!(
+            g.classify(0.1, 0.0, 0.0, 60, 1.0, 0, 0).0,
+            Biome::LukewarmOcean
+        );
         // raised desert splits to hills
-        assert_eq!(g.classify(0.4, 0.0, 0.0, 80, 1.0).0, Biome::DesertHills);
-        assert_eq!(g.classify(0.4, 0.0, 0.0, 64, 1.0).0, Biome::Desert);
+        assert_eq!(
+            g.classify(0.4, 0.0, 0.0, 80, 1.0, 0, 0).0,
+            Biome::DesertHills
+        );
+        assert_eq!(g.classify(0.4, 0.0, 0.0, 64, 1.0, 0, 0).0, Biome::Desert);
         // deep oceans are ocean family
         assert!(Biome::DeepOcean.is_ocean());
         assert!(Biome::DeepLukewarmOcean.is_ocean());

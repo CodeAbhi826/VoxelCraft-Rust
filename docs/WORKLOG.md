@@ -6803,3 +6803,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z47 — 4.1g: layer-stack core (island/zoom/deep/special)
 - layer_cell + island_base + zoomed_island (6 jittered halvings, 256->4) + engine salts + FIT island density. Test: land fraction, deep-ocean-only, special rate, determinism. Local: test green, audit [PASS]. Not wired into classify yet (4.1h).
+
+## 2026-10-10z47 — 4.1g closed (CI-green)
+
+## 2026-10-10z48 — 4.1h: layer deep-ocean wiring
+- classify takes x,z; ocean deep = height rule ∪ layer interior (lazy); allows removed. Measured on copy: no gain on sample (interiors coincide with height-deep there) — honest no-op, kept for the rebuild. Local: 2/2 tests green, audit [PASS].

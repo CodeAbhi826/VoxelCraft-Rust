@@ -9615,10 +9615,10 @@ mod golden_determinism_tests {
         // village to chunk (16,76) (search-determined) with new
         // contents
         0x7b74_7aa2_0e67_8a56,
-        // 4.1n3 re-pin (CI-measured): patch overlays moved ravine
+        // 4.1o re-pin (CI-measured): relief gates moved ravine
         // chunk (0,0) contents (coords fixed — the ravine roll is
         // position-only, the biome bytes moved)
-        0xace9_f353_90e8_5394,
+        0x0cb9_28d4_1bfe_ae3b,
         // 4.1m re-pin (CI-measured): the ocean-ratio refit moved ocean
         // chunk (-1,1) contents (coords fixed — the ocean/land split
         // is height-gated, untouched by the refit)

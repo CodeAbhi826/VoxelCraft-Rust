@@ -130,3 +130,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-11: z65 relief gates in CI. Next: re-pin harvest + verification census.
 
 - 2026-10-11: z66 re-pins in CI. Next: ravine/ocean pins if drifted, then verification census.
+
+- 2026-10-11: z67 ravine pin in CI. Next: ocean pin, then verification census.

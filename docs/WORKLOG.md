@@ -6885,3 +6885,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z66 - 4.1o re-pin harvest + clippy range fix (run 38077861690)
 - Clippy: h<=SEA-1 rewritten h<SEA (same predicate). Pinned 3 mains + 5 wides + village (search moved it to chunk 16,76) + spawn (-15.5,80,-199.5). Stronghold carried. No content failures.
+
+## 2026-10-11z67 - ravine pin (run 38078331147, CI-measured)
+- Only targeted-ravine fails (mains/wides/spawn/village green). Ravine chunk (0,0) pinned 0cb928d4. Ocean pin surfaces next, then verification census.

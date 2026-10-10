@@ -6906,3 +6906,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z73 - 4.1q hill gates (verification census)
 - Scorecard: ocean 1.11, beach 1.13, deep 1.01, birch 0.98, taiga 0.98, mountains 0.83, dark 0.75, plains 0.70, hills 0.51, giant-hills 0.21, giant 1.33. Fix: hills 76, giant-hills 78 (existing unit probes still pass). Plains/forest band left as regional variance (copy is one temperate patch). River carve queued as its own slice.
+
+## 2026-10-11z74 - 4.1q pins (run 38081806501, CI-measured)
+- Only seed7 main + 2 wides moved (hill gates touch high terrain only); targeted/spawn/content green. Next: verification census, then river-carve slice.

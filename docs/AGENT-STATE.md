@@ -144,3 +144,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-11: z72 ocean pin in CI (chain complete if green). Next: verification census.
 
 - 2026-10-11: z73 hill gates in CI. Next: re-pin harvest, verification census, river-carve slice.
+
+- 2026-10-11: z74 hill-gate pins in CI. Next: verification census + river carve.

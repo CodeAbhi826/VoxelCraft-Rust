@@ -9543,7 +9543,7 @@ mod golden_determinism_tests {
         0x9203_607f_0e8a_d037, // seed deadbeef00000001, overworld
         0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
         0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
-        0xdff7_6186_066d_3c57, // seed 7, overworld
+        0x6444_7c6d_7817_884f, // seed 7, overworld
         0xbb9f_4859_d4d2_ae6a, // seed 7, nether
         0x821f_f1cc_25ca_21cd, // seed 7, end
     ];
@@ -9613,10 +9613,10 @@ mod golden_determinism_tests {
         0xccd3_c97a_85a3_f253,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0xeae3_0ad9_71a7_0179,
+        0x770f_af24_0772_c017,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
-        0xcb8a_efa1_b315_a7f5,
+        0xfa86_b946_9c88_2186,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
         0xbe2f_fe49_ae8f_a49d,

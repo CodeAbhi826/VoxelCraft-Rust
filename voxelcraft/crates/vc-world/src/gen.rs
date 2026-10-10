@@ -691,6 +691,11 @@ pub const MINESHAFT_CHANCE: f32 = 0.004;
 /// 4.4a: vein anchor salt (engine-local — vanilla decoration salts are
 /// unpublished; positions tune against owner diffs later).
 pub const VEIN_SALT: u64 = 0x6E15;
+/// 4.1g: layer-stack salts (engine-local) + island density FIT value.
+pub const LAYER_SALT_ISLAND: u64 = 0x1A4D;
+pub const LAYER_SALT_ZOOM: u64 = 0x2001;
+pub const LAYER_SALT_SPECIAL: u64 = 0x5EC1A1;
+pub const LAYER_ISLAND_PCT: u64 = 45;
 
 /// 4.2b: scattered-structure spread parameters. Provenance: village
 /// (34/8/salt) is documented placement-JSON data; pyramid/jungle/
@@ -4631,6 +4636,52 @@ impl TerrainGen {
             }
         }
         best.map(|(_, p)| p)
+    }
+
+    /// 4.1g layer-stack salts (engine-local — code-derived salts are
+    /// refused; positions fit later against measurements).
+    /// Island density is FIT (start 45%).
+    /// 4.1g: clean-room biome layer stack (behavioral shape from the
+    /// Before-1.18 wiki page: island grid at 1:256, doubling zooms to
+    /// 1:4 cells). Cell = 4 blocks (matches the chunk biome
+    /// quartiles). Returns (land, deep_ocean, special) per cell:
+    /// island grid → 6 doubling zooms with jittered parent picks →
+    /// deep marking for ocean interiors → 1-in-13 special marking.
+    fn layer_cell(&self, cx4: i32, cz4: i32) -> (bool, bool, bool) {
+        let land = self.zoomed_island(cx4, cz4);
+        if land {
+            let special = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, cx4, 0, cz4) % 13 == 0;
+            return (true, false, special);
+        }
+        // deep marking: ocean interiors (3×3 all ocean) read deep
+        for dx in -1..=1 {
+            for dz in -1..=1 {
+                if self.zoomed_island(cx4 + dx, cz4 + dz) {
+                    return (false, false, false);
+                }
+            }
+        }
+        (false, true, false)
+    }
+
+    /// island base value at 256-block cells (ix, iz).
+    fn island_base(&self, ix: i32, iz: i32) -> bool {
+        Rng::hash3(self.seed ^ LAYER_SALT_ISLAND, ix, 0, iz) % 100 < LAYER_ISLAND_PCT
+    }
+
+    /// zoom the island grid down to 4-block cells: 6 halvings with a
+    /// 0/1 sampling jitter per level (documented zoom behavior —
+    /// each child samples its parents with offset).
+    fn zoomed_island(&self, cx4: i32, cz4: i32) -> bool {
+        let (mut x, mut z) = (cx4, cz4);
+        for level in 0..6 {
+            let h = Rng::hash3(self.seed ^ LAYER_SALT_ZOOM, x, level, z);
+            let jx = ((h >> 5) & 1) as i32;
+            let jz = ((h >> 11) & 1) as i32;
+            x = (x + jx).div_euclid(2);
+            z = (z + jz).div_euclid(2);
+        }
+        self.island_base(x, z)
     }
 
     /// 4.1a: biome census — (vanilla_id, columns) over a chunk
@@ -9769,6 +9820,40 @@ mod libm_pinned_tests {
         assert!(Biome::DeepLukewarmOcean.is_ocean());
         assert!(Biome::DeepColdOcean.is_ocean());
         assert!(!Biome::DesertHills.is_ocean());
+    }
+
+    /// 4.1g: layer stack is deterministic, land fraction sane, deep
+    /// is ocean-only, and special marks ~1/13 of land.
+    #[test]
+    fn layer_stack_shape() {
+        let gen = TerrainGen::new(PIN_SEED);
+        let (mut land, mut deep, mut special, mut n) = (0u64, 0u64, 0u64, 0u64);
+        for cx4 in -64..64 {
+            for cz4 in -64..64 {
+                let (l, d, s) = gen.layer_cell(cx4, cz4);
+                n += 1;
+                if l {
+                    land += 1;
+                }
+                if d {
+                    deep += 1;
+                    assert!(!l, "deep is ocean-only");
+                }
+                if s {
+                    special += 1;
+                    assert!(l, "special marks land");
+                }
+            }
+        }
+        let land_f = land as f64 / n as f64;
+        assert!((0.2..0.7).contains(&land_f), "land fraction sane: {land_f}");
+        assert!(deep > 0, "some deep ocean exists");
+        let sp_f = special as f64 / land.max(1) as f64;
+        assert!(
+            (0.03..0.15).contains(&sp_f),
+            "special ≈ 1/13 of land: {sp_f}"
+        );
+        assert_eq!(gen.layer_cell(3, -7), gen.layer_cell(3, -7));
     }
 
     /// 4.1a: vanilla ids match the cited registry values.

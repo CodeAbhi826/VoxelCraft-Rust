@@ -6798,3 +6798,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z47 — 4.1f: climate source doc (gate for rebuild)
 - docs/PART4-LAYERS.md: refusal record (MCP/mapping sources), clean shape from Before-1.18 behaviors, fit list, build plan. Refused 3 tainted sources during research. AWAITING owner approval to build.
+
+## 2026-10-10z46 — 4.1e closed (CI-green)
+
+## 2026-10-10z47 — 4.1g: layer-stack core (island/zoom/deep/special)
+- layer_cell + island_base + zoomed_island (6 jittered halvings, 256->4) + engine salts + FIT island density. Test: land fraction, deep-ocean-only, special rate, determinism. Local: test green, audit [PASS]. Not wired into classify yet (4.1h).

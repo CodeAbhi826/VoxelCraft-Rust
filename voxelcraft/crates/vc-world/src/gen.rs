@@ -1266,10 +1266,13 @@ impl TerrainGen {
     /// 4.1q: hills 78 -> 76, giant-hills 80 -> 78 (verification
     /// census: hills 0.51x / giant-hills 0.21x starved, giant 1.33x
     /// fat — the gates sat above most high taiga; [ESTIMATED]).
+    /// 4.1q2: giant-hills 78 -> 76 (still 0.29x — most high taiga
+    /// sits h74-77; at h>=76 the family now splits hills/giant-hills
+    /// by pick, below it taiga/giant; pulls giant 1.29x down too).
     /// Lowland podzol keeps its var band.
     fn taiga_overlay(&self, h: i32, var: f32, pick: u64) -> (Biome, u16, u16) {
         if pick < 28 {
-            if h >= 78 {
+            if h >= 76 {
                 (Biome::GiantTreeTaigaHills, PODZOL, DIRT)
             } else {
                 (Biome::GiantTreeTaiga, PODZOL, DIRT)

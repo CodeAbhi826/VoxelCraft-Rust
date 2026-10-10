@@ -1455,31 +1455,9 @@ pub fn match_grid(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
                     let ok = match ing {
                         Ing::None => s.is_empty(),
                         Ing::Block(b) => s.block == *b && !s.is_empty(),
-                        Ing::AnyLog => {
-                            !s.is_empty() && matches!(s.block, OAK_LOG | BIRCH_LOG | SPRUCE_LOG)
-                        }
-                        Ing::AnyWood => {
-                            !s.is_empty()
-                                && matches!(
-                                    s.block,
-                                    OAK_LOG
-                                        | BIRCH_LOG
-                                        | SPRUCE_LOG
-                                        | ACACIA_LOG
-                                        | DARK_OAK_LOG
-                                        | JUNGLE_LOG
-                                )
-                        }
-                        Ing::AnyPlanks => {
-                            // the completeness audit: vanilla's "Any
-                            // Planks" covers every species — the 1.14-era
-                            // oak+jungle pair extended to the 1.16 woods
-                            !s.is_empty()
-                                && matches!(
-                                    s.block,
-                                    PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS
-                                )
-                        }
+                        // 3.4c: Any* via the shared predicate (the audit
+                        // comment lives there now)
+                        _ => !s.is_empty() && ing_matches(ing, s.block),
                     };
                     if !ok {
                         continue 'ox;
@@ -1500,6 +1478,36 @@ pub fn match_grid(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
         }
     }
     None
+}
+
+/// 3.4c: shared ingredient predicate (mirrors match_grid exactly —
+/// AnyLog is the 3-log crafting subset, NOT the 6-log unlock subset in
+/// RecipeBook::unlock_for; picking up acacia can unlock a log recipe
+/// the fill pass then refuses — disclosed edge).
+pub fn ing_matches(ing: &Ing, block: u16) -> bool {
+    match ing {
+        Ing::None => false,
+        Ing::Block(b) => *b == block,
+        Ing::AnyLog => matches!(block, OAK_LOG | BIRCH_LOG | SPRUCE_LOG),
+        Ing::AnyWood => matches!(
+            block,
+            OAK_LOG | BIRCH_LOG | SPRUCE_LOG | ACACIA_LOG | DARK_OAK_LOG | JUNGLE_LOG
+        ),
+        Ing::AnyPlanks => {
+            // the completeness audit: vanilla's "Any Planks" covers every
+            // species — the 1.14-era oak+jungle pair extended to the
+            // 1.16 woods
+            matches!(
+                block,
+                PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS
+            )
+        }
+    }
+}
+
+/// 3.4c: first recipe producing `out` (stable order = RECIPES order).
+pub fn recipe_for(out: u16) -> Option<&'static Recipe> {
+    RECIPES.iter().find(|r| r.out.block == out)
 }
 
 /// consume the ingredients of a matched grid (one of each non-empty cell)
@@ -1635,6 +1643,22 @@ mod tests {
         let list = book.unlocked_list();
         assert!(list.contains(&BOW));
         assert!(list.windows(2).all(|w| w[0] <= w[1]));
+    }
+
+    #[test]
+    fn recipe_for_and_ing_matches_spot_checks() {
+        // the bow resolves to the stick+string row
+        let r = recipe_for(BOW).expect("bow recipe");
+        assert_eq!(r.out.block, BOW);
+        assert_eq!(r.size, 3);
+        assert!(recipe_for(BEDROCK).is_none());
+        // predicate mirrors match_grid: 3-log AnyLog, exact Block
+        assert!(ing_matches(&Ing::Block(STICK), STICK));
+        assert!(!ing_matches(&Ing::Block(STICK), STRING));
+        assert!(ing_matches(&Ing::AnyLog, OAK_LOG));
+        assert!(!ing_matches(&Ing::AnyLog, ACACIA_LOG));
+        assert!(ing_matches(&Ing::AnyPlanks, CRIMSON_PLANKS));
+        assert!(!ing_matches(&Ing::None, STONE));
     }
 
     /// 3.3d: lingering center + 8 arrows crafts 8 tipped of the

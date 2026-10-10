@@ -4513,13 +4513,12 @@ impl UiCanvas {
                 self.text(bb.0 + 4, bb.1 + 8, "Book", [40, 40, 40, 255], 1);
                 geom.book_button = bb;
                 if view.book_open {
-                    let bw = 190i32;
-                    let bx = x0 - 46 - bw - 8;
+                    let bx = x0 - 46 - BOOK_LIST_W - 8;
                     let by = cy;
                     self.rect(
                         bx,
                         by - 6,
-                        bw,
+                        BOOK_LIST_W,
                         12 + 16 * view.book.len().min(12) as i32 + 14,
                         [198, 198, 198, 255],
                     );
@@ -4533,7 +4532,7 @@ impl UiCanvas {
                             [40, 40, 40, 255],
                             1,
                         );
-                        geom.book_rows.push((ry, *out));
+                        geom.book_rows.push((bx, ry, *out));
                     }
                     if view.book.len() > 12 {
                         self.text(
@@ -6511,6 +6510,9 @@ pub struct MountGeom {
 }
 
 /// hit-test geometry for a container screen (UI-space 36px slots)
+/// 3.4c: recipe-book list panel width (draw + click routing share it).
+pub const BOOK_LIST_W: i32 = 190;
+
 pub struct ContainerGeom {
     /// 36 inventory slot origins: 0..9 hotbar row (bottom), 9..36 storage
     pub inv: Vec<(i32, i32)>,
@@ -6544,8 +6546,9 @@ pub struct ContainerGeom {
     pub mount: Option<MountGeom>,
     /// 3.4b: recipe-book toggle button origin (i32::MIN when absent)
     pub book_button: (i32, i32),
-    /// 3.4b: book rows (y origin, recipe output id) for click routing
-    pub book_rows: Vec<(i32, u16)>,
+    /// 3.4b: book rows (panel x, row y, recipe output id) for click
+    /// routing (3.4c fill)
+    pub book_rows: Vec<(i32, i32, u16)>,
 }
 
 impl ContainerGeom {

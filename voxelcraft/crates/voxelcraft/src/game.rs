@@ -12446,9 +12446,27 @@ impl GameApp {
         // Round 13: the beacon's confirm/cancel buttons and the anvil's
         // rename field are hit-rects OUTSIDE the SlotRef space (they are
         // buttons, not slots) — resolved before the slot scan
+        // 3.4c: book row click — resolved in a scoped borrow (the fill
+        // mutates self, so it must run outside the geom borrow)
+        let book_hit = self.container_geom.as_ref().and_then(|g| {
+            if !self.book_open {
+                return None;
+            }
+            g.book_rows
+                .iter()
+                .find(|(rx, ry, _)| {
+                    ux >= *rx && ux < *rx + vc_render::ui::BOOK_LIST_W && uy >= *ry && uy < *ry + 16
+                })
+                .map(|(_, _, out)| *out)
+        });
+        // 3.4c: the fill itself (empty grid only — vanilla returns
+        // ingredients to make room; disclosed simplification: ignored)
+        if let Some(out) = book_hit {
+            self.fill_book_recipe(out);
+            return;
+        }
         if let Some(g) = self.container_geom.as_ref() {
-            // 3.4b: recipe-book toggle (rows are display-only until
-            // the 3.4c fill; clicks fall through harmlessly)
+            // 3.4b: recipe-book toggle
             let (bx, by) = g.book_button;
             if bx != i32::MIN && ux >= bx && ux < bx + 36 && uy >= by && uy < by + 28 {
                 self.book_open = !self.book_open;
@@ -13346,6 +13364,53 @@ impl GameApp {
     fn craft_grid_cells(&self) -> usize {
         let s = self.craft_grid_size();
         s * s
+    }
+
+    /// 3.4c: recipe-book click-to-fill — move one of each ingredient for
+    /// `out` from the player inventory into the crafting grid
+    /// (top-left placement; match_grid tries offset 0 first so the
+    /// result matches). Empty grid only; missing ingredients = silent
+    /// no-op (no partial fill, no refund path needed).
+    fn fill_book_recipe(&mut self, out: u16) {
+        if !matches!(self.container, Some(Container::Crafting { .. })) {
+            return;
+        }
+        if self.craft_grid.iter().any(|s| !s.is_empty()) {
+            return;
+        }
+        let Some(r) = vc_gameplay::craft::recipe_for(out) else {
+            return;
+        };
+        if r.size > 3 {
+            return;
+        }
+        let mut plan: Vec<(usize, usize)> = Vec::new();
+        for (i, ing) in r.grid.iter().enumerate() {
+            if matches!(ing, vc_gameplay::craft::Ing::None) {
+                continue;
+            }
+            let hit = self
+                .player
+                .inv
+                .slots
+                .iter()
+                .position(|s| !s.is_empty() && vc_gameplay::craft::ing_matches(ing, s.block));
+            match hit {
+                Some(si) => plan.push((i, si)),
+                None => return,
+            }
+        }
+        for (cell, si) in plan {
+            let b = self.player.inv.slots[si].block;
+            let s = &mut self.player.inv.slots[si];
+            s.count -= 1;
+            if s.count == 0 {
+                *s = vc_inventory::inventory::ItemStack::EMPTY;
+            }
+            self.craft_grid[cell] = vc_inventory::inventory::ItemStack::new(b, 1);
+        }
+        self.click_sound();
+        self.ui.dirty = true;
     }
 
     /// owned snapshot of everything the container screen renders (§27) —

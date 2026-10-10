@@ -6882,3 +6882,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z65 - 4.1o relief gates (histogram-driven)
 - hist mode: waterline pile-up h61-63 = 11.9pct. Ocean h<61 to h<=61, beach to h63 fringe only, h62 to land. Deep SEA-6 to SEA-11 (P(h<51)=7.44pct x non-climate ~= 5.4pct vs copy 5.3pct). Mountain gate 84 to 75 (P(h>75) ~= 10.3pct vs copy 10.7pct). River carve untouched (dedicated slice). Expect full re-pin harvest.
+
+## 2026-10-11z66 - 4.1o re-pin harvest + clippy range fix (run 38077861690)
+- Clippy: h<=SEA-1 rewritten h<SEA (same predicate). Pinned 3 mains + 5 wides + village (search moved it to chunk 16,76) + spawn (-15.5,80,-199.5). Stronghold carried. No content failures.

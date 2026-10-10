@@ -1098,7 +1098,7 @@ impl TerrainGen {
         // old <=SEA+1 beach band to 3x the copy. Ocean takes h<=61
         // (+3.5pp: ocean 0.79x -> ~1.1x), beach is the h63 fringe
         // (4.4%), h62 falls through to land (swamp/plains both needy).
-        let (biome, top, filler) = if h <= vc_chunk::SEA_LEVEL - 1 {
+        let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL {
             // 4.1i: ocean family from gates + depth (temp retired —
             // uncorrelated per copy measurement)
             let deep = h < vc_chunk::SEA_LEVEL - 11;
@@ -9494,13 +9494,13 @@ mod golden_determinism_tests {
     /// 2026-10-10): the 3 overworld mains + all overworld targeted pins
     /// move with cross-chunk veins; nether/end pins byte-identical.
     const GOLDEN: [u64; 9] = [
-        0xff16_e10a_d65e_7cf5, // seed c0ffee12345678, overworld
+        0x17d9_2258_431e_9102, // seed c0ffee12345678, overworld
         0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
         0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
-        0xa849_c9e4_3a06_2d8e, // seed deadbeef00000001, overworld
+        0xc7c7_4a10_1309_a744, // seed deadbeef00000001, overworld
         0x8042_5d42_3571_20b3, // seed deadbeef00000001, nether
         0x112d_74b4_87d7_0cd5, // seed deadbeef00000001, end
-        0x4b1b_7989_e8b5_e329, // seed 7, overworld
+        0x7e12_e175_d241_202f, // seed 7, overworld
         0xbb9f_4859_d4d2_ae6a, // seed 7, nether
         0x821f_f1cc_25ca_21cd, // seed 7, end
     ];
@@ -9564,19 +9564,19 @@ mod golden_determinism_tests {
     const GOLDEN_WIDE: [u64; 15] = [
         // 4.4a re-pin: overworld entries move with cross-chunk veins
         // (nether/end byte-identical)
-        0x6154_afe3_25fb_e0a5,
+        0x7447_ad46_0652_6dd2,
         0xc224_973a_dbae_0f7d,
         0x00dc_0ad5_7854_7143,
-        0x653d_d65e_a6f4_3f30,
+        0x8ef2_3a04_c4f2_d52b,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0x93e2_4637_113a_fabd,
+        0x5298_522b_e2d3_bf3b,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
-        0xda3b_7f12_165e_a456,
+        0x9d1b_20bf_98fd_89e1,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
-        0xc0fe_67d9_d629_19f8,
+        0x3980_4584_91b3_9f05,
         0x5675_e557_60cc_6f5a,
         0x12df_709c_8a36_fee3,
     ];
@@ -9611,9 +9611,10 @@ mod golden_determinism_tests {
         // worlds): village spread 34/8/salt-10387312 moved the pinned
         // village; 4.4a veins + 4.1l shares moved it again to chunk
         // (8,45) (CI-measured; the search itself is deterministic)
-        // 4.1n3 re-pin (CI-measured): patch overlays moved the pinned
-        // village chunk contents (coords fixed — deterministic search)
-        0xfe24_67ed_230f_2999,
+        // 4.1o re-pin (CI-measured): relief gates moved the pinned
+        // village to chunk (16,76) (search-determined) with new
+        // contents
+        0x7b74_7aa2_0e67_8a56,
         // 4.1n3 re-pin (CI-measured): patch overlays moved ravine
         // chunk (0,0) contents (coords fixed — the ravine roll is
         // position-only, the biome bytes moved)
@@ -10193,8 +10194,8 @@ mod libm_pinned_tests {
         let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
         let (x, y, z) = gen.find_spawn();
         println!("PIN find_spawn ({x},{y},{z})");
-        // 4.1n3 re-pin: patch overlays moved the spawn search result
+        // 4.1o re-pin: relief gates moved the spawn search result
         // (new layout, same search rules; CI-measured)
-        assert_eq!((x, y, z), (96.5, 78.0, -159.5), "pin find_spawn");
+        assert_eq!((x, y, z), (-15.5, 80.0, -199.5), "pin find_spawn");
     }
 }

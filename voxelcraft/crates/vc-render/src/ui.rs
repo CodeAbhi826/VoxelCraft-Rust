@@ -8138,8 +8138,6 @@ mod screen_tests {
             beacon: None,
             grind: None,
             mount: None,
-            book_button: (i32::MIN, i32::MIN),
-            book_rows: Vec::new(),
         };
         let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
         let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
@@ -8208,8 +8206,6 @@ mod screen_tests {
             beacon: None,
             grind: None,
             mount: None,
-            book_button: (i32::MIN, i32::MIN),
-            book_rows: Vec::new(),
         };
         let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
         let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);

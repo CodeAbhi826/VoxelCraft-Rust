@@ -6720,3 +6720,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z30 — 4.2b: spread normalization (zero drift)
 - Pyramid/jungle/mansion onto one spread_candidate helper (salt-mixed rng + uniform window + site checks) with named (spacing, margin, salt) consts + provenance notes. Positions byte-identical (live-rng helper after catching a stream-restart bug pre-commit). Local: 10/10 incl. all golden pins green, audit [PASS]. Tuning numbers await owner diffs.
+
+## 2026-10-10z31 — 4.2b closed (CI-green, pins hold)

@@ -1084,8 +1084,15 @@ impl TerrainGen {
         // family pick hash (position-deterministic; proportions FIT)
         let pick = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, lx, 0xB17, lz) % 100;
         // overlay roll on an independent salt (sharing `pick` for the
-        // within-family splits selected disjoint ranges — unreachable)
-        let pick2 = Rng::hash3(self.seed ^ LAYER_SALT_OVERLAY, lx, 0xB17, lz) % 100;
+        // within-family splits selected disjoint ranges — unreachable).
+        // 4.1n3: sampled at 16-block PATCH cells (reference overlays
+        // are contiguous patches — dark forests, giant stands — not
+        // per-column salt-and-pepper; the marginal stays uniform so
+        // shares hold, and patch-interior columns agree, which the
+        // mansion triple-column ground check needs)
+        let px = lx.div_euclid(4);
+        let pz = lz.div_euclid(4);
+        let pick2 = Rng::hash3(self.seed ^ LAYER_SALT_OVERLAY, px, 0xB17, pz) % 100;
         let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
             // 4.1i: ocean family from gates + depth (temp retired —
             // uncorrelated per copy measurement)
@@ -7932,17 +7939,35 @@ mod v172_tests {
         assert!(scanned > 0, "found flower-forest chunks to scan");
         assert!(flowers >= 8, "dense new-flower flora (got {flowers})");
 
-        // sunflower plains: sunflowers exist, with the 2-block top half
-        let (cx, cz) = find_biome(&g, Biome::SunflowerPlains);
-        let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+        // sunflower plains: sunflowers exist, with the 2-block top half.
+        // 4.1n3: accumulate over up to 16 sunflower-center chunks
+        // (same interleave flake as bamboo — one chunk's rolls may
+        // land off-biome after the share refit)
         let (mut lower, mut upper) = (0usize, 0usize);
-        for i in 0..CHUNK_LEN {
-            match chunk.get_idx(i) {
-                SUNFLOWER => lower += 1,
-                SUNFLOWER_TOP => upper += 1,
-                _ => {}
+        let mut scanned_sf = 0usize;
+        'sf: for cx in -128..128 {
+            for cz in -128..128 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::SunflowerPlains {
+                    continue;
+                }
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                if Biome::from_u8(chunk.biome[8 * 16 + 8]) != Biome::SunflowerPlains {
+                    continue;
+                }
+                for i in 0..CHUNK_LEN {
+                    match chunk.get_idx(i) {
+                        SUNFLOWER => lower += 1,
+                        SUNFLOWER_TOP => upper += 1,
+                        _ => {}
+                    }
+                }
+                scanned_sf += 1;
+                if scanned_sf >= 16 {
+                    break 'sf;
+                }
             }
         }
+        assert!(scanned_sf > 0, "found sunflower-plains chunks to scan");
         assert!(lower > 0, "sunflowers present");
         assert_eq!(lower, upper, "every sunflower carries its upper half");
     }

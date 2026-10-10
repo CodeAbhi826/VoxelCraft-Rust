@@ -6866,3 +6866,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z61 — 4.1n2: independent overlay roll (real bug) + refit re-pins
 - Root cause for dark/flower/giant/mansion losses: base split and overlay splits shared one cell roll (forest=77-98 but dark needed <33 — empty intersection). Fix: second roll on LAYER_SALT_OVERLAY, threaded through finish/taiga paths. Bamboo test hardened to jungle-chunk accumulation (same interleave flake). Re-pins from CI logs only: 3 mains + 5 wides + stronghold + spawn (-31.5,72,-55.5). Village/ravine/ocean still behind the sequential assert.
+
+## 2026-10-10z62 - 4.1n3: patch-coherent overlays + sunflower hardening
+- Full-window census FIT-confirmed: dark 0.79x, giant 1.14x, birch 0.90x; mountains/river/beach/deep stay queued (relief + carve slices). No pins taken, n3 moves hashes again.
+- Mansion root cause: per-cell pick2 is spatial noise, triple-column check needs patch agreement. Fix: pick2 at 16-block patches (marginal unchanged). Sunflower test to 16-chunk accumulation. z61 pins stale, fresh harvest next cycle.

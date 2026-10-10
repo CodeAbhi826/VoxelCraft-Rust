@@ -6900,3 +6900,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z71 - ravine pin (run 38080470656, CI-measured)
 - Hardenings hold (ferns/badlands/shallow green). Ravine chunk (0,0) pinned 3c9fa975. Ocean pin surfaces next, then verification census.
+
+## 2026-10-11z72 - ocean pin, chain complete (run 38080891073, CI-measured)
+- Ocean chunk (-1,1) pinned 965210e3. All pins current. Next: verification census vs copy.

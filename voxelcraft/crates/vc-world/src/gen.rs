@@ -9659,10 +9659,10 @@ mod golden_determinism_tests {
         // chunk (0,0) contents (coords fixed — the ravine roll is
         // position-only, the biome bytes moved)
         0x3c9f_a975_d9cf_3894,
-        // 4.1o re-pin (CI-measured): relief gates moved ocean chunk
-        // (-1,1) contents (coords fixed — the ocean/land split moved
-        // with the h61 shelf)
-        0x9ac1_40a3_6689_5454,
+        // 4.1p re-pin (CI-measured): shelf gates moved ocean chunk
+        // (-1,1) contents (coords fixed — the h60-61 shelf left the
+        // ocean split)
+        0x9652_10e3_6fa8_e22e,
     ];
 
     #[test]

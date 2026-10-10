@@ -173,3 +173,33 @@ packet; worldgen visuals are Code-only until V1 captures.
 8. Legal audit clean every slice — VERIFIED (2 prior hits scrubbed).
 9. Tuning targets open, not silent — CLAIMED (blocked on owner diffs).
 10. Part 4 code complete bar tuning — CLAIMED (defers listed).
+
+## PART 4 FIT-ARC AMENDMENT (2026-10-11 — supersedes §9 tuning-targets)
+
+Method: owner-copy counts (copy untouched, probes deleted) → full-window
+census at owner seed → gate fits → CI re-pins from logs only. All pins
+under the standing pre-1.0.0 free-re-pin rule.
+Final global shares, ours/copy: ocean 0.93, plains 0.70, mountains 0.83,
+forest 0.73, taiga 0.93, swamp 1.15, river 0.76, beach 1.13, taiga-hills
+0.73, deep 0.91, birch 0.98, dark 0.75, giant 1.21, giant-hills 0.40.
+Family-internal ratios exact: dark 33% of forest, giant 28% of taiga,
+flower 45% of the 1% birch base, badlands 5% of warm, deep 79/6/15,
+shallow 93/6/2. Real bugs fixed along the way: shared overlay roll
+(dark/flower/giant unreachable), per-cell noise vs the mansion
+triple-column check (16-block patches), river band after ocean (carved
+cores read as ocean). Accepted deviations: giant-hills 0.40 (thin h76+
+relief budget, mechanism verified); plains/forest 0.70–0.73 band is
+regional variance (the copy is one temperate patch; our window spans
+snow/warm climates absent from it) — not chased further by design.
+
+### Adversarial self-review — 10 claims (2026-10-11)
+1. 13/14 families within 0.70–1.21x of copy — TESTED (local census logs).
+2. Family-internal ratios exact per design — TESTED (same census).
+3. Copy untouched (manifest-verified) — VERIFIED (importer read-only path).
+4. All pins CI-measured, none from memory — VERIFIED (log grep chain).
+5. Determinism holds across reruns (typo scare resolved) — VERIFIED.
+6. Content tests green (mansions/ferns/flora/structures) — TESTED (CI).
+7. CI green 12/12 incl. 3-OS goldens + reuse gate — VERIFIED (this run).
+8. River valleys wet (99% core) + water-filled in-game — TESTED (probe).
+9. Regional-variance call documented, not silent — CLAIMED (above).
+10. Part 4 closes on tour green; Part 5 starts immediately — CLAIMED.

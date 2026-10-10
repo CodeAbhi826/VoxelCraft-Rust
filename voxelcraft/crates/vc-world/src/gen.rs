@@ -772,6 +772,8 @@ pub struct TerrainGen {
     /// density noise stack — improved-Perlin fBm samplers wired with the
     /// vanilla constants (see vanilla_noise.rs for the cited sources).
     vterrain: VanillaTerrain,
+    /// 4.4b: outer-End island mask field.
+    n_end: Noise,
     /// River band: ridged low-frequency field (the disclosed adaptation
     /// of vanilla's layer-stack rivers).
     n_river: Noise,
@@ -813,6 +815,7 @@ impl TerrainGen {
             n_neth1: Noise::new(seed ^ 0xA100),
             n_neth2: Noise::new(seed ^ 0xA200),
             n_neth3: Noise::new(seed ^ 0xA300),
+            n_end: Noise::new(seed ^ 0xE17D),
             n_mush: Noise::new(seed ^ 0xA400),
         }
     }
@@ -5850,6 +5853,43 @@ impl TerrainGen {
                         chunk.set(x as usize, y as usize, z as usize, END_STONE);
                     }
                 }
+                // 4.4b: outer islands past the void gap (dist ≥ 1000) —
+                // noise-gated end-stone blobs ([ESTIMATED] ring, gate,
+                // heights — vanilla observable: void gap then island
+                // ring; cities/ships need documented dims, deferred).
+                if dist >= 1000.0 {
+                    let m = fbm2(
+                        &self.n_end,
+                        wx as f32 / 220.0,
+                        wz as f32 / 220.0,
+                        3,
+                        2.0,
+                        0.5,
+                    );
+                    if m > 0.25 {
+                        let surface = (62.0 + m * 24.0) as i32;
+                        let thick = 8 + (Rng::hash3(self.seed ^ 0xE1D6, wx, 0, wz) % 8) as i32;
+                        let bottom = (surface - thick).max(40);
+                        chunk.height[col_idx] = surface.min(255) as u8;
+                        for y in bottom..=surface {
+                            chunk.set(x as usize, y as usize, z as usize, END_STONE);
+                        }
+                        // chorus on high islands (approximate stacks —
+                        // no branching, disclosed)
+                        if surface >= 66 && Rng::hash3(self.seed ^ 0xE1D7, wx, 0, wz) % 7 == 0 {
+                            let h = 2 + (Rng::hash3(self.seed ^ 0xE1D8, wx, 0, wz) % 3) as i32;
+                            for y in surface + 1..=surface + h {
+                                chunk.set(x as usize, y as usize, z as usize, CHORUS_PLANT);
+                            }
+                            chunk.set(
+                                x as usize,
+                                (surface + h + 1) as usize,
+                                z as usize,
+                                CHORUS_FLOWER,
+                            );
+                        }
+                    }
+                }
                 chunk.biome[col_idx] = 9; // the_end (Bedrock single-biome id)
             }
         }
@@ -9515,6 +9555,50 @@ mod libm_pinned_tests {
             assert!((0.0..256.0).contains(mean), "sane mean {mean}");
         }
         assert_eq!(rows, gen.height_stats(0, 0, 2, 2));
+    }
+
+    /// 4.4b: the void gap holds (no end stone 60..1000 out), chorus
+    /// plants stand on end stone, and outer generation is stable.
+    #[test]
+    fn outer_end_gap_and_chorus() {
+        let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::End);
+        // gap: chunk (40,0) ≈ 640 blocks out — no end stone anywhere
+        let (gap, _) = gen.generate_chunk(40, 0, Vec::new());
+        for y in 0..256usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    assert_ne!(
+                        gap.get(x, y, z),
+                        END_STONE,
+                        "void gap must be empty at ({x},{y},{z})"
+                    );
+                }
+            }
+        }
+        // chorus validity over a far chunk: plants stand on stone/plant
+        let (far, _) = gen.generate_chunk(80, 0, Vec::new());
+        for y in 1..256usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    if far.get(x, y, z) == CHORUS_PLANT {
+                        let below = far.get(x, y - 1, z);
+                        assert!(
+                            below == END_STONE || below == CHORUS_PLANT,
+                            "chorus floats at ({x},{y},{z})"
+                        );
+                    }
+                }
+            }
+        }
+        // stable
+        let (far2, _) = gen.generate_chunk(80, 0, Vec::new());
+        for y in 0..256usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    assert_eq!(far.get(x, y, z), far2.get(x, y, z));
+                }
+            }
+        }
     }
 
     /// 4.1a: vanilla ids match the cited registry values.

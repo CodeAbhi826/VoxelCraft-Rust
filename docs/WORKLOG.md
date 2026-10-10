@@ -6770,3 +6770,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Cross-chunk veins via anchor streams (chunk-rng shim keeps trees/vegetation fixed); ore_blob_world takes world coords. Re-pins: ore (552/49a2...), 3 overworld mains, 4 targeted, 5 wide-overworld (nether/end identical); GOLDEN comment carries the 4.4a note. Lint: hex grouping + collect cleanups (pre-existing). Seam 0.9096 -> 0.9516; residual mixes single-pass canopy staleness + discrete-deco differences (border columns are different columns — no continuity requirement), not blob clipping. Local: golden x3 + seam + clippy green, audit [PASS].
 
 ## 2026-10-10z40 — 4.4a CLOSED (CI-green, re-pins hold 3/3 OS)
+
+## 2026-10-10z41 — 4.4b: outer End islands + chorus
+- generate_end_chunk: noise-gated end-stone blobs past dist 1000 ([ESTIMATED] ring/gate/heights), chorus stacks on high islands (no branching), cities/ships deferred. Test: void gap empty, chorus grounded, stable. Local: test green, audit [PASS].

@@ -1263,15 +1263,18 @@ impl TerrainGen {
     /// 4.1i: taiga family overlay (giant/hills/pod-zol) shared by the
     /// snow and temperate paths. Giant membership rides the uniform
     /// cell roll (4.1n FIT: 28% of the family vs the var-tail 2%);
-    /// hills stay height-gated, lowland podzol keeps its var band.
+    /// 4.1q: hills 78 -> 76, giant-hills 80 -> 78 (verification
+    /// census: hills 0.51x / giant-hills 0.21x starved, giant 1.33x
+    /// fat — the gates sat above most high taiga; [ESTIMATED]).
+    /// Lowland podzol keeps its var band.
     fn taiga_overlay(&self, h: i32, var: f32, pick: u64) -> (Biome, u16, u16) {
         if pick < 28 {
-            if h >= 80 {
+            if h >= 78 {
                 (Biome::GiantTreeTaigaHills, PODZOL, DIRT)
             } else {
                 (Biome::GiantTreeTaiga, PODZOL, DIRT)
             }
-        } else if h >= 78 {
+        } else if h >= 76 {
             (Biome::TaigaHills, GRASS, DIRT)
         } else if var > 0.45 {
             (Biome::Taiga, PODZOL, DIRT)

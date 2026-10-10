@@ -6903,3 +6903,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z72 - ocean pin, chain complete (run 38080891073, CI-measured)
 - Ocean chunk (-1,1) pinned 965210e3. All pins current. Next: verification census vs copy.
+
+## 2026-10-11z73 - 4.1q hill gates (verification census)
+- Scorecard: ocean 1.11, beach 1.13, deep 1.01, birch 0.98, taiga 0.98, mountains 0.83, dark 0.75, plains 0.70, hills 0.51, giant-hills 0.21, giant 1.33. Fix: hills 76, giant-hills 78 (existing unit probes still pass). Plains/forest band left as regional variance (copy is one temperate patch). River carve queued as its own slice.

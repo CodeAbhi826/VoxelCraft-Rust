@@ -12703,7 +12703,7 @@ impl GameApp {
                                 self.player.heal(2.0_f32.powi(amp as i32 + 1))
                             }
                             EffectKind::InstantDamage => {
-                                self.player.damage(2.0_f32.powi(amp as i32 + 1))
+                                self.player.damage(2.0_f32.powi(amp as i32 + 1));
                             }
                             _ => self.player.effects.apply(
                                 kind,

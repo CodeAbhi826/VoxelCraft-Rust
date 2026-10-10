@@ -1270,7 +1270,11 @@ fn match_kitchen(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
     let mut other = 0;
     for s in slots {
         match s.block {
-            PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS if !s.is_empty() => planks += 1,
+            PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS | SPRUCE_PLANKS
+                if !s.is_empty() =>
+            {
+                planks += 1
+            }
             BOWL if !s.is_empty() => bowl += 1,
             MUSHROOM_RED if !s.is_empty() => red += 1,
             MUSHROOM_BROWN if !s.is_empty() => brown += 1,
@@ -1499,7 +1503,7 @@ pub fn ing_matches(ing: &Ing, block: u16) -> bool {
             // 1.16 woods
             matches!(
                 block,
-                PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS
+                PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS | SPRUCE_PLANKS
             )
         }
     }
@@ -1554,7 +1558,7 @@ impl RecipeBook {
                 Ing::AnyPlanks => {
                     matches!(
                         ingredient,
-                        PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS
+                        PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS | SPRUCE_PLANKS
                     )
                 }
             });

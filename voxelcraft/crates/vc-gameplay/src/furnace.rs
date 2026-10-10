@@ -111,7 +111,9 @@ pub fn fuel_ticks(block: u16) -> i32 {
         // audit-fix (1.2): jungle log/planks join the wood fuels (300
         // t — VERIFIED w/Log §Fuel: "Logs... can be used as a fuel in
         // furnaces"; the fuel table's log/plank row is 300 ticks)
-        PLANKS | OAK_LOG | BIRCH_LOG | SPRUCE_LOG | JUNGLE_LOG | JUNGLE_PLANKS => 300,
+        PLANKS | OAK_LOG | BIRCH_LOG | SPRUCE_LOG | JUNGLE_LOG | JUNGLE_PLANKS | SPRUCE_PLANKS => {
+            300
+        }
         // 1.11 (VERIFIED, changelog §Fuel: "1 Wool smelts 0.5 items"
         // — 0.5 items × 200 ticks/item = 100 ticks).
         WOOL_WHITE | WOOL_RED | WOOL_YELLOW | WOOL_BLUE | WOOL_BLACK => 100,

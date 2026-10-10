@@ -6725,3 +6725,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z32 — 4.2c: structure coverage audit
 - Mineshafts/strongholds/fortresses/fossils verified present + tested; no code needed. Audit table in PARITY-BACKLOG.md: 9 present (with provenance), 12 missing with disposition (documented dims first, else Part 6). Next: 4.2d doc research for the cheapest missing set (well/hut/igloo) or 4.3 terrain.
+
+## 2026-10-10z32 — 4.2c closed (CI-green)
+
+## 2026-10-10z33 — 4.2d: structure-block registry (sandstone/spruce/cauldron)
+- 3 full-cube blocks (584-586) + identity states (937-939): table rows (placeholder tiles), both fold arms, model/prop exclusions, picker + tabs (BuildingBlocks 157, Decorations 55), counts (587/940), hardness (0.8/2/2 VERIFIED live), tools/fuel/flammability/AnyPlanks wiring, GPU LUT twins, roundtrip test. Cauldron solid-cube + no slab/stairs variants (disclosed). Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).

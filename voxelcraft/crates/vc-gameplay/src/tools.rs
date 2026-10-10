@@ -153,6 +153,8 @@ pub fn preferred_tool(block: u16) -> Option<ToolClass> {
     match block {
         blk::STONE
         | blk::COBBLE
+        | blk::SANDSTONE
+        | blk::CAULDRON
         | blk::GRANITE
         | blk::DIORITE
         | blk::ANDESITE
@@ -178,6 +180,7 @@ pub fn preferred_tool(block: u16) -> Option<ToolClass> {
         | blk::ACACIA_LOG
         | blk::DARK_OAK_LOG
         | blk::PLANKS
+        | blk::SPRUCE_PLANKS
         | blk::OAK_FENCE
         | blk::CRAFTING_TABLE
         | blk::CHEST

@@ -6827,3 +6827,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z51 — 4.1j closed (re-pins hold)
 - Fit round 1 shares verified on copy; clippy tuple fix; re-pins: 3 mains + 4 targeted + 5 wide-overworld (nether/end identical, village pin moved to (-180,214)). Local: golden x3 + clippy green, audit [PASS].
+
+## 2026-10-10z52 — 4.1k: badlands restore + rare-biome test windows
+- Badlands rides the warm gate by var>0.65 [ESTIMATED] (warm 8% cut had starved it; copy share 0.4%, ours ~0.2% at probe seed). Mushroom attempts now target mushroom columns (same budget, stream-shim preserves downstream rng; fixes stems-0 on tiny islands). Flower test asserts the per-column sunflower rule (bands interleave within a chunk). Spawn re-pin to CI-measured (88.5,79,-111.5). Test windows widened for clumped rare biomes: phase_e3 probe 64->256 step 2, new_biomes ±40->±80, v172 find_biome ±64->±128. Expect golden re-pins from CI (biome layout moved).

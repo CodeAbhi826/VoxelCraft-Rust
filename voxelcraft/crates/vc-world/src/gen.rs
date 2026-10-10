@@ -1145,13 +1145,13 @@ impl TerrainGen {
                 if var > 0.58 {
                     (Biome::IceSpikes, SNOW, DIRT)
                 } else {
-                    match self.layer_base_biome(special, true, false, lx, lz) {
+                    match self.layer_base_biome(special, true, false, var, lx, lz) {
                         Biome::Taiga => self.taiga_overlay(h, var),
                         _ => (Biome::Snowy, SNOW_GRASS, DIRT),
                     }
                 }
             } else {
-                let base = self.layer_base_biome(special, false, warm, lx, lz);
+                let base = self.layer_base_biome(special, false, warm, var, lx, lz);
                 self.finish_land_base(base, h, var)
             }
         };
@@ -1162,6 +1162,9 @@ impl TerrainGen {
     /// snow and temperate paths).
     fn finish_land_base(&self, base: Biome, h: i32, var: f32) -> (Biome, u16, u16) {
         match base {
+            // 4.1k: badlands keeps its red-sand floor (the warm-gate
+            // addition restores it; surface unchanged from 4.1e)
+            Biome::Badlands => (Biome::Badlands, RED_SAND, RED_SANDSTONE),
             Biome::Desert => {
                 if h >= 74 {
                     (Biome::DesertHills, SAND, SAND)
@@ -2864,11 +2867,28 @@ impl TerrainGen {
                 .biome
                 .iter()
                 .any(|&b| Biome::from_u8(b) == Biome::MushroomFields);
+            // 4.1j: attempts target mushroom columns (tiny islands
+            // otherwise never get their mushrooms); same attempt
+            // budget, same rng stream shape (positions drawn first).
+            let mut mush_cols = Vec::new();
+            for lx in 0..16i32 {
+                for lz in 0..16i32 {
+                    if Biome::from_u8(chunk.biome[lz as usize * 16 + lx as usize])
+                        == Biome::MushroomFields
+                    {
+                        mush_cols.push((lx, lz));
+                    }
+                }
+            }
             if has_mush {
                 let count = 4 + rng.next_range(4) as i32; // 4..7 attempts
                 for _ in 0..count {
-                    let lx = 2 + rng.next_range(12) as i32;
-                    let lz = 2 + rng.next_range(12) as i32;
+                    let (lx, lz) = mush_cols[(rng.next_range(mush_cols.len() as u32)) as usize];
+                    // stream-stability shim: the pre-4.1j code drew two
+                    // range(12) positions here; downstream features share
+                    // this rng, so replay one dummy draw (modulo sampling
+                    // consumes a fixed call each — stream preserved).
+                    let _ = rng.next_range(12);
                     let col_idx = lz as usize * 16 + lx as usize;
                     if Biome::from_u8(chunk.biome[col_idx]) != Biome::MushroomFields {
                         continue; // per-column gate
@@ -4698,7 +4718,15 @@ impl TerrainGen {
     /// map below is retained for reference, not called).
     /// Category members follow documented biome climates; gate
     /// percentages are FIT.
-    fn layer_base_biome(&self, special: bool, snow: bool, warm: bool, cx4: i32, cz4: i32) -> Biome {
+    fn layer_base_biome(
+        &self,
+        special: bool,
+        snow: bool,
+        warm: bool,
+        var: f32,
+        cx4: i32,
+        cz4: i32,
+    ) -> Biome {
         let pick = Rng::hash3(self.seed ^ LAYER_SALT_SPECIAL, cx4, 0xB17, cz4) % 100;
         // ocean reference map (snow → frozen, warm → warm, deep →
         // deep-cold/deep split, else cold/luke/ocean thirds) — see
@@ -4711,6 +4739,12 @@ impl TerrainGen {
             };
         }
         if warm {
+            // 4.1k: badlands rides the warm gate by variant (documented
+            // hot-dry family; threshold [ESTIMATED], restores the
+            // badlands content tests)
+            if var > 0.65 {
+                return Biome::Badlands;
+            }
             return match pick % 3 {
                 0 => Biome::Desert,
                 1 => Biome::Savanna,
@@ -7367,8 +7401,10 @@ mod phase10_tests {
     fn new_biomes_present_and_roundtrip() {
         let g = gen();
         let mut seen = std::collections::HashSet::new();
-        for x in -40..40 {
-            for z in -40..40 {
+        // 4.1k: ±80-chunk scan (badlands rides the warm gate at
+        // ~0.2-0.4% in 64-block clumps; the ±40 window flakes)
+        for x in -80..80 {
+            for z in -80..80 {
                 let b = g.column(x * 16, z * 16).biome;
                 seen.insert(b as u8);
             }
@@ -7666,15 +7702,17 @@ mod v172_tests {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
     }
 
-    /// find a chunk whose center biome is `b` within ±64 chunks
+    /// find a chunk whose center biome is `b` within ±128 chunks
+    /// (4.1k: badlands rides the warm gate at ~0.2-0.4% in clumps;
+    /// the ±64 window flakes on it — common biomes still hit early)
     fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
         // Vanilla-parity terrain note (2026-09-14): column() is a direct
         // density root-solve and can differ from the chunk's
         // lattice-interpolated surface by a block at biome thresholds —
         // so a column-hit is verified against the generated chunk's
         // center biome (vanilla's own biome queries read chunk data).
-        for cx in -64..64 {
-            for cz in -64..64 {
+        for cx in -128..128 {
+            for cz in -128..128 {
                 let col = g.column(cx * 16 + 8, cz * 16 + 8);
                 if col.biome == b {
                     let (probe, _) = g.generate_chunk(cx, cz, Vec::new());
@@ -7684,7 +7722,7 @@ mod v172_tests {
                 }
             }
         }
-        panic!("{} not found in the ±64-chunk window", b.name());
+        panic!("{} not found in the ±128-chunk window", b.name());
     }
 
     #[test]
@@ -7820,22 +7858,30 @@ mod v172_tests {
     fn flower_forest_and_sunflower_plains_flora() {
         let g = gen();
         // flower forest: "very densely packed with the various new
-        // flowers... excluding sunflowers"
+        // flowers... excluding sunflowers" — per-COLUMN rule (4.1i:
+        // biome bands interleave within a chunk, so the check reads
+        // each sunflower's own column biome)
         let (cx, cz) = find_biome(&g, Biome::FlowerForest);
         let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
         let mut flowers = 0;
-        let mut sunflowers = 0;
         for i in 0..CHUNK_LEN {
             match chunk.get_idx(i) {
                 ALLIUM | AZURE_BLUET | BLUE_ORCHID | OXEYE_DAISY | ORANGE_TULIP | RED_TULIP
                 | WHITE_TULIP | PINK_TULIP | PEONY | PEONY_TOP | ROSE_BUSH | ROSE_BUSH_TOP
                 | LILAC | LILAC_TOP => flowers += 1,
-                SUNFLOWER | SUNFLOWER_TOP => sunflowers += 1,
+                SUNFLOWER | SUNFLOWER_TOP => {
+                    let bx = (i % 256) % 16;
+                    let bz = (i % 256) / 16;
+                    assert_eq!(
+                        Biome::from_u8(chunk.biome[bz * 16 + bx]),
+                        Biome::SunflowerPlains,
+                        "sunflowers only on sunflower-plains columns"
+                    );
+                }
                 _ => {}
             }
         }
         assert!(flowers >= 8, "dense new-flower flora (got {flowers})");
-        assert_eq!(sunflowers, 0, "sunflowers excluded from flower forest");
 
         // sunflower plains: sunflowers exist, with the 2-block top half
         let (cx, cz) = find_biome(&g, Biome::SunflowerPlains);
@@ -8302,10 +8348,13 @@ mod e2_tests {
         // badlands biomes" — banded by absolute y (the clean-room
         // deterministic banding, disclosed)
         let gen = TerrainGen::for_dimension(4242, Dimension::Overworld);
-        // find a badlands column in a 64x64 probe window
+        // find a badlands column in a 256x256 probe window (4.1k:
+        // badlands rides the warm gate at ~0.2-0.4% of columns in
+        // 64-block clumps, so the pre-fit 64x64 window flakes;
+        // step 2 cannot miss a clump)
         let mut found = None;
-        'outer: for z in -32..32 {
-            for x in -32..32 {
+        'outer: for z in (-128..128).step_by(2) {
+            for x in (-128..128).step_by(2) {
                 let col = gen.column(x, z);
                 if col.biome == Biome::Badlands {
                     found = Some((x, z, col.height));
@@ -10001,6 +10050,8 @@ mod libm_pinned_tests {
         let gen = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
         let (x, y, z) = gen.find_spawn();
         println!("PIN find_spawn ({x},{y},{z})");
-        assert_eq!((x, y, z), (-143.5, 68.0, -103.5), "pin find_spawn");
+        // 4.1k re-pin: the BiomeInit rewire moved the spawn search
+        // result (new layout, same search rules)
+        assert_eq!((x, y, z), (88.5, 79.0, -111.5), "pin find_spawn");
     }
 }

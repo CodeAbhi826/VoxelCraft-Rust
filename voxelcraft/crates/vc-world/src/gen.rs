@@ -9305,12 +9305,16 @@ mod libm_pinned_tests {
         let get = |c: &Chunk, x: i32, y: i32, z: i32| c.get(x as usize, y as usize, z as usize);
         assert_eq!(get(&chunk, 8 + 2, base + 1, 8), SANDSTONE, "well wall");
         assert_eq!(get(&chunk, 8, base + 2, 8), WATER, "well water");
-        g.emit_hut(&mut chunk, 8, 40, 0, 0);
+        // hut at (8,40) lives in chunk (0,2) — separate scratch chunk
+        let (hchunk, _) = g.generate_chunk(0, 2, Vec::new());
+        let mut hchunk = (*hchunk).clone();
+        g.emit_hut(&mut hchunk, 8, 40, 0, 32);
         let floor = g.column(8, 40).height + 3;
-        assert_eq!(get(&chunk, 8, floor, 40), SPRUCE_PLANKS, "hut floor");
-        assert_eq!(get(&chunk, 8 - 2, floor + 1, 40 - 2), CAULDRON);
-        assert_eq!(get(&chunk, 8 + 2, floor + 1, 40 - 2), CRAFTING_TABLE);
-        assert_eq!(get(&chunk, 8, floor + 1, 40 - 2), FLOWER_POT);
+        let hget = |x: i32, y: i32, z: i32| hchunk.get(x as usize, y as usize, z as usize);
+        assert_eq!(hget(8, floor, 8), SPRUCE_PLANKS, "hut floor");
+        assert_eq!(hget(8 - 2, floor + 1, 8 - 2), CAULDRON);
+        assert_eq!(hget(8 + 2, floor + 1, 8 - 2), CRAFTING_TABLE);
+        assert_eq!(hget(8, floor + 1, 8 - 2), FLOWER_POT);
     }
 
     /// 4.1b: large biomes rescale the classification (same seed, same

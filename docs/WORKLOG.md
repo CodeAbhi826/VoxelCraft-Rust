@@ -6933,3 +6933,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z82 - tour debug: phases-F3 upload always() (observability, no gate change)
 - World pipeline fully exonerated (gen/mesh/light A/B equal, no poison in full disc, no loops/panics). Failing runs save a 492KB F3 shot that never uploads; making it always-upload like the neighboring evidence steps. Next tour yields the shot (fps/phases/GPU/biome/XYZ) whatever the verdict.
+
+## 2026-10-11z83 - E2E fixture seed (tour stall root-caused via F3 pixels)
+- F3 shot: spawn in dark-forest-at-riverside (leaf wall + water in view), GPU 32.5ms on 4 chunks. Settled forest scene cannot satisfy 0.9 on lavapipe (44.7/77 = 0.58 ceiling) - fixture was implicitly open-plains until 4.1i moved spawn. Fix: E2E_SEED override (E2E-only, default 12345) + phases/fkeys legs pinned to seed 2024 (75pct open, flat, verified by census). Gate intact. Temp probes removed.

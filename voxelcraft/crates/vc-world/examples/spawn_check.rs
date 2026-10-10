@@ -1,7 +1,10 @@
 use vc_world::world::World;
 
 fn main() {
-    let seed: u64 = 12345;
+    let seed: u64 = std::env::args()
+        .nth(1)
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(12345);
     let mut w = World::new(seed);
     let (x, y, z) = w.find_spawn();
     println!("seed {seed} spawn: ({x:.2}, {y:.2}, {z:.2})");

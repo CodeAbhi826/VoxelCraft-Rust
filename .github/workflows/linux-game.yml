@@ -299,7 +299,7 @@ jobs:
           mkdir -p run3 && pushd run3 >/dev/null
           set +e
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
-            env WGPU_BACKEND=Vulkan E2E_FKEYS=1 \
+            env WGPU_BACKEND=Vulkan E2E_FKEYS=1 E2E_SEED=2024 \
             "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-fkeys.log
           CODE=$?
           set -e
@@ -373,7 +373,7 @@ jobs:
           mkdir -p run6 && pushd run6 >/dev/null
           set +e
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
-            env WGPU_BACKEND=Vulkan E2E_PHASES=1 \
+            env WGPU_BACKEND=Vulkan E2E_PHASES=1 E2E_SEED=2024 \
             "../$BIN_NAME" --smoke --gpu-timing --verbose 2>&1 | tee ../smoke-phases.log
           CODE=$?
           set -e

@@ -17940,9 +17940,15 @@ impl GameApp {
             }
             // the create screen resets the seed buffer on entry — the
             // deterministic seed goes in AFTER that (typing it is the
-            // field's normal path)
+            // field's normal path). E2E_SEED overrides the fixture seed
+            // per-leg (the phases leg pins open terrain: its 0.9 coverage
+            // contract assumes a light steady-state scene, which even a
+            // correct forest spawn can't satisfy on software GL).
             if id == ui::ID_WS_CREATE {
-                self.wc_seed = "12345".into();
+                self.wc_seed = std::env::var("E2E_SEED")
+                    .ok()
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or_else(|| "12345".into());
             }
         }
 

@@ -2813,6 +2813,13 @@ fn compile_pack_atlas(
     (atlas, animations)
 }
 
+/// 3.6b: a resolved command target — the local player or one mob.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum CmdTarget {
+    Me,
+    Mob(u32),
+}
+
 impl GameApp {
     pub async fn new(window: &'static winit::window::Window) -> Self {
         // BOOT PERF diagnostics: the user-facing wall time from process
@@ -12317,9 +12324,42 @@ impl GameApp {
         self.ui.dirty = true;
     }
 
-    /// 3.6a: the command dispatcher — `/help /seed /gamemode /time
-    /// /weather /say /me`. True = handled (even on usage errors —
-    /// those print their usage); false = unknown command.
+    /// 3.6b: resolve a selector argv to a command target. Every
+    /// player selector is the local player (single-player —
+    /// disclosed); `@e` is the nearest living mob to the player.
+    fn resolve_target(&self, s: &str) -> Result<CmdTarget, String> {
+        use vc_gameplay::command::Selector;
+        match vc_gameplay::command::parse_selector(s) {
+            Some(Selector::NearestEntity) => {
+                let p = self.player.pos;
+                let best = self
+                    .sim
+                    .mobs
+                    .list
+                    .iter()
+                    .filter(|m| m.health > 0.0)
+                    .min_by(|a, b| {
+                        let da = (a.pos[0] - p.x).powi(2)
+                            + (a.pos[1] - p.y).powi(2)
+                            + (a.pos[2] - p.z).powi(2);
+                        let db = (b.pos[0] - p.x).powi(2)
+                            + (b.pos[1] - p.y).powi(2)
+                            + (b.pos[2] - p.z).powi(2);
+                        da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                match best {
+                    Some(m) => Ok(CmdTarget::Mob(m.id)),
+                    None => Err("No entities found".to_string()),
+                }
+            }
+            Some(_) => Ok(CmdTarget::Me),
+            None => Err(format!("Unknown target: {s}")),
+        }
+    }
+
+    /// 3.6a: the command dispatcher (3.6b adds give/tp/kill). True =
+    /// handled (even on usage errors — those print their usage);
+    /// false = unknown command.
     fn run_command(&mut self, line: &str) -> bool {
         use vc_gameplay::command::COMMANDS;
         let argv = vc_gameplay::command::split_args(line.strip_prefix('/').unwrap_or(line));
@@ -12449,6 +12489,169 @@ impl GameApp {
                     self.chat
                         .system(format!("* Player {}", argv[1..].join(" ")));
                 }
+                true
+            }
+            // 3.6b: selectors + give/tp/kill (effect + world-edit
+            // follow in 3.6c/d)
+            "give" => {
+                let Some(ts) = argv.get(1) else {
+                    self.chat
+                        .system("Usage: /give <target> <item> [count]".to_string());
+                    return true;
+                };
+                match self.resolve_target(ts) {
+                    Ok(CmdTarget::Me) => {}
+                    Ok(CmdTarget::Mob(_)) => {
+                        self.chat
+                            .system("Only players may be given items".to_string());
+                        return true;
+                    }
+                    Err(e) => {
+                        self.chat.system(e);
+                        return true;
+                    }
+                }
+                let item = match argv
+                    .get(2)
+                    .and_then(|s| vc_gameplay::command::item_by_name(s))
+                {
+                    Some(id) => id,
+                    None => {
+                        self.chat.system("Unknown item".to_string());
+                        return true;
+                    }
+                };
+                let count = argv
+                    .get(3)
+                    .and_then(|s| s.parse::<u32>().ok())
+                    .unwrap_or(1)
+                    .clamp(1, 64) as u8;
+                let leftover = self.player.inv.add(item, count);
+                if leftover > 0 {
+                    // no drop-at-feet path handy (needs biome/sky) —
+                    // overflow is lost, disclosed
+                    self.chat
+                        .system(format!("Inventory full — {leftover} lost"));
+                }
+                self.chat.system(format!(
+                    "Gave {} [{}] to Player",
+                    count - leftover,
+                    vc_blocks::blocks::name(item)
+                ));
+                self.ui.dirty = true;
+                true
+            }
+            "tp" => {
+                use vc_gameplay::command::parse_coord;
+                // tp <x> <y> <z> | tp <target> | tp <target> <x> <y> <z>
+                let (target, coords): (CmdTarget, Vec<String>) = match argv.len() {
+                    4 => (CmdTarget::Me, argv[1..4].to_vec()),
+                    2 => match self.resolve_target(&argv[1]) {
+                        Ok(t) => (t, Vec::new()),
+                        Err(e) => {
+                            self.chat.system(e);
+                            return true;
+                        }
+                    },
+                    5 => match self.resolve_target(&argv[1]) {
+                        Ok(t) => (t, argv[2..5].to_vec()),
+                        Err(e) => {
+                            self.chat.system(e);
+                            return true;
+                        }
+                    },
+                    _ => {
+                        self.chat.system(
+                            "Usage: /tp <x> <y> <z> | tp <target> [<x> <y> <z>]".to_string(),
+                        );
+                        return true;
+                    }
+                };
+                // base = the moved body's current feet (vanilla `~`)
+                let base: [f32; 3] = match target {
+                    CmdTarget::Me => self.player.pos.to_array(),
+                    CmdTarget::Mob(id) => match self.sim.mobs.by_id(id) {
+                        Some(m) => m.pos,
+                        None => {
+                            self.chat.system("No entities found".to_string());
+                            return true;
+                        }
+                    },
+                };
+                // destination: coords, or the target's own spot for
+                // `tp <mob>` (sender goes to the target — vanilla)
+                let dest: [f32; 3] = if coords.is_empty() {
+                    match target {
+                        CmdTarget::Me => base,
+                        CmdTarget::Mob(id) => match self.sim.mobs.by_id(id) {
+                            Some(m) => m.pos,
+                            None => {
+                                self.chat.system("No entities found".to_string());
+                                return true;
+                            }
+                        },
+                    }
+                } else {
+                    let x = parse_coord(&coords[0], base[0]);
+                    let y = parse_coord(&coords[1], base[1]);
+                    let z = parse_coord(&coords[2], base[2]);
+                    match (x, y, z) {
+                        (Some(x), Some(y), Some(z)) => [x, y, z],
+                        _ => {
+                            self.chat.system(
+                                "Usage: /tp <x> <y> <z> | tp <target> [<x> <y> <z>]".to_string(),
+                            );
+                            return true;
+                        }
+                    }
+                };
+                // `tp <mob>` moves the SENDER (vanilla); coords move
+                // the target
+                let mover_is_sender = coords.is_empty() && target != CmdTarget::Me;
+                if mover_is_sender || target == CmdTarget::Me {
+                    self.player.pos = Vec3::new(dest[0], dest[1], dest[2]);
+                    self.player.vel = Vec3::ZERO;
+                    self.player.fall_dist = 0.0;
+                } else if let CmdTarget::Mob(id) = target {
+                    if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == id) {
+                        m.pos = dest;
+                    }
+                }
+                self.play_event("entity.enderman.teleport", None, 0.9);
+                self.chat.system(format!(
+                    "Teleported to [{:.1}, {:.1}, {:.1}]",
+                    dest[0], dest[1], dest[2]
+                ));
+                self.ui.dirty = true;
+                true
+            }
+            "kill" => {
+                let target = if argv.len() < 2 {
+                    CmdTarget::Me
+                } else {
+                    match self.resolve_target(&argv[1]) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            self.chat.system(e);
+                            return true;
+                        }
+                    }
+                };
+                match target {
+                    CmdTarget::Me => {
+                        // the totem + creative gates fall out of the
+                        // normal path (disclosed: creative reports the
+                        // kill but stays alive — invulnerable)
+                        self.death_cause = "was killed".to_string();
+                        self.player.damage(1e9_f32);
+                        self.chat.system("Killed Player".to_string());
+                    }
+                    CmdTarget::Mob(id) => {
+                        self.sim.mobs.damage(id, 1e9_f32);
+                        self.chat.system("Killed entity".to_string());
+                    }
+                }
+                self.ui.dirty = true;
                 true
             }
             _ => false,
@@ -14802,7 +15005,7 @@ impl GameApp {
         self.test_place(SOUL_FIRE, feet[0], feet[1], feet[2]);
         self.player.pos =
             glam::Vec3::new(feet[0] as f32 + 0.5, feet[1] as f32, feet[2] as f32 + 0.5);
-        self.player.vel = glam::Vec3::ZERO;
+        self.player.vel = Vec3::ZERO;
         self.player.on_ground = true;
         let mut input = Input::default();
         for _ in 0..6 {
@@ -15491,7 +15694,7 @@ impl GameApp {
             self.test_place(STONE, c[0], c[1], c[2]);
         }
         self.player.pos = glam::Vec3::new(px as f32 + 0.5, py as f32, pz as f32 + 0.5);
-        self.player.vel = glam::Vec3::ZERO;
+        self.player.vel = Vec3::ZERO;
         self.player.on_ground = true;
 
         // 1. the bed pair: foot at (px, py, pz+1), head at (px, py, pz+2)
@@ -16011,7 +16214,7 @@ impl GameApp {
         let pos = glam::Vec3::new(c[0] + a.cos() * r, c[1] + 7.0, c[2] + a.sin() * r);
         let to_c = (glam::Vec3::new(c[0], c[1] + 1.5, c[2]) - pos).normalize();
         self.player.pos = pos;
-        self.player.vel = glam::Vec3::ZERO;
+        self.player.vel = Vec3::ZERO;
         // Same renderer-convention targeting as the turntable (see
         // e2e_turntable_view): Y = atan2(to_c.x, −to_c.z). The old
         // x-negated form framed sky on a0/a180 (the "90° off" note
@@ -16045,7 +16248,7 @@ impl GameApp {
             }
             self.player.pos = glam::Vec3::from_array(self.e2e_cam_pos);
             self.player.yaw = self.e2e_cam_yaw;
-            self.player.vel = glam::Vec3::ZERO;
+            self.player.vel = Vec3::ZERO;
         }
     }
 
@@ -16174,7 +16377,7 @@ impl GameApp {
         );
         let to_c = (glam::Vec3::new(home[0], home[1] + 1.0, home[2]) - pos).normalize();
         self.player.pos = pos;
-        self.player.vel = glam::Vec3::ZERO;
+        self.player.vel = Vec3::ZERO;
         // E2E cameras target the RENDERER convention (render.rs: dir =
         // (sin yaw, ·, −cos yaw); engine yaw 0 = north). The yaw that
         // faces to_c satisfies sin Y ∝ to_c.x, −cos Y ∝ −to_c.z, i.e.
@@ -17396,7 +17599,7 @@ impl GameApp {
                 let spawn = self.bench_spawn;
                 let (pos, yaw, pitch) = bs.camera(spawn);
                 self.player.pos = pos;
-                self.player.vel = glam::Vec3::ZERO;
+                self.player.vel = Vec3::ZERO;
                 self.player.yaw = yaw;
                 self.player.pitch = pitch;
                 // 1.2: the STREAMING path walks INSIDE the world (eye
@@ -22232,7 +22435,7 @@ impl GameApp {
                             }
                             self.player.pos =
                                 glam::Vec3::new(tx as f32 + 0.5, ty as f32, tz as f32 + 0.5);
-                            self.player.vel = glam::Vec3::ZERO;
+                            self.player.vel = Vec3::ZERO;
                             self.player.reset_fall();
                             self.play_event("entity.enderman.teleport", None, 1.0);
                             vc_render::render::report_boot_log(&format!(

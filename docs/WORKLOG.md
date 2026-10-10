@@ -6644,3 +6644,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z09 — 3.6a closed (parser + 7 commands, CI-green)
 - Next: 3.6b selectors (@p/@s/@a/@e/@r) + give/tp/effect; 3.6c world-edit (fill/clone/setblock/summon); 3.7 scoreboard+teams; then Part-3 packet.
+
+## 2026-10-10z10 — 3.6b: selectors + give/tp/kill
+- command.rs: Selector (@p/@s/@a/@e/@r, no [] args), item_by_name (id/snake/namespace), parse_coord (~-relative) + 4 tests. game.rs: resolve_target (@e=nearest living mob), give (count clamp, overflow-lost disclosed), tp (3 forms, ~ support, sender-to-target), kill (normal death path). Local: 7 parser tests green, both clippy clean.

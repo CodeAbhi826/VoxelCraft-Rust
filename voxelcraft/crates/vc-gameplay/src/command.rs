@@ -56,12 +56,81 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "gamemode <survival|creative|adventure|spectator|0|1|2|3>",
     ),
     ("help", "help [<command>]"),
+    ("give", "give <target> <item> [count]"),
+    ("kill", "kill [target]"),
     ("me", "me <action>"),
     ("say", "say <message>"),
     ("seed", "seed"),
     ("time", "time <set <day|noon|night|midnight|ticks>|query>"),
+    ("tp", "tp <x> <y> <z> | tp <target> [<x> <y> <z>]"),
     ("weather", "weather <clear|rain|thunder> [seconds]"),
 ];
+
+/// 3.6b: target selectors. Single-player resolution (game.rs): every
+/// player selector is the local player; `@e` is the nearest living
+/// mob. Bare `[...]` args are NOT parsed (disclosed).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Selector {
+    This,
+    NearestPlayer,
+    AllPlayers,
+    RandomPlayer,
+    NearestEntity,
+}
+
+/// parse `@p @s @a @e @r` (anything else = None, not a selector).
+pub fn parse_selector(s: &str) -> Option<Selector> {
+    match s {
+        "@s" => Some(Selector::This),
+        "@p" => Some(Selector::NearestPlayer),
+        "@a" => Some(Selector::AllPlayers),
+        "@r" => Some(Selector::RandomPlayer),
+        "@e" => Some(Selector::NearestEntity),
+        _ => None,
+    }
+}
+
+/// snake_case registry name (mirrors lang::key_for's transform so
+/// `give` accepts the same shape vanilla's item ids use).
+fn snake(name: &str) -> String {
+    let mut s = String::with_capacity(name.len());
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() {
+            s.push(c.to_ascii_lowercase());
+        } else if c == ' ' || c == '-' {
+            s.push('_');
+        }
+    }
+    s
+}
+
+/// 3.6b: `/tp` coordinate — absolute or `~`-relative to `base`
+/// (vanilla notation; bare `~` = the base itself).
+pub fn parse_coord(s: &str, base: f32) -> Option<f32> {
+    if let Some(rel) = s.strip_prefix('~') {
+        if rel.is_empty() {
+            Some(base)
+        } else {
+            rel.parse::<f32>().ok().map(|d| base + d)
+        }
+    } else {
+        s.parse::<f32>().ok()
+    }
+}
+
+/// 3.6b: item lookup for `/give` — numeric id or registry snake name
+/// with an optional `namespace:` prefix (`minecraft:stone` works).
+pub fn item_by_name(s: &str) -> Option<u16> {
+    use vc_blocks::blocks::{def, BLOCK_COUNT};
+    if let Ok(id) = s.parse::<u16>() {
+        if (id as usize) < BLOCK_COUNT {
+            return Some(id);
+        }
+        return None;
+    }
+    let bare = s.rsplit(':').next().unwrap_or(s);
+    (0..BLOCK_COUNT as u16).find(|&id| snake(def(id).name) == bare)
+}
 
 #[cfg(test)]
 mod tests {
@@ -84,8 +153,42 @@ mod tests {
     #[test]
     fn table_covers_implemented_commands() {
         let names: Vec<&str> = COMMANDS.iter().map(|(n, _)| *n).collect();
-        for need in ["help", "seed", "gamemode", "time", "weather", "say", "me"] {
+        for need in [
+            "help", "seed", "gamemode", "time", "weather", "say", "me", "give", "tp", "kill",
+        ] {
             assert!(names.contains(&need), "missing {need}");
         }
+    }
+
+    #[test]
+    fn selectors_parse_and_reject() {
+        use super::Selector::*;
+        assert_eq!(parse_selector("@s"), Some(This));
+        assert_eq!(parse_selector("@p"), Some(NearestPlayer));
+        assert_eq!(parse_selector("@a"), Some(AllPlayers));
+        assert_eq!(parse_selector("@r"), Some(RandomPlayer));
+        assert_eq!(parse_selector("@e"), Some(NearestEntity));
+        assert_eq!(parse_selector("Steve"), None);
+        assert_eq!(parse_selector("@p[type=zombie]"), None);
+    }
+
+    #[test]
+    fn item_lookup_spot_checks() {
+        use vc_blocks::blocks::{IRON_SWORD, STONE};
+        assert_eq!(item_by_name("3"), Some(STONE));
+        assert_eq!(item_by_name("stone"), Some(STONE));
+        assert_eq!(item_by_name("minecraft:stone"), Some(STONE));
+        assert_eq!(item_by_name("iron_sword"), Some(IRON_SWORD));
+        assert_eq!(item_by_name("not_an_item"), None);
+        assert_eq!(item_by_name("9999"), None);
+    }
+
+    #[test]
+    fn coords_absolute_and_relative() {
+        assert_eq!(parse_coord("10", 5.0), Some(10.0));
+        assert_eq!(parse_coord("~", 5.0), Some(5.0));
+        assert_eq!(parse_coord("~-3", 5.0), Some(2.0));
+        assert_eq!(parse_coord("~2.5", 5.0), Some(7.5));
+        assert_eq!(parse_coord("abc", 5.0), None);
     }
 }

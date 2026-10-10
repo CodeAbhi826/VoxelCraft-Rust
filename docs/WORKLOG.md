@@ -6773,3 +6773,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z41 — 4.4b: outer End islands + chorus
 - generate_end_chunk: noise-gated end-stone blobs past dist 1000 ([ESTIMATED] ring/gate/heights), chorus stacks on high islands (no branching), cities/ships deferred. Test: void gap empty, chorus grounded, stable. Local: test green, audit [PASS].
+
+## 2026-10-10z41 — 4.4b closed (CI-green)

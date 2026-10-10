@@ -4333,7 +4333,7 @@ impl TerrainGen {
                     }
                     if let Some(p) = center(self, crx + dx, crz + dz) {
                         let d = (p.0 as i64 - x as i64).pow(2) + (p.2 as i64 - z as i64).pow(2);
-                        if best.map_or(true, |(bd, _)| d < bd) {
+                        if best.is_none_or(|(bd, _)| d < bd) {
                             best = Some((d, p));
                         }
                     }

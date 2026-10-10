@@ -6760,3 +6760,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - height_stats (per-biome count + mean height, overworld-only) + test + census example height mode. Our seed-0 rows: ocean 53.1, taiga 64.0, mushroom 63.0, beach 61.8, cold_ocean 52.8. Local: test green, audit [PASS].
 
 ## 2026-10-10z39 — 4.3c closed (CI-green)
+
+## 2026-10-10z39 — 4.3c closed (CI-green)
+
+## 2026-10-10z40 — 4.4a: cross-chunk veins (EXPECTS RE-PIN)
+- place_ores resolves blobs from anchor-chunk streams (3x3 cover, world-coord shape hash); chunk-rng draws replayed untouched so trees/vegetation don't move. Ore pin + main golden WILL drift (approved). Local: fmt clean, audit [PASS]; pins harvested from CI.

@@ -637,6 +637,9 @@ pub fn nether_region_biome(seed: u64, cx: i32, cz: i32) -> Biome {
 /// page, live): "a 0.4% chance to attempt to begin generating in every
 /// chunk"
 pub const MINESHAFT_CHANCE: f32 = 0.004;
+/// 4.4a: vein anchor salt (engine-local — vanilla decoration salts are
+/// unpublished; positions tune against owner diffs later).
+pub const VEIN_SALT: u64 = 0x6E15;
 
 /// 4.2b: scattered-structure spread parameters. Provenance: village
 /// (34/8/salt) is documented placement-JSON data; pyramid/jungle/
@@ -1340,7 +1343,7 @@ impl TerrainGen {
     /// Vein shape: the vanilla ellipsoid blob (rotated in xz, per-block
     /// hash edge-jitter), replacing base-stone only (the vanilla target
     /// tag base_stone_overworld = stone + the three variants).
-    fn place_ores(&self, chunk: &mut Chunk, rng: &mut Rng) {
+    fn place_ores(&self, chunk: &mut Chunk, cx: i32, cz: i32, rng: &mut Rng) {
         const VEINS: [(u16, u32, u32, i32, i32); 11] = [
             (DIRT, 10, 33, 0, 255),
             (GRAVEL, 8, 33, 0, 255),
@@ -1354,14 +1357,34 @@ impl TerrainGen {
             (DIAMOND_ORE, 1, 8, 0, 15),
             (LAPIS_ORE, 1, 7, 8, 24), // depth_average(16, 16) -> y16±8
         ];
-        for &(state, count, size, y_min, y_max) in &VEINS {
+        // stream-stability shim: pre-4.4a drew 3 values per blob from
+        // the chunk rng here; downstream features (trees/vegetation)
+        // still consume that stream, so replay the draws untouched and
+        // let anchor-chunk streams below decide the veins.
+        for &(_, count, _, y_min, y_max) in &VEINS {
             for _ in 0..count {
-                // the vanilla placement: square (anywhere in the chunk) +
-                // range (uniform y in [y_min, y_max])
-                let cx0 = rng.next_range(16) as i32;
-                let cz0 = rng.next_range(16) as i32;
-                let cy0 = y_min + rng.next_range((y_max - y_min + 1) as u32) as i32;
-                self.ore_blob(chunk, cx0, cy0, cz0, state, size);
+                rng.next_range(16);
+                rng.next_range(16);
+                rng.next_range((y_max - y_min + 1) as u32);
+            }
+        }
+        // cross-chunk resolution: blobs anchor in their own chunk (3×3
+        // neighborhood covers size ≤ 33) and every overlapped chunk
+        // emits its own parts — no border clipping.
+        for dax in -1..=1 {
+            for daz in -1..=1 {
+                let (ax, az) = (cx + dax, cz + daz);
+                let mut arng = Rng::new(Rng::hash3(self.seed ^ VEIN_SALT, ax, 0, az));
+                for &(state, count, size, y_min, y_max) in &VEINS {
+                    for _ in 0..count {
+                        // the vanilla placement: square (anywhere in the
+                        // anchor chunk) + range (uniform y)
+                        let wx = ax * 16 + arng.next_range(16) as i32;
+                        let wz = az * 16 + arng.next_range(16) as i32;
+                        let wy = y_min + arng.next_range((y_max - y_min + 1) as u32) as i32;
+                        self.ore_blob_world(chunk, cx * 16, cz * 16, wx, wy, wz, state, size);
+                    }
+                }
             }
         }
     }
@@ -1369,14 +1392,23 @@ impl TerrainGen {
     /// One vanilla-style ellipsoid ore blob at the chunk-local center,
     /// replacing base-stone only; edge jitter is a per-position hash so
     /// the blob shape is stream-order independent.
-    fn ore_blob(&self, chunk: &mut Chunk, cx: i32, cy: i32, cz: i32, state: u16, size: u32) {
+    /// One vanilla-style ellipsoid ore blob at WORLD coords, emitting
+    /// only the cells inside this chunk (ox, oz = chunk origin).
+    /// 4.4a: the shape hash uses world coords so every overlapped
+    /// chunk resolves the same blob (was chunk-local before).
+    fn ore_blob_world(
+        &self,
+        chunk: &mut Chunk,
+        ox: i32,
+        oz: i32,
+        wx: i32,
+        wy: i32,
+        wz: i32,
+        state: u16,
+        size: u32,
+    ) {
         let a = size as f64 / 8.0;
-        let mut rng = Rng::new(Rng::hash3(
-            self.seed ^ 0x0BE5,
-            cx * 16 + cy,
-            0,
-            cz * 16 + (size as i32),
-        ));
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0BE5, wx, wy, wz));
         let hx = a * (0.7 + rng.next_f32() as f64 * 0.6);
         let hy = a * (0.5 + rng.next_f32() as f64 * 0.5);
         let hz = a * (0.7 + rng.next_f32() as f64 * 0.6);
@@ -1384,19 +1416,19 @@ impl TerrainGen {
         let (st, ct) = (dsin64(theta), dcos64(theta));
         let r_out = ((a * 1.35).ceil() as i32) + 1;
         for dy in -r_out..=r_out {
-            let by = cy + dy;
+            let by = wy + dy;
             if !(1..=250).contains(&by) {
                 continue;
             }
             for dx in -r_out..=r_out {
                 for dz in -r_out..=r_out {
-                    let bx = cx + dx;
-                    let bz = cz + dz;
-                    if !(0..16).contains(&bx) || !(0..16).contains(&bz) {
+                    let (bx, bz) = (wx + dx, wz + dz);
+                    let (lx, lz) = (bx - ox, bz - oz);
+                    if !(0..16).contains(&lx) || !(0..16).contains(&lz) {
                         continue;
                     }
                     let cur = chunk.get_local(
-                        vc_chunk::chunk::LocalXZ::new(bx as usize, bz as usize),
+                        vc_chunk::chunk::LocalXZ::new(lx as usize, lz as usize),
                         by as usize,
                     );
                     let base_stone =
@@ -1413,7 +1445,7 @@ impl TerrainGen {
                     // per-position edge jitter (±0.15 on the radius)
                     let j = (Rng::hash3(self.seed ^ 0x0BE6, bx, by, bz) % 1000) as f64 / 1000.0;
                     if v <= 1.0 + (j - 0.5) * 0.3 {
-                        chunk.set(bx as usize, by as usize, bz as usize, state);
+                        chunk.set(lx as usize, by as usize, lz as usize, state);
                     }
                 }
             }
@@ -1753,7 +1785,7 @@ impl TerrainGen {
 
         // vanilla ore veins (feature stage 6 — after carving, replacing
         // base stone only)
-        self.place_ores(&mut chunk, &mut rng);
+        self.place_ores(&mut chunk, cx, cz, &mut rng);
 
         // pass 2: inbound edits from neighbors (trees poking into this chunk)
         for (idx, id) in inbound {
@@ -9267,7 +9299,7 @@ mod libm_pinned_tests {
             }
         }
         let mut rng = Rng::new(0xBE5E);
-        gen.place_ores(&mut chunk, &mut rng);
+        gen.place_ores(&mut chunk, 0, 0, &mut rng);
         let mut n_coal = 0u64;
         let mut h = 0xCBF2_9CE4_8422_2325u64;
         for y in 0..256usize {

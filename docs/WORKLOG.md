@@ -6717,3 +6717,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - village_center reworked to documented RandomSpread (uniform in 26-chunk window, salt-mixed rng, site checks kept; margin convention [ESTIMATED]). Golden main hash untouched; targeted village pin re-pinned to chunk (14,15) hash c4d5a3594334cfb8 (owner-approved pre-1.0.0). Local: 3/3 golden green, audit [PASS]. Standing rule going forward: re-pin freely on documented placement changes, stop only for surprise drift.
 
 ## 2026-10-10z29 — 4.2a closed (CI-green, re-pin holds on 3 OS)
+
+## 2026-10-10z30 — 4.2b: spread normalization (zero drift)
+- Pyramid/jungle/mansion onto one spread_candidate helper (salt-mixed rng + uniform window + site checks) with named (spacing, margin, salt) consts + provenance notes. Positions byte-identical (live-rng helper after catching a stream-restart bug pre-commit). Local: 10/10 incl. all golden pins green, audit [PASS]. Tuning numbers await owner diffs.

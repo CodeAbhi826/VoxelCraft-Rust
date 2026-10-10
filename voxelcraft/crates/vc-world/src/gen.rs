@@ -637,6 +637,24 @@ pub fn nether_region_biome(seed: u64, cx: i32, cz: i32) -> Biome {
 /// page, live): "a 0.4% chance to attempt to begin generating in every
 /// chunk"
 pub const MINESHAFT_CHANCE: f32 = 0.004;
+
+/// 4.2b: scattered-structure spread parameters. Provenance: village
+/// (34/8/salt) is documented placement-JSON data; pyramid/jungle/
+/// mansion numbers are the engine's pre-existing regions preserved
+/// verbatim ([ESTIMATED] — vanilla 1.16 salts/spacing live in code,
+/// not in published data). The shared helper below gives every
+/// structure the same RandomSpread shape (salt-mixed region rng +
+/// uniform window + site check) so later tuning fits numbers, not
+/// shapes.
+pub const PYRAMID_SPACING: i32 = 32;
+pub const PYRAMID_MARGIN: i32 = 4;
+pub const PYRAMID_SALT: u64 = 0x0E5;
+pub const JUNGLE_SPACING: i32 = 32;
+pub const JUNGLE_MARGIN: i32 = 4;
+pub const JUNGLE_SALT: u64 = 0x3E4E;
+pub const MANSION_SPACING: i32 = 8;
+pub const MANSION_MARGIN: i32 = 1;
+pub const MANSION_SALT: u64 = 0xA11C;
 /// pyramid candidate spacing [tuning value — vanilla's structure spacing
 /// is not published on the wiki; one candidate per 32×32-chunk region]
 pub const PYRAMID_REGION_CHUNKS: i32 = 32;
@@ -4856,9 +4874,9 @@ impl TerrainGen {
 
     /// pyramid center in a region, desert-gated; None = no pyramid
     pub fn pyramid_center_pub(&self, rx: i32, rz: i32) -> Option<(i32, i32)> {
-        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0E5, rx, 0, rz));
-        let cx = rx * 32 + 4 + rng.next_range(24) as i32;
-        let cz = rz * 32 + 4 + rng.next_range(24) as i32;
+        // 4.2b: same stream as before (salt, then cx, then cz)
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ PYRAMID_SALT, rx, 0, rz));
+        let (cx, cz) = Self::spread_candidate(rx, rz, PYRAMID_SPACING, PYRAMID_MARGIN, &mut rng);
         // site check: sampled columns must be desert + land
         for d in [0i32, 4, -4] {
             let c = self.column(cx * 16 + 8 + d, cz * 16 + 8 + d);
@@ -4996,12 +5014,24 @@ impl TerrainGen {
         out
     }
 
+    /// 4.2b: RandomSpread candidate — uniform chunk pick in the
+    /// (spacing − 2×margin) window from a live region rng. The caller
+    /// owns stream position (fresh rng per region, or post-gate) —
+    /// pins prove zero drift either way.
+    fn spread_candidate(rx: i32, rz: i32, spacing: i32, margin: i32, rng: &mut Rng) -> (i32, i32) {
+        let span = (spacing - 2 * margin) as u32;
+        (
+            rx * spacing + margin + rng.next_range(span) as i32,
+            rz * spacing + margin + rng.next_range(span) as i32,
+        )
+    }
+
     /// 3.7e: deterministic jungle-temple center for one region
     /// (extracted verbatim from jungle_temples_near for /locate).
     fn jungle_temple_center(&self, rx: i32, rz: i32) -> Option<(i32, i32)> {
-        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x3E4E, rx, 0, rz));
-        let cx = rx * 32 + 4 + rng.next_range(24) as i32;
-        let cz = rz * 32 + 4 + rng.next_range(24) as i32;
+        // 4.2b: same stream as before (salt, then cx, then cz)
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ JUNGLE_SALT, rx, 0, rz));
+        let (cx, cz) = Self::spread_candidate(rx, rz, JUNGLE_SPACING, JUNGLE_MARGIN, &mut rng);
         for d in [0i32, 4, -4] {
             let c = self.column(cx * 16 + 8 + d, cz * 16 + 8 + d);
             if c.biome != Biome::Jungle || c.height <= vc_chunk::SEA_LEVEL + 1 {
@@ -5043,12 +5073,13 @@ impl TerrainGen {
     /// 3.7e: deterministic mansion center for one region (extracted
     /// verbatim from woodland_mansions_near for /locate).
     fn woodland_mansion_center(&self, rx: i32, rz: i32) -> Option<(i32, i32)> {
-        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0xA11C, rx, 0, rz));
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ MANSION_SALT, rx, 0, rz));
         if rng.next_range(5) != 0 {
             return None; // rare (VERIFIED "rarely")
         }
-        let cx = rx * 8 + 1 + rng.next_range(6) as i32;
-        let cz = rz * 8 + 1 + rng.next_range(6) as i32;
+        // 4.2b: chunk pick shares the spread shape (margin 1, span 6)
+        // on the live stream (post-gate draws — zero drift)
+        let (cx, cz) = Self::spread_candidate(rx, rz, MANSION_SPACING, MANSION_MARGIN, &mut rng);
         // dark-forest ground check
         for d in [0i32, 5, -5] {
             let c = self.column(cx * 16 + 8 + d, cz * 16 + 8 + d);

@@ -6695,3 +6695,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z22 — 4.0 proposal written (APPROVAL GATE)
 - docs/PART4-PROPOSAL.md: black-box method, constant-provenance table, gates, approval ask. STOPPING for owner approval per PLAN-FINAL 4.0. No Part-4 code until approved.
+
+## 2026-10-10z23 — 4.0 APPROVED (owner: "start the part 4")
+- Starting 4.1 biomes (target: 100% on oracle seeds).

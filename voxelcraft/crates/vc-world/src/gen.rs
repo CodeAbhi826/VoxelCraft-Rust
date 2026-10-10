@@ -540,8 +540,15 @@ pub struct ColumnInfo {
     pub filler: u16,
 }
 
-/// P7 structures: village grid + one house site (deterministic)
-pub const VILLAGE_REGION_CHUNKS: i32 = 24;
+/// P7 structures: village grid — 4.2a documents the vanilla
+/// RandomSpread parameters (placement JSON, public data: spacing 34,
+/// separation 8, salt 10387312). One candidate per 34×34-chunk cell,
+/// uniformly placed in the (spacing−separation) window; the margin
+/// convention (which cell edges hold the buffer) is [ESTIMATED /
+/// APPROXIMATION] — tuned against owner numeric diffs if it misses.
+pub const VILLAGE_SPACING_CHUNKS: i32 = 34;
+pub const VILLAGE_SEPARATION_CHUNKS: i32 = 8;
+pub const VILLAGE_SALT: u64 = 10387312;
 /// max horizontal reach of village structures from the well (houses ≤ 19 r
 /// + 2 footprint + well roof)
 const VILLAGE_MAX_REACH: i32 = 40;
@@ -4348,7 +4355,7 @@ impl TerrainGen {
                 })
                 .min_by_key(|(d, _)| *d)
                 .map(|(_, p)| p),
-            "village" => self.spiral(384, 48, x, z, |s, rx, rz| {
+            "village" => self.spiral(VILLAGE_SPACING_CHUNKS * 16, 48, x, z, |s, rx, rz| {
                 s.village_center(rx, rz)
                     .map(|(wx, wz)| (wx, surf(wx, wz), wz))
             }),
@@ -4450,7 +4457,7 @@ impl TerrainGen {
     }
 
     pub fn villages_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
-        const RC: i32 = VILLAGE_REGION_CHUNKS * 16; // region size in blocks
+        const RC: i32 = VILLAGE_SPACING_CHUNKS * 16; // region size in blocks
         let mut out = Vec::new();
         let rx0 = (ox - VILLAGE_MAX_REACH).div_euclid(RC);
         let rx1 = (ox + 16 + VILLAGE_MAX_REACH).div_euclid(RC);
@@ -4466,21 +4473,17 @@ impl TerrainGen {
         out
     }
 
-    /// deterministic village center for one region, or None. Placement:
-    /// ~55% of regions have a village; the center is jittered inside the
-    /// region and must sit on flat-enough plains/meadow above sea level.
+    /// deterministic village center for one spread cell, or None. The
+    /// cell candidate lands uniformly in the (spacing−separation)
+    /// chunk window ([ESTIMATED] margin convention) and must sit on
+    /// flat-enough friendly ground above sea level (the site check is
+    /// the engine's own rule — vanilla gates on biome at placement).
     fn village_center(&self, rx: i32, rz: i32) -> Option<(i32, i32)> {
-        const RC: i32 = VILLAGE_REGION_CHUNKS * 16;
-        let mut rng = Rng::new(Rng::hash3(self.seed, rx, 0x5EED, rz));
-        if rng.next_f32() > 0.55 {
-            return None;
-        }
-        // jitter across the region interior (margin keeps houses off borders)
-        let base_x = rx * RC + 32;
-        let base_z = rz * RC + 32;
-        let span = RC - 64;
-        let wx = base_x + rng.next_range(span as u32) as i32;
-        let wz = base_z + rng.next_range(span as u32) as i32;
+        const RC: i32 = VILLAGE_SPACING_CHUNKS * 16;
+        const SPAN: i32 = VILLAGE_SPACING_CHUNKS - VILLAGE_SEPARATION_CHUNKS;
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ VILLAGE_SALT, rx, 0x5EED, rz));
+        let wx = rx * RC + rng.next_range(SPAN as u32) as i32 * 16 + 8;
+        let wz = rz * RC + rng.next_range(SPAN as u32) as i32 * 16 + 8;
         // site check: the well spot + its surroundings must be friendly
         for d in [0i32, 6, -6, 12, -12] {
             let (dx, dz) = (d, if d == 0 { 0 } else { d / 2 });
@@ -8834,7 +8837,10 @@ mod golden_determinism_tests {
     /// stronghold / ravine / ocean) at a fixed seed, fixed-order search.
     const GOLDEN_TARGETED: [u64; 4] = [
         0xe473_51bf_1af2_59c0,
-        0x193b_184e_1da4_fe05,
+        // 4.2a re-pin (owner-approved 2026-10-10 — pre-1.0.0, no prior
+        // worlds): village spread 34/8/salt-10387312 moved the pinned
+        // village to chunk (14,15)
+        0xc4d5_a359_4334_cfb8,
         0x8801_2d29_cc3d_c3e4,
         0xbefd_66d3_85fb_a26d,
     ];

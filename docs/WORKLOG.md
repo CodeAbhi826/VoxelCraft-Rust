@@ -6712,3 +6712,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z27 — 4.1c: Nether census + dim-aware probe
 - Found live: column() is overworld-only (Nether test caught it reporting beaches). biome_census now branches per dim (Nether region roll, End single id 9). Test: 16x16 Nether rect holds all 5 families + wastes plurality. Probe takes dim arg. Local: 2/2 census tests green, audit [PASS].
+
+## 2026-10-10z28 — 4.2a: village spread 34/8/salt + re-pin (CLOSED)
+- village_center reworked to documented RandomSpread (uniform in 26-chunk window, salt-mixed rng, site checks kept; margin convention [ESTIMATED]). Golden main hash untouched; targeted village pin re-pinned to chunk (14,15) hash c4d5a3594334cfb8 (owner-approved pre-1.0.0). Local: 3/3 golden green, audit [PASS]. Standing rule going forward: re-pin freely on documented placement changes, stop only for surprise drift.

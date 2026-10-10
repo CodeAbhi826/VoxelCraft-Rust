@@ -7907,17 +7907,32 @@ mod v172_tests {
     fn v114_flowers_generate_in_biomes() {
         let g = gen();
 
-        // cornflower: plains + flower forest (both listed for it)
+        // cornflower: plains + flower forest (both listed for it).
+        // 4.1k: scan up to 16 plains-center chunks — biome bands
+        // interleave, so one chunk's 14 rolls often land off-plains
         let mut corn_plains = 0usize;
-        let (cx, cz) = find_biome(&g, Biome::Plains);
-        for dx in 0..8 {
-            let (chunk, _) = g.generate_chunk(cx + dx, cz, Vec::new());
-            for i in 0..CHUNK_LEN {
-                if chunk.get_idx(i) == CORNFLOWER {
-                    corn_plains += 1;
+        let mut scanned = 0usize;
+        'plains: for cx in -128..128 {
+            for cz in -128..128 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::Plains {
+                    continue;
+                }
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                if Biome::from_u8(chunk.biome[8 * 16 + 8]) != Biome::Plains {
+                    continue;
+                }
+                for i in 0..CHUNK_LEN {
+                    if chunk.get_idx(i) == CORNFLOWER {
+                        corn_plains += 1;
+                    }
+                }
+                scanned += 1;
+                if scanned >= 16 {
+                    break 'plains;
                 }
             }
         }
+        assert!(scanned > 0, "found plains chunks to scan");
         assert!(corn_plains > 0, "cornflower in plains (got {corn_plains})");
 
         // lily of the valley: forest family
@@ -8348,22 +8363,26 @@ mod e2_tests {
         // badlands biomes" — banded by absolute y (the clean-room
         // deterministic banding, disclosed)
         let gen = TerrainGen::for_dimension(4242, Dimension::Overworld);
-        // find a badlands column in a 256x256 probe window (4.1k:
-        // badlands rides the warm gate at ~0.2-0.4% of columns in
-        // 64-block clumps, so the pre-fit 64x64 window flakes;
-        // step 2 cannot miss a clump)
+        // badlands is rare-regional (~0.2-0.4% of columns in
+        // 64-block clumps, seed-sensitive placement): scan chunk
+        // centers outward for a badlands-center chunk, verifying
+        // against chunk data (column-vs-chunk threshold note above)
         let mut found = None;
-        'outer: for z in (-128..128).step_by(2) {
-            for x in (-128..128).step_by(2) {
-                let col = gen.column(x, z);
-                if col.biome == Biome::Badlands {
-                    found = Some((x, z, col.height));
+        'outer: for cx in -128..128 {
+            for cz in -128..128 {
+                if gen.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::Badlands {
+                    continue;
+                }
+                let (probe, _) = gen.generate_chunk(cx, cz, Vec::new());
+                if Biome::from_u8(probe.biome[8 * 16 + 8]) == Biome::Badlands {
+                    let col = gen.column(cx * 16 + 8, cz * 16 + 8);
+                    found = Some((cx * 16 + 8, cz * 16 + 8, col.height));
                     break 'outer;
                 }
             }
         }
         let Some((x, z, _probe_h)) = found else {
-            panic!("no badlands column found in the probe window");
+            panic!("no badlands chunk found in the ±128-chunk scan");
         };
         let (chunk, _) = gen.generate_chunk(x.div_euclid(16), z.div_euclid(16), Vec::new());
         // scan the chunk for an uncarved badlands column (carver cuts
@@ -9368,7 +9387,7 @@ mod golden_determinism_tests {
     /// 2026-10-10): the 3 overworld mains + all overworld targeted pins
     /// move with cross-chunk veins; nether/end pins byte-identical.
     const GOLDEN: [u64; 9] = [
-        0xba9f_0332_e627_c41c, // seed c0ffee12345678, overworld
+        0xcb65_8c07_b232_7a3d, // seed c0ffee12345678, overworld
         0x2d1e_15af_85b4_8feb, // seed c0ffee12345678, nether
         0x5903_79b0_ae9e_b8f9, // seed c0ffee12345678, end
         0x7e21_ed4c_bde0_bf17, // seed deadbeef00000001, overworld
@@ -9438,19 +9457,19 @@ mod golden_determinism_tests {
     const GOLDEN_WIDE: [u64; 15] = [
         // 4.4a re-pin: overworld entries move with cross-chunk veins
         // (nether/end byte-identical)
-        0x2f9c_e971_45ca_a4a9,
+        0x7b52_b298_2e2f_9530,
         0xc224_973a_dbae_0f7d,
         0x00dc_0ad5_7854_7143,
         0x1688_2e21_8881_a925,
         0xa5cd_d32c_0dc7_2351,
         0xfc5f_1dcc_3ad1_077e,
-        0xd44f_2f3d_845d_1fce,
+        0x68c8_96c7_a9d9_badd,
         0x9a72_3d3f_988b_df31,
         0x179d_f76a_f1b2_c82c,
-        0xd0ac_8708_dc50_0ae6,
+        0xe677_7d12_a687_c9a0,
         0x6237_bf3c_3e00_3d3f,
         0x1be8_cff4_fbf8_59a5,
-        0xbcbb_8487_a251_7fb6,
+        0x9aca_cb90_38cf_05ff,
         0x5675_e557_60cc_6f5a,
         0x12df_709c_8a36_fee3,
     ];

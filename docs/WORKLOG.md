@@ -6830,3 +6830,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z52 — 4.1k: badlands restore + rare-biome test windows
 - Badlands rides the warm gate by var>0.65 [ESTIMATED] (warm 8% cut had starved it; copy share 0.4%, ours ~0.2% at probe seed). Mushroom attempts now target mushroom columns (same budget, stream-shim preserves downstream rng; fixes stems-0 on tiny islands). Flower test asserts the per-column sunflower rule (bands interleave within a chunk). Spawn re-pin to CI-measured (88.5,79,-111.5). Test windows widened for clumped rare biomes: phase_e3 probe 64->256 step 2, new_biomes ±40->±80, v172 find_biome ±64->±128. Expect golden re-pins from CI (biome layout moved).
+
+## 2026-10-10z53 — 4.1k re-pins + flake fixes (from CI 38066287936 values only)
+- Re-pins: main c0ffee-overworld + 4 wide-overworld (badlands arm moved warm cells; targeted + nether/end identical, deadbeef-overworld identical). phase_e3 probe rewritten to chunk-center outward scan (seed 4242 has no badlands in fixed windows — rare-regional reality). v114 cornflower part scans up to 16 plains chunks (first-hit moved under the widened find_biome; single-strip assumption was the flake).

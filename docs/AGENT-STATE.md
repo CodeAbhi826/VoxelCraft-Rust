@@ -101,3 +101,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-10: PART 4 CODE CLOSED (packet z43, tour 38036732269 running). Tuning targets open pending owner diffs. Next: Part 5 colour/lighting/packs (doc-driven slices first).
 
 - 2026-10-10: 4.1k in CI (badlands-restore + mushroom targeting + window widening); golden re-pins expected from CI log values only. Next: re-pin batch, then height-fit round.
+
+- 2026-10-10: 4.1k re-pin slice in CI (5 hashes from CI logs only + 2 test-only flake fixes). Next: height-fit round on the owner seed.

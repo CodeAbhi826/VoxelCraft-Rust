@@ -105,3 +105,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-10: 4.1k re-pin slice in CI (5 hashes from CI logs only + 2 test-only flake fixes). Next: height-fit round on the owner seed.
 
 - 2026-10-10: 4.1l ratio slice in CI (temperate/ocean pick-splits; re-pins expected). Next: mountain/river measurement slice when machine idle, then height means.
+
+- 2026-10-10: 4.1m re-pin slice in CI (9 hashes from CI logs + 3 test-only hardenings). Next: remaining targeted pins if any, then mountain/river measurement slice.

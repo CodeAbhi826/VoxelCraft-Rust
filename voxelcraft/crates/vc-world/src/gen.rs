@@ -1177,7 +1177,7 @@ impl TerrainGen {
     /// snow and temperate paths). Family-internal splits ride the
     /// uniform cell roll `pick` (4.1n — the var-field tails gave
     /// 3%/2%/3% vs copy 33%/28%/67%).
-    fn finish_land_base(&self, base: Biome, h: i32, var: f32, pick: u32) -> (Biome, u16, u16) {
+    fn finish_land_base(&self, base: Biome, h: i32, var: f32, pick: u64) -> (Biome, u16, u16) {
         match base {
             // 4.1k: badlands keeps its red-sand floor (the warm-gate
             // addition restores it; surface unchanged from 4.1e)
@@ -1231,7 +1231,7 @@ impl TerrainGen {
     /// snow and temperate paths. Giant membership rides the uniform
     /// cell roll (4.1n FIT: 28% of the family vs the var-tail 2%);
     /// hills stay height-gated, lowland podzol keeps its var band.
-    fn taiga_overlay(&self, h: i32, var: f32, pick: u32) -> (Biome, u16, u16) {
+    fn taiga_overlay(&self, h: i32, var: f32, pick: u64) -> (Biome, u16, u16) {
         if pick < 28 {
             if h >= 80 {
                 (Biome::GiantTreeTaigaHills, PODZOL, DIRT)

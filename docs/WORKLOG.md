@@ -6861,3 +6861,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z60 — 4.1n: fit round 3 (family splits + mountain/river/deep gates)
 - Full-population census (owner seed, 128x128) vs copy ratios drove this round. Family splits to the uniform cell roll (exact): dark 33% of forest, giant 28% of taiga (hills stay height-gated, podzol band kept), flower 45% of a narrowed birch base (3->1), badlands 5% of warm (was 0.001%), mushroom special-pick 8->2 + E1 gate 0.83->0.87 (full-pop read 1.6% vs <0.3%). Mountain gate 96->84 [ESTIMATED]; river band 0.01->0.03 (geometric step one, carve untouched); deep back to height-pure (layer-interior union over-marked 2.3x). Deferred: beach 3x + deep-threshold fine-tune (need relief histogram), plains revisit after mountains settle. Expect golden + spawn re-pins from CI.
+
+## 2026-10-10z60b — u64 pick fix (CI caught E0308 in 2 min, my u32 assumption wrong)

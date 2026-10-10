@@ -6692,3 +6692,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z21 — PART 3 TOUR VERDICT: GREEN
 - linux-game run 38021703354 SUCCESS: release binary boots headless, intro→title→loading→game entry, version/menu/container legs all grep-green. Part-3 HUD (chat/sidebar/title/bossbar) remains Code-only until V1 captures — carried as Part-6 visual debt. PART 3 FULLY CLOSED.
+
+## 2026-10-10z22 — 4.0 proposal written (APPROVAL GATE)
+- docs/PART4-PROPOSAL.md: black-box method, constant-provenance table, gates, approval ask. STOPPING for owner approval per PLAN-FINAL 4.0. No Part-4 code until approved.

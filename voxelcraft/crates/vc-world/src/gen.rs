@@ -102,6 +102,21 @@ pub enum Biome {
     /// adaptation of vanilla's layer-stack rivers; vanilla registry id 7).
     /// Depth −0.5 / scale 0.0 (vanilla river.json, misode/mcmeta 1.16.5).
     River = 27,
+    // ---- 4.1e: hill/deep/shore variants evidenced in the owner's
+    // Survival copy (vanilla ids from the Before-1.18 table, fetched
+    // live 2026-10-10). Hills share their base's depth/scale pair
+    // (approximation — disclosed in classify).
+    DesertHills = 28,         // 17
+    TaigaHills = 29,          // 19
+    DeepOcean = 30,           // 24
+    StoneShore = 31,          // 25
+    BirchHills = 32,          // 28
+    GiantTreeTaiga = 33,      // 32
+    GiantTreeTaigaHills = 34, // 33
+    WoodedMountains = 35,     // 34
+    DeepLukewarmOcean = 36,   // 48
+    DeepColdOcean = 37,       // 49
+    GravellyMountains = 38,   // 131
 }
 
 impl Biome {
@@ -135,6 +150,17 @@ impl Biome {
             Biome::SoulSandValley => "Soul Sand Valley",
             Biome::BasaltDeltas => "Basalt Deltas",
             Biome::River => "River",
+            Biome::DesertHills => "Desert Hills",
+            Biome::TaigaHills => "Taiga Hills",
+            Biome::DeepOcean => "Deep Ocean",
+            Biome::StoneShore => "Stone Shore",
+            Biome::BirchHills => "Birch Hills",
+            Biome::GiantTreeTaiga => "Giant Tree Taiga",
+            Biome::GiantTreeTaigaHills => "Giant Tree Taiga Hills",
+            Biome::WoodedMountains => "Wooded Mountains",
+            Biome::DeepLukewarmOcean => "Deep Lukewarm Ocean",
+            Biome::DeepColdOcean => "Deep Cold Ocean",
+            Biome::GravellyMountains => "Gravelly Mountains",
         }
     }
 
@@ -167,6 +193,17 @@ impl Biome {
             25 => Biome::SoulSandValley,
             26 => Biome::BasaltDeltas,
             27 => Biome::River,
+            28 => Biome::DesertHills,
+            29 => Biome::TaigaHills,
+            30 => Biome::DeepOcean,
+            31 => Biome::StoneShore,
+            32 => Biome::BirchHills,
+            33 => Biome::GiantTreeTaiga,
+            34 => Biome::GiantTreeTaigaHills,
+            35 => Biome::WoodedMountains,
+            36 => Biome::DeepLukewarmOcean,
+            37 => Biome::DeepColdOcean,
+            38 => Biome::GravellyMountains,
             _ => Biome::Ocean,
         }
     }
@@ -193,6 +230,17 @@ impl Biome {
             Biome::NetherWastes => 8,
             Biome::FrozenOcean => 10,
             Biome::Snowy => 12,
+            Biome::DesertHills => 17,
+            Biome::TaigaHills => 19,
+            Biome::DeepOcean => 24,
+            Biome::StoneShore => 25,
+            Biome::BirchHills => 28,
+            Biome::GiantTreeTaiga => 32,
+            Biome::GiantTreeTaigaHills => 33,
+            Biome::WoodedMountains => 34,
+            Biome::DeepLukewarmOcean => 48,
+            Biome::DeepColdOcean => 49,
+            Biome::GravellyMountains => 131,
             Biome::MushroomFields => 14,
             Biome::Beach => 16,
             Biome::Jungle => 21,
@@ -258,6 +306,9 @@ impl Biome {
                 | Biome::LukewarmOcean
                 | Biome::ColdOcean
                 | Biome::FrozenOcean
+                | Biome::DeepOcean
+                | Biome::DeepLukewarmOcean
+                | Biome::DeepColdOcean
         )
     }
 }
@@ -1004,14 +1055,28 @@ impl TerrainGen {
             if temp > 0.35 {
                 (Biome::WarmOcean, SAND, SAND)
             } else if temp > 0.0 {
-                (Biome::LukewarmOcean, SAND, SAND)
+                // 4.1e: deep lukewarm splits out (vanilla 48)
+                if deep {
+                    (Biome::DeepLukewarmOcean, SAND, GRAVEL)
+                } else {
+                    (Biome::LukewarmOcean, SAND, SAND)
+                }
             } else if temp > -0.25 {
-                (Biome::ColdOcean, if deep { GRAVEL } else { SAND }, GRAVEL)
+                // 4.1e: deep cold splits out (vanilla 49)
+                if deep {
+                    (Biome::DeepColdOcean, GRAVEL, GRAVEL)
+                } else {
+                    (Biome::ColdOcean, SAND, GRAVEL)
+                }
             } else if temp < -0.45 {
                 (Biome::FrozenOcean, GRAVEL, GRAVEL)
             } else {
-                // the neutral temperate ocean (the pre-1.13 "Ocean")
-                (Biome::Ocean, if deep { GRAVEL } else { SAND }, GRAVEL)
+                // 4.1e: deep temperate splits out (vanilla 24)
+                if deep {
+                    (Biome::DeepOcean, GRAVEL, GRAVEL)
+                } else {
+                    (Biome::Ocean, SAND, GRAVEL)
+                }
             }
         } else if rv.abs() < 0.01 && h <= vc_chunk::SEA_LEVEL {
             // Vanilla-parity terrain round: the river band — carved by
@@ -1020,10 +1085,24 @@ impl TerrainGen {
             // sea level through the standard fluid fill.
             (Biome::River, SAND, DIRT)
         } else if h <= vc_chunk::SEA_LEVEL + 1 {
-            (Biome::Beach, SAND, SAND)
+            // 4.1e: high shores split to stone shore (vanilla 25;
+            // variant gate [ESTIMATED] — single-column classify has no
+            // adjacency info for the mountain-foot rule)
+            if var > 0.55 {
+                (Biome::StoneShore, STONE, GRAVEL)
+            } else {
+                (Biome::Beach, SAND, SAND)
+            }
         } else if h > 96 {
+            // 4.1e: mountain family splits by variant field
+            // ([ESTIMATED] thresholds — vanilla hills rise with the
+            // base; wooded 34 / gravelly 131 from the Before-1.18 table)
             if h > 112 {
                 (Biome::Mountains, SNOW, STONE)
+            } else if var > 0.5 {
+                (Biome::WoodedMountains, STONE, STONE)
+            } else if var < -0.5 {
+                (Biome::GravellyMountains, STONE, GRAVEL)
             } else {
                 (Biome::Mountains, STONE, STONE)
             }
@@ -1046,7 +1125,17 @@ impl TerrainGen {
             // 1.7.2: mega-taiga flavor — podzol floor patches (the wiki's
             // mega taiga is a variant; our single Taiga carries its podzol
             // patches via the variant noise)
-            if var > 0.45 {
+            // 4.1e: giant-tree-taiga family splits (vanilla 32/33/19 —
+            // Before-1.18 table; elevation/variant gates [ESTIMATED])
+            if var > 0.55 {
+                if h >= 80 {
+                    (Biome::GiantTreeTaigaHills, PODZOL, DIRT)
+                } else {
+                    (Biome::GiantTreeTaiga, PODZOL, DIRT)
+                }
+            } else if h >= 78 {
+                (Biome::TaigaHills, GRASS, DIRT)
+            } else if var > 0.45 {
                 (Biome::Taiga, PODZOL, DIRT)
             } else {
                 (Biome::Taiga, GRASS, DIRT)
@@ -1060,7 +1149,13 @@ impl TerrainGen {
             // Bountiful-era update's companion block, wiki /w/Red_Sandstone)
             (Biome::Badlands, RED_SAND, RED_SANDSTONE)
         } else if temp > 0.3 && humid < 0.05 {
-            (Biome::Desert, SAND, SAND)
+            // 4.1e: raised desert splits to desert hills (vanilla 17;
+            // elevation gate [ESTIMATED])
+            if h >= 74 {
+                (Biome::DesertHills, SAND, SAND)
+            } else {
+                (Biome::Desert, SAND, SAND)
+            }
         } else if temp > 0.25 && humid > 0.3 {
             // Jungle: hot + wet (dense oak canopy + melons — vanilla's
             // jungle wood/melon patches adapted to our palette)
@@ -1086,6 +1181,10 @@ impl TerrainGen {
             // flowers... excluding sunflowers")
             if var > 0.42 {
                 (Biome::FlowerForest, GRASS, DIRT)
+            } else if h >= 78 {
+                // 4.1e: raised birch splits to birch hills (vanilla 28;
+                // elevation gate [ESTIMATED])
+                (Biome::BirchHills, GRASS, DIRT)
             } else {
                 (Biome::BirchForest, GRASS, DIRT)
             }
@@ -1840,8 +1939,11 @@ impl TerrainGen {
             match b {
                 Biome::Forest => 8,
                 Biome::BirchForest => 7,
+                // 4.1e: hills mirror their base canopy
+                Biome::BirchHills => 7,
                 Biome::Jungle => 10,
                 Biome::Taiga => 5,
+                Biome::TaigaHills | Biome::GiantTreeTaiga | Biome::GiantTreeTaigaHills => 5,
                 Biome::Swamp => 3,
                 // 1.7.2: dark forest = "dark oak trees closely packed
                 // together" (wiki) — the densest canopy in the game
@@ -1890,7 +1992,11 @@ impl TerrainGen {
             // 1.7.2: savanna grows acacia, dark forest grows dark oak
             let biome_here = Biome::from_u8(chunk.biome[col_idx]);
             let (log, leaf) = match biome_here {
-                Biome::Snowy | Biome::Taiga => (SPRUCE_LOG, SPRUCE_LEAVES),
+                Biome::Snowy
+                | Biome::Taiga
+                | Biome::TaigaHills
+                | Biome::GiantTreeTaiga
+                | Biome::GiantTreeTaigaHills => (SPRUCE_LOG, SPRUCE_LEAVES),
                 Biome::Savanna => (ACACIA_LOG, ACACIA_LEAVES),
                 Biome::DarkForest => (DARK_OAK_LOG, DARK_OAK_LEAVES),
                 Biome::Jungle => (JUNGLE_LOG, JUNGLE_LEAVES),
@@ -1901,7 +2007,7 @@ impl TerrainGen {
                         (OAK_LOG, LEAVES)
                     }
                 }
-                Biome::BirchForest => {
+                Biome::BirchForest | Biome::BirchHills => {
                     if rng.next_f32() < 0.75 {
                         (BIRCH_LOG, BIRCH_LEAVES)
                     } else {
@@ -1910,7 +2016,12 @@ impl TerrainGen {
                 }
                 _ => (OAK_LOG, LEAVES),
             };
-            let th = if biome_here == Biome::Snowy || biome_here == Biome::Taiga {
+            let th = if biome_here == Biome::Snowy
+                || biome_here == Biome::Taiga
+                || biome_here == Biome::TaigaHills
+                || biome_here == Biome::GiantTreeTaiga
+                || biome_here == Biome::GiantTreeTaigaHills
+            {
                 6 + rng.next_range(3) as i32 // spruce grows taller
             } else if biome_here == Biome::Jungle {
                 // audit-fix (VERIFIED w/Jungle_Tree search round: regular
@@ -9601,6 +9712,63 @@ mod libm_pinned_tests {
                 }
             }
         }
+    }
+
+    /// 4.1e: hill/deep/shore variants round-trip ids and classify
+    /// at their gates (deep oceans need depth; hills need elevation).
+    #[test]
+    fn hill_variant_ids_and_gates() {
+        for (v, id) in [
+            (Biome::DesertHills, 17),
+            (Biome::TaigaHills, 19),
+            (Biome::DeepOcean, 24),
+            (Biome::StoneShore, 25),
+            (Biome::BirchHills, 28),
+            (Biome::GiantTreeTaiga, 32),
+            (Biome::GiantTreeTaigaHills, 33),
+            (Biome::WoodedMountains, 34),
+            (Biome::DeepLukewarmOcean, 48),
+            (Biome::DeepColdOcean, 49),
+            (Biome::GravellyMountains, 131),
+        ] {
+            assert_eq!(v.vanilla_id(), id);
+            assert!(!v.name().is_empty());
+        }
+        // internal ids are dense 28..=38 and fold back
+        for (i, b) in (28u16..=38).zip(
+            [
+                Biome::DesertHills,
+                Biome::TaigaHills,
+                Biome::DeepOcean,
+                Biome::StoneShore,
+                Biome::BirchHills,
+                Biome::GiantTreeTaiga,
+                Biome::GiantTreeTaigaHills,
+                Biome::WoodedMountains,
+                Biome::DeepLukewarmOcean,
+                Biome::DeepColdOcean,
+                Biome::GravellyMountains,
+            ]
+            .iter(),
+        ) {
+            assert_eq!(Biome::from_u8(i as u8), *b);
+        }
+        let g = TerrainGen::for_dimension(PIN_SEED, Dimension::Overworld);
+        // deep lukewarm ocean below the deep line
+        assert_eq!(
+            g.classify(0.1, 0.0, 0.0, 55, 1.0).0,
+            Biome::DeepLukewarmOcean
+        );
+        // shallow lukewarm stays flat
+        assert_eq!(g.classify(0.1, 0.0, 0.0, 60, 1.0).0, Biome::LukewarmOcean);
+        // raised desert splits to hills
+        assert_eq!(g.classify(0.4, 0.0, 0.0, 80, 1.0).0, Biome::DesertHills);
+        assert_eq!(g.classify(0.4, 0.0, 0.0, 64, 1.0).0, Biome::Desert);
+        // deep oceans are ocean family
+        assert!(Biome::DeepOcean.is_ocean());
+        assert!(Biome::DeepLukewarmOcean.is_ocean());
+        assert!(Biome::DeepColdOcean.is_ocean());
+        assert!(!Biome::DesertHills.is_ocean());
     }
 
     /// 4.1a: vanilla ids match the cited registry values.

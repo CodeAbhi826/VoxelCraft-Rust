@@ -58,8 +58,9 @@ const STATUS_FULL: &str = "full";
 /// (Ocean, Beach, Plains, Forest, Desert, Snowy, Mountains,
 ///  plus Phase 10: Taiga, BirchForest, Jungle, Savanna, Swamp, Badlands —
 ///  the vanilla ids live-verified from the wiki Biome page: taiga=5,
-///  swamp=6, jungle=21, birch_forest=27, savanna=35, badlands=37)
-const BIOME_TO_VANILLA: [i32; 28] = [
+///  swamp=6, jungle=21, birch_forest=27, savanna=35, badlands=37;
+///  4.1e hills/deep/shore ids from the Before-1.18 table, live 2026-10-10)
+const BIOME_TO_VANILLA: [i32; 39] = [
     0, 16, 1, 4, 2, 12, 3, 8,   // Nether Wastes
     5,   // Taiga
     27,  // Birch Forest
@@ -85,6 +86,17 @@ const BIOME_TO_VANILLA: [i32; 28] = [
     170, // Soul Sand Valley (gen.rs live-verified)
     173, // Basalt Deltas (gen.rs live-verified)
     7,   // River (classic, both editions)
+    17,  // Desert Hills
+    19,  // Taiga Hills
+    24,  // Deep Ocean
+    25,  // Stone Shore
+    28,  // Birch Hills
+    32,  // Giant Tree Taiga
+    33,  // Giant Tree Taiga Hills
+    34,  // Wooded Mountains
+    48,  // Deep Lukewarm Ocean
+    49,  // Deep Cold Ocean
+    131, // Gravelly Mountains
 ];
 /// vanilla biome id → ours; unknown → Plains (2)
 fn vanilla_biome_to_ours(v: i32) -> u8 {

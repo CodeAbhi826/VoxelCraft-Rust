@@ -6789,3 +6789,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z44 — 4.1d: importer fixes from the Survival copy (REAL BUGS)
 - chunk_from_nbt misread 1.16.5 Biomes (assumed 256, real is 1024): order-A surface-quartile decode, verified 85% on 3547 beach columns. read_level_dat read a nonexistent RandomSeed (seed 0!): now prefers WorldGenSettings.seed (their seed 7998960918674860355) + test. Bonus: structure starts readable (4 villages, 51 mineshafts...); village 34-grid supported (nearest ours within 72 blocks once). Source manifest identical through the whole session. Temp probes deleted, never committed. Local: 39/39 vc-anvil green, audit [PASS].
+
+## 2026-10-10z45 — 4.1e: hill/deep/shore variants (11)
+- Biome 28..38 (ids from Before-1.18 table): desert/taiga/birch/giant hills, deep oceans x3, stone shore, wooded/gravelly mountains. Names, from_u8, vanilla_id, is_ocean, importer map, classifier gates (deep splits exact; hills elevation/variant gates estimated), tree counts/species mirror base. Local: test green, workspace check clean, audit [PASS].

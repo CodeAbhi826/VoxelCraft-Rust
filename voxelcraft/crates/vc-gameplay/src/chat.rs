@@ -76,7 +76,7 @@ mod tests {
             c.push(format!("m{i}"));
         }
         assert_eq!(c.len(), CHAT_CAP);
-        assert_eq!(c.recent(CHAT_CAP).last(), Some("m5"));
+        assert_eq!(c.recent(CHAT_CAP).last().copied(), Some("m5"));
     }
 
     #[test]

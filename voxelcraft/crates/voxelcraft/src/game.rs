@@ -12282,9 +12282,8 @@ impl GameApp {
         }
         if line.starts_with('/') {
             if !self.run_command(&line) {
-                self.chat.push(format!(
-                    "Unknown command. Type \"/help\" for a list of commands."
-                ));
+                self.chat
+                    .push("Unknown command. Type \"/help\" for a list of commands.".to_string());
             }
         } else {
             self.chat.say("Player", &line);

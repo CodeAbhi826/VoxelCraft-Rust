@@ -6635,3 +6635,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z06 — 3.5b: chat visibility setting live
 - Settings chat_visibility (vanilla chatVisibility key, persisted) cycles Show/Commands Only/Hidden on the Chat Settings row (now enabled, label patched); ChatLog tracks system lines; HUD gates on visibility; stale "future round" tooltips/comments updated. Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z07 — 3.5 closed (chat end-to-end)
+- 3.5a chat core + 3.5b visibility setting, both CI-green. Remaining Part 3: 3.6 command parser + commands (split: a=parser/help/seed/gamemode/time/weather/say, b=selectors/give/tp/effect, c=world-edit), 3.7 scoreboard + teams, then Part-3 REVIEW PACKET.

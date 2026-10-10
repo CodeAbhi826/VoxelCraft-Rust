@@ -89,3 +89,5 @@ Hardware privacy: no owner specs in repo/docs/commits (commit `47acd82` scrubbed
 the tree; pushed history untouched pending explicit rewrite order).
 
 - Owner directive 2026-10-09: 4.0 legal-gate proposal POSTPONED — start Part 4 at 4.1 (biomes) instead. L1 black-box rules stay in force throughout; the 4.0 proposal is deferred debt, not a waiver.
+
+- 2026-10-10: Part 3 progress — recipe book (3.4a-c) + chat (3.5a-b) CI-green. Next: 3.6a command parser + simple commands.

@@ -740,6 +740,13 @@ pub struct TerrainGen {
     /// are untouched. The continental inclusion is [ESTIMATED /
     /// APPROXIMATION] — the wiki exempts only rivers explicitly.
     pub large_biomes: bool,
+    /// 4.3a: Amplified world type (VERIFIED reference wiki /Amplified:
+    /// larger altitude range, Nether/End unaffected, oceans/rivers see
+    /// no obvious change). Engine rule in density_params: land biomes
+    /// (depth > 0) sample depth 1+2d / scale 1+4s (the documented
+    /// minHeight/maxHeight behavior); the ocean gate on the
+    /// continental field is [ESTIMATED / APPROXIMATION].
+    pub amplified: bool,
     /// 2026-09-14 parity round: the vanilla "Generate Structures"
     /// world-create option (options key `generate-structures`, on the
     /// More World Options page — VERIFIED reference wiki /Java_Edition_1.3.1
@@ -792,6 +799,7 @@ impl TerrainGen {
             dim,
             flat: false,
             large_biomes: false,
+            amplified: false,
             structures: true,
             n_cont: Noise::new(seed ^ 0x1000),
             n_mfac: Noise::new(seed ^ 0x2000),
@@ -819,6 +827,13 @@ impl TerrainGen {
     pub fn for_dimension_large(seed: u64, dim: Dimension) -> Self {
         let mut g = Self::for_dimension(seed, dim);
         g.large_biomes = true;
+        g
+    }
+
+    /// 4.3a: amplified generator (see the `amplified` field).
+    pub fn for_dimension_amplified(seed: u64, dim: Dimension) -> Self {
+        let mut g = Self::for_dimension(seed, dim);
+        g.amplified = true;
         g
     }
 
@@ -929,6 +944,14 @@ impl TerrainGen {
             (xf, zf)
         };
         let cont = fbm2(&self.n_cont, cxf / 1500.0, czf / 1500.0, 4, 2.0, 0.5) * 1.7;
+        // 4.3a: amplified land transform (depth 1+2d, scale 1+4s for
+        // depth > 0; oceans gated on the continental field —
+        // [ESTIMATED / APPROXIMATION], see amplified docs)
+        let (bd, bv) = if self.amplified && bd > 0.0 && cont > -0.5 {
+            (1.0 + bd * 2.0, 1.0 + bv * 4.0)
+        } else {
+            (bd, bv)
+        };
         let mmask = smoothstep(
             0.3,
             0.6,
@@ -9330,6 +9353,34 @@ mod libm_pinned_tests {
         assert_eq!(b.iter().map(|(_, n)| n).sum::<u64>(), 4 * 4 * 256);
         assert_ne!(a, b, "large mode must move biome boundaries");
         assert_eq!(b, large.biome_census(0, 0, 4, 4));
+    }
+
+    /// 4.3a: amplified lifts the land (a clear share of sampled
+    /// columns rises vs default at the same seed; deterministic).
+    #[test]
+    fn amplified_raises_land() {
+        let plain = TerrainGen::new(PIN_SEED);
+        let mut amp = TerrainGen::new(PIN_SEED);
+        amp.amplified = true;
+        let mut raised = 0;
+        let mut total = 0;
+        for x in (0..128).step_by(4) {
+            for z in (0..128).step_by(4) {
+                total += 1;
+                if amp.column(x, z).height > plain.column(x, z).height {
+                    raised += 1;
+                }
+            }
+        }
+        assert!(
+            raised * 4 > total,
+            "amplified must lift over a quarter of columns ({raised}/{total})"
+        );
+        assert_eq!(
+            amp.column(0, 0).height,
+            amp.column(0, 0).height,
+            "deterministic"
+        );
     }
 
     /// 4.1a: vanilla ids match the cited registry values.

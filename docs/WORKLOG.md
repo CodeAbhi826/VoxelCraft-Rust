@@ -6743,3 +6743,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z36 — 4.2e: desert well + witch hut (prose-faithful)
 - wells_near (1/1000/chunk, desert + 5x5 sand site; FEATURE, outside structures gate) + witch_huts_near (32-region spread, swamp-gated) + emit_well (walls/cap/water plus) + emit_hut (stilts/cabin/stepped roof/porch/furniture, no residents/vines). Tests: determinism, swamp gating, emit signature blocks. Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).
+
+## 2026-10-10z36 — 4.2e closed (CI-green)
+
+## 2026-10-10z37 — 4.3a: amplified mode
+- TerrainGen.amplified + for_dimension_amplified: density_params applies depth 1+2d / scale 1+4s where depth>0 and continental field > -0.5 ([ESTIMATED] ocean gate). Test: >25% of sampled columns rise + determinism. Audit [PASS] pre-commit. Local: fmt clean; compile/tests deferred to CI (host busy).

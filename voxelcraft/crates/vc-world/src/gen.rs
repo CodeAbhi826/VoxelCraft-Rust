@@ -9557,7 +9557,10 @@ mod golden_determinism_tests {
         // village; 4.4a veins + 4.1l shares moved it again to chunk
         // (8,45) (CI-measured; the search itself is deterministic)
         0xc4bb_b783_1833_d3a3,
-        0x02eb_b612_07a5_3bef,
+        // 4.1m re-pin (CI-measured): the share refit moved ravine
+        // chunk (0,0) contents (coords fixed — the ravine roll is
+        // position-only, the biome bytes moved)
+        0xc2f8_3c67_ff98_36bf,
         0xee5e_ae52_c52c_67a4,
     ];
 

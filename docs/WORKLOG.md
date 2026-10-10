@@ -6844,3 +6844,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-10z56 — village-targeted re-pin (CI 38068247089: only failure left)
 - Village target moved (-180,214)->(8,45), hash from CI log. All mains/wides/stronghold already hold. Ravine/ocean actuals still behind the sequential assert — next CI reveals.
+
+## 2026-10-10z57 — ravine-targeted re-pin + owner batch recorded
+- Ravine (0,0) contents 0x02eb..->0xc2f8.. (CI-measured; coords fixed). Ocean target still behind the assert — next CI reveals. Decisions: statistical parity YES; agent-owned Part 5 with end-of-plan review; docs GPL / art CC-BY-SA; phases keep; GPU AA run authorized; history/branch untouched. Ops lesson: /tmp hit quota — 0-byte "empty" CI logs were my disk, not GitHub; logs now go to ~/.local/share/opencode/ci-logs, and download sizes must be checked.

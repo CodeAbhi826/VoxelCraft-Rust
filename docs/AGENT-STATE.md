@@ -109,3 +109,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-10: 4.1m re-pin slice in CI (9 hashes from CI logs + 3 test-only hardenings). Next: remaining targeted pins if any, then mountain/river measurement slice.
 
 - 2026-10-10: village-targeted re-pin in CI. Next: ravine/ocean pins if moved, then mountain/river measurement.
+
+- 2026-10-10 owner batch (all recorded): statistical parity YES (Part 4 close-out target); Part 5 verified by agent from docs + own V1, owner reviews only at full-plan end (no interim review asks); docs/prose GPL-3.0-or-later + art CC-BY-SA-4.0 (BLOCKERS #4 closed, L3b queued); provider terms still OPEN in plain words (BLOCKERS #5); phases gate keep (BLOCKERS #3 closed); real-GPU AA measurement authorized on this system (BLOCKERS #1); branch/history left as-is; reference-game + Intel checks deferred (owner won't run).

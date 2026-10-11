@@ -7048,3 +7048,5 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z115 - Part 5: shader_mode settings plumbing (default OFF)
 - Settings.shader_mode 0/1/2 (off/vanilla+/cinematic), revives legacy shader key (old saves migrate), serialize+parse+clamp, wired to post mode (pack-grade override untouched). Default 0 = vanilla-identical. Test added; compile left to CI (busy).
+
+## 2026-10-11z115 - closed (CI-green 38122304878, 12/12, shader_mode green)

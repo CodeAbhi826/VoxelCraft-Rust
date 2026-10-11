@@ -18880,8 +18880,7 @@ impl GameApp {
                 let iconic_pending = false;
                 // Part 5 E2E_VISUAL owns the exit while its 5-capture ladder runs
                 #[cfg(not(target_arch = "wasm32"))]
-                let visual_pending =
-                    std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done;
+                let visual_pending = std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done;
                 #[cfg(target_arch = "wasm32")]
                 let visual_pending = false;
                 if !fkeys_pending
@@ -18957,8 +18956,7 @@ impl GameApp {
             let iconic_pending = false;
             // Part 5 E2E_VISUAL owns the exit while its 5-capture ladder runs
             #[cfg(not(target_arch = "wasm32"))]
-            let visual_pending =
-                std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done;
+            let visual_pending = std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done;
             #[cfg(target_arch = "wasm32")]
             let visual_pending = false;
             if t_in > 2.2

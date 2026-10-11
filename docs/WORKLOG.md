@@ -6971,3 +6971,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z94 - Part 5 5.1f: readback + tonemap rows VERIFIED (no change)
 - Row 12: swapchain sRGB bytes preserved to PNG (no profile, viewers assume sRGB). Row 15: bloom/exposure/saturation(709)/vignette/ACES all linear pre-encode, reference order. Color audit now fully closed (15/15).
+
+## 2026-10-11z95 - Part 5 5.1g: pack-colormap gap scoped (doc)
+- No pack colormap reads exist; LUT is engine constants. Shape A (per-biome sampling) vs B (per-column climate UV, faithful; climate_fields live). Recommend B, CPU path first. climate_fields confirmed live per-column.

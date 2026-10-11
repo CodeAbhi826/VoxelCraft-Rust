@@ -6994,3 +6994,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z101 - clippy unused-parens in moon helper (CI caught)
 - Double parens around the cast; inner pair suffices. Local clippy/fmt/audit clean before push.
+
+## 2026-10-11z101 - closed (CI-green 38103539810, 12/12, moon landed)

@@ -6982,3 +6982,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Unused Arc import (moved to tests) + u32-as-f32 cast. Lesson: run cargo clippy -p on touched crates locally (cheap for small crates). Verified clean + tests green + fmt clean before push.
 
 ## 2026-10-11z97 - closed (CI-green 38101255528, 12/12)
+
+## 2026-10-11z98 - Part 5 5.1i: colormap wiring (LUT replace, no remesh)
+- Renderer::set_tint_lut (fixed-size re-upload, bind groups intact) + apply_resource_packs wiring (user packs over builtin; absent = no-op). Shaders sample per-fragment so no remesh. Local check+clippy+fmt clean. In-game proof with a real colormap pack queued.

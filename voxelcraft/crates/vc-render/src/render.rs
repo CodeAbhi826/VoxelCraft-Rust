@@ -4699,6 +4699,36 @@ impl Renderer {
         self.rebuild_atlas();
     }
 
+    /// Re-upload the biome tint LUT (pack colormap overrides, Part 5 2B).
+    /// Same 64×4 size always — no re-creation, no bind-group rebuild, no
+    /// remesh (the terrain shaders sample the LUT per fragment at draw
+    /// time). Wrong-sized input is ignored (caller builds via lut_rgba).
+    pub fn set_tint_lut(&self, bytes: &[u8]) {
+        use vc_blocks::tint::{LUT_H, LUT_W};
+        if bytes.len() != (LUT_W * LUT_H * 4) as usize {
+            return;
+        }
+        self.queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &self.tint_tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            bytes,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(LUT_W * 4),
+                rows_per_image: Some(LUT_H),
+            },
+            wgpu::Extent3d {
+                width: LUT_W,
+                height: LUT_H,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
     /// Upload one chunk's merged mesh (Phase 9 §14/§43: regional
     /// mega-buffers + slot sub-allocation). A remesh that fits the chunk's
     /// existing slot writes IN PLACE — repeated edits never reallocate;

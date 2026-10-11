@@ -11525,6 +11525,23 @@ impl GameApp {
         self.icon_cache = self.renderer.create_icon_cache(512);
         self.ui
             .set_icon_cells(std::sync::Arc::new(self.icon_cache.ready_cells().clone()));
+        // Part 5 (2B): pack colormaps override the engine tint LUT (no
+        // remesh — terrain shaders sample the LUT per fragment). Absent
+        // files keep engine constants (the builtin pack ships none).
+        {
+            let mut cstack = vc_pack::pack::PackStack::new();
+            for pack in app_order.iter() {
+                cstack.push_front(pack.clone());
+            }
+            let (grass, foliage) = vc_pack::colormap::load_colormaps(&cstack);
+            if grass.is_some() || foliage.is_some() {
+                let mut lut = vc_blocks::tint::lut_rgba();
+                let g = grass.as_ref().map(|m| (m.rgba.as_slice(), m.w, m.h));
+                let f = foliage.as_ref().map(|m| (m.rgba.as_slice(), m.w, m.h));
+                vc_blocks::tint::override_lut_from_maps(&mut lut, g, f);
+                self.renderer.set_tint_lut(&lut);
+            }
+        }
         // every chunk remeshes through the (newly installed) ModelSet
         self.remesh_all();
         // persist the pack list with the other settings

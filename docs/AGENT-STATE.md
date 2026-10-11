@@ -168,3 +168,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-11: color audit closed 15/15. Next: Part 5 packs (builtin-pack content + pack overlays).
 
 - 2026-10-11: z96 colormap lib in CI. Next: renderer wiring slice.
+
+- 2026-10-11: z98 colormap wiring in CI. Next: in-game colormap proof or next Part 5 item.

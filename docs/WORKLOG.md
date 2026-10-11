@@ -7037,3 +7037,11 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 - b.as_bytes().to_vec(). One-line, type-obvious; full check left to CI (busy).
 
 ## 2026-10-11z112 - closed (CI-green 38119491094, 12/12, sounds precedence green)
+
+## 2026-10-11z113 - Part 5: built-in FEATURE shader un-parked (owner clarified)
+- Not a vanilla clone (vanilla has no bloom/POM/PBR) but an optional feature shader. Inventory: post modes 1/2 + bloom pyramid + PBR/POM WGSL + shadow pass exist but mode forced 0 (game.rs:28184); Shaders screen exists for packs. Missing: SSR, SSAO, volumetrics, grain, presets, per-toggle UI+costs+tiers. Plan: settings plumbing -> Shaders-screen built-in section -> wire mode -> missing passes later.
+
+## 2026-10-11z114 - Feature-shader requirements (owner, binding)
+- Three graphics paths: (1) DEFAULT vanilla graphics identical to the real game (frozen reference — post changes must not alter mode-0 output; V1-gated); (2) OPTIONAL built-in feature shader, OFF by default; (3) Iris pack support retained as-is.
+- Shader settings/options/menu mirror the real game's options UI (19-option video layout stays the model). Toggles live in the Shaders screen, vanilla-styled.
+- Note: the 5.1e tint fix changed mode-0 terrain colors (richer); V1-verified against reference look. Pixel-exact identity with vanilla's gamma-incorrect multiply is approximate by construction (linear pipeline) — flagged, owner V1 at plan end arbitrates.

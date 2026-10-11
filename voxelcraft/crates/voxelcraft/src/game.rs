@@ -25038,11 +25038,8 @@ impl GameApp {
                 if a.interpolate && a.frames.len() > 1 {
                     let next = (a.current + 1) % a.frames.len();
                     let t = (a.timer / a.frametime).clamp(0.0, 1.0);
-                    let blended = vc_render::textures::blend_frames(
-                        &a.frames[a.current],
-                        &a.frames[next],
-                        t,
-                    );
+                    let blended =
+                        vc_render::textures::blend_frames(&a.frames[a.current], &a.frames[next], t);
                     self.renderer.update_atlas_bytes(a.tile, &blended);
                 }
             }

@@ -7150,3 +7150,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z139 - Part 5: interpolate in-game proof stage (code+test, V1 pending tour)
 - mcmeta interpolate-flag parse test (true/false) passes; E2E_VISUAL gains stages 5/6 (black/white grass anim, mid-blend capture "interp"; moon setup moves to 6/7); workflow asserts six captures. Local: check clean both crates, fmt clean, new test green. Pre-existing FxHashMap test-warning in draw.rs untouched.
+
+## 2026-10-12z139 - closed (CI-green 38164790458, 12/12)

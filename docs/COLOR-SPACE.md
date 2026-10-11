@@ -11,7 +11,7 @@ TO-VERIFY = needs a targeted follow-up slice.
 | 4 | Item icons | sRGB → linear on read | Rgba8UnormSrgb icon textures | VERIFIED (item_icon_cache descriptors) |
 | 5 | GUI sheets (hearts/hotbar) | sRGB → linear on read | Rgba8UnormSrgb sheet textures | VERIFIED (gui_render descriptors) |
 | 6 | Solid-white tint quad | none (linear value) | Rgba8Unorm 2×2 white texture | VERIFIED (comment + descriptor) |
-| 7 | Font glyph atlas | linear upload, linear use | 1024×1024 linear atlas | PARTIAL (comment only — presentation path TO-VERIFY) |
+| 7 | Font glyph atlas | sRGB texture, white endpoint immune | Rgba8UnormSrgb + white-RGB×coverage-alpha upload (font.rs) × `c.rgb*tint, c.a*tint.a` shader (gui_render.rs): sRGB decode is exact at 1.0 and alpha passes through, so coverage is preserved bit-exact | VERIFIED (5.1b: upload format + shader read path) |
 | 8 | Panorama offscreen/dump | sRGB → linear in, linear → sRGB on dump | explicit converts in panorama.rs | VERIFIED (comments + dump fn) |
 | 9 | CPU canvas fallback (no-GPU path) | ? | UiCanvas px buffer → upload format unchecked | TO-VERIFY |
 | 10 | Sky/fog/cloud colors | authored space used raw? | sky gradient pow() shaping in render.rs | TO-VERIFY (values may be sRGB-authored, linear-consumed) |

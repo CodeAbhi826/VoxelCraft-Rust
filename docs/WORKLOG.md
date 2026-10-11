@@ -6951,3 +6951,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z88 - PART 4 CLOSED (tour 38098699761 green)
 - All legs green: phases 0.995 (ring 240), fkeys 1062, beds OK, fluids OK; CI+WASM green at 5305886. Worldgen verified (13/14 families 0.70-1.21x, family ratios exact). Stall file: verdict hardening (drain gate + 20s age) + fixtures (E2E_SEED 2024/95, E2E_RD=4); gate intact; no worldgen defect. Temp bisect branches deleted. Next: Part 5 colour/lighting/packs.
+
+## 2026-10-11z89 - Part 5 5.1b: font-atlas color row VERIFIED (no change)
+- Row 7: Srgb texture + white-RGB x coverage-alpha upload + tint shader - decode exact at 1.0, alpha passthrough. Correct as-is; audit updated. Next: row 9 (CPU canvas fallback).

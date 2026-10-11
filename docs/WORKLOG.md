@@ -7087,3 +7087,5 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z124 - Part 5: font-test flake hygiene (drain-first)
 - Reran red CI green (flake confirmed: shared global engine + order-dependent leftovers + poison cascade; docs-only delta). One-line drain-first in the exact-count test; other tests tolerant or isolated.
+
+## 2026-10-11z124 - closed (CI-green 38142277758, 12/12, flake hygiene green)

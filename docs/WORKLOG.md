@@ -7060,3 +7060,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 - Hash grain post-tonemap pre-encode, cinematic-only, fixed 0.035 until per-toggle UI. wgsl_shaders_validate green locally.
 
 ## 2026-10-11z117 - closed (CI-green 38123553552, 12/12, grain green)
+
+## 2026-10-11z118 - Part 5: Shaders row V1 (agent eyes, CI snapshot)
+- BUILT-IN: VANILLA+ renders above LABPBR, vanilla styling, no overlap. Fixture mode=1 shows correctly.

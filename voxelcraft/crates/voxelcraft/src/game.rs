@@ -18115,8 +18115,13 @@ impl GameApp {
                 // re-dirties stay out of the gate — mesh applies are
                 // phase-measured steady-state work. The 0.9 threshold
                 // itself is untouched.
+                // Minimum world age (20 s): the ring must hold WORLD
+                // frames — without it the verdict fires on a stale
+                // menu/loading ring 2 s after entry (the rd=2 tour:
+                // ring=238 of pre-world frames, min 0.118).
                 let settled = self.stats.chunks == self.e2e_phases_last_chunks
-                    && self.gen_inflight.is_empty();
+                    && self.gen_inflight.is_empty()
+                    && self.time_since_load() >= 20.0;
                 if settled {
                     self.e2e_phases_stable += 1;
                 } else {

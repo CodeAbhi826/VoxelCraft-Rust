@@ -6945,3 +6945,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z86 - phases rd=2 (rd=4 still raster-bound at 0.807)
 - F3 at rd4: GPU 45ms on 85 drawn + submit 43ms; ceiling ~0.6. rd=2 (25-chunk disc) should fit submit+raster in budget; loading completes in seconds (no timeout risk). Seed 102 rejected (river valley).
+
+## 2026-10-11z87 - verdict min world age 20s (stale-ring misfire)
+- rd2 tour: verdict fired 1.6s after entry on a stale ring (238 pre-world frames, min 0.118). Gate now also requires 20s in-world (rd2 disc drains in ~10s). Threshold untouched.

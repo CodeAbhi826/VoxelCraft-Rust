@@ -17141,8 +17141,10 @@ impl GameApp {
     /// Part 5 E2E_VISUAL stage machine. 0 baseline day capture; 1 applies
     /// a synthetic red-grass/blue-foliage colormap pack through the REAL
     /// pack path (decode → sample → LUT upload) then captures; 2/3 set
-    /// feature-shader modes 1/2 and capture; 4 restores mode 0, forces
-    /// midnight + clear weather, captures the moon, verdicts, done.
+    /// feature-shader modes 1/2 and capture; 4 captures mode 2; 5 stages
+    /// the interpolate proof (black/white animation on the grass-top
+    /// tile, timer mid-blend); 6 captures it (mid-gray = blend working);
+    /// then midnight + clear weather, captures the moon, verdicts, done.
     #[cfg(not(target_arch = "wasm32"))]
     fn e2e_visual(&mut self) {
         match self.e2e_visual_stage {
@@ -17198,6 +17200,33 @@ impl GameApp {
             4 => {
                 if self.e2e_visual_capture("mode2") {
                     self.settings.shader_mode = 0;
+                    self.e2e_visual_stage = 5;
+                }
+            }
+            5 => {
+                // interpolate proof: black/white 2-frame animation on the
+                // grass-top tile (fills the spawn view), timer parked
+                // mid-blend — a working blend uploads mid-gray; discrete
+                // stepping would leave frame 0 (black)
+                let mut black = Vec::with_capacity(1024);
+                let mut white = Vec::with_capacity(1024);
+                for _ in 0..256 {
+                    black.extend_from_slice(&[0, 0, 0, 255]);
+                    white.extend_from_slice(&[255, 255, 255, 255]);
+                }
+                self.animations.push(vc_render::textures::AnimatedTile {
+                    tile: TILE_GRASS_TOP,
+                    frames: vec![black, white],
+                    frametime: 1.0,
+                    interpolate: true,
+                    current: 0,
+                    timer: 0.5,
+                });
+                self.e2e_visual_ok &= self.animations.iter().any(|a| a.interpolate);
+                self.e2e_visual_stage = 6;
+            }
+            6 => {
+                if self.e2e_visual_capture("interp") {
                     self.day_time = 18000.0f32 / 24000.0;
                     self.weather.force_clear(10000);
                     // face the midnight moon: at day_time 0.75 the moon
@@ -17206,7 +17235,7 @@ impl GameApp {
                     // the level camera never sees the disc
                     self.player.yaw = std::f32::consts::PI;
                     self.player.pitch = 1.19;
-                    self.e2e_visual_stage = 5;
+                    self.e2e_visual_stage = 7;
                 }
             }
             _ => {

@@ -7147,3 +7147,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z138 - Part 5: entity-shadow texel fix (code, V1 pending)
 - push_mob_shadows sampled plain glass (transparent center, particle shader discards alpha<0.1) so shadows were wired-but-invisible; resampled to black-stained-glass fill (alpha 150). Local check+fmt clean. V1 queued for batch tour with interpolate.
+
+## 2026-10-12z139 - Part 5: interpolate in-game proof stage (code+test, V1 pending tour)
+- mcmeta interpolate-flag parse test (true/false) passes; E2E_VISUAL gains stages 5/6 (black/white grass anim, mid-blend capture "interp"; moon setup moves to 6/7); workflow asserts six captures. Local: check clean both crates, fmt clean, new test green. Pre-existing FxHashMap test-warning in draw.rs untouched.

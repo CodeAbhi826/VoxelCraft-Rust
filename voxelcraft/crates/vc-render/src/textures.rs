@@ -5789,6 +5789,52 @@ mod pack_tex_tests {
         assert_eq!(blend_frames(&a, &b[..2], 0.5), a);
     }
 
+    #[test]
+    fn mcmeta_interpolate_flag_reaches_tile() {
+        // 16x32 strip: opaque black frame + opaque white frame
+        fn strip_png() -> Vec<u8> {
+            let img = image::RgbaImage::from_fn(16, 32, |_, y| {
+                if y < 16 {
+                    image::Rgba([0, 0, 0, 255])
+                } else {
+                    image::Rgba([255, 255, 255, 255])
+                }
+            });
+            let mut out = Vec::new();
+            image::DynamicImage::ImageRgba8(img)
+                .write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)
+                .unwrap();
+            out
+        }
+        fn mem_with(mcmeta: Option<&str>) -> vc_pack::pack::MemorySource {
+            let mut mem = vc_pack::pack::MemorySource::new("interp-test");
+            mem.insert("textures/block/grass_block_top.png", strip_png());
+            if let Some(m) = mcmeta {
+                mem.insert(
+                    "textures/block/grass_block_top.png.mcmeta",
+                    m.as_bytes().to_vec(),
+                );
+            }
+            mem
+        }
+        let mut atlas = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
+        let anims = merge_pack_tile_overrides(
+            &mut atlas,
+            &mem_with(Some(r#"{"animation":{"frametime":4,"interpolate":true}}"#)),
+        );
+        assert_eq!(anims.len(), 1);
+        assert_eq!(anims[0].frames.len(), 2);
+        assert!(anims[0].interpolate);
+        // flag absent → discrete stepping (default false)
+        let mut atlas2 = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
+        let anims2 = merge_pack_tile_overrides(
+            &mut atlas2,
+            &mem_with(Some(r#"{"animation":{"frametime":4}}"#)),
+        );
+        assert_eq!(anims2.len(), 1);
+        assert!(!anims2[0].interpolate);
+    }
+
     /// Regenerate the builtin pack's PNG textures from the procedural atlas
     /// (our own clean-room art). Not part of CI: run on demand with
     ///   cargo test write_builtin_pack_pngs -- --ignored --nocapture

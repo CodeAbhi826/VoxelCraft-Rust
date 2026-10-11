@@ -82,6 +82,24 @@ ignored with a boot-log line. Applies on pack *Done* (no restart).
 *Available* to move it to *Selected* (top = highest priority), press
 *Done*. The atlas recompiles and the world re-meshes immediately.
 
+**GUI sheet contract** — override HUD chrome per sheet with
+`textures/gui/<name>.png` (either layout above resolves):
+
+| Sheet | Size (px) | Layout | Fallback |
+|---|---|---|---|
+| hearts, hunger, armor | 27×9 | 3 tiles of 9×9 (Empty, Full, Half) | builtin |
+| bubbles | 18×9 | 2 tiles of 9×9 (Full, Gone) | builtin |
+| effects | 144×9 | 16 tiles of 9×9 (engine effect order) | builtin |
+| widgets | 120×20 | 6 cells of 20×20 (ButtonNormal/Hover/Disabled, SlotEmpty/Hover, Panel; slots paint 18×18 centered) | builtin |
+| hotbar | 182×22 | single tile | builtin |
+| hotbar_sel | 24×22 | single tile | builtin |
+| options_background | 16×16 | single tile | builtin |
+| font | 128×48 | PNG glyph sheet (takes over as font source) | builtin |
+
+Missing sheets are skipped individually; a wrong-size or undecodable
+sheet fails the whole override set back to builtin (strict — no
+resampling, unlike block textures).
+
 **Editing the builtin look without a pack** — edit files in
 `builtin-pack/` directly; restart. That folder always wins over the
 embedded copy.

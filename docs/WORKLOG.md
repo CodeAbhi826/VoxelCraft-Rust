@@ -7014,3 +7014,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z105 - Part 5: pack colormap+sounds operator docs
 - PACKS-README gains colormaps + sounds.json/ogg sections (paths, sampling, merge rules, no-rebuild notes). Starts the 2B contract incrementally.
+
+## 2026-10-11z106 - Part 5: GUI sheet pack contract (2B, doc)
+- PACKS-README gains the per-sheet table (paths, dims, layouts, strict all-or-nothing fallback). All facts code-verified (set.rs/loader.rs). Next: block-texture contract or shader staging.

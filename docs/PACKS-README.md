@@ -100,6 +100,19 @@ Missing sheets are skipped individually; a wrong-size or undecodable
 sheet fails the whole override set back to builtin (strict — no
 resampling, unlike block textures).
 
+**Block texture contract** — override terrain tiles per path with
+`textures/block/<name>.png` (92 overridable paths, `PACK_OVERRIDABLE`
+in `vc-blocks`; either layout above resolves):
+
+| Rule | Behavior | Fallback |
+|---|---|---|
+| Missing file | skipped silently | procedural builtin tile |
+| Undecodable bytes | skipped silently | procedural builtin tile |
+| Wrong size (static) | nearest-resampled to 16×16, blitted onto the slot | n/a (always applies) |
+| Animated strip (`<path>.json` or `<path>.mcmeta` with `animation`) | vertical strip, square frames (`h % w == 0`, `w <= 64`); per-frame resample; becomes AnimatedTile on that slot | non-conforming strip treated as static |
+| labPBR companions (`<stem>_n.png`, `<stem>_s.png`) | detected per tile, reported on the Shaders screen; feed the PBR path when a translator registers | absent = vanilla look |
+| Priority | packs merge bottom→top, last blit wins | builtin-pack/ folder wins over embedded |
+
 **Editing the builtin look without a pack** — edit files in
 `builtin-pack/` directly; restart. That folder always wins over the
 embedded copy.

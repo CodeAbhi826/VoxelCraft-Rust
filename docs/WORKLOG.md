@@ -7011,3 +7011,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - lewton (already locked, MIT) decodes pack oggs to mono f32; resample to RATE via existing helper; add_recipe overwrite-append; boot+apply wiring with vanilla precedence. Local audio tests 7/7, game check clean. Needs a real ogg pack for end-to-end proof (queued).
 
 ## 2026-10-11z104 - closed (CI-green 38105661611, 12/12 incl wasm32+licenses)
+
+## 2026-10-11z105 - Part 5: pack colormap+sounds operator docs
+- PACKS-README gains colormaps + sounds.json/ogg sections (paths, sampling, merge rules, no-rebuild notes). Starts the 2B contract incrementally.

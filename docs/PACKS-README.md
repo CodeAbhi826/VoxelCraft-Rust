@@ -62,6 +62,22 @@ Animation sidecars: `stone.png.json` (ours) or `stone.png.mcmeta`
 `Options → Video Settings → Shaders… → LABPBR MATERIALS`. The Shaders
 screen's row reports how many atlas tiles gained material maps.
 
+**Biome tint colormaps** — put `textures/colormap/grass.png` and/or
+`textures/colormap/foliage.png` (both layouts above resolve; 256×256
+like the ecosystem's) in your pack to override the built-in per-biome
+grass/leaf tints. Sampled per biome at its climate point (u =
+temperature, v = humidity); missing file = built-in tint for that map.
+Applies on pack *Done* with no world rebuild (tints resolve per
+fragment). Water, birch/spruce fixed foliage, and lava keep built-in
+colors (no ecosystem colormap path exists for them).
+
+**Custom sounds** — put `sounds.json` (ecosystem field shape:
+`{"event": {"category": "...", "sounds": [{"name": "...",
+"weight": N}]}}`) in your pack to remix sound events, plus
+`sounds/<name>.ogg` files (vorbis) for new audio. Events merge by name
+(pack wins); a missing recipe plays silence, a malformed file is
+ignored with a boot-log line. Applies on pack *Done* (no restart).
+
 **Enabling packs** — `Options → Resource Packs…`, click a pack in
 *Available* to move it to *Selected* (top = highest priority), press
 *Done*. The atlas recompiles and the world re-meshes immediately.

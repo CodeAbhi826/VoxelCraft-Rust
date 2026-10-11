@@ -6980,3 +6980,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z97 - clippy lints in colormap (CI caught, fixed locally-verified)
 - Unused Arc import (moved to tests) + u32-as-f32 cast. Lesson: run cargo clippy -p on touched crates locally (cheap for small crates). Verified clean + tests green + fmt clean before push.
+
+## 2026-10-11z97 - closed (CI-green 38101255528, 12/12)

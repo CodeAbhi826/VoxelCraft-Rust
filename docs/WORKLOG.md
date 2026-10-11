@@ -7009,3 +7009,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z104 - Part 5 5.1m: pack ogg loading (decode+register+wire)
 - lewton (already locked, MIT) decodes pack oggs to mono f32; resample to RATE via existing helper; add_recipe overwrite-append; boot+apply wiring with vanilla precedence. Local audio tests 7/7, game check clean. Needs a real ogg pack for end-to-end proof (queued).
+
+## 2026-10-11z104 - closed (CI-green 38105661611, 12/12 incl wasm32+licenses)

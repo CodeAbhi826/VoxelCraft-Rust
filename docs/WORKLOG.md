@@ -7066,3 +7066,5 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z119 - Part 5: E2E_VISUAL leg (tint/modes/moon proofs, loose asserts)
 - 5 captures via real pack path (synthetic red/blue colormaps), modes 1+2, midnight+clear moon shot. Proof = V1 review, not thresholds. Fixture seed 95. Game compile left to CI (restart interrupted verification).
+
+## 2026-10-11z119 - closed (CI-green 38133971227, 12/12, visual leg compiles)

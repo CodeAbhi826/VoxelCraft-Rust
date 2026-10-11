@@ -174,5 +174,14 @@ owner approval — shapes need documented sources first (4.0 method).
 | End outer islands + chorus | Present | Ring/gate/heights [ESTIMATED]; cities/ships deferred (need dims) |
 | 12 missing structures | Absent | Need documented dims (4.2c audit) |
 
+## 5.1m Pack model/item override audit (2026-10-11, Part 5)
+
+| System | Status | Provenance |
+|---|---|---|
+| Block models (`models/block/*.json` + parent chains + texture vars) | Present, vanilla semantics | resolve_model: child-overrides-parent, `#var` chains depth-capped, 7+ unit tests |
+| Pack blockstate dispatch → mesher | Present end-to-end | compile_block_dispatch → installed ModelSet → mesher by_state reads |
+| Item models (`models/item/*.json`) | Absent | Nothing reads item paths; icons bake per block id from atlas tiles (isometric CPU baker) |
+| Custom player skins (64×64, slim) | Absent | Procedural sprite only; needs loader + layout + rig variants (queued epic) |
+
 Approval ask (PLAN-FINAL 4.4): leave the [ESTIMATED] rows approximate
 until owner numeric diffs arrive; tune then, not now.

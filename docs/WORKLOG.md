@@ -7081,3 +7081,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 - Inline mode rows -> GRADE_PRESETS + grade_preset() (unknown falls back to off); consistency test pinned. Compile left to CI (busy).
 
 ## 2026-10-11z122 - closed (CI-green 38137387382, 12/12, grade presets green)
+
+## 2026-10-11z123 - Part 5 5.1m: pack model/item override audit
+- Block path verified end-to-end (resolve->dispatch->mesher); item models never read (gap recorded); custom skins queued epic. Backlog section appended, no code change.

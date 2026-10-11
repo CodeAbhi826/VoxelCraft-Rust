@@ -7019,3 +7019,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - PACKS-README gains the per-sheet table (paths, dims, layouts, strict all-or-nothing fallback). All facts code-verified (set.rs/loader.rs). Next: block-texture contract or shader staging.
 
 ## 2026-10-11z107 - tour dispatched (first in-game eyes on tint fix + moon)
+
+## 2026-10-11z108 - tour green + tint fix V1-verified in-game (agent eyes)
+- Tour 38106095747 fully green. Front-view capture (seed 2024): grass rich green (no wash-out), leaves saturated, water blue, borders visible, F5 rig renders. The linearization reads correct on lavapipe. Moon-night + colormap-pack proofs still need dedicated legs (noted, not built).

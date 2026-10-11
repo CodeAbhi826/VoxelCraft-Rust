@@ -4735,6 +4735,14 @@ impl Renderer {
         }
     }
 
+    /// Upload caller-blended bytes (mcmeta `interpolate: true` path) —
+    /// same tile writer as frame updates; empty input is ignored.
+    pub fn update_atlas_bytes(&mut self, tile: u16, bytes: &[u8]) {
+        if !bytes.is_empty() {
+            self.write_atlas_tile(tile, bytes);
+        }
+    }
+
     /// Replace the ENTIRE block atlas (2026-09-14 round: the Resource
     /// Packs screen's DONE recompiles the atlas with the enabled pack
     /// stack and swaps it in). Updates the CPU copy and routes through

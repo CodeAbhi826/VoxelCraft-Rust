@@ -220,7 +220,7 @@ until owner numeric diffs arrive; tune then, not now.
 
 | System | Status | Provenance |
 |---|---|---|
-| Pack `.mcmeta` animation (2B.3) | Partial | Pack strips honored (`<path>.json` or `<path>.mcmeta`: frametime + frame order, `merge_pack_tile_overrides`); `interpolate` unsupported (zero hits) |
+| Pack `.mcmeta` animation (2B.3) | Present | Pack strips honored (`<path>.json` or `<path>.mcmeta`: frametime + frame order + `interpolate` blending, `merge_pack_tile_overrides`) |
 | `pack_format` 6 warning | Present | Mismatch warns and loads anyway (§46 resilience, tested: "mismatched format must not reject") |
 
 ## 5.1q Built-in shader toggle inventory (2026-10-11, Part 5)

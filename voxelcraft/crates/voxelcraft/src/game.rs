@@ -25031,6 +25031,21 @@ impl GameApp {
                     self.renderer.update_atlas_frame(a, frame as usize);
                 }
             }
+            // mcmeta `interpolate: true` — blend current→next by
+            // timer/frametime every frame (Part 5 2B.3; discrete
+            // stepping is untouched for all other tiles)
+            for a in self.animations.iter() {
+                if a.interpolate && a.frames.len() > 1 {
+                    let next = (a.current + 1) % a.frames.len();
+                    let t = (a.timer / a.frametime).clamp(0.0, 1.0);
+                    let blended = vc_render::textures::blend_frames(
+                        &a.frames[a.current],
+                        &a.frames[next],
+                        t,
+                    );
+                    self.renderer.update_atlas_bytes(a.tile, &blended);
+                }
+            }
         }
 
         // UI rebuild cadence: snappier in menus (hover) + picker + live F3

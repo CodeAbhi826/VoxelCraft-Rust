@@ -5105,8 +5105,24 @@ pub struct AnimatedTile {
     pub frames: Vec<Vec<u8>>,
     /// ticks per frame (1 tick = 1/20 s; we advance by game time)
     pub frametime: f32,
+    /// mcmeta `interpolate: true` — blend current→next each frame
+    /// instead of hard-stepping (Part 5 2B.3)
+    pub interpolate: bool,
     pub current: usize,
     pub timer: f32,
+}
+
+/// Linear blend of two equal-length RGBA frames (the `interpolate: true`
+/// path). Length mismatch falls back to `a` — never panics on pack data.
+pub fn blend_frames(a: &[u8], b: &[u8], t: f32) -> Vec<u8> {
+    if a.len() != b.len() {
+        return a.to_vec();
+    }
+    let t = t.clamp(0.0, 1.0);
+    a.iter()
+        .zip(b.iter())
+        .map(|(&x, &y)| (x as f32 + (y as f32 - x as f32) * t).round() as u8)
+        .collect()
 }
 
 /// The ten vanilla destroy-stage crack overlays, clean-room procedural
@@ -5267,6 +5283,11 @@ pub fn merge_pack_tile_overrides(
                     tile: *tile,
                     frames,
                     frametime: (frametime / 20.0).max(0.05),
+                    interpolate: anim
+                        .as_ref()
+                        .and_then(|a| a.get("interpolate"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false),
                     current: 0,
                     timer: 0.0,
                 });
@@ -5447,6 +5468,11 @@ pub fn merge_pack_textures(
                     tile,
                     frames,
                     frametime: (frametime / 20.0).max(0.05),
+                    interpolate: anim
+                        .as_ref()
+                        .and_then(|a| a.get("interpolate"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false),
                     current: 0,
                     timer: 0.0,
                 });
@@ -5507,6 +5533,7 @@ pub fn merge_pack_textures(
                 tile: TILE_MAGMA,
                 frames,
                 frametime: 8.0 / 20.0,
+                interpolate: false,
                 current: 0,
                 timer: 0.0,
             });
@@ -5563,6 +5590,7 @@ pub fn merge_pack_textures(
                 tile: TILE_NETHER_PORTAL,
                 frames,
                 frametime: 4.0 / 20.0,
+                interpolate: false,
                 current: 0,
                 timer: 0.0,
             });
@@ -5736,6 +5764,7 @@ mod pack_tex_tests {
             tile: 64,
             frames: vec![vec![1u8; 1024], vec![2u8; 1024], vec![3u8; 1024]],
             frametime: 0.05,
+            interpolate: false,
             current: 0,
             timer: 0.0,
         }];
@@ -5745,6 +5774,19 @@ mod pack_tex_tests {
         // 3 frames wrap
         let _ = tick_animations(&mut anims, 0.11); // 2+ steps
         assert_eq!(anims[0].current, 0);
+    }
+
+    #[test]
+    fn interpolate_blend_midpoints_and_mismatch_fallback() {
+        let a = vec![0u8, 100, 200, 255];
+        let b = vec![100u8, 200, 255, 255];
+        assert_eq!(blend_frames(&a, &b, 0.0), a);
+        assert_eq!(blend_frames(&a, &b, 1.0), b);
+        assert_eq!(blend_frames(&a, &b, 0.5), vec![50, 150, 228, 255]);
+        // clamped, never panics
+        assert_eq!(blend_frames(&a, &b, 9.0), b);
+        // length mismatch falls back to `a`
+        assert_eq!(blend_frames(&a, &b[..2], 0.5), a);
     }
 
     /// Regenerate the builtin pack's PNG textures from the procedural atlas

@@ -1975,6 +1975,12 @@ pub struct GameApp {
     e2e_beds_done: bool,
     /// fluids round: E2E_FLUIDS — the in-game fluids leg ran once
     e2e_fluids_done: bool,
+    /// Part 5 E2E_VISUAL — the visual-proofs leg ran once (tint/modes/moon)
+    e2e_visual_done: bool,
+    /// Part 5 E2E_VISUAL stage machine (0 baseline .. 4 night capture)
+    e2e_visual_stage: u8,
+    /// Part 5 E2E_VISUAL: every stage's captures landed
+    e2e_visual_ok: bool,
     /// 1A.6: E2E_ICONIC — the iconic-cast capture leg ran once
     e2e_iconic_done: bool,
     /// 1.11: E2E_TURNTABLE — solo-mob capture leg ran once
@@ -3490,6 +3496,9 @@ impl GameApp {
             e2e_containers_done: false,
             e2e_beds_done: false,
             e2e_fluids_done: false,
+            e2e_visual_done: false,
+            e2e_visual_stage: 0,
+            e2e_visual_ok: true,
             e2e_iconic_done: false,
             e2e_iconic_stage: 0,
             e2e_iconic_settle: 0,
@@ -17100,6 +17109,109 @@ impl GameApp {
         ));
     }
 
+    /// Part 5 E2E_VISUAL — the visual-proofs leg (native-only): one boot,
+    /// five captures for agent V1 review (tint fix, feature-shader modes,
+    /// moon disc). Assertions stay loose on purpose (boot-cleanly + files
+    /// landed); lavapipe pixel values are environment noise, so the proof
+    /// is the reviewed capture, not a threshold. Stages advance one
+    /// capture per 2+ updates (arm, then consume the readback pen).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_visual_capture(&mut self, name: &str) -> bool {
+        if let Some(bytes) = self.renderer.take_screenshot_png() {
+            let dir = std::path::Path::new("screenshots");
+            let _ = std::fs::create_dir_all(dir);
+            let path = dir.join(format!("e2e_visual_{name}_{}.png", chrono_like_stamp()));
+            let wrote = std::fs::write(&path, &bytes).is_ok();
+            vc_render::render::report_boot_log(&format!(
+                "e2e: visual {name} {} ({} bytes)",
+                if wrote { "saved" } else { "WRITE FAILED" },
+                bytes.len()
+            ));
+            self.e2e_visual_ok &= wrote && bytes.len() > 1000;
+            true
+        } else {
+            self.renderer.screenshot_request = true;
+            false
+        }
+    }
+
+    /// Part 5 E2E_VISUAL stage machine. 0 baseline day capture; 1 applies
+    /// a synthetic red-grass/blue-foliage colormap pack through the REAL
+    /// pack path (decode → sample → LUT upload) then captures; 2/3 set
+    /// feature-shader modes 1/2 and capture; 4 restores mode 0, forces
+    /// midnight + clear weather, captures the moon, verdicts, done.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_visual(&mut self) {
+        match self.e2e_visual_stage {
+            0 => {
+                if self.e2e_visual_capture("baseline") {
+                    self.e2e_visual_stage = 1;
+                }
+            }
+            1 => {
+                // synthetic colormap pack: solid-red grass, solid-blue
+                // foliage (orientation-proof — every sample hits it)
+                fn solid_png(r: u8, g: u8, b: u8) -> Vec<u8> {
+                    let img: image::RgbaImage =
+                        image::ImageBuffer::from_fn(256, 256, |_, _| image::Rgba([r, g, b, 255]));
+                    let mut out = Vec::new();
+                    img.write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)
+                        .unwrap_or_default();
+                    out
+                }
+                let mut mem = vc_pack::pack::MemorySource::new("e2e-visual");
+                mem.insert("textures/colormap/grass.png", solid_png(255, 0, 0));
+                mem.insert("textures/colormap/foliage.png", solid_png(0, 0, 255));
+                let mut stack = vc_pack::pack::PackStack::new();
+                stack.push_front(std::sync::Arc::new(mem));
+                let (grass, foliage) = vc_pack::colormap::load_colormaps(&stack);
+                let mut applied = false;
+                if grass.is_some() || foliage.is_some() {
+                    let mut lut = vc_blocks::tint::lut_rgba();
+                    let g = grass.as_ref().map(|m| (m.rgba.as_slice(), m.w, m.h));
+                    let f = foliage.as_ref().map(|m| (m.rgba.as_slice(), m.w, m.h));
+                    vc_blocks::tint::override_lut_from_maps(&mut lut, g, f);
+                    self.renderer.set_tint_lut(&lut);
+                    applied = true;
+                }
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: visual colormap pack applied={applied}"
+                ));
+                self.e2e_visual_ok &= applied;
+                self.e2e_visual_stage = 2;
+            }
+            2 => {
+                if self.e2e_visual_capture("colormap") {
+                    self.settings.shader_mode = 1;
+                    self.e2e_visual_stage = 3;
+                }
+            }
+            3 => {
+                if self.e2e_visual_capture("mode1") {
+                    self.settings.shader_mode = 2;
+                    self.e2e_visual_stage = 4;
+                }
+            }
+            4 => {
+                if self.e2e_visual_capture("mode2") {
+                    self.settings.shader_mode = 0;
+                    self.day_time = 18000.0 / 24000.0;
+                    self.weather.force_clear(10000);
+                    self.e2e_visual_stage = 5;
+                }
+            }
+            _ => {
+                if self.e2e_visual_capture("moon") {
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: visual VERDICT {}",
+                        if self.e2e_visual_ok { "OK" } else { "FAILED" }
+                    ));
+                    self.e2e_visual_done = true;
+                }
+            }
+        }
+    }
+
     /// 1A.6: E2E_ICONIC stage build — a flat grass stage around the
     /// player's chunk center, the iconic mob roster in a line (MobKind
     /// rows only: the Wither boss and the Ender Dragon are separate boss
@@ -18140,6 +18252,23 @@ impl GameApp {
             if fluids_ready {
                 self.e2e_fluids();
                 self.e2e_fluids_done = true;
+            }
+        }
+        // Part 5 E2E_VISUAL — the visual-proofs leg (native-only): five
+        // captures (day baseline, colormap pack, shader modes 1+2, night
+        // moon) for agent V1 review. Same world-entry + chunk-ready guard
+        // as the beds/fluids legs (captures must show the WORLD).
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done {
+            let (px_f, pz_f) = (
+                self.player.pos.x.floor() as i32,
+                self.player.pos.z.floor() as i32,
+            );
+            let (pcx, pcz) = (px_f.div_euclid(16), pz_f.div_euclid(16));
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            let visual_ready = in_world && self.world.chunks.contains_key(&(pcx, pcz));
+            if visual_ready {
+                self.e2e_visual();
             }
         }
         // Round A: E2E_FKEYS — the function-key contract leg. Stage 0

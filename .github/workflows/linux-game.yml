@@ -388,6 +388,31 @@ jobs:
           test -s run6/screenshots/e2e_phases_f3_*.png || { echo "FAIL: phases F3 screenshot missing"; exit 1; }
           echo "PHASES OK - the phase meter spans update+draw in-game (min coverage >= 0.9, F3 phase row captured)"
 
+          # Part 5 E2E_VISUAL — the visual-proofs leg (tint fix,
+          # feature-shader modes 1+2, moon disc): five captures for V1
+          # review. Assertions stay loose by design (boot-cleanly + all
+          # five files landed + VERDICT OK); lavapipe pixels are noise,
+          # so the proof is the reviewed capture. Seed 95 = open plains
+          # (known-fast loading, same fixture logic as phases).
+          mkdir -p run10 && pushd run10 >/dev/null
+          set +e
+          timeout 240 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan E2E_VISUAL=1 E2E_SEED=95 \
+            "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-visual.log
+          CODE=$?
+          set -e
+          popd >/dev/null
+          echo "visual smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: visual E2E exited $CODE"
+            exit 1
+          fi
+          grep -q "e2e: visual VERDICT OK" smoke-visual.log || { echo "FAIL: the visual E2E verdict is not OK"; exit 1; }
+          for v in baseline colormap mode1 mode2 moon; do
+            test -s run10/screenshots/e2e_visual_${v}_*.png || { echo "FAIL: visual capture $v missing"; exit 1; }
+          done
+          echo "VISUAL OK - five proof captures saved (tint, modes, moon)"
+
           # 1.11: solo-mob turntable (E2E_TURNTABLE=1, TURNTABLE_MOB=name,
           # default creeper) — one subject alone on flat grass, HUD hidden,
           # neutral daylight; front/side/back/three-quarter/close-up PNGs
@@ -497,6 +522,15 @@ jobs:
         with:
           name: e2e-fkeys-views
           path: run3/screenshots/e2e_fkeys_*.png
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload VISUAL proofs (Part 5 V1 evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-visual
+          path: run10/screenshots/e2e_visual_*.png
           retention-days: 30
           if-no-files-found: warn
 

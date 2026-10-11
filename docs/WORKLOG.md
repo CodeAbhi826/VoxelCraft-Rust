@@ -7063,3 +7063,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z118 - Part 5: Shaders row V1 (agent eyes, CI snapshot)
 - BUILT-IN: VANILLA+ renders above LABPBR, vanilla styling, no overlap. Fixture mode=1 shows correctly.
+
+## 2026-10-11z119 - Part 5: E2E_VISUAL leg (tint/modes/moon proofs, loose asserts)
+- 5 captures via real pack path (synthetic red/blue colormaps), modes 1+2, midnight+clear moon shot. Proof = V1 review, not thresholds. Fixture seed 95. Game compile left to CI (restart interrupted verification).

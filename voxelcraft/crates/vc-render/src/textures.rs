@@ -5751,6 +5751,30 @@ mod pack_tex_tests {
     /// (our own clean-room art). Not part of CI: run on demand with
     ///   cargo test write_builtin_pack_pngs -- --ignored --nocapture
     #[test]
+    fn resample_full_nearest_upscales_quadrants() {
+        // wrong-size pack textures resample to 16x16 by nearest pick
+        // (never panics, never blends): a 2x2 R/G/B/W image lands each
+        // color in its 8x8 quadrant
+        let img = image::RgbaImage::from_fn(2, 2, |x, y| match (x, y) {
+            (0, 0) => image::Rgba([255, 0, 0, 255]),
+            (1, 0) => image::Rgba([0, 255, 0, 255]),
+            (0, 1) => image::Rgba([0, 0, 255, 255]),
+            _ => image::Rgba([255, 255, 255, 255]),
+        });
+        let out = resample_full(&img, 2, 2);
+        let px = |x: usize, y: usize| -> [u8; 4] {
+            let i = (y * TILE_PX + x) * 4;
+            [out[i], out[i + 1], out[i + 2], out[i + 3]]
+        };
+        assert_eq!(px(0, 0), [255, 0, 0, 255]);
+        assert_eq!(px(15, 0), [0, 255, 0, 255]);
+        assert_eq!(px(0, 15), [0, 0, 255, 255]);
+        assert_eq!(px(15, 15), [255, 255, 255, 255]);
+        assert_eq!(px(7, 7), [255, 0, 0, 255]);
+        assert_eq!(px(8, 8), [255, 255, 255, 255]);
+    }
+
+    #[test]
     #[ignore]
     fn write_builtin_pack_pngs() {
         let out_dir = concat!(

@@ -7084,3 +7084,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z123 - Part 5 5.1m: pack model/item override audit
 - Block path verified end-to-end (resolve->dispatch->mesher); item models never read (gap recorded); custom skins queued epic. Backlog section appended, no code change.
+
+## 2026-10-11z124 - Part 5: font-test flake hygiene (drain-first)
+- Reran red CI green (flake confirmed: shared global engine + order-dependent leftovers + poison cascade; docs-only delta). One-line drain-first in the exact-count test; other tests tolerant or isolated.

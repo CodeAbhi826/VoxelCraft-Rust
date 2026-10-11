@@ -760,6 +760,11 @@ mod tests {
         // upload (the renderer sync already drained the first)
         let eng = engine().expect("engine");
         let mut e = eng.lock().unwrap_or_else(|p| p.into_inner());
+        // drain-first: sibling tests share this global engine and some
+        // bake without draining (missing-CJK + cell-keyed runs); without
+        // this the len==1 assert below measures their leftovers and the
+        // failure order-flakes across runners
+        e.take_pending();
         let bakes = std::cell::Cell::new(0u32);
         let strip = |e: &mut FontEngine| -> (Vec<u8>, u32, u32) {
             bakes.set(bakes.get() + 1);

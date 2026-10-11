@@ -6991,3 +6991,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z100 - Part 5 5.2a: moon phases rendered (mapping tested, shader eyeballed next tour)
 - 8 phases via shared moon_phase_for_tick (difficulty reuses it), cosine terminator in sky shader, phase smuggled in sky cam.w (layout untouched). Mapping unit test green locally. Slime-phase spawning noted for Part 7.
+
+## 2026-10-11z101 - clippy unused-parens in moon helper (CI caught)
+- Double parens around the cast; inner pair suffices. Local clippy/fmt/audit clean before push.

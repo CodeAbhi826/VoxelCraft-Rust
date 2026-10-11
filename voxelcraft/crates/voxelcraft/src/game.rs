@@ -26830,7 +26830,7 @@ impl GameApp {
     /// Single definition shared by the sky disc mask and local
     /// difficulty (which inlined the same rule).
     fn moon_phase_for_tick(ticks: i64) -> f32 {
-        ((ticks.max(0) / 24_000 % 8) as f32)
+        (ticks.max(0) / 24_000 % 8) as f32
     }
 
     /// local difficulty (wiki Difficulty, engine-adapted): day component

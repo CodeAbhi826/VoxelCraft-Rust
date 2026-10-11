@@ -7106,3 +7106,5 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z129 - Part 5: entity-texture gap recorded (5.1m table)
 - No textures/entity pack path; mobs render procedural billboards. Pack reskinning queued epic.
+
+## 2026-10-11z129 - closed (CI-green 38151674582, 12/12)

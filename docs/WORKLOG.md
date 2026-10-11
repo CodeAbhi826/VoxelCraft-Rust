@@ -6977,3 +6977,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z96 - Part 5 5.1h: pack colormap library (decode+sample+override)
 - vc-pack::colormap (flat-key load, PNG decode, nearest sample) + tint sampling/override (per-biome climates, UV estimated flagged, linear output). Unit-tested locally (2+5 green). No wiring yet (renderer replace-API + boot/reload next). image dep added (workspace pin, MIT).
+
+## 2026-10-11z97 - clippy lints in colormap (CI caught, fixed locally-verified)
+- Unused Arc import (moved to tests) + u32-as-f32 cast. Lesson: run cargo clippy -p on touched crates locally (cheap for small crates). Verified clean + tests green + fmt clean before push.

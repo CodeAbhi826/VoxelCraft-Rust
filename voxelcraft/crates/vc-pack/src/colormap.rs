@@ -4,8 +4,6 @@
 //! (climate UV → linear tint) lives in `vc_blocks::tint` next to the
 //! engine LUT it overrides. Absent files = engine constants (no-op).
 
-use std::sync::Arc;
-
 /// A decoded colormap image (vanilla maps are 256×256 RGBA).
 pub struct Colormap {
     pub w: u32,
@@ -40,7 +38,7 @@ fn load_one(stack: &crate::pack::PackStack, path: &str) -> Option<Colormap> {
 /// Nearest sample as sRGB bytes (linearization happens in tint sampling).
 pub fn sample_bytes(map: &Colormap, u: f32, v: f32) -> [u8; 3] {
     let x = (u.clamp(0.0, 1.0) * (map.w - 1) as f32).round() as u32;
-    let y = (v.clamp(0.0, 1.0) * (map.h - 1) as u32 as f32).round() as u32;
+    let y = (v.clamp(0.0, 1.0) * (map.h - 1) as f32).round() as u32;
     let i = ((y * map.w + x) * 4) as usize;
     [map.rgba[i], map.rgba[i + 1], map.rgba[i + 2]]
 }
@@ -48,6 +46,7 @@ pub fn sample_bytes(map: &Colormap, u: f32, v: f32) -> [u8; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     fn mem_source(files: Vec<(&str, Vec<u8>)>) -> Arc<dyn crate::pack::PackSource> {
         let mut m = crate::pack::MemorySource::new("test");

@@ -186,3 +186,16 @@ owner approval — shapes need documented sources first (4.0 method).
 
 Approval ask (PLAN-FINAL 4.4): leave the [ESTIMATED] rows approximate
 until owner numeric diffs arrive; tune then, not now.
+
+## 5.1n 2B-remainder status (2026-10-11, Part 5)
+
+| System | Status | Provenance |
+|---|---|---|
+| Font providers (bitmap/ttf/`legacy_unicode`) | Absent | Builtin TTF + PNG override exist (`FontSource::Png`); no pack provider dispatch (repo-wide grep, zero hits) |
+| `lang/*.json` | Absent, Part 7 | Zero `lang/` reads; Language screen English-only, honestly labeled |
+| Pack sounds end-to-end | Code-only | Registry overlay + lewton ogg decode + `pack_sounds_top_pack_wins` test; no headless-audio proof (no audio device on CI) |
+| AO curve public source | Present, source open | Per-vertex AO pack/unpack + smooth flag in mesher; curve values internally consistent, public source unverified |
+| Engine shadow pass | Present | Sun shadow map + 3x3 PCF, strength 0..1 (0 disables); OFF in Vanilla mode |
+| Pack shadow-stage + gbuffers (2B.7) | Epic | Chain design + honest EngineDependent uniform matrix; feature coverage is the gap |
+| OptiFine-style compat matrix (2B.6) | Absent | Plan-only references; no shipped Supported/Partial/Unsupported matrix |
+| Per-toggle costs + Low/Med/High/Ultra tiers | Absent, blocked | Needs real-GPU numbers (lavapipe is noise); code marks the UI as pending |

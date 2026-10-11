@@ -7112,3 +7112,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Deleted a 238-char shell fragment baked in by a broken heredoc invocation, and an exact-duplicate z127 entry. Content otherwise untouched (verified byte-identical duplicate before removal).
 
 ## 2026-10-11z130 - closed (CI-green 38153914622, 12/12)
+
+## 2026-10-11z131 - Part 5: 2B-remainder status (5.1n table)
+- 8 rows: font providers absent, lang Part 7, sounds code-only, AO present/source-open, engine shadow present, pack shadow+gbuffers epic, compat matrix absent, toggle costs blocked. Every row grep-verified this turn.

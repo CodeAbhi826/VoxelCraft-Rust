@@ -7155,3 +7155,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z140 - Part 5: visual-proofs batch CLOSED (tour 38165153925 green, VERDICT OK)
 - Interp V1 (agent): grass tops uniform (161,0,0) = mid-blend gray x red tint; discrete stepping would show black or full-red. Shadow V1 (agent): dark ellipse under turntable creeper feet, absent pre-fix. Six captures green (baseline/colormap/mode1/mode2/interp/moon). Remaining Part 5: blocked quartet (toggle costs, AO source, sounds proof, colour harness), epics (skins, font providers, SSR/SSAO/volumetric), then REVIEW PACKET.
+
+## 2026-10-12z141 - Part 5 REVIEW PACKET (A5, closes Part 5, opens Part 6)
+- CHECKPOINTS.md: 325-word packet + adversarial 10-claim review (all VERIFIED/TESTED except claim 10 CLAIMED with deferrals). Chain bac4361..56e98a9; 1025/0; tours green. Skins/items/entities reassigned to Part 6 by plan ownership.

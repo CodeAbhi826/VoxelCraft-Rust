@@ -210,3 +210,45 @@ snow/warm climates absent from it) — not chased further by design.
 // mid-load; E2E-only hardening: drain gate + 20 s world age +
 // E2E_SEED/E2E_RD fixtures, 0.9 gate intact). No worldgen defect.
 // Claim 10 now VERIFIED. Part 5 starts.
+
+## PART 5 COLOUR, LIGHTING, PACKS — REVIEW PACKET (2026-10-12)
+
+Colour: 15/15 audit closed (COLOR-SPACE.md); tint linearization; face
+shades exact; grade table + Shaders row (ID 251) + grain; lightmap
+absent-by-architecture (per-vertex light); free-down
+deviated-and-disclosed; AO present/source-open; weather darkening
+tested; fog end=rd*16-12, rain/thunder blends 0.60/0.45 (5.1n/5.1q/5.1r).
+Packs: colormap lib+wiring; sounds registry+ogg+precedence (code-only);
+block models end-to-end; GUI-sheet + block-texture contracts; animation
+incl. interpolate blend; pack_format-6 warn-load; 2B.6 matrix
+(CTM/items/entities/sky Unsupported; labPBR/emissive/colormaps/aliases
+Partial); font providers + lang absent (Part 7); item/entity/skins gaps
+to Part 6. Proofs: E2E_VISUAL six captures; turntable shadow V1.
+Chain bac4361..56e98a9. CI 38164790458 12/12 (1025 passed / 0 failed,
+35 suites, ubuntu job). Tours 38152471727 (moon) + 38165153925
+(interp+shadow, VERDICT OK). Images (agent V1): moon disc full ~90px;
+interp tops (161,0,0) = blend x tint; creeper blob post-fix, absent
+pre-fix; tint/modes-1/2 prior tour. Numbers: vanilla+ row
+(0.55/0.14/1.07/1.0), cinematic (0.85/0.32/1.16/1.06); 3-OS goldens
+green throughout. Open: #5 provider terms (owner); blocked quartet —
+toggle costs (need real-GPU), AO source (no web), sounds proof (no
+headless audio), colour harness (owner captures). Real bugs: glass-texel
+shadow (wired but discarded, fixed), fmt -p masking (rule: full check).
+Top risks: (1) lavapipe agent-V1 pixels != reference look; (2) skins/font
+epics unsourced; (3) SSR/SSAO/volumetric absent; (4) 2B.7 drift vs sister
+project; (5) shadow texel rides stained-glass tile under pack overrides.
+Spot-checks: game.rs:12304 tile const; mcmeta_interpolate test;
+iris.rs EngineDependent rows; interp PNG pixel sampling; CI log counts.
+
+### Adversarial self-review — 10 claims (2026-10-12)
+1. 1025/0 across 35 suites — VERIFIED (CI 38164790458 job-log lines).
+2. Grade rows match code — VERIFIED (render.rs:231-236 read).
+3. Tour 38165153925 VERDICT OK + 6 captures — VERIFIED (log + files).
+4. Interp blend pixel signature — TESTED (161-analysis + unit test).
+5. Shadow blob post-fix, absent pre-fix — TESTED (two-tour V1 pair).
+6. Fog/rain constants match code — VERIFIED (render.rs:7368 + test).
+7. sky_factor rain/thunder values — VERIFIED (weather.rs test read).
+8. ID_SHDR_BUILTIN=251 guarded — VERIFIED (ui.rs:661 + guard tests).
+9. Zero lang/ reads; screen honestly labeled — VERIFIED (grep + game.rs).
+10. Part 5 code complete bar listed defers — CLAIMED (epics + quartet
+above; skins/items/entities reassigned to Part 6 by plan ownership).

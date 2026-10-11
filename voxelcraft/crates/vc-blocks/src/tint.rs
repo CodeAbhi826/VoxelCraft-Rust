@@ -188,8 +188,18 @@ pub fn lut_rgba() -> Vec<u8> {
             put(&mut data, (i + 1) as u8, b, hex);
         }
     }
-    put(&mut data, KIND_FOLIAGE, SLOT_BIRCH, hex_lin_bytes(BIRCH_COLOR));
-    put(&mut data, KIND_FOLIAGE, SLOT_SPRUCE, hex_lin_bytes(SPRUCE_COLOR));
+    put(
+        &mut data,
+        KIND_FOLIAGE,
+        SLOT_BIRCH,
+        hex_lin_bytes(BIRCH_COLOR),
+    );
+    put(
+        &mut data,
+        KIND_FOLIAGE,
+        SLOT_SPRUCE,
+        hex_lin_bytes(SPRUCE_COLOR),
+    );
     put(&mut data, KIND_WATER, SLOT_LAVA, hex_lin_bytes(LAVA_COLOR));
     data
 }

@@ -2106,6 +2106,9 @@ dependencies = [
 [[package]]
 name = "vc-blocks"
 version = "0.4.0"
+dependencies = [
+ "libm",
+]
 
 [[package]]
 name = "vc-chunk"

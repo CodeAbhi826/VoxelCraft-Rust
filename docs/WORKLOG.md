@@ -7110,3 +7110,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z130 - worklog repair: remove heredoc debris + duplicate z127
 - Deleted a 238-char shell fragment baked in by a broken heredoc invocation, and an exact-duplicate z127 entry. Content otherwise untouched (verified byte-identical duplicate before removal).
+
+## 2026-10-11z130 - closed (CI-green 38153914622, 12/12)

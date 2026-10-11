@@ -7092,3 +7092,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z125 - Part 5: moon-shot aim fix (pitch to midnight moon)
 - Midnight moon sits at ~68 deg elevation south (from sun_dir math); level camera cannot see it. Stage 4 now pitches up +1.19 (dir.y=sin(pitch) convention verified). V1 verdicts: tint+modes proven, moon pending this shot.
+
+## 2026-10-11z126 - Part 5: moon-shot yaw fix + V1 verdicts (tint/modes proven, moon pending)
+- Tour green, VERDICT OK. V1: tint override + modes 1/2 proven in captures. Moon absent (camera yaw was arbitrary); stage now yaws due south. Re-tour for the disc.

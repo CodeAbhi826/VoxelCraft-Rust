@@ -230,7 +230,7 @@ PLAN-FINAL §5 toggle list, audited against code:
 | Toggle | Status | Provenance |
 |---|---|---|
 | Soft sun shadows | Present | Shadow-map + 3×3 PCF, §17 sizes (1024/2048/4096), default OFF (vanilla has no sun pass); fabulous tier |
-| Entity ground shadows | Partial | Setting persisted + UI toggle; no render-side consumption found (no eshad/blob hits in vc-render) |
+| Entity ground shadows | Present, V1 open | Setting-gated `push_mob_shadows` emits ground quads into the billboard stream (entity-distance gated, ground-height resolved); no dedicated unit test; in-game V1 not yet done (corr. 2026-10-11: earlier "Partial" row missed the game-side emission — vc-render-only grep) |
 | Bloom | Present | Bloom pyramid + composite WGSL, grade-driven |
 | POM | Present | Raymarch in `pbr.rs` |
 | PBR | Partial | labPBR decode behind toggle, default off |

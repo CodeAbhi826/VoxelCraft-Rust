@@ -7141,3 +7141,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z136 - closed (CI-green 38162820399, 12/12; first run red on fmt only)
 - Lesson: per-package cargo fmt --check -p masked the game.rs failure; full-workspace fmt check is now the rule.
+
+## 2026-10-11z137 - Part 5: entity-shadow row correction (5.1q)
+- push_mob_shadows IS wired (setting-gated, billboard stream, distance-gated); earlier Partial verdict came from a vc-render-only grep that missed the game-side emission. Row corrected to Present/V1-open with the miss admitted in-line. No unit test for the quad math; V1 queued for batch tour.

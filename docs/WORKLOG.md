@@ -6954,3 +6954,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z89 - Part 5 5.1b: font-atlas color row VERIFIED (no change)
 - Row 7: Srgb texture + white-RGB x coverage-alpha upload + tint shader - decode exact at 1.0, alpha passthrough. Correct as-is; audit updated. Next: row 9 (CPU canvas fallback).
+
+## 2026-10-11z90 - Part 5 5.1c: ui-canvas color row VERIFIED (no change)
+- Row 9: ui_tex Srgb + direct-return shader; canvas sRGB bytes decode on sample into linear composite. Correct as-is. Next: row 10 (sky/fog/cloud authoring space).

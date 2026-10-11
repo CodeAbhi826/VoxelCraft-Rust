@@ -7058,3 +7058,5 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z117 - Part 5: cinematic film grain (naga-validated locally)
 - Hash grain post-tonemap pre-encode, cinematic-only, fixed 0.035 until per-toggle UI. wgsl_shaders_validate green locally.
+
+## 2026-10-11z117 - closed (CI-green 38123553552, 12/12, grain green)

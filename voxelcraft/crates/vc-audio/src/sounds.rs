@@ -1220,6 +1220,31 @@ impl SoundRegistry {
         Ok(SoundRegistry { events: map })
     }
 
+    /// Overlay pack `sounds.json` definitions onto the registry (Part 5,
+    /// 2B): events merge by name (pack wins), validated by the same rules
+    /// as from_json. Missing recipes resolve to silence at pick() time —
+    /// a pack remixing built-in recipes works fully today; pack .ogg
+    /// loading is the follow-up slice.
+    pub fn overlay(&mut self, json: &str) -> Result<usize, String> {
+        let map: HashMap<String, SoundEventDef> =
+            serde_json::from_str(json).map_err(|e| format!("sounds.json: {e}"))?;
+        for (name, def) in map.iter() {
+            SoundCategory::from_name(&def.category)
+                .ok_or_else(|| format!("sounds.json: {name} has bad category {}", def.category))?;
+            if def.sounds.is_empty() {
+                return Err(format!("sounds.json: {name} has no variants"));
+            }
+            for v in def.sounds.iter() {
+                if v.weight == 0 {
+                    return Err(format!("sounds.json: {name}/{} weight 0", v.name));
+                }
+            }
+        }
+        let n = map.len();
+        self.events.extend(map);
+        Ok(n)
+    }
+
     /// weighted-random variant + pitch roll. `rng` drives the pick (the
     /// caller keeps one rng so the sequence is deterministic in tests).
     pub fn pick(&self, event: &str, rng: &mut Rng, bank: &SoundBank) -> Option<ResolvedSound> {
@@ -1820,6 +1845,38 @@ mod tests {
             let r = reg.pick(name, &mut rng, &bank);
             assert!(r.is_some(), "event {name} failed to resolve a recipe");
         }
+    }
+
+    /// overlay: pack events replace by name, add new ones, reject bad
+    #[test]
+    fn registry_overlay_merges_and_validates() {
+        let mut reg = SoundRegistry::from_json(SOUNDS_JSON).unwrap();
+        let base = reg.events.len();
+        // replace an event (fewer variants) + add a new one
+        let n = reg
+            .overlay(
+                r##"{
+            "block.grass.break": {"category": "blocks", "sounds": [{"name": "dig/grass1", "weight": 1}]},
+            "pack.custom": {"category": "blocks", "sounds": [{"name": "dig/grass1", "weight": 1}]}
+        }"##,
+            )
+            .expect("overlay");
+        assert_eq!(n, 2);
+        assert_eq!(reg.events.len(), base + 1);
+        assert_eq!(reg.events["block.grass.break"].sounds.len(), 1);
+        assert!(reg.events.contains_key("pack.custom"));
+        // bad category / empty variants / zero weight all reject
+        assert!(reg
+            .overlay(r##"{"x": {"category": "nope", "sounds": [{"name": "a", "weight": 1}]}}"##)
+            .is_err());
+        assert!(reg
+            .overlay(r##"{"x": {"category": "blocks", "sounds": []}}"##)
+            .is_err());
+        assert!(reg
+            .overlay(r##"{"x": {"category": "blocks", "sounds": [{"name": "a", "weight": 0}]}}"##)
+            .is_err());
+        // malformed JSON rejects
+        assert!(reg.overlay("not json").is_err());
     }
 
     /// weighted variant selection: 3:1 weights → the rare variant shows up

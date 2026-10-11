@@ -2755,6 +2755,31 @@ fn enabled_pack_sources(
 /// slots in application order so the highest priority lands last/wins).
 /// Returns (atlas pixels, animations). Pure CPU — callable at boot AND
 /// from the Resource Packs screen's DONE.
+/// Part 5 (2B): the topmost enabled pack's sounds.json overrides the
+/// builtin sound registry (vanilla file-level override: one file wins
+/// whole). Missing recipes resolve to silence at pick() time; malformed
+/// JSON is ignored loudly (boot log), never fatal.
+fn apply_pack_sounds(
+    reg: &mut vc_audio::sounds::SoundRegistry,
+    app_order: &[std::sync::Arc<dyn vc_pack::pack::PackSource>],
+) {
+    let mut stack = vc_pack::pack::PackStack::new();
+    for pack in app_order.iter() {
+        stack.push_front(pack.clone());
+    }
+    let Some((bytes, name)) = stack.read_first("sounds.json") else {
+        return;
+    };
+    let msg = match std::str::from_utf8(&bytes) {
+        Ok(json) => match reg.overlay(json) {
+            Ok(n) => format!("pack sounds: {n} event(s) from {name}"),
+            Err(e) => format!("pack sounds ignored ({name}): {e}"),
+        },
+        Err(_) => format!("pack sounds ignored ({name}): not UTF-8"),
+    };
+    vc_render::render::report_boot_log(&msg);
+}
+
 fn compile_pack_atlas(
     builtin: Option<&std::sync::Arc<dyn vc_pack::pack::PackSource>>,
     packs_in_application_order: &[std::sync::Arc<dyn vc_pack::pack::PackSource>],
@@ -2972,7 +2997,7 @@ impl GameApp {
         }
         let bank = SoundBank::generate();
         let t_audio = t_boot.elapsed() - t_pack - t_renderer;
-        let sounds = vc_audio::sounds::SoundRegistry::from_json(vc_audio::sounds::SOUNDS_JSON)
+        let mut sounds = vc_audio::sounds::SoundRegistry::from_json(vc_audio::sounds::SOUNDS_JSON)
             .unwrap_or_else(|e| {
                 vc_render::render::report_boot_log(&format!("sound registry broken: {e}"));
                 // empty registry = silent game rather than a boot failure
@@ -2980,6 +3005,7 @@ impl GameApp {
                     events: Default::default(),
                 }
             });
+        apply_pack_sounds(&mut sounds, &enabled_packs);
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut world = World::new(vc_world::world::World::random_seed());
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
@@ -11544,6 +11570,16 @@ impl GameApp {
         }
         // every chunk remeshes through the (newly installed) ModelSet
         self.remesh_all();
+        // Part 5 (2B): pack sounds.json rides the same DONE apply (the
+        // registry rebuilds from builtin + overlay, like the atlas)
+        {
+            let mut reg = vc_audio::sounds::SoundRegistry::from_json(vc_audio::sounds::SOUNDS_JSON)
+                .unwrap_or(vc_audio::sounds::SoundRegistry {
+                    events: Default::default(),
+                });
+            apply_pack_sounds(&mut reg, &app_order);
+            self.sounds = reg;
+        }
         // persist the pack list with the other settings
         #[cfg(target_arch = "wasm32")]
         crate::web_input::save_settings(&self.settings.serialize());

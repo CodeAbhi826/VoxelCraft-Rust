@@ -7001,3 +7001,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Wrong-size pack textures nearest-resample to 16x16 (no panic, no blend); quadrant test added. Local render pack tests 5/5. (Load high so clippy left to CI.)
 
 ## 2026-10-11z102 - closed (CI-green 38104182459, 12/12)
+
+## 2026-10-11z103 - Part 5 5.1l: pack sounds.json override (registry merge)
+- SoundRegistry::overlay (validated merge, tested) + boot/apply wiring (vanilla file-level: top pack wins whole; builtin base; malformed never fatal). Ogg loading stays queued. (Load elevated; heavy check left to CI.)

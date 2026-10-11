@@ -6985,3 +6985,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z98 - Part 5 5.1i: colormap wiring (LUT replace, no remesh)
 - Renderer::set_tint_lut (fixed-size re-upload, bind groups intact) + apply_resource_packs wiring (user packs over builtin; absent = no-op). Shaders sample per-fragment so no remesh. Local check+clippy+fmt clean. In-game proof with a real colormap pack queued.
+
+## 2026-10-11z99 - Part 5 5.1j: face-shade verified, AO/gaps recorded
+- face_shade exact vanilla match (twin WGSL copies in sync); AO curve internally consistent, public source open; shade:false gap recorded (T13, neutral). Matrix row updated. Next: in-game colormap proof.

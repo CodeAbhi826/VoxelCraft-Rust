@@ -3,6 +3,7 @@
 //! model inheritance, bakes element rotations, precomputes per-state
 //! model dispatch so meshers never parse JSON at mesh time.
 
+pub mod colormap;
 pub mod datapack;
 pub mod legacy_aliases;
 pub mod model;

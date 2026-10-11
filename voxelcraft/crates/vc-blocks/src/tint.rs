@@ -50,15 +50,90 @@ pub fn unpack(t: u8) -> (u8, u8) {
 /// biome tint out (grass #59AE30 rendered ~0.63 instead of ~0.35). Found
 /// in the Part 5 color audit (row 11).
 fn rgb(hex: u32) -> [f32; 3] {
-    fn lin(byte: u32) -> f32 {
-        let s = (byte & 0xFF) as f32 / 255.0;
-        if s <= 0.04045 {
-            s / 12.92
-        } else {
-            libm::powf((s + 0.055) / 1.055, 2.4)
+    [
+        srgb_byte_to_linear(((hex >> 16) & 0xFF) as u8),
+        srgb_byte_to_linear(((hex >> 8) & 0xFF) as u8),
+        srgb_byte_to_linear((hex & 0xFF) as u8),
+    ]
+}
+
+fn srgb_byte_to_linear(byte: u8) -> f32 {
+    let s = byte as f32 / 255.0;
+    if s <= 0.04045 {
+        s / 12.92
+    } else {
+        libm::powf((s + 0.055) / 1.055, 2.4)
+    }
+}
+
+/// Representative (temperature, downfall) per internal biome id for pack
+/// colormap sampling (vanilla JE biome data, widely published; clamped to
+/// 0..1 at sample time). Swamp uses its map position then darkens via the
+/// fixed swamp handling (unchanged engine behavior).
+fn biome_climate(biome: u8) -> (f32, f32) {
+    match biome {
+        0 => (0.5, 0.5),   // Ocean
+        1 => (0.8, 0.4),   // Beach
+        2 => (0.8, 0.4),   // Plains
+        3 => (0.7, 0.8),   // Forest
+        4 => (2.0, 0.0),   // Desert
+        5 => (-0.5, 0.4),  // Snowy Taiga
+        6 => (0.2, 0.3),   // Mountains
+        7 => (2.0, 0.0),   // Nether Wastes
+        8 => (0.25, 0.8),  // Taiga
+        9 => (0.6, 0.6),   // Birch Forest
+        10 => (0.95, 0.9), // Jungle
+        11 => (1.2, 0.0),  // Savanna
+        12 => (0.8, 0.9),  // Swamp
+        13 => (2.0, 0.0),  // Badlands
+        14 => (0.7, 0.8),  // Flower Forest
+        15 => (0.8, 0.4),  // Sunflower Plains
+        16 => (0.0, 0.5),  // Ice Spikes
+        17 => (0.7, 0.8),  // Dark Forest
+        _ => (0.8, 0.4),
+    }
+}
+
+/// Sample a decoded colormap (sRGB bytes) at a climate point → LINEAR
+/// tint. UV orientation u=temperature, v=downfall is [ESTIMATED /
+/// APPROXIMATION] (no pixel sources consulted; V1 review at plan end
+/// arbitrates — flip here if the look is wrong).
+pub fn sample_colormap(rgba: &[u8], w: u32, h: u32, temp: f32, down: f32) -> [f32; 3] {
+    let x = (temp.clamp(0.0, 1.0) * (w - 1) as f32).round() as u32;
+    let y = (down.clamp(0.0, 1.0) * (h - 1) as f32).round() as u32;
+    let i = ((y * w + x) * 4) as usize;
+    [
+        srgb_byte_to_linear(rgba[i]),
+        srgb_byte_to_linear(rgba[i + 1]),
+        srgb_byte_to_linear(rgba[i + 2]),
+    ]
+}
+
+/// Override LUT grass/foliage rows from pack colormaps (2B, shape A+:
+/// per-biome representative sampling — matches our per-biome LUT
+/// architecture; within-biome variation is a later enhancement).
+/// `None` map = keep engine constants. Fixed slots (birch/spruce/lava)
+/// and water rows are never overridden (vanilla has no water colormap).
+pub fn override_lut_from_maps(
+    lut: &mut [u8],
+    grass: Option<(&[u8], u32, u32)>,
+    foliage: Option<(&[u8], u32, u32)>,
+) {
+    let putf = |lut: &mut [u8], kind: u8, slot: u8, c: [f32; 3]| {
+        let idx = ((kind as u32 * LUT_W + slot as u32) * 4) as usize;
+        lut[idx] = (c[0].clamp(0.0, 1.0) * 255.0).round() as u8;
+        lut[idx + 1] = (c[1].clamp(0.0, 1.0) * 255.0).round() as u8;
+        lut[idx + 2] = (c[2].clamp(0.0, 1.0) * 255.0).round() as u8;
+    };
+    for b in 0u8..18 {
+        let (t, d) = biome_climate(b);
+        if let Some((rgba, w, h)) = grass {
+            putf(lut, KIND_GRASS, b, sample_colormap(rgba, w, h, t, d));
+        }
+        if let Some((rgba, w, h)) = foliage {
+            putf(lut, KIND_FOLIAGE, b, sample_colormap(rgba, w, h, t, d));
         }
     }
-    [lin(hex >> 16), lin(hex >> 8), lin(hex)]
 }
 
 /// grass colormap color per biome (vanilla 1.16.5; §28 Nether Wastes has
@@ -334,6 +409,36 @@ mod tests {
             assert!((got - want).abs() < 0.002, "got {g:?}");
         }
         assert!(g[0] < 0.349 && g[1] < 0.682 && g[2] < 0.188);
+    }
+
+    #[test]
+    fn colormap_sample_and_override() {
+        // 2x2 map: R at (0,0), G at (1,0), B at (0,1), W at (1,1)
+        let map: Vec<u8> = vec![
+            255, 0, 0, 255, 0, 255, 0, 255, //
+            0, 0, 255, 255, 255, 255, 255, 255,
+        ];
+        let c = sample_colormap(&map, 2, 2, 0.0, 0.0);
+        assert_eq!(c, [1.0, 0.0, 0.0]);
+        let c = sample_colormap(&map, 2, 2, 1.0, 1.0);
+        assert_eq!(c, [1.0, 1.0, 1.0]);
+        // mid grey linearizes down (sRGB 0.5 -> linear ~0.214)
+        let mid = sample_colormap(&[128, 128, 128, 255], 1, 1, 0.3, 0.7);
+        assert!((mid[0] - 0.214).abs() < 0.005, "got {mid:?}");
+        // override writes grass rows from the map, keeps water + fixed
+        let mut lut = lut_rgba();
+        let before_water = lut[((KIND_WATER as u32 * LUT_W) * 4) as usize];
+        override_lut_from_maps(&mut lut, Some((&map, 2, 2)), None);
+        let g_plains = ((KIND_GRASS as u32 * LUT_W + 2) * 4) as usize;
+        // plains (0.8, 0.4) rounds to pixel (1,0) = green
+        assert_eq!(
+            [lut[g_plains], lut[g_plains + 1], lut[g_plains + 2]],
+            [0, 255, 0]
+        );
+        assert_eq!(
+            lut[((KIND_WATER as u32 * LUT_W) * 4) as usize],
+            before_water
+        );
     }
 
     #[test]

@@ -6974,3 +6974,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z95 - Part 5 5.1g: pack-colormap gap scoped (doc)
 - No pack colormap reads exist; LUT is engine constants. Shape A (per-biome sampling) vs B (per-column climate UV, faithful; climate_fields live). Recommend B, CPU path first. climate_fields confirmed live per-column.
+
+## 2026-10-11z96 - Part 5 5.1h: pack colormap library (decode+sample+override)
+- vc-pack::colormap (flat-key load, PNG decode, nearest sample) + tint sampling/override (per-biome climates, UV estimated flagged, linear output). Unit-tested locally (2+5 green). No wiring yet (renderer replace-API + boot/reload next). image dep added (workspace pin, MIT).

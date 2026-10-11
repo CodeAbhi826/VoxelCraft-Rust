@@ -10,6 +10,8 @@ description = "Resource-pack / blockstate+model JSON pipeline for 1.16.5-format 
 vc-blocks = { workspace = true }
 vc-rng = { workspace = true }
 flate2 = { workspace = true }
+# Part 5 (pack colormaps): PNG decode for grass/foliage overrides
+image.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }
 # 2026-10-01 (T8): FxHash for the integer-keyed model dispatch maps — the

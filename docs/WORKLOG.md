@@ -7035,3 +7035,5 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z112 - fix: &str to_vec in sounds test (CI caught E0599)
 - b.as_bytes().to_vec(). One-line, type-obvious; full check left to CI (busy).
+
+## 2026-10-11z112 - closed (CI-green 38119491094, 12/12, sounds precedence green)

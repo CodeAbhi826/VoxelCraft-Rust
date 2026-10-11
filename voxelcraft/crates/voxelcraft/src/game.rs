@@ -28393,7 +28393,13 @@ impl GameApp {
         // update-side handler takes it on the NEXT frame's update, one
         // frame after the readback lands.
         #[cfg(not(target_arch = "wasm32"))]
+        // Part 5 E2E_VISUAL: same deadlock class as iconic/phases — while
+        // the leg runs its 5-capture ladder the PNG belongs to the leg
+        // (the dumper eats it the same frame the readback lands and the
+        // ladder starves forever with zero log lines)
+        #[cfg(not(target_arch = "wasm32"))]
         if self.renderer.screenshot_png.is_some()
+            && !(std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done)
             && (self.e2e_fkeys_stage == 0 || self.e2e_fkeys_stage > 3)
             // 1A.6: while the E2E_ICONIC ladder is armed the PNG is its
             // capture — the F2 dumper would otherwise consume it in the

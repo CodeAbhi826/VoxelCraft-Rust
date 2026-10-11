@@ -7073,3 +7073,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 - First tour run died silent: smoke exits at world entry unless a leg holds it; added visual_pending to both exit gates. All cross-crate touchpoints verified by reading (signatures, fields, YAML valid). Full compile left to CI.
 
 ## 2026-10-11z120 - closed (CI-green 38135630298, 12/12, visual leg compiles)
+
+## 2026-10-11z121 - Part 5: visual-leg dumper guard (root-caused, inlined)
+- F2 dumper ate every readback same-frame (42+ stray screenshots in log); leg starved with zero lines. Guard mirrors iconic/phases idiom, inlined to avoid wasm unused-let.

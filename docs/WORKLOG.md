@@ -6957,3 +6957,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z90 - Part 5 5.1c: ui-canvas color row VERIFIED (no change)
 - Row 9: ui_tex Srgb + direct-return shader; canvas sRGB bytes decode on sample into linear composite. Correct as-is. Next: row 10 (sky/fog/cloud authoring space).
+
+## 2026-10-11z91 - Part 5 5.1d: sky/fog color row VERIFIED (calibration rationale)
+- Row 10: constants sRGB-authored, consumed raw, calibrated to output appearance (V1 captures). No linearization; re-fit flagged if that lands. Next: row 11 (biome tints).

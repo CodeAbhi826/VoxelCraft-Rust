@@ -178,3 +178,4 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-11: z131 2B-remainder 5.1n table CI-green. Next: graceful-errors slice (malformed pack inputs never panic) or Part 5 packet scoping.
 - 2026-10-11: z132 5.1o compat matrix CI-green. Next: mcmeta-animation + pack_format-6 warning audit.
 - 2026-10-11: z133 5.1p animation/format CI-green. Next: built-in-shader toggle inventory (5.1q).
+- 2026-10-11: z134 closed green; z135 5.1r lighting table in CI.

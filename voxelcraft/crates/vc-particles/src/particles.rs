@@ -416,12 +416,10 @@ mod tests {
         ps.spawn_block_break(0, 65, 0, GRASS, 3, 15, 0);
         assert_eq!(ps.len(), 64);
         assert_eq!(ps.spawned_total, 64);
-        // tint baked (Forest grass = vanilla 0x79C05A)
+        // tint baked (Forest grass = vanilla 0x79C05A, sRGB→linear at
+        // the LUT since the 5.1e tint fix: 0xC0 -> ~0.527, NOT 0.753)
         let t = ps.parts[0].tint;
-        assert!(
-            (t[1] - 0xC0 as f32 / 255.0).abs() < 0.02,
-            "green-dominant {t:?}"
-        );
+        assert!((t[1] - 0.527).abs() < 0.01, "green-dominant {t:?}");
         // further bursts capped at MAX_PARTICLES
         for _ in 0..200 {
             ps.spawn_block_break(0, 65, 0, DIRT, 2, 15, 0);

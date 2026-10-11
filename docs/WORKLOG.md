@@ -6963,3 +6963,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z92 - Part 5 5.1e: tint linearization FIX (real parity bug)
 - rgb() passed sRGB hex through to a linear pipeline (all biome tints washed out). Fixed with sRGB EOTF (libm) + byte helper for fixed slots + unit test (grass #59AE30 pins). Local tint tests 4/4. Blend pad unaffected (indices). Next: rows 12/15.
+
+## 2026-10-11z93 - tint follow-up: particle pin re-based (CI caught it)
+- break_burst test pinned sRGB green; particles ride the same linear tints, so the pin moves to 0.527 with provenance. Local particles 5/5. Lesson: tint consumers extend beyond the LUT (blend pad unaffected, particles re-based).

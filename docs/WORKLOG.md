@@ -7071,3 +7071,5 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z120 - Part 5: E2E_VISUAL exit-hold fix
 - First tour run died silent: smoke exits at world entry unless a leg holds it; added visual_pending to both exit gates. All cross-crate touchpoints verified by reading (signatures, fields, YAML valid). Full compile left to CI.
+
+## 2026-10-11z120 - closed (CI-green 38135630298, 12/12, visual leg compiles)

@@ -6942,3 +6942,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z85 - E2E_RD fixture (phases 0.807: raster-bound, not code)
 - F3 at 95: settled-ish but GPU 58.7ms on 85 drawn chunks; 44.7/77 ceiling. Fix: E2E_RD override (subtitles pattern), phases leg rd=4 (small steady disc). Same code paths measured, threshold intact. fkeys untouched (2024 green).
+
+## 2026-10-11z86 - phases rd=2 (rd=4 still raster-bound at 0.807)
+- F3 at rd4: GPU 45ms on 85 drawn + submit 43ms; ceiling ~0.6. rd=2 (25-chunk disc) should fit submit+raster in budget; loading completes in seconds (no timeout risk). Seed 102 rejected (river valley).

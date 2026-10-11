@@ -7125,3 +7125,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z133 - Part 5: pack animation + format-warning status (5.1p)
 - Pack .mcmeta animation Partial (frametime/order honored, interpolate absent); pack_format-6 warn-and-load Present + tested. Both grep-verified against merge code and pack tests.
+
+## 2026-10-11z133 - closed (CI-green 38160224932, 12/12)

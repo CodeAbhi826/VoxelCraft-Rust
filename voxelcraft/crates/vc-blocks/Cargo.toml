@@ -7,3 +7,6 @@ license.workspace = true
 description = "Block registry & BlockState system with 1.16.5-pattern state ids"
 
 [dependencies]
+# Part 5 (tint linearization): libm powf so sRGB→linear is identical on
+# every OS/CPU (R5 culture — tint bytes feed the LUT + blend pad)
+libm.workspace = true

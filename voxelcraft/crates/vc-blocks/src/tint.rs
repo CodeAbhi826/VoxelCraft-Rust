@@ -44,12 +44,21 @@ pub fn unpack(t: u8) -> (u8, u8) {
 }
 
 #[inline]
+/// sRGB hex (wiki colormap values are display-referred) to LINEAR float.
+/// The tint LUT texture is Rgba8Unorm (no hardware decode) and the shader
+/// multiplies tints in linear space — passing sRGB through washed every
+/// biome tint out (grass #59AE30 rendered ~0.63 instead of ~0.35). Found
+/// in the Part 5 color audit (row 11).
 fn rgb(hex: u32) -> [f32; 3] {
-    [
-        ((hex >> 16) & 0xFF) as f32 / 255.0,
-        ((hex >> 8) & 0xFF) as f32 / 255.0,
-        (hex & 0xFF) as f32 / 255.0,
-    ]
+    fn lin(byte: u32) -> f32 {
+        let s = (byte & 0xFF) as f32 / 255.0;
+        if s <= 0.04045 {
+            s / 12.92
+        } else {
+            libm::powf((s + 0.055) / 1.055, 2.4)
+        }
+    }
+    [lin(hex >> 16), lin(hex >> 8), lin(hex)]
 }
 
 /// grass colormap color per biome (vanilla 1.16.5; §28 Nether Wastes has
@@ -179,10 +188,19 @@ pub fn lut_rgba() -> Vec<u8> {
             put(&mut data, (i + 1) as u8, b, hex);
         }
     }
-    put(&mut data, KIND_FOLIAGE, SLOT_BIRCH, BIRCH_COLOR);
-    put(&mut data, KIND_FOLIAGE, SLOT_SPRUCE, SPRUCE_COLOR);
-    put(&mut data, KIND_WATER, SLOT_LAVA, LAVA_COLOR);
+    put(&mut data, KIND_FOLIAGE, SLOT_BIRCH, hex_lin_bytes(BIRCH_COLOR));
+    put(&mut data, KIND_FOLIAGE, SLOT_SPRUCE, hex_lin_bytes(SPRUCE_COLOR));
+    put(&mut data, KIND_WATER, SLOT_LAVA, hex_lin_bytes(LAVA_COLOR));
     data
+}
+
+/// sRGB hex to LINEAR-encoded bytes (same transfer as rgb(), for LUT
+/// slots written as raw bytes — birch/spruce/lava had the same
+/// wash-out as the float colors).
+fn hex_lin_bytes(hex: u32) -> u32 {
+    let f = rgb(hex);
+    let b = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u32;
+    (b(f[0]) << 16) | (b(f[1]) << 8) | b(f[2])
 }
 
 /// per-face tint kind for a BUILT-IN (greedy-path) block.
@@ -292,6 +310,20 @@ mod tests {
             let i = ((KIND_GRASS as u32 * LUT_W + slot as u32) * 4) as usize;
             assert_eq!(lut[i + 3], 255);
         }
+    }
+
+    #[test]
+    fn rgb_linearizes_srgb_hex() {
+        // endpoints exact
+        assert_eq!(rgb(0xFFFFFF), [1.0, 1.0, 1.0]);
+        assert_eq!(rgb(0x000000), [0.0, 0.0, 0.0]);
+        // grass #59AE30: sRGB (0.349, 0.682, 0.188) -> linear — values
+        // below their sRGB inputs (the old passthrough washed tints out)
+        let g = rgb(0x59AE30);
+        for (got, want) in g.iter().zip([0.0997, 0.4232, 0.0296]) {
+            assert!((got - want).abs() < 0.002, "got {g:?}");
+        }
+        assert!(g[0] < 0.349 && g[1] < 0.682 && g[2] < 0.188);
     }
 
     #[test]

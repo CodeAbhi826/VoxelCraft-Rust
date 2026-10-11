@@ -7152,3 +7152,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - mcmeta interpolate-flag parse test (true/false) passes; E2E_VISUAL gains stages 5/6 (black/white grass anim, mid-blend capture "interp"; moon setup moves to 6/7); workflow asserts six captures. Local: check clean both crates, fmt clean, new test green. Pre-existing FxHashMap test-warning in draw.rs untouched.
 
 ## 2026-10-12z139 - closed (CI-green 38164790458, 12/12)
+
+## 2026-10-12z140 - Part 5: visual-proofs batch CLOSED (tour 38165153925 green, VERDICT OK)
+- Interp V1 (agent): grass tops uniform (161,0,0) = mid-blend gray x red tint; discrete stepping would show black or full-red. Shadow V1 (agent): dark ellipse under turntable creeper feet, absent pre-fix. Six captures green (baseline/colormap/mode1/mode2/interp/moon). Remaining Part 5: blocked quartet (toggle costs, AO source, sounds proof, colour harness), epics (skins, font providers, SSR/SSAO/volumetric), then REVIEW PACKET.

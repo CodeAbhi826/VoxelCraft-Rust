@@ -220,7 +220,7 @@ until owner numeric diffs arrive; tune then, not now.
 
 | System | Status | Provenance |
 |---|---|---|
-| Pack `.mcmeta` animation (2B.3) | Present | Pack strips honored (`<path>.json` or `<path>.mcmeta`: frametime + frame order + `interpolate` blending, `merge_pack_tile_overrides`) |
+| Pack `.mcmeta` animation (2B.3) | Present, V1'd (agent) | Pack strips honored (`<path>.json` or `<path>.mcmeta`: frametime + frame order + `interpolate` blending); blend proven in-game — uniform (161,0,0) grass tops = mid-blend frame × red tint (tour 38165153925, pixel-verified) |
 | `pack_format` 6 warning | Present | Mismatch warns and loads anyway (§46 resilience, tested: "mismatched format must not reject") |
 
 ## 5.1q Built-in shader toggle inventory (2026-10-11, Part 5)
@@ -230,7 +230,7 @@ PLAN-FINAL §5 toggle list, audited against code:
 | Toggle | Status | Provenance |
 |---|---|---|
 | Soft sun shadows | Present | Shadow-map + 3×3 PCF, §17 sizes (1024/2048/4096), default OFF (vanilla has no sun pass); fabulous tier |
-| Entity ground shadows | Present, V1 open | Setting-gated `push_mob_shadows` emits ground quads into the billboard stream (entity-distance gated, ground-height resolved); 2026-10-11 bug: sampled plain glass (transparent center → particle shader discards alpha < 0.1, so shadows were invisible) — resampled to black-stained-glass fill, fix in tree, in-game V1 pending batch tour (corr: earlier "Partial" row missed the game-side emission — vc-render-only grep) |
+| Entity ground shadows | Present, V1'd (agent) | Setting-gated `push_mob_shadows` emits ground quads into the billboard stream; 2026-10-11 bug (glass texel → invisible) fixed by resampling to black-stained-glass fill; blob visible under turntable creeper (tour 38165153925) |
 | Bloom | Present | Bloom pyramid + composite WGSL, grade-driven |
 | POM | Present | Raymarch in `pbr.rs` |
 | PBR | Partial | labPBR decode behind toggle, default off |

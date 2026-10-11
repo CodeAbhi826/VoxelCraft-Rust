@@ -6988,3 +6988,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z99 - Part 5 5.1j: face-shade verified, AO/gaps recorded
 - face_shade exact vanilla match (twin WGSL copies in sync); AO curve internally consistent, public source open; shade:false gap recorded (T13, neutral). Matrix row updated. Next: in-game colormap proof.
+
+## 2026-10-11z100 - Part 5 5.2a: moon phases rendered (mapping tested, shader eyeballed next tour)
+- 8 phases via shared moon_phase_for_tick (difficulty reuses it), cosine terminator in sky shader, phase smuggled in sky cam.w (layout untouched). Mapping unit test green locally. Slime-phase spawning noted for Part 7.

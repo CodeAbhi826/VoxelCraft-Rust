@@ -26826,6 +26826,13 @@ impl GameApp {
         (ws, of, mb, mbl)
     }
 
+    /// vanilla moon phase 0..7 from world ticks (phase 0 = full moon).
+    /// Single definition shared by the sky disc mask and local
+    /// difficulty (which inlined the same rule).
+    fn moon_phase_for_tick(ticks: i64) -> f32 {
+        ((ticks.max(0) / 24_000 % 8) as f32)
+    }
+
     /// local difficulty (wiki Difficulty, engine-adapted): day component
     /// ramps over the first 3 in-game days, the moon phase adds up to
     /// +0.25 (full moon), difficulty scales by mode. Returns (local,
@@ -26834,7 +26841,7 @@ impl GameApp {
         let day = (self.world_game_time.max(0) / 24_000) as u64;
         let day_factor = (day as f32 / 3.0).clamp(0.25, 1.0);
         // vanilla moonPhase = (day % 8); phase 0 = full moon
-        let moon = (day % 8) as f32;
+        let moon = Self::moon_phase_for_tick(self.world_game_time);
         let moon_factor = ((8.0 - moon) / 8.0).min(1.0) * 0.25;
         let regional = (0.75 + day_factor * 0.25 + moon_factor).clamp(0.75, 1.5);
         let mult = match self.mode {
@@ -27953,6 +27960,7 @@ impl GameApp {
             time: self.time,
             underwater: self.player.head_in_water && self.screen == Screen::Game,
             min_light: 0.05 + self.settings.brightness * 0.25,
+            moon_phase: Self::moon_phase_for_tick(self.world_game_time),
             // §28: no sky pass in the Nether — the fog-colored clear is the
             // whole "sky" (dark red haze, no sun, no gradient)
             skyless: nether,
@@ -30448,6 +30456,17 @@ mod tests {
         let t0 = 0.3_f32;
         let advanced = (t0 + DAY_LEN_SECS / DAY_LEN_SECS) % 1.0;
         assert!((advanced - t0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn moon_phase_follows_day_mod_8() {
+        // vanilla moonPhase = day % 8, phase 0 = full moon (shared by the
+        // sky disc mask and local difficulty)
+        assert_eq!(GameApp::moon_phase_for_tick(0), 0.0);
+        assert_eq!(GameApp::moon_phase_for_tick(24_000), 1.0);
+        assert_eq!(GameApp::moon_phase_for_tick(4 * 24_000), 4.0);
+        assert_eq!(GameApp::moon_phase_for_tick(8 * 24_000), 0.0);
+        assert_eq!(GameApp::moon_phase_for_tick(-100), 0.0);
     }
 
     #[test]

@@ -203,6 +203,11 @@ pub struct SkyState {
     pub underwater: bool,
     /// minimum light floor (brightness setting) — G.misc.w in shaders
     pub min_light: f32,
+    /// vanilla moon phase 0..7 (0 = full) — smuggled to the SKY shader
+    /// in Globals.cam.w (Part 5: the shared Globals layout is full;
+    /// cam.w is 0.0 and unread by every other pipeline, and the sky
+    /// write site below is the only producer). Drives the disc mask.
+    pub moon_phase: f32,
     /// §28: skip the sky/sun entirely — the Nether's fog-colored clear IS
     /// the sky (no gradient, no sun disc, no clouds)
     pub skyless: bool,
@@ -755,9 +760,24 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 
     // moon — Round 15b: the 20x20 quad at distance 100 (w/Sky):
     // 2*atan(10/100) = 11.42 deg full -> cos(5.71 deg) = 0.99503
+    // Part 5: 8 vanilla phases (discrete sprites in vanilla; here a
+    // cosine terminator — an approximation of the elliptical shadow,
+    // exact at full/half/new). G.cam.w smuggles the phase (0 = full).
+    // f = illuminated fraction; s = waxing side (+1: right lit).
     let mdot = dot(dir, -sun);
     let mdisc = smoothstep(0.99480, 0.99508, mdot);
-    col += mdisc * vec3(0.85, 0.9, 1.0) * clamp(1.0 - day, 0.0, 1.0) * 0.7;
+    let m = -sun;
+    let up0 = select(vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), abs(m.y) > 0.99);
+    let t1 = normalize(cross(m, up0));
+    let t2 = cross(m, t1);
+    let o = dir - m * dot(dir, m);
+    let mx = dot(o, t1) / 0.1018;
+    let ph = clamp(G.cam.w, 0.0, 7.0);
+    let f = 1.0 - 0.25 * min(ph, 8.0 - ph);
+    let s = select(-1.0, 1.0, ph > 4.5);
+    let edge = -cos(3.14159265 * (1.0 - f));
+    let pmask = smoothstep(edge - 0.06, edge + 0.06, mx * s);
+    col += mdisc * pmask * vec3(0.85, 0.9, 1.0) * clamp(1.0 - day, 0.0, 1.0) * 0.7;
 
     // stars — Round 15b: the wiki publishes no exact count (the gap is
     // noted in the audit doc); the hash density 0.9972 stays (the
@@ -5815,7 +5835,10 @@ impl Renderer {
         let globals = Globals {
             view_proj: vp.to_cols_array_2d(),
             inv_view_proj: inv_vp.to_cols_array_2d(),
-            cam: [cam.eye.x, cam.eye.y, cam.eye.z, 0.0],
+            // sky-only: cam.w smuggles the moon phase (SkyState doc).
+            // Every other pipeline writes its own cam.w; the sky
+            // shader reads .xyz only, plus .w as phase below.
+            cam: [cam.eye.x, cam.eye.y, cam.eye.z, sky.moon_phase],
             fog_color: [
                 sky.fog_color[0],
                 sky.fog_color[1],

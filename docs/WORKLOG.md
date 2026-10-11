@@ -6968,3 +6968,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - break_burst test pinned sRGB green; particles ride the same linear tints, so the pin moves to 0.527 with provenance. Local particles 5/5. Lesson: tint consumers extend beyond the LUT (blend pad unaffected, particles re-based).
 
 ## 2026-10-11z93 - closed (CI-green 38099962226, 12/12)
+
+## 2026-10-11z94 - Part 5 5.1f: readback + tonemap rows VERIFIED (no change)
+- Row 12: swapchain sRGB bytes preserved to PNG (no profile, viewers assume sRGB). Row 15: bloom/exposure/saturation(709)/vignette/ACES all linear pre-encode, reference order. Color audit now fully closed (15/15).

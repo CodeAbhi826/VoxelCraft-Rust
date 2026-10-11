@@ -164,3 +164,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-11: PART 4 CLOSED (z88, tour green). Next: Part 5 colour/lighting/packs, doc-driven slices first.
 
 - 2026-10-11: z92 tint fix in CI. Next: color rows 12/15, then packs.
+
+- 2026-10-11: color audit closed 15/15. Next: Part 5 packs (builtin-pack content + pack overlays).

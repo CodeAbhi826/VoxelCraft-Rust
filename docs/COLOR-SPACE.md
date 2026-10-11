@@ -16,9 +16,9 @@ TO-VERIFY = needs a targeted follow-up slice.
 | 9 | CPU canvas fallback (no-GPU path) | sRGB bytes → Srgb texture → linear composite | `ui_tex` is Rgba8UnormSrgb (render.rs) with direct `return c` shader; the canvas authors sRGB UI colors and hardware decodes on sample | VERIFIED (5.1c: texture format + shader passthrough) |
 | 10 | Sky/fog/cloud colors | sRGB-authored constants consumed raw, calibrated to output | zen/hor/fog triplets (render.rs shader, game.rs SkyState) read as sRGB values; no linearization step — correctness is output-calibration (V1 captures: blue zenith, white clouds, correct fog feel) + the pending tonemap row | VERIFIED (5.1d: constant provenance + capture evidence; re-fit if linearization lands) |
 | 11 | Biome tints/colormaps | FIXED: sRGB wiki hex linearized at LUT build | `rgb()` did /255 passthrough into an Unorm LUT multiplied in linear space — every tint washed out. Now sRGB EOTF (libm) in `rgb()` + `hex_lin_bytes` for birch/spruce/lava slots; unit test pins grass #59AE30 → linear | FIXED (5.1e: tint.rs + test; blend-pad nearest-match unaffected — indices only) |
-| 12 | Screenshot/PNG readback | linear → sRGB? | readback encode path | TO-VERIFY |
+| 12 | Screenshot/PNG readback | sRGB bytes preserved end-to-end | readback copies the Bgra8UnormSrgb swapchain (already display-referred), swaps to RGBA, PNG-encodes raw with no profile chunk (viewers assume sRGB ✓) | VERIFIED (5.1f: capture + encode path) |
 | 13 | Lightmap | n/a (no lightmap texture — lighting is computed per-vertex/fragment) | — | VERIFIED (no lightmap code exists) |
 | 14 | Shader-pack handoff | linear preserved | post_pipe_linear variant | VERIFIED |
-| 15 | Tonemap/grade/vignette order | operates in linear pre-encode? | composite chain order | TO-VERIFY |
+| 15 | Tonemap/grade/vignette order | linear pre-encode, reference order | bloom → exposure → saturation (Rec.709 luma) → vignette → ACES-approx (cinematic only) → sRGB swapchain encode; all in linear, grade before tonemap | VERIFIED (5.1f: POST_SHADER chain) |
 
 Follow-ups: one slice per TO-VERIFY row (fix or document-as-correct).

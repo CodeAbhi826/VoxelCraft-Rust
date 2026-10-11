@@ -7079,3 +7079,5 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z122 - Part 5: grade preset table (no behavior change)
 - Inline mode rows -> GRADE_PRESETS + grade_preset() (unknown falls back to off); consistency test pinned. Compile left to CI (busy).
+
+## 2026-10-11z122 - closed (CI-green 38137387382, 12/12, grade presets green)

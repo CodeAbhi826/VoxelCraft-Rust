@@ -7055,3 +7055,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 - ID 251, fixed slot y=376 (labPBR to 410, pack rows untouched); tooltip added (tooltip test covers it); layout/selection tests extended; E2E clicks by ID (safe). Snapshot PNG will diff (V1 review). Compile+tests left to CI (busy).
 
 ## 2026-10-11z116 - closed (CI-green 38123005284, 12/12, shader row green)
+
+## 2026-10-11z117 - Part 5: cinematic film grain (naga-validated locally)
+- Hash grain post-tonemap pre-encode, cinematic-only, fixed 0.035 until per-toggle UI. wgsl_shaders_validate green locally.

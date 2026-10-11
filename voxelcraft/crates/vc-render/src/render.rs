@@ -1254,6 +1254,14 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         col = clamp((col * (2.51 * col + 0.03)) / (col * (2.43 * col + 0.59) + 0.14), vec3<f32>(0.0), vec3<f32>(1.0));
     }
 
+    // cinematic film grain (Part 5): animated hash grain post-tonemap,
+    // pre-encode — fixed subtle amount until the per-toggle UI lands.
+    // U.p.z is time; the hash decorrelates per pixel per frame.
+    if (mode > 1.5) {
+        let g = fract(sin(dot(uv * vec2<f32>(1920.0, 1080.0) + fract(U.p.z) * 371.0, vec2<f32>(12.9898, 78.233))) * 43758.5453);
+        col = col + (g - 0.5) * 0.035;
+    }
+
     return vec4<f32>(col, 1.0);
 }
 "#;

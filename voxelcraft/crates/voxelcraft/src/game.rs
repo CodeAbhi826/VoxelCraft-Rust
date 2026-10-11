@@ -18097,7 +18097,16 @@ impl GameApp {
         if std::env::var("E2E_PHASES").is_ok() {
             let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
             if in_world {
-                if self.stats.chunks == self.e2e_phases_last_chunks {
+                // settled = count static AND generation drained. A
+                // stalled trickle satisfies a pure counter check while
+                // the ring fills with loading frames (the 4.1i tour
+                // failure: verdict fired on 5 stuck chunks). Mesh
+                // re-dirties stay out of the gate — mesh applies are
+                // phase-measured steady-state work. The 0.9 threshold
+                // itself is untouched.
+                let settled = self.stats.chunks == self.e2e_phases_last_chunks
+                    && self.gen_inflight.is_empty();
+                if settled {
                     self.e2e_phases_stable += 1;
                 } else {
                     self.e2e_phases_stable = 0;

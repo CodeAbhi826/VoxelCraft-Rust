@@ -6936,3 +6936,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z83 - E2E fixture seed (tour stall root-caused via F3 pixels)
 - F3 shot: spawn in dark-forest-at-riverside (leaf wall + water in view), GPU 32.5ms on 4 chunks. Settled forest scene cannot satisfy 0.9 on lavapipe (44.7/77 = 0.58 ceiling) - fixture was implicitly open-plains until 4.1i moved spawn. Fix: E2E_SEED override (E2E-only, default 12345) + phases/fkeys legs pinned to seed 2024 (75pct open, flat, verified by census). Gate intact. Temp probes removed.
+
+## 2026-10-11z84 - verdict drain-gate + seed 95 (tour stall mechanism closed)
+- Mechanism: verdict fired on stuck-counter mid-load (5 chunks, trickle) instead of settled world. Fix (E2E-only): stability also requires gen_inflight empty; mesh churn excluded (measured work). 0.9 threshold untouched. Fixture: phases to seed 95 (flat, 71pct open, 0 walls); fkeys stays 2024 (proven 1029). Temp seedscan removed.

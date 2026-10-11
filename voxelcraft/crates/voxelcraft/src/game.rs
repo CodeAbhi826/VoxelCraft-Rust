@@ -30539,6 +30539,37 @@ mod tests {
     }
 
     #[test]
+    fn pack_sounds_top_pack_wins() {
+        // two packs provide sounds.json: the topmost (last in
+        // application order) wins the shared event; unique events merge
+        use std::sync::Arc;
+        fn mem(files: Vec<(&str, &str)>) -> Arc<dyn vc_pack::pack::PackSource> {
+            let mut m = vc_pack::pack::MemorySource::new("t");
+            for (p, b) in files {
+                m.insert(p, b.to_vec());
+            }
+            Arc::new(m)
+        }
+        let bottom = mem(vec![(
+            "sounds.json",
+            r##"{"ev": {"category": "blocks", "sounds": [{"name": "dig/grass1", "weight": 1}]}}"##,
+        )]);
+        let top = mem(vec![(
+            "sounds.json",
+            r##"{"ev": {"category": "blocks", "sounds": [{"name": "dig/grass2", "weight": 1}]}, "extra": {"category": "blocks", "sounds": [{"name": "dig/grass1", "weight": 1}]}}"##,
+        )]);
+        let mut reg =
+            vc_audio::sounds::SoundRegistry::from_json(vc_audio::sounds::SOUNDS_JSON).unwrap();
+        apply_pack_sounds(
+            &mut reg,
+            &mut vc_audio::sounds::SoundBank::generate(),
+            &[bottom, top],
+        );
+        assert_eq!(reg.events["ev"].sounds[0].name, "dig/grass2");
+        assert!(reg.events.contains_key("extra"));
+    }
+
+    #[test]
     fn physics_freezes_until_own_chunk_exists() {
         let mut w = vc_world::world::World::new(7);
         let p = Vec3::new(8.5, 90.0, 8.5);

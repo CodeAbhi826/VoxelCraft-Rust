@@ -7025,3 +7025,10 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z109 - Part 5 scope note: built-in shader PARKED by owner directive
 - PLAN-FINAL Part 5 lists a built-in optional shader, but the owner directive (2026-09-14, reaffirmed 2026-09-19, in-code) says NO builtin shader ships. Directive wins: parked, not built. Shadow-pass staging + gbuffers/deferred stay epics (render-loop restructure). AO curve source still open.
+
+## 2026-10-11z111 - Part 5 5.1n: pack-sounds precedence test (uncommitted leftover)
+- Committed the interrupted `pack_sounds_top_pack_wins` test (top pack wins shared event, unique events merge). Matches committed 3-arg `apply_pack_sounds`. fmt clean, audit [PASS]; compile+test left to CI (load 4.86, busy).
+EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git commit -m "test(packs): sounds override precedence (top pack wins)" && git push origin test/full-sweep-2026-09-25 2>&1 | tail -n 1 && git log -1 --format="%H %s"
+
+## 2026-10-11z111 - Part 5 5.1n: pack-sounds precedence test
+- Committed the interrupted pack_sounds_top_pack_wins test. fmt clean, audit PASS; compile left to CI (busy machine).

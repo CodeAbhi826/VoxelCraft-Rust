@@ -196,6 +196,22 @@ until owner numeric diffs arrive; tune then, not now.
 | Pack sounds end-to-end | Code-only | Registry overlay + lewton ogg decode + `pack_sounds_top_pack_wins` test; no headless-audio proof (no audio device on CI) |
 | AO curve public source | Present, source open | Per-vertex AO pack/unpack + smooth flag in mesher; curve values internally consistent, public source unverified |
 | Engine shadow pass | Present | Sun shadow map + 3x3 PCF, strength 0..1 (0 disables); OFF in Vanilla mode |
-| Pack shadow-stage + gbuffers (2B.7) | Epic | Chain design + honest EngineDependent uniform matrix; feature coverage is the gap |
+| Pack shadow-stage + gbuffers (2B.7) | Epic, arch-deferred | Chain design + honest EngineDependent uniform matrix; the gbuffers→deferred→composite→final restructuring belongs to the vc-iris sister project's activation milestone by documented design (iris.rs), not to this repo |
 | OptiFine-style compat matrix (2B.6) | Absent | Plan-only references; no shipped Supported/Partial/Unsupported matrix |
 | Per-toggle costs + Low/Med/High/Ultra tiers | Absent, blocked | Needs real-GPU numbers (lavapipe is noise); code marks the UI as pending |
+
+## 5.1o OptiFine-style compat matrix (2026-10-11, Part 5)
+
+2B.6 support state, audited against code (not claimed from docs):
+
+| Feature | Status | Provenance |
+|---|---|---|
+| Connected textures (CTM `.properties`) | Unsupported | Zero handling in tree (repo-wide grep, no hits) |
+| Custom item properties | Unsupported | Item models absent (§5.1m) |
+| Custom entity models / random entities | Unsupported | Procedural mobs, no pack path (§5.1m) |
+| Custom sky | Unsupported | Zero hits in tree |
+| Normal/specular maps (`_n`/`_s`, labPBR) | Partial | Channel decode in `pbr.rs`, behind the labPBR toggle (default off) |
+| Emissive (`_s` alpha) | Partial | Same labPBR path; pack emissive maps beyond it unverified |
+| Custom colours (pack colormaps) | Partial | Pack grass/foliage lookup works; per-biome custom colours unsupported |
+| Shader uniform aliases | Partial | Documented subset bridge (`shaders.rs`); full compatibility NOT claimed |
+| `shaders.properties` options surface | Present | Parsed (profiles/screens/sliders/unknowns retained) in `shaderpack.rs` |

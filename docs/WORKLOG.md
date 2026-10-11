@@ -7117,3 +7117,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - 8 rows: font providers absent, lang Part 7, sounds code-only, AO present/source-open, engine shadow present, pack shadow+gbuffers epic, compat matrix absent, toggle costs blocked. Every row grep-verified this turn.
 
 ## 2026-10-11z131 - closed (CI-green 38157755172, success)
+
+## 2026-10-11z132 - Part 5: OptiFine-style compat matrix (5.1o) + 2B.7 arch note
+- 9-row matrix audited against code: CTM/custom-items/custom-entities/custom-sky Unsupported (zero hits); labPBR maps + emissive + custom colours + uniform aliases Partial; shaders.properties surface Present. 2B.7 row now records the vc-iris sister-project deferral by design. Graceful-errors probe closed with no slice: sounds/ogg/colormap/zip/GUI-loader negative paths all already tested.

@@ -12297,11 +12297,14 @@ impl GameApp {
     }
 
     /// vanilla Entity Shadows: one soft dark ground quad per visible mob.
-    /// The billboard pipeline alpha-blends; the glass texel's translucent
-    /// fill + a dark tint reads as a soft shadow (disclosed clean-room
-    /// approximation of the vanilla blob texture).
+    /// The billboard pipeline alpha-blends; the black-stained-glass
+    /// texel's translucent fill (alpha 150) tinted dark reads as a soft
+    /// shadow (disclosed clean-room approximation of the vanilla blob
+    /// texture). Formerly sampled plain glass, whose transparent center
+    /// the particle shader discards (alpha < 0.1) — shadows were wired
+    /// but invisible (caught 2026-10-11 by turntable V1).
     fn push_mob_shadows(&mut self) {
-        const TILE: u16 = TILE_GLASS; // 11
+        const TILE: u16 = TILE_STAINED_GLASS_BLACK;
         let uv = [
             ((TILE % 32) as f32 + 0.5) / 32.0,
             ((TILE / 32) as f32 + 0.5) / 32.0,

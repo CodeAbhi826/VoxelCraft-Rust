@@ -7144,3 +7144,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z137 - Part 5: entity-shadow row correction (5.1q)
 - push_mob_shadows IS wired (setting-gated, billboard stream, distance-gated); earlier Partial verdict came from a vc-render-only grep that missed the game-side emission. Row corrected to Present/V1-open with the miss admitted in-line. No unit test for the quad math; V1 queued for batch tour.
+
+## 2026-10-12z138 - Part 5: entity-shadow texel fix (code, V1 pending)
+- push_mob_shadows sampled plain glass (transparent center, particle shader discards alpha<0.1) so shadows were wired-but-invisible; resampled to black-stained-glass fill (alpha 150). Local check+fmt clean. V1 queued for batch tour with interpolate.

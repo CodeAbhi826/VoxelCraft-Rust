@@ -7017,3 +7017,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z106 - Part 5: GUI sheet pack contract (2B, doc)
 - PACKS-README gains the per-sheet table (paths, dims, layouts, strict all-or-nothing fallback). All facts code-verified (set.rs/loader.rs). Next: block-texture contract or shader staging.
+
+## 2026-10-11z107 - tour dispatched (first in-game eyes on tint fix + moon)

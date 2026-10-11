@@ -14,6 +14,8 @@ audio = ["dep:rodio"]
 [dependencies]
 serde_json = { workspace = true }
 serde = { workspace = true }
+# Part 5 (pack .ogg loading): vorbis decode for registry-referenced files
+lewton.workspace = true
 vc-blocks = { workspace = true }
 vc-rng = { workspace = true }
 

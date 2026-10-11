@@ -53,6 +53,9 @@ pollster = "0.3"
 rayon = "1.10"
 flate2 = "1"
 rodio = "0.19"
+# Part 5 (pack .ogg): pure-Rust vorbis decode (already locked via rodio;
+# MIT/Apache, deny-clean). Works on wasm32 too — no cfg split.
+lewton = "0.10"
 wasm-bindgen = { version = "=0.2.127" }
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1.7"

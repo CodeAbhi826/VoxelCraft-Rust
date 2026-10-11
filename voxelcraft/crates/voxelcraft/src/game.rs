@@ -2758,26 +2758,59 @@ fn enabled_pack_sources(
 /// Part 5 (2B): the topmost enabled pack's sounds.json overrides the
 /// builtin sound registry (vanilla file-level override: one file wins
 /// whole). Missing recipes resolve to silence at pick() time; malformed
-/// JSON is ignored loudly (boot log), never fatal.
+/// JSON is ignored loudly (boot log), never fatal. Pack .ogg files
+/// referenced by the merged registry load into the bank (resampled to
+/// RATE mono); absent files keep resolution-by-name (builtin recipes).
 fn apply_pack_sounds(
     reg: &mut vc_audio::sounds::SoundRegistry,
+    bank: &mut vc_audio::sounds::SoundBank,
     app_order: &[std::sync::Arc<dyn vc_pack::pack::PackSource>],
 ) {
     let mut stack = vc_pack::pack::PackStack::new();
     for pack in app_order.iter() {
         stack.push_front(pack.clone());
     }
-    let Some((bytes, name)) = stack.read_first("sounds.json") else {
-        return;
-    };
-    let msg = match std::str::from_utf8(&bytes) {
-        Ok(json) => match reg.overlay(json) {
-            Ok(n) => format!("pack sounds: {n} event(s) from {name}"),
-            Err(e) => format!("pack sounds ignored ({name}): {e}"),
-        },
-        Err(_) => format!("pack sounds ignored ({name}): not UTF-8"),
-    };
-    vc_render::render::report_boot_log(&msg);
+    if let Some((bytes, name)) = stack.read_first("sounds.json") {
+        let msg = match std::str::from_utf8(&bytes) {
+            Ok(json) => match reg.overlay(json) {
+                Ok(n) => format!("pack sounds: {n} event(s) from {name}"),
+                Err(e) => format!("pack sounds ignored ({name}): {e}"),
+            },
+            Err(_) => format!("pack sounds ignored ({name}): not UTF-8"),
+        };
+        vc_render::render::report_boot_log(&msg);
+    }
+    // .ogg loading: every variant name in the merged registry probes
+    // sounds/<name>.ogg top-down (first hit wins — same precedence as
+    // every other pack file). Decoded mono is resampled to RATE.
+    let mut loaded = 0u32;
+    let mut names: Vec<String> = Vec::new();
+    for def in reg.events.values() {
+        for v in def.sounds.iter() {
+            if !names.contains(&v.name) {
+                names.push(v.name.clone());
+            }
+        }
+    }
+    for name in names {
+        let path = format!("sounds/{name}.ogg");
+        let Some((bytes, _)) = stack.read_first(&path) else {
+            continue;
+        };
+        let Ok((mono, rate)) = vc_audio::sounds::decode_ogg(&bytes) else {
+            continue;
+        };
+        let samples = if rate == vc_audio::sounds::RATE {
+            mono
+        } else {
+            vc_audio::sounds::resample(&mono, rate as f32 / vc_audio::sounds::RATE as f32)
+        };
+        bank.add_recipe(&name, samples);
+        loaded += 1;
+    }
+    if loaded > 0 {
+        vc_render::render::report_boot_log(&format!("pack sounds: {loaded} ogg file(s) loaded"));
+    }
 }
 
 fn compile_pack_atlas(
@@ -2995,7 +3028,7 @@ impl GameApp {
                 ),
             );
         }
-        let bank = SoundBank::generate();
+        let mut bank = SoundBank::generate();
         let t_audio = t_boot.elapsed() - t_pack - t_renderer;
         let mut sounds = vc_audio::sounds::SoundRegistry::from_json(vc_audio::sounds::SOUNDS_JSON)
             .unwrap_or_else(|e| {
@@ -3005,7 +3038,7 @@ impl GameApp {
                     events: Default::default(),
                 }
             });
-        apply_pack_sounds(&mut sounds, &enabled_packs);
+        apply_pack_sounds(&mut sounds, &mut bank, &enabled_packs);
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut world = World::new(vc_world::world::World::random_seed());
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
@@ -11577,7 +11610,7 @@ impl GameApp {
                 .unwrap_or(vc_audio::sounds::SoundRegistry {
                     events: Default::default(),
                 });
-            apply_pack_sounds(&mut reg, &app_order);
+            apply_pack_sounds(&mut reg, &mut self.bank, &app_order);
             self.sounds = reg;
         }
         // persist the pack list with the other settings

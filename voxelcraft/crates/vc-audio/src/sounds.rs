@@ -1042,6 +1042,65 @@ impl SoundBank {
     pub fn recipe(&self, name: &str) -> Option<usize> {
         self.index.get(name).copied()
     }
+
+    /// Register pack-decoded samples as a recipe (Part 5, 2B .ogg
+    /// loading): overwrites an existing slot with the same name (pack
+    /// re-apply is idempotent), else appends. Unreferenced slots after
+    /// a pack removal are unreachable once the registry rebuilds.
+    pub fn add_recipe(&mut self, name: &str, samples: Vec<f32>) -> usize {
+        let wavs = to_wav16(&samples, RATE);
+        if let Some(&slot) = self.index.get(name) {
+            self.data[slot] = samples;
+            self.wavs[slot] = wavs;
+            slot
+        } else {
+            let slot = self.data.len();
+            self.names.push(name.to_string());
+            self.index.insert(name.to_string(), slot);
+            self.data.push(samples);
+            self.wavs.push(wavs);
+            slot
+        }
+    }
+}
+
+/// Decode pack .ogg (vorbis) bytes to mono f32 + source sample rate
+/// (Part 5, 2B). Multi-channel mixes down by mean. Caller resamples to
+/// RATE via `resample(samples, src_rate / RATE)`.
+pub fn decode_ogg(bytes: &[u8]) -> Result<(Vec<f32>, u32), String> {
+    use lewton::inside_ogg::OggStreamReader;
+    let cursor = std::io::Cursor::new(bytes);
+    let mut reader = OggStreamReader::new(cursor).map_err(|e| format!("ogg open: {e:?}"))?;
+    let channels = reader.ident_hdr.audio_channels as usize;
+    let rate = reader.ident_hdr.audio_sample_rate;
+    if channels == 0 || rate == 0 {
+        return Err("ogg: empty stream header".to_string());
+    }
+    let mut mono: Vec<f32> = Vec::new();
+    while let Some(packet) = reader
+        .read_dec_packet()
+        .map_err(|e| format!("ogg packet: {e:?}"))?
+    {
+        // per-channel i16 vecs; mix down by mean into f32 mono
+        let n = packet.iter().map(|ch| ch.len()).max().unwrap_or(0);
+        for i in 0..n {
+            let mut sum = 0.0f32;
+            let mut count = 0u32;
+            for ch in packet.iter() {
+                if let Some(&s) = ch.get(i) {
+                    sum += s as f32 / 32768.0;
+                    count += 1;
+                }
+            }
+            if count > 0 {
+                mono.push(sum / count as f32);
+            }
+        }
+    }
+    if mono.is_empty() {
+        return Err("ogg: no audio packets".to_string());
+    }
+    Ok((mono, rate))
 }
 
 /// Linear-resample by pitch factor (native playback pitch variation).
@@ -1877,6 +1936,25 @@ mod tests {
             .is_err());
         // malformed JSON rejects
         assert!(reg.overlay("not json").is_err());
+    }
+
+    /// add_recipe registers pack samples under a name (overwrite =
+    /// idempotent re-apply); garbage ogg bytes fail decoding loudly
+    #[test]
+    fn pack_recipe_registers_and_resolves() {
+        let mut bank = SoundBank::generate();
+        assert!(bank.recipe("pack/custom").is_none());
+        let slot = bank.add_recipe("pack/custom", vec![0.1, -0.1, 0.2]);
+        assert_eq!(bank.recipe("pack/custom"), Some(slot));
+        assert_eq!(bank.data[slot], vec![0.1, -0.1, 0.2]);
+        // re-apply overwrites the same slot (no growth)
+        let n = bank.data.len();
+        assert_eq!(bank.add_recipe("pack/custom", vec![0.5]), slot);
+        assert_eq!(bank.data.len(), n);
+        assert_eq!(bank.data[slot], vec![0.5]);
+        // decode rejects garbage without panicking
+        assert!(decode_ogg(b"not an ogg").is_err());
+        assert!(decode_ogg(&[]).is_err());
     }
 
     /// weighted variant selection: 3:1 weights → the rare variant shows up

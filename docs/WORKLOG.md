@@ -7006,3 +7006,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - SoundRegistry::overlay (validated merge, tested) + boot/apply wiring (vanilla file-level: top pack wins whole; builtin base; malformed never fatal). Ogg loading stays queued. (Load elevated; heavy check left to CI.)
 
 ## 2026-10-11z103 - closed (CI-green 38104920784, 12/12)
+
+## 2026-10-11z104 - Part 5 5.1m: pack ogg loading (decode+register+wire)
+- lewton (already locked, MIT) decodes pack oggs to mono f32; resample to RATE via existing helper; add_recipe overwrite-append; boot+apply wiring with vanilla precedence. Local audio tests 7/7, game check clean. Needs a real ogg pack for end-to-end proof (queued).

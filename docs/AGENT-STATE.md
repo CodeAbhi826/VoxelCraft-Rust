@@ -160,3 +160,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-11: z83 fixture seed in CI+tour. Next: tour verdict, then Part 4 close + Part 5.
 
 - 2026-10-11: z84 drain-gate + seed95 in CI+tour. Next: tour verdict, Part 4 close, Part 5.
+
+- 2026-10-11: PART 4 CLOSED (z88, tour green). Next: Part 5 colour/lighting/packs, doc-driven slices first.

@@ -203,3 +203,10 @@ snow/warm climates absent from it) — not chased further by design.
 8. River valleys wet (99% core) + water-filled in-game — TESTED (probe).
 9. Regional-variance call documented, not silent — CLAIMED (above).
 10. Part 4 closes on tour green; Part 5 starts immediately — CLAIMED.
+
+// 2026-10-11 CLOSE-OUT: tour 38098699761 GREEN (all legs). phases
+// ring=240 min_ratio=0.995, fkeys margin 1062, beds/fluids OK. The
+// tour stall root-caused (verdict fired on stuck-counter/ stale-ring
+// mid-load; E2E-only hardening: drain gate + 20 s world age +
+// E2E_SEED/E2E_RD fixtures, 0.9 gate intact). No worldgen defect.
+// Claim 10 now VERIFIED. Part 5 starts.

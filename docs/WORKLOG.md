@@ -6948,3 +6948,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z87 - verdict min world age 20s (stale-ring misfire)
 - rd2 tour: verdict fired 1.6s after entry on a stale ring (238 pre-world frames, min 0.118). Gate now also requires 20s in-world (rd2 disc drains in ~10s). Threshold untouched.
+
+## 2026-10-11z88 - PART 4 CLOSED (tour 38098699761 green)
+- All legs green: phases 0.995 (ring 240), fkeys 1062, beds OK, fluids OK; CI+WASM green at 5305886. Worldgen verified (13/14 families 0.70-1.21x, family ratios exact). Stall file: verdict hardening (drain gate + 20s age) + fixtures (E2E_SEED 2024/95, E2E_RD=4); gate intact; no worldgen defect. Temp bisect branches deleted. Next: Part 5 colour/lighting/packs.

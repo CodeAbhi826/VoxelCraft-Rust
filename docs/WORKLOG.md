@@ -7022,3 +7022,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z108 - tour green + tint fix V1-verified in-game (agent eyes)
 - Tour 38106095747 fully green. Front-view capture (seed 2024): grass rich green (no wash-out), leaves saturated, water blue, borders visible, F5 rig renders. The linearization reads correct on lavapipe. Moon-night + colormap-pack proofs still need dedicated legs (noted, not built).
+
+## 2026-10-11z109 - Part 5 scope note: built-in shader PARKED by owner directive
+- PLAN-FINAL Part 5 lists a built-in optional shader, but the owner directive (2026-09-14, reaffirmed 2026-09-19, in-code) says NO builtin shader ships. Directive wins: parked, not built. Shadow-pass staging + gbuffers/deferred stay epics (render-loop restructure). AO curve source still open.

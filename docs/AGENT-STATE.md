@@ -172,3 +172,5 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-11: z98 colormap wiring in CI. Next: in-game colormap proof or next Part 5 item.
 
 - 2026-10-11: z100 moon phases in CI. Next: in-game moon proof (batched tour) or next Part 5 item.
+
+- 2026-10-11: built-in shader PARKED (owner directive overrides plan). Remaining Part 5: 2B block-texture contract, shadow staging epic, proofs batch, AO source.

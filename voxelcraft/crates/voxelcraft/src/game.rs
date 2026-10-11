@@ -30546,7 +30546,7 @@ mod tests {
         fn mem(files: Vec<(&str, &str)>) -> Arc<dyn vc_pack::pack::PackSource> {
             let mut m = vc_pack::pack::MemorySource::new("t");
             for (p, b) in files {
-                m.insert(p, b.to_vec());
+                m.insert(p, b.as_bytes().to_vec());
             }
             Arc::new(m)
         }

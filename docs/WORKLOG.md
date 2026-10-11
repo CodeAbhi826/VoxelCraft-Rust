@@ -7032,3 +7032,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z111 - Part 5 5.1n: pack-sounds precedence test
 - Committed the interrupted pack_sounds_top_pack_wins test. fmt clean, audit PASS; compile left to CI (busy machine).
+
+## 2026-10-11z112 - fix: &str to_vec in sounds test (CI caught E0599)
+- b.as_bytes().to_vec(). One-line, type-obvious; full check left to CI (busy).

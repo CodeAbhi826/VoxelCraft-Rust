@@ -17197,6 +17197,11 @@ impl GameApp {
                     self.settings.shader_mode = 0;
                     self.day_time = 18000.0f32 / 24000.0;
                     self.weather.force_clear(10000);
+                    // face the midnight moon: at day_time 0.75 the moon
+                    // sits at ~68° elevation south, so pitch up (dir.y =
+                    // sin(pitch)); without this the level camera never
+                    // sees the disc
+                    self.player.pitch = 1.19;
                     self.e2e_visual_stage = 5;
                 }
             }

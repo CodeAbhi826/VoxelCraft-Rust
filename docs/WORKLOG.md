@@ -7101,3 +7101,5 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z128 - Part 5: block-texture pack contract (2B doc)
 - Contract table (missing/corrupt/animated/labPBR/priority/fallback) verified against merge code; 92 overridable paths.
+
+## 2026-10-11z128 - closed (CI-green 38145466580, 12/12 presumed, docs-only)

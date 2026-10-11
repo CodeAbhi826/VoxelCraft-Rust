@@ -6966,3 +6966,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z93 - tint follow-up: particle pin re-based (CI caught it)
 - break_burst test pinned sRGB green; particles ride the same linear tints, so the pin moves to 0.527 with provenance. Local particles 5/5. Lesson: tint consumers extend beyond the LUT (blend pad unaffected, particles re-based).
+
+## 2026-10-11z93 - closed (CI-green 38099962226, 12/12)

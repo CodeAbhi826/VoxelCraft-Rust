@@ -7076,3 +7076,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z121 - Part 5: visual-leg dumper guard (root-caused, inlined)
 - F2 dumper ate every readback same-frame (42+ stray screenshots in log); leg starved with zero lines. Guard mirrors iconic/phases idiom, inlined to avoid wasm unused-let.
+
+## 2026-10-11z122 - Part 5: grade preset table (no behavior change)
+- Inline mode rows -> GRADE_PRESETS + grade_preset() (unknown falls back to off); consistency test pinned. Compile left to CI (busy).

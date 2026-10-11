@@ -225,6 +225,25 @@ pub struct PostParams {
     pub sharpen: f32,
 }
 
+/// Part 5 built-in grade presets: (bloom, vignette, saturation, exposure)
+/// per post mode. Values moved verbatim from the inline match so the
+/// Shaders screen and V1 review can name rows instead of magic tuples.
+pub const GRADE_PRESETS: [(u8, &str, [f32; 4]); 3] = [
+    (0, "off", [0.0, 0.0, 1.0, 1.0]),
+    (1, "vanilla+", [0.55, 0.14, 1.07, 1.0]),
+    (2, "cinematic", [0.85, 0.32, 1.16, 1.06]),
+];
+
+/// Grade row for a post mode; unknown modes fall back to off.
+pub fn grade_preset(mode: u8) -> (f32, f32, f32, f32) {
+    let row = GRADE_PRESETS
+        .iter()
+        .find(|&&(m, _, _)| m == mode)
+        .map(|&(_, _, row)| row)
+        .unwrap_or([0.0, 0.0, 1.0, 1.0]);
+    (row[0], row[1], row[2], row[3])
+}
+
 /// One frame's draw inputs for `Renderer::render` — a single params struct
 /// instead of a 10-argument signature (clippy too_many_arguments, 10/7).
 pub struct RenderFrame<'a> {
@@ -5944,14 +5963,13 @@ impl Renderer {
         // texel so sharpening matches the upscaled pixels, not surface px)
         // Phase 11 §34: an active shader pack OVERRIDES the grade row with
         // its declared preset (packs without a composite are grade-only)
+        // Part 5 presets: the built-in rows live in grade_preset() so the
+        // Shaders screen can list them by name; unknown modes fall back
+        // to off (vanilla post pipeline, before the grade row matters)
         let (bloom, vig, sat, exp) = if let Some([b, v, s, e]) = self.pack_grade {
             (b, v, s, e)
         } else {
-            match post.mode {
-                1 => (0.55, 0.14, 1.07, 1.0),  // vanilla+
-                2 => (0.85, 0.32, 1.16, 1.06), // cinematic
-                _ => (0.0, 0.0, 1.0, 1.0),     // off
-            }
+            grade_preset(post.mode)
         };
         let post_u = PostUniform {
             p: [
@@ -7041,6 +7059,21 @@ pub fn report_debug_log(cat: &str, msg: &str) {
 #[cfg(test)]
 mod shader_tests {
     use super::*;
+
+    /// Part 5 presets: table and lookup agree, shipped values pinned,
+    /// unknown modes fall back to off (vanilla post pipeline).
+    #[test]
+    fn grade_presets_match_lookup() {
+        assert_eq!(GRADE_PRESETS.len(), 3);
+        for &(mode, _name, row) in GRADE_PRESETS.iter() {
+            let (b, v, s, e) = grade_preset(mode);
+            assert_eq!([b, v, s, e], row, "mode {mode} row drifted");
+        }
+        assert_eq!(grade_preset(1), (0.55, 0.14, 1.07, 1.0));
+        assert_eq!(grade_preset(2), (0.85, 0.32, 1.16, 1.06));
+        assert_eq!(grade_preset(0), (0.0, 0.0, 1.0, 1.0));
+        assert_eq!(grade_preset(9), (0.0, 0.0, 1.0, 1.0));
+    }
 
     /// All embedded WGSL must parse AND type-check with the exact naga
     /// version wgpu 22 ships (dev-dependency) — catches shader errors in

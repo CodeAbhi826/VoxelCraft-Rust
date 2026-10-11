@@ -6939,3 +6939,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z84 - verdict drain-gate + seed 95 (tour stall mechanism closed)
 - Mechanism: verdict fired on stuck-counter mid-load (5 chunks, trickle) instead of settled world. Fix (E2E-only): stability also requires gen_inflight empty; mesh churn excluded (measured work). 0.9 threshold untouched. Fixture: phases to seed 95 (flat, 71pct open, 0 walls); fkeys stays 2024 (proven 1029). Temp seedscan removed.
+
+## 2026-10-11z85 - E2E_RD fixture (phases 0.807: raster-bound, not code)
+- F3 at 95: settled-ish but GPU 58.7ms on 85 drawn chunks; 44.7/77 ceiling. Fix: E2E_RD override (subtitles pattern), phases leg rd=4 (small steady disc). Same code paths measured, threshold intact. fkeys untouched (2024 green).

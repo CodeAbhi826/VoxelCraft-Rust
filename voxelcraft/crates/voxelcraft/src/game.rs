@@ -17965,6 +17965,17 @@ impl GameApp {
         if std::env::var("E2E_SUBTITLES").is_ok() && !self.settings.subtitles {
             self.settings.subtitles = true;
         }
+        // E2E_RD: the phases leg's fixture — a small steady disc. The
+        // 0.9 coverage contract assumes steady frames; a full rd=8 disc
+        // keeps software-GL raster-bound (present waits) forever on weak
+        // runners, so the ring can never go clean no matter how settled
+        // the world is. Same env-var override pattern as E2E_SUBTITLES;
+        // game logic and the threshold are untouched.
+        if let Ok(rd) = std::env::var("E2E_RD") {
+            if let Ok(rd) = rd.parse::<i32>() {
+                self.settings.render_distance = rd.clamp(2, 12);
+            }
+        }
         if std::env::var("E2E_CONTAINERS").is_ok() && !self.e2e_containers_done {
             self.e2e_containers();
             self.e2e_containers_done = true;

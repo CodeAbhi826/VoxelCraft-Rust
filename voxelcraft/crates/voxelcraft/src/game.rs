@@ -5853,7 +5853,11 @@ impl GameApp {
             ),
             ID_SHDR_NONE => l2(
                 "No shader pack: the vanilla look.",
-                "The engine ships no built-in shaders.",
+                "Built-in post modes live on the row below.",
+            ),
+            ID_SHDR_BUILTIN => l2(
+                "Built-in feature shader: OFF, VANILLA+, CINEMATIC.",
+                "OFF = vanilla graphics identical to the real game.",
             ),
             ID_SHDR_LABPBR => l2(
                 "Use labPBR material maps (_n / _s textures) from",
@@ -10110,6 +10114,13 @@ impl GameApp {
                 self.settings.labpbr = !self.settings.labpbr;
                 self.after_settings_change();
             }
+            // Part 5: built-in feature shader cycles OFF → VANILLA+ →
+            // CINEMATIC (default OFF = vanilla graphics identical to
+            // the real game)
+            ID_SHDR_BUILTIN => {
+                self.settings.shader_mode = (self.settings.shader_mode + 1) % 3;
+                self.after_settings_change();
+            }
             // DONE — back to Video Settings (the screen's parent)
             ID_SHDR_DONE => self.set_screen(Screen::Video),
             // ---- Resource Packs rows (2026-09-14) ----
@@ -11860,7 +11871,7 @@ impl GameApp {
                     .shader_pack
                     .clone()
                     .filter(|name| packs.contains(name));
-                self.widgets = layout_shaders(&packs, active.as_deref(), s.labpbr);
+                self.widgets = layout_shaders(&packs, active.as_deref(), s.labpbr, s.shader_mode);
             }
             Screen::Access => {
                 let mut ws = layout_access();
@@ -29125,12 +29136,13 @@ mod settings_tests {
     fn shader_screen_layout_and_selection() {
         let packs: Vec<String> = vec!["BSL-v8".to_string(), "SEUS-Renewed".to_string()];
         // selection on a pack row
-        let ws = vc_render::ui::layout_shaders(&packs, Some("SEUS-Renewed"), false);
+        let ws = vc_render::ui::layout_shaders(&packs, Some("SEUS-Renewed"), false, 0);
         let ids: Vec<u16> = ws.iter().map(|w| w.id).collect();
         for wanted in [
             vc_render::ui::ID_SHDR_NONE,
             vc_render::ui::ID_SHDR_BASE,
             vc_render::ui::ID_SHDR_BASE + 1,
+            vc_render::ui::ID_SHDR_BUILTIN,
             vc_render::ui::ID_SHDR_LABPBR,
             vc_render::ui::ID_SHDR_DONE,
         ] {
@@ -29142,7 +29154,7 @@ mod settings_tests {
         });
         assert_eq!(selected.count(), 1, "exactly one selected row");
         // the (none) row is selected when no pack is active
-        let ws2 = vc_render::ui::layout_shaders(&packs, None, true);
+        let ws2 = vc_render::ui::layout_shaders(&packs, None, true, 2);
         let none_sel = ws2
             .iter()
             .find(|w| w.id == vc_render::ui::ID_SHDR_NONE)
@@ -29162,9 +29174,18 @@ mod settings_tests {
             vc_render::ui::WidgetKind::Button { value, .. } => assert_eq!(value, "ON"),
             _ => panic!("labpbr is a button"),
         }
-        // empty scan: just (none) + labpbr + done (the honest empty state)
-        let ws3 = vc_render::ui::layout_shaders(&[], None, false);
-        assert_eq!(ws3.len(), 3, "the empty shader screen stays honest");
+        // the built-in row reflects the live mode (2 → CINEMATIC here)
+        let bi = ws2
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_SHDR_BUILTIN)
+            .unwrap();
+        match &bi.kind {
+            vc_render::ui::WidgetKind::Button { value, .. } => assert_eq!(value, "CINEMATIC"),
+            _ => panic!("built-in is a button"),
+        }
+        // empty scan: just (none) + built-in + labpbr + done (the honest empty state)
+        let ws3 = vc_render::ui::layout_shaders(&[], None, false, 0);
+        assert_eq!(ws3.len(), 4, "the empty shader screen stays honest");
     }
 
     /// every option on every settings screen carries a hover tooltip —
@@ -29183,9 +29204,10 @@ mod settings_tests {
             vc_render::ui::layout_chat_settings(),
             vc_render::ui::layout_music_sound(),
             // 2026-09-20: the Shader Packs screen — the static rows (the
-            // (none) row, the labPBR toggle, DONE, the Video entry); the
-            // pack ROWS carry dynamic tooltips through tooltip_lines()
-            vc_render::ui::layout_shaders(&[], None, false),
+            // (none) row, the built-in selector, the labPBR toggle, DONE,
+            // the Video entry); the pack ROWS carry dynamic tooltips
+            // through tooltip_lines()
+            vc_render::ui::layout_shaders(&[], None, false, 0),
         ] {
             for w in ws {
                 assert!(

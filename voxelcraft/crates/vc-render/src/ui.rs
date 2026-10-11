@@ -654,6 +654,11 @@ pub const ID_SHDR_DONE: u16 = 248;
 /// the labPBR materials toggle (NAPP-style `_n`/`_s` resource-pack
 /// maps feed the PBR path when ON; default OFF = the vanilla look)
 pub const ID_SHDR_LABPBR: u16 = 249;
+/// the built-in feature-shader selector (Part 5: cycles OFF → VANILLA+ →
+/// CINEMATIC; default OFF = vanilla graphics identical to the real
+/// game). 251 is clear: shader rows top out at 241+7=248, literals
+/// 248/249/250 taken (see row_ranges_disjoint test + LITERAL_IDS).
+pub const ID_SHDR_BUILTIN: u16 = 251;
 /// L5 (licensing): the Options screen's ABOUT... entry — 250 is clear
 /// of every literal through 249 and every dynamic row range (shader
 /// rows top out at 241+7=248; see row_ranges_disjoint test)
@@ -1049,14 +1054,23 @@ pub fn layout_video() -> Vec<Widget> {
 ///   "internal" row; selecting it unselects any pack)
 /// * one row per EXTERNAL pack scanned from shader-packs/ (native
 ///   live scan; wasm honestly has no filesystem → the empty hint)
+/// * BUILT-IN — the engine's own optional post modes (Part 5: OFF /
+///   VANILLA+ / CINEMATIC cycling row; third-party packs are still
+///   user downloads — see LEGAL-COMPLIANCE.md)
 /// * the LABPBR MATERIALS toggle (NAPP-style `_n`/`_s` resource-pack
 ///   maps; OFF = the vanilla look — the default)
 /// * DONE back to Video Settings (the screen's parent)
 ///
-/// NO built-in shader packs exist to list — by design and by law
+/// NO third-party shader packs are bundled — by design and by law
 /// (docs/LEGAL-COMPLIANCE.md: BSL/SEUS-style packs are third-party
-/// downloads the user drops in; the engine only reads them).
-pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> Vec<Widget> {
+/// downloads the user drops in; the engine only reads them). The
+/// BUILT-IN row is original engine post code, not a pack.
+pub fn layout_shaders(
+    packs: &[String],
+    active: Option<&str>,
+    labpbr: bool,
+    shader_mode: u8,
+) -> Vec<Widget> {
     let mut v = Vec::new();
     // the pinned "(none)" row — value shows the live selection
     let l = ref_x(148);
@@ -1086,11 +1100,28 @@ pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> V
             true,
         ));
     }
+    // the built-in feature-shader selector (Part 5) — fixed slot at
+    // y=376; the labPBR toggle moves to 410 so pack-count never shifts
+    // either row. Cycles OFF → VANILLA+ → CINEMATIC on click.
+    v.push(btn_h(
+        ID_SHDR_BUILTIN,
+        l,
+        376,
+        660,
+        30,
+        "BUILT-IN",
+        match shader_mode {
+            1 => "VANILLA+",
+            2 => "CINEMATIC",
+            _ => "OFF",
+        },
+        true,
+    ));
     // the labPBR materials toggle
     v.push(btn_h(
         ID_SHDR_LABPBR,
         l,
-        376,
+        410,
         660,
         30,
         "LABPBR MATERIALS",
@@ -6988,15 +7019,17 @@ mod tests {
         ID_ACC_SPRINT,
         ID_ACC_SNEAK,
         ID_ACC_DISTORT_SLIDER,
-        // 2026-09-20: the Shader Packs screen family (240..=249 block —
+        // 2026-09-20: the Shader Packs screen family (240..=251 block —
         // the row range 241..248 is guarded below; the literals here are
-        // the (none) row, DONE, the labPBR toggle, and the Video entry)
+        // the (none) row, DONE, the labPBR toggle, the built-in selector,
+        // and the Video entry)
         ID_OPT_SHADERS,
         // 2026-09-20: the modern Entity Distance video slider
         ID_OPT_ENTDIST,
         ID_SHDR_NONE,
         ID_SHDR_DONE,
         ID_SHDR_LABPBR,
+        ID_SHDR_BUILTIN,
         ID_OPT_ABOUT,
     ];
 

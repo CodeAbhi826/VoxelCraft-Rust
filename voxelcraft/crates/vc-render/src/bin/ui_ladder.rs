@@ -64,6 +64,7 @@ fn screens() -> Vec<(&'static str, Vec<Widget>)> {
                 &["BSL-v8".to_string(), "SEUS-Renewed".to_string()],
                 Some("BSL-v8"),
                 false,
+                0,
             ),
         ),
         ("engine", ui::layout_engine()),

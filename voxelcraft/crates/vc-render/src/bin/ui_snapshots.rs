@@ -96,6 +96,7 @@ fn main() {
         &["BSL-v8".to_string(), "SEUS-Renewed".to_string()],
         Some("BSL-v8"),
         false,
+        1,
     );
     snap_at("shaders", &|ui| {
         ui.shader_screen(&shd, None, &["Select a pack to activate it.".to_string()]);

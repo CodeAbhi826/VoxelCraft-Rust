@@ -215,3 +215,10 @@ until owner numeric diffs arrive; tune then, not now.
 | Custom colours (pack colormaps) | Partial | Pack grass/foliage lookup works; per-biome custom colours unsupported |
 | Shader uniform aliases | Partial | Documented subset bridge (`shaders.rs`); full compatibility NOT claimed |
 | `shaders.properties` options surface | Present | Parsed (profiles/screens/sliders/unknowns retained) in `shaderpack.rs` |
+
+## 5.1p Pack animation + format-warning status (2026-10-11, Part 5)
+
+| System | Status | Provenance |
+|---|---|---|
+| Pack `.mcmeta` animation (2B.3) | Partial | Pack strips honored (`<path>.json` or `<path>.mcmeta`: frametime + frame order, `merge_pack_tile_overrides`); `interpolate` unsupported (zero hits) |
+| `pack_format` 6 warning | Present | Mismatch warns and loads anyway (§46 resilience, tested: "mismatched format must not reject") |

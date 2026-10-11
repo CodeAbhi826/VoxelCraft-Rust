@@ -175,3 +175,4 @@ the tree; pushed history untouched pending explicit rewrite order).
 
 - 2026-10-11: built-in shader UN-PARKED w/ corrected scope (owner: optional FEATURE shader with bloom/POM/PBR/etc, not a vanilla clone). Binding: default vanilla path frozen identical to real game; feature shader OFF by default; Iris support retained; vanilla-style options UI. Remaining Part 5: feature-shader toggles, 2B block-texture contract, shadow staging epic, proofs batch, AO source.
 - 2026-10-11: tour batching policy (owner): no tour-per-slice; batch CI-green slices, tour at batch boundaries or when a slice needs in-game proof.
+- 2026-10-11: z131 2B-remainder 5.1n table CI-green. Next: graceful-errors slice (malformed pack inputs never panic) or Part 5 packet scoping.

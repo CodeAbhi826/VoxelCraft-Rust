@@ -7115,3 +7115,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z131 - Part 5: 2B-remainder status (5.1n table)
 - 8 rows: font providers absent, lang Part 7, sounds code-only, AO present/source-open, engine shadow present, pack shadow+gbuffers epic, compat matrix absent, toggle costs blocked. Every row grep-verified this turn.
+
+## 2026-10-11z131 - closed (CI-green 38157755172, success)

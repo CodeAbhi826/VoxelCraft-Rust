@@ -7103,3 +7103,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 - Contract table (missing/corrupt/animated/labPBR/priority/fallback) verified against merge code; 92 overridable paths.
 
 ## 2026-10-11z128 - closed (CI-green 38145466580, 12/12 presumed, docs-only)
+
+## 2026-10-11z129 - Part 5: entity-texture gap recorded (5.1m table)
+- No textures/entity pack path; mobs render procedural billboards. Pack reskinning queued epic.

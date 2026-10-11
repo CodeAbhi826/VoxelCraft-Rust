@@ -3584,7 +3584,10 @@ impl UiCanvas {
         let snap = |v: f32| (v + 0.5).floor();
         let cxd = snap(self.live_w as f32 * 0.5 * k);
         let cyd = snap(self.live_h as f32 * 0.5 * k);
-        let ha = (snap(8.0 * k) as i32).max(4); // half-arm (device px)
+        // Part 6: the 15x15 fidelity target — full arm span in device
+        // px (15 UI px at every scale); the start sits span/2 left and
+        // above center so the odd span stays centered on the middle px
+        let span = (snap(15.0 * k) as i32).max(7);
         let ht = (snap(2.0 * k) as i32).max(2); // arm thickness
                                                 // bar top/left snapped so the arm covers whole device px
                                                 // (odd thickness sits 1 px heavy toward +x/+y — invisible on
@@ -3598,8 +3601,8 @@ impl UiCanvas {
         };
         // horizontal bar SPLIT into two segments around the vertical
         // bar's [wx, wx+ht) window — disjoint invert geometry
-        let hx = (cxd - ha as f32) as i32;
-        let hw = ha * 2;
+        let hx = cxd as i32 - span / 2;
+        let hw = span;
         let cut_l = wx - hx; // device px from H start to V bar start
         let cut_r = hx + hw - (wx + ht); // from V bar end to H end
         if cut_l > 0 {
@@ -3609,8 +3612,8 @@ impl UiCanvas {
             q(wx + ht, wy, cut_r, ht, self);
         }
         // vertical bar
-        let vy = (cyd - ha as f32) as i32;
-        let vh = ha * 2;
+        let vy = cyd as i32 - span / 2;
+        let vh = span;
         q(wx, vy, ht, vh, self);
     }
 
@@ -7048,6 +7051,28 @@ mod tests {
         // live heights (CI caught the y412 overlap at 854x480)
         let v = layout_options();
         assert_eq!(v.iter().filter(|w| w.id == ID_OPT_ABOUT).count(), 0);
+    }
+
+    #[test]
+    fn crosshair_spans_15_device_px() {
+        // Part 6: the 15x15 fidelity target — the union of the emitted
+        // invert quads at device_scale 1 must span exactly 15x15
+        // (dst is UI px = device px at k=1, so bounds are exact)
+        let mut c = UiCanvas::new();
+        c.device_scale = 1.0;
+        c.crosshair_quads();
+        let qs = &c.gui_frame.text_quads;
+        assert!(!qs.is_empty(), "crosshair emits no quads");
+        let (mut x0, mut y0) = (f32::MAX, f32::MAX);
+        let (mut x1, mut y1) = (f32::MIN, f32::MIN);
+        for q in qs.iter() {
+            x0 = x0.min(q.dst.x);
+            y0 = y0.min(q.dst.y);
+            x1 = x1.max(q.dst.x + q.dst.w);
+            y1 = y1.max(q.dst.y + q.dst.h);
+        }
+        assert!((x1 - x0 - 15.0).abs() < 1e-6, "width {w}", w = x1 - x0);
+        assert!((y1 - y0 - 15.0).abs() < 1e-6, "height {h}", h = y1 - y0);
     }
 
     /// The dynamic row ranges (pack lists, resource-pack panes, world

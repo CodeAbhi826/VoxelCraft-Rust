@@ -7028,7 +7028,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z111 - Part 5 5.1n: pack-sounds precedence test (uncommitted leftover)
 - Committed the interrupted `pack_sounds_top_pack_wins` test (top pack wins shared event, unique events merge). Matches committed 3-arg `apply_pack_sounds`. fmt clean, audit [PASS]; compile+test left to CI (load 4.86, busy).
-EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git commit -m "test(packs): sounds override precedence (top pack wins)" && git push origin test/full-sweep-2026-09-25 2>&1 | tail -n 1 && git log -1 --format="%H %s"
 
 ## 2026-10-11z111 - Part 5 5.1n: pack-sounds precedence test
 - Committed the interrupted pack_sounds_top_pack_wins test. fmt clean, audit PASS; compile left to CI (busy machine).
@@ -7109,5 +7108,5 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 
 ## 2026-10-11z129 - closed (CI-green 38151674582, 12/12)
 
-## 2026-10-11z127 - Part 5: visual proofs batch CLOSED (tour green, V1 all three)
-- Moon disc in frame: spec size (~90px), centered, fully lit = phase 0 full on fresh world. With tint + modes proven last tour: colormap override, shader modes 1/2, moon disc ALL verified in-game (agent V1). Remaining Part 5: grading presets UI?, per-toggle costs (needs real-GPU numbers), shadow/gbuffers epics, 2B block-texture contract, AO source (blocked), skins gap, sounds proof (no headless audio).
+## 2026-10-11z130 - worklog repair: remove heredoc debris + duplicate z127
+- Deleted a 238-char shell fragment baked in by a broken heredoc invocation, and an exact-duplicate z127 entry. Content otherwise untouched (verified byte-identical duplicate before removal).

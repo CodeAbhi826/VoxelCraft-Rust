@@ -7004,3 +7004,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z103 - Part 5 5.1l: pack sounds.json override (registry merge)
 - SoundRegistry::overlay (validated merge, tested) + boot/apply wiring (vanilla file-level: top pack wins whole; builtin base; malformed never fatal). Ogg loading stays queued. (Load elevated; heavy check left to CI.)
+
+## 2026-10-11z103 - closed (CI-green 38104920784, 12/12)

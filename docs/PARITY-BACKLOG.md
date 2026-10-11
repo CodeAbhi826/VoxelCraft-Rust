@@ -222,3 +222,19 @@ until owner numeric diffs arrive; tune then, not now.
 |---|---|---|
 | Pack `.mcmeta` animation (2B.3) | Partial | Pack strips honored (`<path>.json` or `<path>.mcmeta`: frametime + frame order, `merge_pack_tile_overrides`); `interpolate` unsupported (zero hits) |
 | `pack_format` 6 warning | Present | Mismatch warns and loads anyway (§46 resilience, tested: "mismatched format must not reject") |
+
+## 5.1q Built-in shader toggle inventory (2026-10-11, Part 5)
+
+PLAN-FINAL §5 toggle list, audited against code:
+
+| Toggle | Status | Provenance |
+|---|---|---|
+| Soft sun shadows | Present | Shadow-map + 3×3 PCF, §17 sizes (1024/2048/4096), default OFF (vanilla has no sun pass); fabulous tier |
+| Entity ground shadows | Partial | Setting persisted + UI toggle; no render-side consumption found (no eshad/blob hits in vc-render) |
+| Bloom | Present | Bloom pyramid + composite WGSL, grade-driven |
+| POM | Present | Raymarch in `pbr.rs` |
+| PBR | Partial | labPBR decode behind toggle, default off |
+| SSR / SSAO / volumetric light | Absent | Zero word-level hits in tree |
+| Vignette / grain | Present | Grade-driven composite; grain covered by test |
+| Grading presets | Present | Table + Shaders-screen row + unit test + in-game V1 (modes 1/2) |
+| Tiers fast / fancy / fabulous | Present | `graphics` setting (fabulous = soft shadows + full post) |

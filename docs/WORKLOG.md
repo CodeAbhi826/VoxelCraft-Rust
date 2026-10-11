@@ -7127,3 +7127,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Pack .mcmeta animation Partial (frametime/order honored, interpolate absent); pack_format-6 warn-and-load Present + tested. Both grep-verified against merge code and pack tests.
 
 ## 2026-10-11z133 - closed (CI-green 38160224932, 12/12)
+
+## 2026-10-11z134 - Part 5: built-in shader toggle inventory (5.1q)
+- 9-row audit: sun shadows/bloom/POM/vignette/grain/grading/tiers Present; entity shadows Partial (plumbing only, no render consumption); PBR Partial (toggle-off default); SSR/SSAO/volumetric Absent (zero hits). Finding: entity_shadows has no GPU consumer.

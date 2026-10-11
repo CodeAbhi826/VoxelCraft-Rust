@@ -299,6 +299,12 @@ pub struct Settings {
     /// pass, and a defaulted-on 2048px map visibly darkens the scene vs
     /// the vanilla look. Engine extra (Video → Engine screen only).
     pub shadow_quality: u8,
+    /// Built-in feature shader mode (Part 5): 0 = off (vanilla graphics,
+    /// identical to the real game), 1 = Vanilla+ (bloom/vig/sat),
+    /// 2 = Cinematic (+chroma, ACES). Default OFF. Engine extra — lives
+    /// on the Shaders screen, never the vanilla video layout. Revives
+    /// the legacy `shader` options key (old saves migrate free).
+    pub shader_mode: u8,
     /// 1.6: FSR 1.0 upscale mode — 0 Native (FSR fully off, pass
     /// skipped), 1 Ultra Quality (1.3x), 2 Quality (1.5x), 3 Balanced
     /// (1.7x), 4 Performance (2.0x), 5 Custom (custom_scale). Old saves
@@ -477,6 +483,7 @@ impl Default for Settings {
             biome_blend: 2, // 3x3 — the vanilla default blend look
             graphics: 1,
             shadow_quality: 0, // OFF — vanilla look (engine extra, opt-in)
+            shader_mode: 0,    // OFF — vanilla graphics identical to real game
             upscale: 0,
             custom_scale: 1.25,
             sharpness: 60,
@@ -706,7 +713,7 @@ impl Settings {
     /// folder/zip file names, which never contain `;` or `|`).
     pub fn serialize(&self) -> String {
         let mut s = format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};uscale={:.2};sharp={};aamode={};gthreads={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={};accfog={};accfoveff={:.3}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};uscale={:.2};sharp={};aamode={};gthreads={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={};accfog={};accfoveff={:.3};shader={}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -737,7 +744,8 @@ impl Settings {
             self.gpu_meshing as u8,
             self.view_bobbing as u8,
             self.acc_fog,
-            self.acc_fov_effects
+            self.acc_fov_effects,
+            self.shader_mode
         );
         // Sub-round 5: the per-category sliders ride the vanilla
         // soundCategory_* keys (options.txt naming parity)
@@ -899,9 +907,10 @@ impl Settings {
                 "fancy" => st.graphics = if v == "1" { 1 } else { 0 },
                 "graphics" => st.graphics = v.parse().unwrap_or(st.graphics).min(2),
                 // legacy `shader` key from the removed engine shader modes
-                // (Off/Vanilla+/Cinematic) — parsed, ignored: the engine
-                // post pipeline is vanilla-only now
-                "shader" => {}
+                // (Off/Vanilla+/Cinematic) — revived Part 5 as the
+                // built-in feature-shader selector (default OFF); old
+                // saves carrying 0..2 migrate free
+                "shader" => st.shader_mode = v.parse().unwrap_or(0).min(2),
                 // 2026-09-20: the external shader-pack selection (an
                 // unknown/stale name re-validates against the live scan
                 // when the Shaders screen opens — deserialize keeps it)
@@ -28182,11 +28191,11 @@ impl GameApp {
                 sky: &sky,
                 selection,
                 post: vc_render::render::PostParams {
-                    // 2026-09-14: the engine shader modes (Vanilla+ / Cinematic)
-                    // are removed with the SHADER PACKS screen — the post pass
-                    // is vanilla-only (menu blur + the graphics=Fabulous chain);
-                    // `mode` stays 0 permanently
-                    mode: 0,
+                    // Part 5: built-in feature-shader selector (Shaders
+                    // screen; default OFF = vanilla graphics identical to
+                    // the real game). An active shader pack still overrides
+                    // the grade row (§34) independent of this mode.
+                    mode: self.settings.shader_mode,
                     menu_blur,
                     // §28: the Nether has no sun — no shadow pass
                     shadows: if nether {
@@ -29949,6 +29958,24 @@ mod settings_tests {
         // garbage falls back to the default
         let bad = Settings::deserialize("rd=12;entityDistance=abc");
         assert_eq!(bad.entity_distance, 1.0);
+    }
+
+    /// Part 5: built-in feature-shader selector — default OFF (vanilla
+    /// graphics), roundtrips, clamps to 0..2, garbage falls back to OFF.
+    /// Revives the legacy `shader` key (old saves migrate free).
+    #[test]
+    fn shader_mode_roundtrip_and_default() {
+        let s = Settings::default();
+        assert_eq!(s.shader_mode, 0);
+        let mut s = s;
+        s.shader_mode = 2;
+        let r = Settings::deserialize(&s.serialize());
+        assert_eq!(r.shader_mode, 2);
+        assert!(s.serialize().contains("shader=2"));
+        let hi = Settings::deserialize("rd=12;shader=9");
+        assert_eq!(hi.shader_mode, 2);
+        let bad = Settings::deserialize("rd=12;shader=abc");
+        assert_eq!(bad.shader_mode, 0);
     }
 
     /// legacy settings strings (Phase 5 era) keep parsing; the Phase 6 keys

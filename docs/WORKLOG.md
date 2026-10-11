@@ -7045,3 +7045,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 - Three graphics paths: (1) DEFAULT vanilla graphics identical to the real game (frozen reference — post changes must not alter mode-0 output; V1-gated); (2) OPTIONAL built-in feature shader, OFF by default; (3) Iris pack support retained as-is.
 - Shader settings/options/menu mirror the real game's options UI (19-option video layout stays the model). Toggles live in the Shaders screen, vanilla-styled.
 - Note: the 5.1e tint fix changed mode-0 terrain colors (richer); V1-verified against reference look. Pixel-exact identity with vanilla's gamma-incorrect multiply is approximate by construction (linear pipeline) — flagged, owner V1 at plan end arbitrates.
+
+## 2026-10-11z115 - Part 5: shader_mode settings plumbing (default OFF)
+- Settings.shader_mode 0/1/2 (off/vanilla+/cinematic), revives legacy shader key (old saves migrate), serialize+parse+clamp, wired to post mode (pack-grade override untouched). Default 0 = vanilla-identical. Test added; compile left to CI (busy).

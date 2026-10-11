@@ -7108,3 +7108,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 - No textures/entity pack path; mobs render procedural billboards. Pack reskinning queued epic.
 
 ## 2026-10-11z129 - closed (CI-green 38151674582, 12/12)
+
+## 2026-10-11z127 - Part 5: visual proofs batch CLOSED (tour green, V1 all three)
+- Moon disc in frame: spec size (~90px), centered, fully lit = phase 0 full on fresh world. With tint + modes proven last tour: colormap override, shader modes 1/2, moon disc ALL verified in-game (agent V1). Remaining Part 5: grading presets UI?, per-toggle costs (needs real-GPU numbers), shadow/gbuffers epics, 2B block-texture contract, AO source (blocked), skins gap, sounds proof (no headless audio).

@@ -7138,3 +7138,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-11z136 - Part 5: mcmeta interpolate blending (code)
 - AnimatedTile.interpolate parsed from pack .mcmeta; blend_frames() + test; update_atlas_bytes(); game.rs blends current->next by timer/frametime each frame. Default false: existing behavior unchanged. Local: cargo check clean (vc-render, voxelcraft), new test passes. V1 proof deferred to batch tour.
+
+## 2026-10-11z136 - closed (CI-green 38162820399, 12/12; first run red on fmt only)
+- Lesson: per-package cargo fmt --check -p masked the game.rs failure; full-workspace fmt check is now the rule.

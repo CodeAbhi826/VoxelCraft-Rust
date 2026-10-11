@@ -7068,3 +7068,6 @@ EOF\ngit add voxelcraft/crates/voxelcraft/src/game.rs docs/WORKLOG.md && git com
 - 5 captures via real pack path (synthetic red/blue colormaps), modes 1+2, midnight+clear moon shot. Proof = V1 review, not thresholds. Fixture seed 95. Game compile left to CI (restart interrupted verification).
 
 ## 2026-10-11z119 - closed (CI-green 38133971227, 12/12, visual leg compiles)
+
+## 2026-10-11z120 - Part 5: E2E_VISUAL exit-hold fix
+- First tour run died silent: smoke exits at world entry unless a leg holds it; added visual_pending to both exit gates. All cross-crate touchpoints verified by reading (signatures, fields, YAML valid). Full compile left to CI.

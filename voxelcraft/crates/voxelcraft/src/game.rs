@@ -17195,7 +17195,7 @@ impl GameApp {
             4 => {
                 if self.e2e_visual_capture("mode2") {
                     self.settings.shader_mode = 0;
-                    self.day_time = 18000.0 / 24000.0;
+                    self.day_time = 18000.0f32 / 24000.0;
                     self.weather.force_clear(10000);
                     self.e2e_visual_stage = 5;
                 }
@@ -18878,11 +18878,18 @@ impl GameApp {
                     std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
                 #[cfg(target_arch = "wasm32")]
                 let iconic_pending = false;
+                // Part 5 E2E_VISUAL owns the exit while its 5-capture ladder runs
+                #[cfg(not(target_arch = "wasm32"))]
+                let visual_pending =
+                    std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done;
+                #[cfg(target_arch = "wasm32")]
+                let visual_pending = false;
                 if !fkeys_pending
                     && !iconic_pending
                     && !phases_pending
                     && !turntable_pending
                     && !survey_pending
+                    && !visual_pending
                 {
                     vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                     self.dbg_exit_summary();
@@ -18948,12 +18955,19 @@ impl GameApp {
             let iconic_pending = std::env::var("E2E_ICONIC").is_ok() && self.e2e_iconic_stage < 6;
             #[cfg(target_arch = "wasm32")]
             let iconic_pending = false;
+            // Part 5 E2E_VISUAL owns the exit while its 5-capture ladder runs
+            #[cfg(not(target_arch = "wasm32"))]
+            let visual_pending =
+                std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done;
+            #[cfg(target_arch = "wasm32")]
+            let visual_pending = false;
             if t_in > 2.2
                 && !fkeys_pending
                 && !iconic_pending
                 && !phases_pending
                 && !turntable_pending
                 && !survey_pending
+                && !visual_pending
             {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();

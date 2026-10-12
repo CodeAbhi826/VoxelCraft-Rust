@@ -3050,6 +3050,44 @@ impl GameApp {
         #[cfg(target_arch = "wasm32")]
         let user_packs: Vec<(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)> = Vec::new();
         let enabled_packs = enabled_pack_sources(&settings, &classic_art, &user_packs);
+        // Part 5 skins V1: E2E_SKIN=1 paints an asymmetric marker skin
+        // (one flat color per part — red RIGHT arm settles sidedness)
+        // into skins/ and selects it, so the fkeys F5 captures photograph
+        // it. Must precede the atlas compile (the stow reads it there).
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_SKIN").is_ok() {
+            use vc_pack::skin::SKIN_PARTS;
+            let mut px = vec![0u8; 64 * 64 * 4];
+            for p in SKIN_PARTS {
+                let col = match p.name {
+                    "head" => [0, 255, 0, 255],
+                    "body" => [0, 0, 255, 255],
+                    "arm_r" => [255, 0, 0, 255],
+                    "arm_l" => [255, 255, 0, 255],
+                    "leg_r" => [255, 0, 255, 255],
+                    _ => [0, 255, 255, 255],
+                };
+                let (bw, bh) = (2 * (p.w + p.d), p.d + p.h);
+                for y in p.inner.1..p.inner.1 + bh {
+                    for x in p.inner.0..p.inner.0 + bw {
+                        let i = ((y * 64 + x) * 4) as usize;
+                        px[i..i + 4].copy_from_slice(&col);
+                    }
+                }
+            }
+            let dir = std::path::Path::new("skins");
+            let _ = std::fs::create_dir_all(dir);
+            let mut buf = Vec::new();
+            if let Some(img) = image::RgbaImage::from_raw(64, 64, px) {
+                if image::DynamicImage::ImageRgba8(img)
+                    .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
+                    .is_ok()
+                    && std::fs::write(dir.join("e2e_marker.png"), &buf).is_ok()
+                {
+                    settings.skin_file = Some("e2e_marker.png".to_string());
+                }
+            }
+        }
         let (mut atlas, animations) = compile_pack_atlas(
             builtin_pack.as_ref(),
             &enabled_packs,

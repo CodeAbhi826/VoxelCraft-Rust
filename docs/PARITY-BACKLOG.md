@@ -182,7 +182,7 @@ owner approval — shapes need documented sources first (4.0 method).
 | Pack blockstate dispatch → mesher | Present end-to-end | compile_block_dispatch → installed ModelSet → mesher by_state reads |
 | Item models (`models/item/*.json`) | Partial | `resolve_item_model` entry point tested (chains + display merge + missing→fallback rule); no builtin content and no baker/held callers yet |
 | Entity textures (`textures/entity/*.png`) | Absent | No pack path exists; mobs render procedural art (turntable-proven). Pack reskinning of entities is a queued epic |
-| Custom player skins (64×64, slim) | Absent | Procedural sprite only; needs loader + layout + rig variants (queued epic) |
+| Custom player skins (64×64, slim) | Partial — see §6.1 | Loader + regions + stow + rig selection landed; tour V1 queued |
 
 Approval ask (PLAN-FINAL 4.4): leave the [ESTIMATED] rows approximate
 until owner numeric diffs arrive; tune then, not now.

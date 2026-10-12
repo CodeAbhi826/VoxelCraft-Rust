@@ -7226,3 +7226,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z159 - Part 5: skins wiring (code, verified locally)
 - skin+slim... `skin` setting (sanitized filename, round-trip tested) -> try_stow_skin at atlas build (both call sites) -> SKINNED_PLAYER static (ModelSet-install precedent) -> selection in push_player_model; find_skin_block allocator + test. Local: check + allocator test + clippy clean, fmt clean. Inner layer only; slim rig + tour V1 queued. (One signature-line deletion repaired pre-commit.)
+
+## 2026-10-12z160 - Part 5: skins V1 tour-prep (code, verified locally)
+- E2E_SKIN=1 paints asymmetric marker skin (red right arm) into skins/ + selects it pre-atlas; fkeys leg carries the env so F5 captures photograph it (sidedness + orientation in one leg). Stale 5.1m skins row now points at 6.1. Local check + fmt clean; tour V1 queued.

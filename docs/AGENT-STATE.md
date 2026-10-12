@@ -184,3 +184,4 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-12: z140 batch tour green, both V1s closed. Next: Part 5 REVIEW PACKET (A5) then Part 6.
 - 2026-10-12: PART 5 CLOSED (packet, CI pending). Next: Part 6 first slice (crosshair dims measure).
 - 2026-10-12: Part 6 opens (crosshair slice in CI). Next: close z142, then item/block render-forms audit.
+- 2026-10-12: z142 crosshair closed green. Next: Part 6 render-forms matrix.

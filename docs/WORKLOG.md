@@ -7161,3 +7161,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z142 - Part 6: crosshair 15x15 span (code+test, tour V1 at batch)
 - Half-arm-8 (16-span) replaced by full-span snap(15k); thickness untouched. Unit test asserts emitted-quad union is exactly 15x15 at k=1 (passes locally). Note: two whitespace-only placeholder edits caught and repaired mid-slice; new rule is to compose full blocks before sending edits.
+
+## 2026-10-12z142 - closed (CI-green 38167230298 + WASM green)

@@ -187,3 +187,11 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-12: z142 crosshair closed green. Next: Part 6 render-forms matrix.
 - 2026-10-12: z143 6.1 matrix closed green. Next: display-transform parsing (model.rs).
 - 2026-10-12: z144 display-parse closed green, locally verified too. Next: item-model resolution slice.
+- 2026-10-12: z145 item-model entry closed green. Next: AO public source.
+- 2026-10-12: z146 AO closed (algorithm VERIFIED via 0fps, curve ESTIMATED). Next: font providers.
+- 2026-10-12: z147 font parse+rasterize closed green after fix (fixture widths). Next: legacy rasterize.
+- 2026-10-12: z148 legacy_unicode closed green. Next: font ASCII wiring.
+- 2026-10-12: z149 font wiring closed green after fix (early-return gate + clippy). Next: sounds proof.
+- 2026-10-12: z150 sounds headless proof closed green. Next: colour harness.
+- 2026-10-12: z151 colordiff closed green. Owner order: COMPLETE Part 5 now, then Part 6 (Part 6 pauses). Firecrawl adopted for research (quota-limited; wiki fallback).
+- 2026-10-12: z152 hi-res epic (6.2) + gap queue (6.3) in CI. Part 5 remaining: skins epic, toggle-costs (procedure done), SSR/SSAO/volumetric. Part 6 queue: hi-res slices, display application.

@@ -7220,3 +7220,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z157 - Part 5: skins blit + free-tile base (code+tests, verified locally)
 - merge_pack_textures returns (anims, next_free) (4 call sites); blit_skin_faces() copies mapped faces (bounds-checked skips); marker test green + magma test green locally; fmt clean. (One header-eating slip repaired pre-commit; deletion audit clean: 5 removals all intended.)
+
+## 2026-10-12z158 - Part 5: skins FaceTex table (code+test, verified locally)
+- FaceTex tile->tiles[6] (all construction via uniform/head_tex helpers; single emission reader updated); player_skin_face_tex(base) builds per-part tables (inner layer); test asserts head tile/rect + 4x5 extent + part order. 9/9 entity_model tests green locally; fmt clean. Next: settings + stow hookup + selection.

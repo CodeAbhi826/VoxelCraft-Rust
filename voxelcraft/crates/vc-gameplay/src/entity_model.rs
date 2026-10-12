@@ -79,7 +79,9 @@ pub struct BoxDef {
 /// matching the billboard sampler exactly).
 #[derive(Copy, Clone)]
 pub struct FaceTex {
-    pub tile: u16,
+    /// per-face atlas tiles (faces may span the stow block; the
+    /// single-tile case repeats one tile six times)
+    pub tiles: [u16; 6],
     pub rect: [[u8; 4]; 6],
 }
 
@@ -87,7 +89,10 @@ impl FaceTex {
     /// every face samples the same sub-rect (for boxes whose faces are
     /// visually uniform, e.g. limbs)
     pub fn uniform(tile: u16, r: [u8; 4]) -> Self {
-        FaceTex { tile, rect: [r; 6] }
+        FaceTex {
+            tiles: [tile; 6],
+            rect: [r; 6],
+        }
     }
 }
 
@@ -321,10 +326,10 @@ fn emit_box(
         .collect();
     faces.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
 
-    let tx = (b.tex.tile % 32) as f32;
-    let ty = (b.tex.tile / 32) as f32;
+    let tx_ty = |tile: u16| ((tile % 32) as f32, (tile / 32) as f32);
     for (_, fi) in faces {
         let (cs, fi) = FACES[fi];
+        let (tx, ty) = tx_ty(b.tex.tiles[fi]);
         let [rx, ry, rw, rh] = b.tex.rect[fi].map(|v| v as f32);
         // atlas UVs: 512-px sheet, 16-px tiles; sprite row 0 = v-min
         let u0 = (tx * 16.0 + rx) / 512.0;
@@ -409,7 +414,10 @@ fn mat_vec(m: &[[f32; 3]; 3], v: &[f32; 3]) -> [f32; 3] {
 fn head_tex(tile: u16, front: [u8; 4], plain: [u8; 4]) -> FaceTex {
     let mut rect = [plain; 6];
     rect[4] = front;
-    FaceTex { tile, rect }
+    FaceTex {
+        tiles: [tile; 6],
+        rect,
+    }
 }
 
 /// Round A (F5 third-person): the player rig — the classic humanoid
@@ -419,6 +427,26 @@ fn head_tex(tile: u16, front: [u8; 4], plain: [u8; 4]) -> FaceTex {
 /// 1.8-block player hitbox at scale 0.05625 (1.8/32).
 pub fn player() -> EntityModel {
     humanoid(TILE_MOB_PLAYER, false)
+}
+
+/// Skin FaceTex per rig part (inner layer only — the rig carries no
+/// outer boxes) for a stow at atlas tile `base` (Part 5 skins epic).
+/// Tiles resolve through the stow block, rects come from the face
+/// map; part names match the player rig (`head/body/arm_r/arm_l/
+/// leg_r/leg_l`). Returns None when the map is unplaceable.
+pub fn player_skin_face_tex(base: u16) -> Option<Vec<(&'static str, FaceTex)>> {
+    let (map, _tw, _th) = vc_pack::skin::skin_face_map()?;
+    let mut out = Vec::with_capacity(6);
+    for part in ["head", "body", "arm_r", "arm_l", "leg_r", "leg_l"] {
+        let mut tiles = [base; 6];
+        let mut rect = [[0u8; 4]; 6];
+        for m in map.iter().filter(|m| m.part == part && !m.outer) {
+            tiles[m.engine_face] = base + (m.tile_dy as u16) * 32 + m.tile_dx as u16;
+            rect[m.engine_face] = m.rect;
+        }
+        out.push((part, FaceTex { tiles, rect }));
+    }
+    Some(out)
 }
 
 /// the classic 32-px humanoid rig (zombie/skeleton families).
@@ -1502,6 +1530,29 @@ pub fn spider(tile: u16) -> EntityModel {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn skin_face_tex_resolves_stow_tiles() {
+        // stow at tile (4,20) = base 644: head front (engine face 4)
+        // maps to skin-abs (8,8) → tile (4,20), rect (8,8,8,8)
+        let table = player_skin_face_tex(644).expect("placeable");
+        assert_eq!(table.len(), 6);
+        let (_, head) = table.iter().find(|(n, _)| *n == "head").expect("head");
+        assert_eq!(head.tiles[4], 644 + 0 * 32 + 0);
+        assert_eq!(head.rect[4], [8, 8, 8, 8]);
+        // all six parts present, every face tile inside the 4x5 stow
+        let names: Vec<_> = table.iter().map(|(n, _)| *n).collect();
+        assert_eq!(
+            names,
+            vec!["head", "body", "arm_r", "arm_l", "leg_r", "leg_l"]
+        );
+        for (name, fx) in &table {
+            for t in fx.tiles {
+                let rel = t - 644;
+                assert!(rel % 32 < 4 && rel / 32 < 5, "{name} tile out of stow");
+            }
+        }
+    }
 
     #[test]
     fn sample_anim_linear_and_wrap() {

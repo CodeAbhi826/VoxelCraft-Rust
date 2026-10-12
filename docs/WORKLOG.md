@@ -7267,3 +7267,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z170 - SSAO unreachable-linear fix (code, verified locally)
 - SELF-BUG: writer clamped strength to 2.0 but linear branch needs >2.5, so the only GPU test of the reconstruction math never ran (all prior white-debug forensics were chasing a dead branch; raw tours + near=0.1 skew explain the rest: real depth lives crushed in 248-255). Fix: clamp 3.0, stage ssaodebug at 3.0, workflow back to normal clear. Expectation: near ground near-black => math proven on GPU; still white => inv_vp/input bug. Local: check + naga + fmt green.
+
+## 2026-10-12z170 - closed (CI-green 38290426083, 12/12)

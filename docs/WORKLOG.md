@@ -7195,3 +7195,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z150 - Part 5: sounds headless end-to-end proof (test, no local verify - load 2.93)
 - end_to_end_registry_to_wav_without_playback: overlay -> pick (seed 99) -> resample -> wav determinism -> spatialize exact geometry. API shapes verified by reading (volume/pitch fields defaulted). Playback itself still needs hardware (disclosed). (Two destructive edit slips on this file caught+repaired pre-commit; additive-only rule re-asserted.)
+
+## 2026-10-12z151 - Part 5: colour-harness tooling (code, no local verify - load 4.58)
+- colordiff bin (vc-render): two PNGs + grid -> per-cell means/deltas/hot-count, numbers-only, overlap on size mismatch, exit-2 on unreadable. Owner runs on private captures (P1). Backlog row added as Partial(tooling). Hand-reviewed (strides/indices/types); CI compiles+fmt-verifies.

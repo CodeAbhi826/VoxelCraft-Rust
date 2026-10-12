@@ -61,6 +61,9 @@ pub enum FontSource {
     BuiltinArray,
     /// decoded RGBA bytes, 128x48, row stride 128
     Png(Vec<u8>),
+    /// pack font providers (bitmap/legacy) rasterized to the 96-glyph
+    /// form for U+0020..=U+007E (Part 5 2B.4)
+    Providers(Box<[[u8; 8]; 96]>),
 }
 
 impl FontSource {
@@ -72,12 +75,13 @@ impl FontSource {
     /// draws five columns — the builtin's 5x7-in-8 design). Returns
     /// None for BuiltinArray (callers keep `ui::FONT`).
     pub fn png_glyphs(&self) -> Option<Box<[[u8; 8]; 96]>> {
-        let FontSource::Png(px) = self else {
-            return None;
-        };
-        if px.len() != 128 * 48 * 4 {
-            return None;
-        }
+        match self {
+            FontSource::Providers(g) => return Some(g.clone()),
+            FontSource::BuiltinArray => return None,
+            FontSource::Png(px) => {
+                if px.len() != 128 * 48 * 4 {
+                    return None;
+                }
         let mut glyphs = Box::new([[0u8; 8]; 96]);
         for (i, g) in glyphs.iter_mut().enumerate() {
             let col = (i % 16) * 8;
@@ -92,6 +96,8 @@ impl FontSource {
             }
         }
         Some(glyphs)
+            }
+        }
     }
 }
 

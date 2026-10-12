@@ -191,7 +191,7 @@ until owner numeric diffs arrive; tune then, not now.
 
 | System | Status | Provenance |
 |---|---|---|
-| Font providers (bitmap/ttf/`legacy_unicode`) | Absent | Builtin TTF + PNG override exist (`FontSource::Png`); no pack provider dispatch (repo-wide grep, zero hits) |
+| Font providers (bitmap/ttf/`legacy_unicode`) | Partial | `vc-pack::font`: bitmap + legacy_unicode parse/rasterize, ASCII-range wiring into `FontSource::Providers` (explicit font.png wins); TTF/space/unihex/reference recorded-unsupported |
 | `lang/*.json` | Absent, Part 7 | Zero `lang/` reads; Language screen English-only, honestly labeled |
 | Pack sounds end-to-end | Code-only | Registry overlay + lewton ogg decode + `pack_sounds_top_pack_wins` test; no headless-audio proof (no audio device on CI) |
 | AO curve public source | Sourced (algorithm) + [ESTIMATED] (curve) | vertexAO + quad-flip match the public 0fps write-up (verified 2026-10-12); curve [0.42,0.62,0.80,1.0] engine-tuned, cited in-code, owner diffs via colour harness |

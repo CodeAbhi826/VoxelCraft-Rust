@@ -222,6 +222,82 @@ pub fn rasterize_legacy(
     Ok(out)
 }
 
+/// Build the engine 96-glyph form ([u8; 8] per glyph, 5 ink bits per
+/// row, alpha >= 128) for U+0020..=U+007E from bitmap providers plus
+/// legacy page 00. Later providers win per char. Cells resample to 8×8
+/// nearest; provider height/ascent do not survive the fixed-cell form
+/// (documented limitation). `read` resolves pack-flat file keys
+/// verbatim (vanilla convention: "font/ascii.png"). Returns None when
+/// no ASCII glyph was produced.
+pub fn build_ascii_glyphs(
+    providers: &[FontProvider],
+    read: &dyn Fn(&str) -> Option<Vec<u8>>,
+) -> Option<Box<[[u8; 8]; 96]>> {
+    fn pack_cell(cell: &[u8], cw: u32, chh: u32) -> [u8; 8] {
+        let mut g = [0u8; 8];
+        if cw == 0 || chh == 0 {
+            return g;
+        }
+        for gy in 0..8u32 {
+            let mut row = 0u8;
+            for gx in 0..5u32 {
+                let sx = (gx * cw / 8).min(cw - 1);
+                let sy = (gy * chh / 8).min(chh - 1);
+                if cell[(sy * cw + sx) as usize] >= 128 {
+                    row |= 1 << (4 - gx);
+                }
+            }
+            g[gy as usize] = row;
+        }
+        g
+    }
+    let mut glyphs = Box::new([[0u8; 8]; 96]);
+    let mut any = false;
+    for p in providers {
+        match p {
+            FontProvider::Bitmap { file, chars, .. } => {
+                let Some(bytes) = read(file) else {
+                    continue;
+                };
+                let Ok(gs) = rasterize_bitmap(chars, &bytes) else {
+                    continue;
+                };
+                for g in gs {
+                    let idx = g.ch as usize;
+                    if !(0x20..=0x7E).contains(&idx) {
+                        continue;
+                    }
+                    glyphs[idx - 0x20] = pack_cell(&g.alpha, g.cell_w, g.cell_h);
+                    any = true;
+                }
+            }
+            FontProvider::LegacyUnicode { template, sizes } => {
+                let page_key = template.replace("%s", "00");
+                let (Some(page), Some(sizes)) = (read(&page_key), read(sizes)) else {
+                    continue;
+                };
+                let Ok(gs) = rasterize_legacy(0x00, &page, &sizes) else {
+                    continue;
+                };
+                for g in gs {
+                    let idx = g.ch as usize;
+                    if !(0x20..=0x7E).contains(&idx) {
+                        continue;
+                    }
+                    glyphs[idx - 0x20] = pack_cell(&g.alpha, 16, 16);
+                    any = true;
+                }
+            }
+            FontProvider::Unsupported { .. } => {}
+        }
+    }
+    if any {
+        Some(glyphs)
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -317,5 +393,57 @@ mod tests {
         assert!(rasterize_legacy(0xD8, &png, &sizes).is_err());
         assert!(rasterize_legacy(0x00, &png, &sizes[..100]).is_err());
         assert!(rasterize_legacy(0x00, b"garbage", &sizes).is_err());
+    }
+
+    #[test]
+    fn ascii_builder_maps_bitmap_and_legacy_with_later_wins() {
+        // bitmap file: 16x8, 'A' solid + 'B' left-half (from grid_png)
+        let font_json = br#"{"providers": [
+            {"type": "bitmap", "file": "font/ascii.png",
+             "ascent": 7, "chars": ["AB"]}
+        ]}"#;
+        let providers = parse_font(font_json).unwrap();
+        let read = |k: &str| {
+            if k == "font/ascii.png" {
+                Some(grid_png())
+            } else {
+                None
+            }
+        };
+        let g = build_ascii_glyphs(&providers, &read).expect("ascii glyphs");
+        // 'A' (0x41): full 8x8 ink → rows 0b11111; 'B': ink at local
+        // x 0..3 (global 8..11) → 0b11110
+        assert_eq!(g[0x41 - 0x20][0], 0b11111);
+        assert_eq!(g[0x42 - 0x20][0], 0b11110);
+        // untouched slots stay blank
+        assert_eq!(g[0x43 - 0x20][0], 0);
+
+        // legacy page 00 overrides 'A' when listed later
+        let img = image::RgbaImage::from_pixel(256, 256, image::Rgba([0, 0, 0, 0]));
+        let mut page = Vec::new();
+        image::DynamicImage::ImageRgba8(img)
+            .write_to(&mut std::io::Cursor::new(&mut page), image::ImageFormat::Png)
+            .unwrap();
+        let sizes = vec![0u8; 0xFFFF];
+        let font_json2 = br#"{"providers": [
+            {"type": "bitmap", "file": "font/ascii.png",
+             "ascent": 7, "chars": ["AB"]},
+            {"type": "legacy_unicode", "template": "font/glyph_%s.png",
+             "sizes": "font/glyph_sizes.bin"}
+        ]}"#;
+        let providers2 = parse_font(font_json2).unwrap();
+        let read2 = |k: &str| match k {
+            "font/ascii.png" => Some(grid_png()),
+            "font/glyph_00.png" => Some(page.clone()),
+            "font/glyph_sizes.bin" => Some(sizes.clone()),
+            _ => None,
+        };
+        let g2 = build_ascii_glyphs(&providers2, &read2).expect("ascii glyphs 2");
+        // legacy blank 'A' (width 1, no ink) overwrote the bitmap 'A'
+        assert_eq!(g2[0x41 - 0x20][0], 0);
+
+        // nothing resolvable → None (callers keep current font)
+        let none_read = |_: &str| None;
+        assert!(build_ascii_glyphs(&providers, &none_read).is_none());
     }
 }

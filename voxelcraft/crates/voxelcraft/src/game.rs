@@ -3347,6 +3347,7 @@ impl GameApp {
             match &gui_set.font {
                 vc_render::gui::FontSource::BuiltinArray => "builtin",
                 vc_render::gui::FontSource::Png(_) => "png",
+                vc_render::gui::FontSource::Providers(_) => "providers",
             }
         ));
 

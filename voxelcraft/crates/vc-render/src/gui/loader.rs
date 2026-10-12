@@ -190,6 +190,21 @@ pub fn load_from_pack(
     // T10 fix (2026-10-01): the old `applied` list was built per sheet and
     // then discarded — dead bookkeeping contradicting its own comment; the
     // per-pack sheet log belongs to the pack-texture merge path
+    // Part 5 2B.4: pack font providers — font/default.json supplies
+    // bitmap/legacy glyphs for the ASCII range, but only when no
+    // explicit font.png took over (explicit sheets win; established
+    // precedence). Malformed JSON or unresolvable files keep builtin.
+    if matches!(set.font, FontSource::BuiltinArray) {
+        if let Some((bytes, _)) = stack.read_first("font/default.json") {
+            if let Ok(providers) = vc_pack::font::parse_font(&bytes) {
+                let read = |k: &str| stack.read_first(k).map(|(b, _)| b);
+                if let Some(g) = vc_pack::font::build_ascii_glyphs(&providers, &read) {
+                    set.font = FontSource::Providers(g);
+                    overridden += 1;
+                }
+            }
+        }
+    }
     Ok(Some(set))
 }
 
@@ -317,6 +332,7 @@ mod tests {
                 assert_eq!(px.len(), 128 * 48 * 4);
             }
             FontSource::BuiltinArray => panic!("font PNG did not take over"),
+            FontSource::Providers(_) => panic!("unexpected providers source"),
         }
         let _ = fs::remove_dir_all(&tmp);
     }
@@ -415,6 +431,43 @@ mod tests {
     }
 
     #[test]
+    fn load_from_pack_font_providers_ascii_takeover() {
+        // two-tone 16x8 sheet: 'A' solid, 'B' ink at local x 0..3
+        let img = image::RgbaImage::from_fn(16, 8, |x, _| {
+            if x < 12 {
+                image::Rgba([255, 255, 255, 255])
+            } else {
+                image::Rgba([0, 0, 0, 0])
+            }
+        });
+        let mut sheet = Vec::new();
+        image::DynamicImage::ImageRgba8(img)
+            .write_to(&mut std::io::Cursor::new(&mut sheet), image::ImageFormat::Png)
+            .unwrap();
+        let json = br#"{"providers": [
+            {"type": "bitmap", "file": "font/ascii.png",
+             "ascent": 7, "chars": ["AB"]}
+        ]}"#
+        .to_vec();
+        let mut pack = vc_pack::pack::MemorySource::new("font-test");
+        pack.insert("font/default.json", json);
+        pack.insert("font/ascii.png", sheet);
+        let mut stack = vc_pack::pack::PackStack::new();
+        stack.push_front(std::sync::Arc::new(pack));
+        let set = load_from_pack(&stack)
+            .ok()
+            .flatten()
+            .expect("providers count as an override");
+        match &set.font {
+            FontSource::Providers(g) => {
+                assert_eq!(g[0x41 - 0x20][0], 0b11111, "A full ink");
+                assert_eq!(g[0x42 - 0x20][0], 0b11110, "B partial ink");
+            }
+            other => panic!("expected Providers, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn load_from_pack_font_sheet_takes_over_as_png_source() {
         let mut stack = vc_pack::pack::PackStack::new();
         stack.push_front(std::sync::Arc::new(pack_with_sheet(
@@ -433,6 +486,7 @@ mod tests {
                 assert_eq!(&px[0..4], &[9, 8, 7, 255]);
             }
             FontSource::BuiltinArray => panic!("pack font.png did not take over"),
+            FontSource::Providers(_) => panic!("unexpected providers source"),
         }
     }
 }

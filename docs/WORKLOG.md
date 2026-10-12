@@ -7189,3 +7189,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z148 - Part 5: legacy_unicode rasterize (code+test, verified locally)
 - rasterize_legacy(): 256x256 page validation, nibble widths, surrogate D8-DF rejection; test covers widths (16/6), page count, all three rejections. All 3 font tests pass locally; fmt clean. (One edit ate the test-module header mid-slice; repaired + fmt-verified.)
+
+## 2026-10-12z149 - Part 5: font ASCII wiring (code+tests, no local verify - load 2.69)
+- build_ascii_glyphs() (bitmap + legacy page-00, later-wins, 8x8/5-bit packing); FontSource::Providers + renderer-transparent png_glyphs arm; loader tries font/default.json only when no font.png (3 exhaustive matches extended); vc-pack builder test + loader takeover test. 5.1n row flipped to Partial.

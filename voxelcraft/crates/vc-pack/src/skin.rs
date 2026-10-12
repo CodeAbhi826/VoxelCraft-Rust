@@ -1,11 +1,13 @@
 //! Player-skin loading (Part 5 skins epic, slice 1 — load + validate).
 //!
 //! Layout facts per the public Skin wiki (fetched 2026-10-12, L1-clean):
+//!
 //! - Java accepts 64×64 or legacy 64×32 PNGs; the inner layer is
 //!   forced opaque, the outer layer may be transparent.
 //! - "Slim" = 3px arms (vs 4px classic); the model flag travels with
 //!   the skin, not in the pixels.
 //! - Legacy 64×32 upgrades by transparent fill (no geometry change).
+//!
 //! Body-part regions arrive in slice 2 from a citable text source
 //! (never pixel-derived from official art — L5).
 

@@ -80,13 +80,13 @@ pub fn parse_font(json: &[u8]) -> Result<Vec<FontProvider>, String> {
                     .template
                     .ok_or_else(|| "font json: legacy_unicode lacks template".to_string())?;
                 if !template.contains("%s") {
-                    return Err(
-                        "font json: legacy_unicode template lacks %s".to_string()
-                    );
+                    return Err("font json: legacy_unicode template lacks %s".to_string());
                 }
                 out.push(FontProvider::LegacyUnicode {
                     template,
-                    sizes: p.sizes.unwrap_or_else(|| "font/glyph_sizes.bin".to_string()),
+                    sizes: p
+                        .sizes
+                        .unwrap_or_else(|| "font/glyph_sizes.bin".to_string()),
                 });
             }
             other => out.push(FontProvider::Unsupported {
@@ -111,10 +111,7 @@ pub struct BitmapGlyph {
 /// Rasterize a bitmap provider's glyphs from its PNG bytes.
 /// Grid: rows = chars.len(), cols = longest string; `\0` cells are
 /// padding (skipped). Never panics on corrupt input.
-pub fn rasterize_bitmap(
-    chars: &[String],
-    file_bytes: &[u8],
-) -> Result<Vec<BitmapGlyph>, String> {
+pub fn rasterize_bitmap(chars: &[String], file_bytes: &[u8]) -> Result<Vec<BitmapGlyph>, String> {
     let img = image::load_from_memory(file_bytes)
         .map_err(|e| format!("font bitmap: bad PNG: {e}"))?
         .to_rgba8();
@@ -170,12 +167,10 @@ pub fn rasterize_bitmap(
 mod tests {
     use super::*;
 
-    /// 2x1 grid PNG: 'A' solid 8x8, 'B' right-half ink
+    /// 2x1 grid PNG: 'A' solid 8x8, 'B' ink in left half only
     fn grid_png() -> Vec<u8> {
         let img = image::RgbaImage::from_fn(16, 8, |x, _| {
-            if x < 8 {
-                image::Rgba([255, 255, 255, 255])
-            } else if x >= 12 {
+            if x < 12 {
                 image::Rgba([255, 255, 255, 255])
             } else {
                 image::Rgba([0, 0, 0, 0])
@@ -199,10 +194,7 @@ mod tests {
         let ps = parse_font(json).unwrap();
         assert_eq!(ps.len(), 3);
         assert!(matches!(&ps[0], FontProvider::Bitmap { .. }));
-        assert!(matches!(
-            &ps[1],
-            FontProvider::LegacyUnicode { .. }
-        ));
+        assert!(matches!(&ps[1], FontProvider::LegacyUnicode { .. }));
         // sizes defaults to glyph_sizes.bin
         let FontProvider::LegacyUnicode { sizes, .. } = &ps[1] else {
             unreachable!()
@@ -230,8 +222,10 @@ mod tests {
     fn malformed_font_json_errors() {
         assert!(parse_font(b"not json").is_err());
         assert!(parse_font(br#"{"providers": [{"type": "bitmap"}]}"#).is_err());
-        assert!(parse_font(br#"{"providers": [{"type": "legacy_unicode", "template": "no-pages"}]}"#)
-            .is_err());
+        assert!(parse_font(
+            br#"{"providers": [{"type": "legacy_unicode", "template": "no-pages"}]}"#
+        )
+        .is_err());
         assert!(rasterize_bitmap(&["AB".to_string()], b"garbage").is_err());
     }
 }

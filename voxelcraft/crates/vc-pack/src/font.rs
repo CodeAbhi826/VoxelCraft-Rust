@@ -422,7 +422,10 @@ mod tests {
         let img = image::RgbaImage::from_pixel(256, 256, image::Rgba([0, 0, 0, 0]));
         let mut page = Vec::new();
         image::DynamicImage::ImageRgba8(img)
-            .write_to(&mut std::io::Cursor::new(&mut page), image::ImageFormat::Png)
+            .write_to(
+                &mut std::io::Cursor::new(&mut page),
+                image::ImageFormat::Png,
+            )
             .unwrap();
         let sizes = vec![0u8; 0xFFFF];
         let font_json2 = br#"{"providers": [

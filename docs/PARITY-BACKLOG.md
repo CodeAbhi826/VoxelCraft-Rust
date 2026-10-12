@@ -194,7 +194,7 @@ until owner numeric diffs arrive; tune then, not now.
 | Font providers (bitmap/ttf/`legacy_unicode`) | Absent | Builtin TTF + PNG override exist (`FontSource::Png`); no pack provider dispatch (repo-wide grep, zero hits) |
 | `lang/*.json` | Absent, Part 7 | Zero `lang/` reads; Language screen English-only, honestly labeled |
 | Pack sounds end-to-end | Code-only | Registry overlay + lewton ogg decode + `pack_sounds_top_pack_wins` test; no headless-audio proof (no audio device on CI) |
-| AO curve public source | Present, source open | Per-vertex AO pack/unpack + smooth flag in mesher; curve values internally consistent, public source unverified |
+| AO curve public source | Sourced (algorithm) + [ESTIMATED] (curve) | vertexAO + quad-flip match the public 0fps write-up (verified 2026-10-12); curve [0.42,0.62,0.80,1.0] engine-tuned, cited in-code, owner diffs via colour harness |
 | Engine shadow pass | Present | Sun shadow map + 3x3 PCF, strength 0..1 (0 disables); OFF in Vanilla mode |
 | Pack shadow-stage + gbuffers (2B.7) | Epic, arch-deferred | Chain design + honest EngineDependent uniform matrix; the gbuffers→deferred→composite→final restructuring belongs to the vc-iris sister project's activation milestone by documented design (iris.rs), not to this repo |
 | OptiFine-style compat matrix (2B.6) | Absent | Plan-only references; no shipped Supported/Partial/Unsupported matrix |

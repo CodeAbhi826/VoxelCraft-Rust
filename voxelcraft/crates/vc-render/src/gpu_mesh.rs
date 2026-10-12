@@ -326,7 +326,11 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
     }
     if !face_visible(fb, fnb) { return; }
 
-    // AO + corner sky (absolute (u, v) coords in the neighbor layer)
+    // AO + corner sky (absolute (u, v) coords in the neighbor layer).
+    // Vertex rule (both sides → 0 else 3−(s1+s2+corner)) and the
+    // anisotropy flip below follow the public 0fps voxel-AO write-up
+    // (0fps.net, 2013-07-03); the brightness curve lives in ao_factor
+    // (render.rs, [ESTIMATED / engine-tuned]).
     let smooth_on = params[P_JOB + j * 66u + 1u];
     var ao = array<u32, 4>(3u, 3u, 3u, 3u);
     var sky = array<u32, 4>(0u, 0u, 0u, 0u);

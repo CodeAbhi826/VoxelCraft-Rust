@@ -7176,3 +7176,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z145 - Part 6: item-model resolution entry (code+test)
 - resolve_item_model() reuses block machinery (chains/vars/display) for models/item/ paths; test covers bare+namespaced locs, display merge, missing-fallback Err. Builtin pack has no item JSONs (9 block only) so no callers yet — baker plumbing queued. 6.1 row flipped Absent->Partial.
+
+## 2026-10-12z146 - Part 5: AO public source closed (algorithm VERIFIED, curve ESTIMATED)
+- vertexAO + quad-flip match the public 0fps voxel-AO write-up (fetched 2026-10-12); Fandom Light page 403s, Overviewer doc covers light-averaging only — no authoritative source publishes the reference curve floats, so [0.42,0.62,0.80,1.0] stays [ESTIMATED/engine-tuned] with in-code citations + colour-harness diff path. Font-provider schema captured from public wiki (bitmap/legacy_unicode fields) — font epic unblocked.

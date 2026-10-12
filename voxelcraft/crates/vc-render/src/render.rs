@@ -372,6 +372,11 @@ fn face_shade(n: u32) -> f32 {
     return 0.6;                        // ±X
 }
 fn ao_factor(a: u32) -> f32 {
+    // AO curve [0.42, 0.62, 0.80, 1.0] — [ESTIMATED / engine-tuned]:
+    // no authoritative public source publishes the reference curve.
+    // The ALGORITHM (vertexAO + quad-flip) follows the public 0fps
+    // voxel-AO write-up (0fps.net, 2013-07-03); curve diffs ride the
+    // owner colour harness (numeric diffs only, P1).
     if (a == 0u) { return 0.42; }
     if (a == 1u) { return 0.62; }
     if (a == 2u) { return 0.80; }
@@ -592,6 +597,11 @@ fn face_shade(n: u32) -> f32 {
     return 0.6;
 }
 fn ao_factor(a: u32) -> f32 {
+    // AO curve [0.42, 0.62, 0.80, 1.0] — [ESTIMATED / engine-tuned]:
+    // no authoritative public source publishes the reference curve.
+    // The ALGORITHM (vertexAO + quad-flip) follows the public 0fps
+    // voxel-AO write-up (0fps.net, 2013-07-03); curve diffs ride the
+    // owner colour harness (numeric diffs only, P1).
     if (a == 0u) { return 0.42; }
     if (a == 1u) { return 0.62; }
     if (a == 2u) { return 0.80; }

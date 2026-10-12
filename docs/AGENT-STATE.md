@@ -195,3 +195,4 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-12: z150 sounds headless proof closed green. Next: colour harness.
 - 2026-10-12: z151 colordiff closed green. Owner order: COMPLETE Part 5 now, then Part 6 (Part 6 pauses). Firecrawl adopted for research (quota-limited; wiki fallback).
 - 2026-10-12: z152 hi-res epic (6.2) + gap queue (6.3) in CI. Part 5 remaining: skins epic, toggle-costs (procedure done), SSR/SSAO/volumetric. Part 6 queue: hi-res slices, display application.
+- 2026-10-12: z155 sampler closed green. Next: skins slice 4 (atlas stow + FaceTex rewrite).

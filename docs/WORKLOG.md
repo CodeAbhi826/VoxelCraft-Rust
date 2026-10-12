@@ -7212,3 +7212,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z155 - Part 5: skins sampler (code+test, no local verify - load 3.82)
 - sample_skin_box(): part + layer + face -> RGBA rect, None fallback; test covers marker read, classic/slim arm widths, unknown part/face. Pure addition (54+/0-), index math hand-checked against in-bounds rects. GPU/rig rewire + tour queued.
+
+## 2026-10-12z155 - closed (CI-green 38202947683, 12/12; fmt-only fix, logic was green)

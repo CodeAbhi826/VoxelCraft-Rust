@@ -7179,3 +7179,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z146 - Part 5: AO public source closed (algorithm VERIFIED, curve ESTIMATED)
 - vertexAO + quad-flip match the public 0fps voxel-AO write-up (fetched 2026-10-12); Fandom Light page 403s, Overviewer doc covers light-averaging only — no authoritative source publishes the reference curve floats, so [0.42,0.62,0.80,1.0] stays [ESTIMATED/engine-tuned] with in-code citations + colour-harness diff path. Font-provider schema captured from public wiki (bitmap/legacy_unicode fields) — font epic unblocked.
+
+## 2026-10-12z146 - closed (CI-green 38190919651, 12/12)
+
+## 2026-10-12z147 - Part 5: font providers parse + bitmap rasterize (code+test)
+- New vc-pack::font: bitmap (file/ascent/height/chars) + legacy_unicode (template/sizes) parse, unknown types recorded Unsupported; grid rasterize with auto width + \0 skip; 2 tests. No local compile (load 3.64) — CI verifies. Wiring into FontSource is next.

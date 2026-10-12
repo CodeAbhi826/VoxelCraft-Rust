@@ -5,6 +5,7 @@
 
 pub mod colormap;
 pub mod datapack;
+pub mod font;
 pub mod legacy_aliases;
 pub mod model;
 pub mod pack;

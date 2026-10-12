@@ -1432,7 +1432,8 @@ mod tests {
             tiles: Default::default(),
         };
         let mut atlas = vc_render::textures::generate_atlas();
-        let anims = vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
+        let (anims, _pack_tiles_used) =
+            vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
         // every model face resolved to a real pack tile (planks/cobble)
         assert!(!set.tiles.is_empty(), "no pack textures registered");
         assert!(

@@ -7217,3 +7217,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z156 - Part 5: skins stow mapping (code+test, verified locally)
 - skin_face_map(): 72 faces -> tiles + src rects with 4x5 stow extent; the two body-bottom crossers overflow to row 4 (my free-cell analysis was wrong - head-outer occupies row 0; the failing test caught it before commit). 5/5 skin tests green locally; fmt clean. Next: atlas blit + FaceTex rewrite.
+
+## 2026-10-12z157 - Part 5: skins blit + free-tile base (code+tests, verified locally)
+- merge_pack_textures returns (anims, next_free) (4 call sites); blit_skin_faces() copies mapped faces (bounds-checked skips); marker test green + magma test green locally; fmt clean. (One header-eating slip repaired pre-commit; deletion audit clean: 5 removals all intended.)

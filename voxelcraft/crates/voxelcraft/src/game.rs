@@ -2872,7 +2872,7 @@ fn compile_pack_atlas(
     };
 
     // 3. merge pack textures into the atlas (fills set.tiles + animations)
-    let mut animations =
+    let (mut animations, _pack_tiles_used) =
         vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
     let n_models: usize = set.by_state.values().map(|v| v.len()).sum();
     vc_pack::model::install(set);

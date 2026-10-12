@@ -5381,7 +5381,7 @@ pub fn merge_pack_textures(
     atlas: &mut [u8],
     models: &mut vc_pack::model::ModelSet,
     source: &dyn vc_pack::pack::PackSource,
-) -> Vec<AnimatedTile> {
+) -> (Vec<AnimatedTile>, u16) {
     let mut animations = Vec::new();
     // stable order: collect locations from by_state (dispatch order)
     let mut locs: Vec<String> = Vec::new();
@@ -5596,10 +5596,48 @@ pub fn merge_pack_textures(
             });
         }
     }
-    animations
+    (animations, next_tile)
 }
 
 /// blit a 16×16 RGBA frame into an atlas tile slot
+/// Stow a validated 64x64 skin into atlas tiles for the player rig
+/// (Part 5 skins epic): every mapped face blits from its skin-absolute
+/// src rect into (base + tile) at the mapped sub-rect. `base` is the
+/// first free tile (from `merge_pack_textures`); the mapping's extent
+/// (currently 4x5) must fit past it. Out-of-range writes are skipped,
+/// never panics — a short stow still renders, just with missing faces.
+pub fn blit_skin_faces(
+    atlas: &mut [u8],
+    base: u16,
+    skin_rgba: &[u8],
+    map: &[vc_pack::skin::SkinFaceMap],
+) {
+    let atlas_px = ATLAS_SIZE * ATLAS_SIZE * 4;
+    for m in map {
+        let tile = base as u32 + m.tile_dy * 32 + m.tile_dx;
+        if tile > 1023 {
+            continue;
+        }
+        let (tx, ty) = ((tile % 32) as usize, (tile / 32) as usize);
+        let (rx, ry, rw, rh) = (
+            m.rect[0] as usize,
+            m.rect[1] as usize,
+            m.rect[2] as usize,
+            m.rect[3] as usize,
+        );
+        let (sx, sy) = (m.src.0 as usize, m.src.1 as usize);
+        for row in 0..rh {
+            let s = ((sy + row) * 64 + sx) * 4;
+            let d = ((ty * TILE_PX + ry + row) * ATLAS_SIZE + tx * TILE_PX + rx) * 4;
+            let n = rw * 4;
+            if s + n > skin_rgba.len() || d + n > atlas.len() || d + n > atlas_px {
+                continue;
+            }
+            atlas[d..d + n].copy_from_slice(&skin_rgba[s..s + n]);
+        }
+    }
+}
+
 fn blit_16(atlas: &mut [u8], tile: u16, frame: &[u8]) {
     let tx = (tile % 32) as usize;
     let ty = (tile / 32) as usize;
@@ -6192,6 +6230,31 @@ mod v110_tests {
     /// §Magma Blocks, live 2026-09-06: "Has a flowing magma animation").
     /// 4 frames, 8-tick cadence, frame 0 identical to the atlas tile
     /// (seamless loop start), frames 1/2 differ (the glow pulses).
+    /// Part 5 skins epic: the 64x64 skin stows into atlas tiles —
+    /// head-front marker lands at tile (0,0)+rect(8,8), the
+    /// redirected body bottoms land in the overflow row.
+    #[test]
+    fn skin_stow_blits_faces_to_tiles() {
+        let mut skin = vec![0u8; 64 * 64 * 4];
+        for y in 8..16u32 {
+            for x in 8..16u32 {
+                let i = ((y * 64 + x) * 4) as usize;
+                skin[i..i + 4].copy_from_slice(&[9, 8, 7, 255]);
+            }
+        }
+        let (map, tw, th) = vc_pack::skin::skin_face_map().expect("placeable");
+        assert_eq!((tw, th), (4, 5));
+        let mut atlas = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
+        blit_skin_faces(&mut atlas, 0, &skin, &map);
+        // head front → tile (0,0) rect (8,8,8,8): atlas (8..16, 8..16)
+        let i0 = ((8 * ATLAS_SIZE + 8) * 4) as usize;
+        assert_eq!(&atlas[i0..i0 + 4], &[9, 8, 7, 255]);
+        // body-bottom overflow → tile (0,4): marker absent at its src,
+        // so the overflow tile stays zero (blit ran, nothing to copy)
+        let i1 = ((64 * ATLAS_SIZE + 0) * 4) as usize;
+        assert_eq!(&atlas[i1..i1 + 4], &[0, 0, 0, 0]);
+    }
+
     #[test]
     fn magma_flowing_animation_is_builtin() {
         let mut set = vc_pack::model::ModelSet {
@@ -6200,7 +6263,7 @@ mod v110_tests {
         };
         let mut atlas = generate_atlas();
         let empty = MemorySource::new("empty");
-        let anims = merge_pack_textures(&mut atlas, &mut set, &empty);
+        let (anims, _pack_tiles_used) = merge_pack_textures(&mut atlas, &mut set, &empty);
         let magma = anims
             .iter()
             .find(|a| a.tile == TILE_MAGMA)

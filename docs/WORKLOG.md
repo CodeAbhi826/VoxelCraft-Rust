@@ -7206,3 +7206,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z153 - Part 5: skins loader (code+test, no local verify - load 5.48)
 - vc-pack::skin: 64x64/64x32 validate + transparent upgrade + slim flag; rejects others, never panics. 6.1 row flipped to Partial(loader). Regions + rig sampling queued (text-sourced rects only, L5).
+
+## 2026-10-12z154 - Part 5: skins regions (code+test, verified locally)
+- SKIN_PARTS table (6 parts x 2 layers, origins+box dims) + part_faces() net rule + tests: face-area sums hit wiki 3264/3136 exactly, all rects in-bounds, head/body front spots. Sources: wiki dims/totals + skinview3d origins (facts-only, no code copied). 3/3 skin tests green locally; fmt clean.

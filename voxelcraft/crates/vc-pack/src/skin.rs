@@ -48,6 +48,97 @@ pub fn load_skin(png_bytes: &[u8], model: SkinModel) -> Result<PlayerSkin, Strin
     Ok(PlayerSkin { model, rgba })
 }
 
+/// One body part's net origin + box dims, inner and outer layers.
+///
+/// Facts: box dims from the public Skin wiki (player 32 tall, 16 wide
+/// classic / 14 slim, 4px arms classic / 3px slim); net origins from
+/// the open-source skinview3d layout reference (behavior facts only —
+/// no code copied). Validated by `usable_pixels_match_wiki` below:
+/// face-area sums hit the wiki's 3264/3136 totals exactly.
+pub struct SkinPart {
+    pub name: &'static str,
+    pub w: u32,
+    pub h: u32,
+    pub d: u32,
+    /// inner-layer net origin
+    pub inner: (u32, u32),
+    /// outer-layer net origin
+    pub outer: (u32, u32),
+}
+
+pub const SKIN_PARTS: &[SkinPart] = &[
+    SkinPart {
+        name: "head",
+        w: 8,
+        h: 8,
+        d: 8,
+        inner: (0, 0),
+        outer: (32, 0),
+    },
+    SkinPart {
+        name: "body",
+        w: 8,
+        h: 12,
+        d: 4,
+        inner: (16, 16),
+        outer: (16, 32),
+    },
+    SkinPart {
+        name: "arm_r",
+        w: 4,
+        h: 12,
+        d: 4,
+        inner: (40, 16),
+        outer: (40, 32),
+    },
+    SkinPart {
+        name: "leg_r",
+        w: 4,
+        h: 12,
+        d: 4,
+        inner: (0, 16),
+        outer: (0, 32),
+    },
+    SkinPart {
+        name: "arm_l",
+        w: 4,
+        h: 12,
+        d: 4,
+        inner: (32, 48),
+        outer: (48, 48),
+    },
+    SkinPart {
+        name: "leg_l",
+        w: 4,
+        h: 12,
+        d: 4,
+        inner: (16, 48),
+        outer: (0, 48),
+    },
+];
+
+/// Arm width by model (wiki: slim loses 25% — the rightmost column is
+/// ignored; origins are shared).
+pub fn arm_width(model: SkinModel) -> u32 {
+    match model {
+        SkinModel::Classic => 4,
+        SkinModel::Slim => 3,
+    }
+}
+
+/// Six face rects (x, y, w, h) for a part net at (u, v): row 1 holds
+/// top + bottom, row 2 holds side/front/side/back.
+pub fn part_faces(u: u32, v: u32, w: u32, h: u32, d: u32) -> [(u32, u32, u32, u32); 6] {
+    [
+        (u + d, v, w, d),             // top
+        (u + d + w, v, w, d),         // bottom
+        (u, v + d, d, h),             // side
+        (u + d, v + d, w, h),         // front
+        (u + d + w, v + d, d, h),     // side
+        (u + d + w + d, v + d, w, h), // back
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -76,5 +167,45 @@ mod tests {
         // wrong sizes + garbage reject, never panic
         assert!(load_skin(&skin_png(128, 128), SkinModel::Classic).is_err());
         assert!(load_skin(b"not a png", SkinModel::Classic).is_err());
+    }
+
+    /// face-area sums hit the wiki totals exactly (3264 classic from
+    /// 6 parts × 2 layers; slim arms 3-wide give 3136) — this validates
+    /// the region table against the authoritative source.
+    #[test]
+    fn usable_pixels_match_wiki() {
+        for model in [SkinModel::Classic, SkinModel::Slim] {
+            let mut total = 0u32;
+            for p in SKIN_PARTS {
+                let w = if p.name.contains("arm") {
+                    arm_width(model)
+                } else {
+                    p.w
+                };
+                total += 2 * (w * p.h + w * p.d + p.h * p.d) * 2; // faces × layers
+            }
+            let want = match model {
+                SkinModel::Classic => 3264,
+                SkinModel::Slim => 3136,
+            };
+            assert_eq!(total, want, "usable pixels for {model:?}");
+        }
+    }
+
+    #[test]
+    fn face_rects_in_bounds_and_spot_check() {
+        for p in SKIN_PARTS {
+            for layer in [p.inner, p.outer] {
+                for (x, y, w, h) in part_faces(layer.0, layer.1, p.w, p.h, p.d) {
+                    assert!(x + w <= 64 && y + h <= 64, "{} rect out of bounds", p.name);
+                    assert!(w > 0 && h > 0);
+                }
+            }
+        }
+        // head front face sits at (8,8) 8x8; body front at (20,20) 8x12
+        let head_front = part_faces(0, 0, 8, 8, 8)[3];
+        assert_eq!(head_front, (8, 8, 8, 8));
+        let body_front = part_faces(16, 16, 8, 12, 4)[3];
+        assert_eq!(body_front, (20, 20, 8, 12));
     }
 }

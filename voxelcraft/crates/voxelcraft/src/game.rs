@@ -311,7 +311,9 @@ pub struct Settings {
     /// Part 6 volumetric sun shafts 0..1 (default OFF — vanilla has no
     /// light shafts; independent toggle, options key `volumetric`).
     pub volumetric: f32,
-    /// Part 6 SSAO 0..2 (default OFF; independent toggle, key `ssao`)
+    /// Part 6 SSAO 0..3 (default OFF; independent toggle, key `ssao`;
+    /// (0,1] = kernel, (1.5,2.5] = raw-depth debug, (2.5,2.7] =
+    /// linear-depth debug, (2.7,3.0] = inv_vp translation proof)
     pub ssao: f32,
     /// 1.6: FSR 1.0 upscale mode — 0 Native (FSR fully off, pass
     /// skipped), 1 Ultra Quality (1.3x), 2 Quality (1.5x), 3 Balanced
@@ -17282,8 +17284,8 @@ impl GameApp {
     /// feature-shader modes 1/2 and capture; 4 captures mode 2; 5 stages
     /// the interpolate proof (black/white animation on the grass-top
     /// tile, timer mid-blend); 6 captures it (mid-gray = blend working);
-    /// 7 stages ssao=3.0 and captures the linear-depth view (GPU
-    /// proof of the reconstruction math);
+    /// 7 stages ssao=3.0 and captures the inv_vp translation proof
+    /// (eye*0.005, checked against the CAMPOS log line);
     /// 8 captures the kernel at ssao=1.0; then midnight + clear
     /// weather, captures the moon, verdicts, done.
     #[cfg(not(target_arch = "wasm32"))]
@@ -17377,6 +17379,15 @@ impl GameApp {
             }
             7 => {
                 if self.e2e_visual_capture("ssaodebug") {
+                    // CAMPOS log: the exact eye position feeding inv_vp
+                    // for the captured frame — the translation band
+                    // (eye*0.005) is checked against it to separate
+                    // dead bytes from a broken multiply
+                    let e = self.player.eye();
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: visual CAMPOS {:.3} {:.3} {:.3}",
+                        e.x, e.y, e.z
+                    ));
                     self.settings.ssao = 1.0;
                     self.e2e_visual_stage = 8;
                 }

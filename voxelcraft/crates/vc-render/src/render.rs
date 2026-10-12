@@ -247,7 +247,8 @@ pub struct PostParams {
     /// no light shafts; the sun UV rides PostU s.zw)
     pub volumetric: f32,
     /// SSAO 0..3 (0 = off, (0,1] = kernel, (1.5,2.5] = raw-depth
-    /// debug, > 2.5 = linear-depth debug; default off)
+    /// debug, (2.5,2.7] = linear-depth debug, (2.7,3.0] = inv_vp
+    /// translation proof (eye*0.005 vs CAMPOS log); default off)
     pub ssao: f32,
 }
 
@@ -1183,9 +1184,8 @@ struct PostU { p: vec4<f32>, q: vec4<f32>, s: vec4<f32> };
 struct SsaoU { inv_vp: mat4x4<f32>, params: vec4<f32> };
 // params = (strength, radius, near, far); strength 0 = off,
 // (1.5, 2.5] = RAW depth debug (texture contents, no math),
-// > 2.5 = linear-depth debug view (needs inv_vp + convention).
-// Depth d is NDC z directly (0..1 convention — pinned by the
-// glam_depth_convention_is_zero_to_one test, not assumed).
+// (2.5, 2.7] = linear-depth debug view (needs inv_vp + convention),
+// (2.7, 3.0] = inv_vp translation proof (eye*0.005 vs CAMPOS log).
 // Depth d is NDC z directly (0..1 convention — pinned by the
 // glam_depth_convention_is_zero_to_one test, not assumed).
 @group(0) @binding(4) var depth_tex: texture_depth_2d;
@@ -1397,6 +1397,13 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             0.0,
             1.0,
         ));
+    }
+    // inv_vp translation proof (2.7, 3.0]: the camera world position
+    // lives in inv_vp[3].xyz — renders eye*0.005 so the bytes are
+    // checkable against the e2e CAMPOS log line. Black = dead/zero
+    // bytes; a color mismatch with the log = broken multiply.
+    if (SU.params.x > 2.7) {
+        col = SU.inv_vp[3].xyz * 0.005;
     }
 
     // SSAO kernel (slice 2): view-space depth taps around the pixel

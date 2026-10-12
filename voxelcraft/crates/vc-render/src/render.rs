@@ -49,6 +49,17 @@ struct PostUniform {
     s: [f32; 4],
 }
 
+/// SSAO uniforms (Part 6): inverse view-projection for position
+/// reconstruction + (strength, radius, near, far). Strength 0 = off;
+/// > 1.5 shows the linear-depth debug view (slice-1 proof surface —
+/// the depth plumbing renders before any kernel exists).
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct SsaoU {
+    inv_vp: [[f32; 4]; 4],
+    params: [f32; 4],
+}
+
 /// FSR 1.0 EASU size constants: (src_w, src_h, dst_w, dst_h) — the
 /// FsrEasuCon() setup, inlined into the shader as pp = uv*src - 0.5
 #[repr(C)]
@@ -226,6 +237,9 @@ pub struct PostParams {
     /// volumetric sun shafts 0..1 (0 = off; default off — vanilla has
     /// no light shafts; the sun UV rides PostU s.zw)
     pub volumetric: f32,
+    /// SSAO 0..2 (0 = off, (0,1] = kernel next slice, > 1.5 =
+    /// linear-depth debug view; default off)
+    pub ssao: f32,
 }
 
 /// Part 5 built-in grade presets: (bloom, vignette, saturation, exposure)
@@ -1157,6 +1171,27 @@ struct PostU { p: vec4<f32>, q: vec4<f32>, s: vec4<f32> };
 @group(0) @binding(1) var bloom: texture_2d<f32>;
 @group(0) @binding(2) var samp: sampler;
 @group(0) @binding(3) var<uniform> U: PostU;
+struct SsaoU { inv_vp: mat4x4<f32>, params: vec4<f32> };
+// params = (strength, radius, near, far); strength 0 = off,
+// > 1.5 = linear-depth debug view (depth plumbing proof, no kernel).
+// Depth d is NDC z directly (0..1 convention — pinned by the
+// glam_depth_convention_is_zero_to_one test, not assumed).
+@group(0) @binding(4) var depth_tex: texture_depth_2d;
+@group(0) @binding(5) var<uniform> SU: SsaoU;
+
+fn linear_view_z(uv: vec2<f32>) -> f32 {
+    let dim = textureDimensions(depth_tex);
+    let px = clamp(
+        vec2<i32>(uv * vec2<f32>(dim)),
+        vec2<i32>(0, 0),
+        vec2<i32>(dim) - vec2<i32>(1, 1),
+    );
+    let d = textureLoad(depth_tex, px, 0);
+    // post uv is V-flipped (v down); NDC needs v up
+    let ndc = vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, d, 1.0);
+    let view = SU.inv_vp * ndc;
+    return -view.z / max(view.w, 1e-6);
+}
 
 struct VsOut {
     @builtin(position) pos: vec4<f32>,
@@ -1309,6 +1344,17 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         }
         let decay = clamp(1.0 - distance(uv, sun_uv) * 1.4, 0.0, 1.0);
         col += (shafts / max(wsum, 1e-4)) * (U.s.y * decay * 0.35);
+    }
+
+    // SSAO linear-depth debug view (slice 1): strength > 1.5 shows
+    // view-space depth as gray (near black, far white)
+    if (SU.params.x > 1.5) {
+        let lin = linear_view_z(uv);
+        col = vec3<f32>(clamp(
+            (lin - SU.params.z) / max(SU.params.w - SU.params.z, 1e-4),
+            0.0,
+            1.0,
+        ));
     }
 
     // exposure
@@ -1787,6 +1833,7 @@ pub struct Renderer {
     pano: PanoResources,
     post_samp: wgpu::Sampler,
     post_buf: wgpu::Buffer,
+    ssao_buf: wgpu::Buffer,
     /// composite pipeline variant targeting the LINEAR pack handoff target
     /// (used instead of `post_pipe` when a shader-pack stage is active —
     /// Phase 11 §34: the pack sees linear color, its pass does the sRGB
@@ -3357,6 +3404,12 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let ssao_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ssao-uniform"),
+            size: std::mem::size_of::<SsaoU>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let aux_h_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("post-aux-h"),
             size: std::mem::size_of::<AuxUniform>() as u64,
@@ -3446,6 +3499,18 @@ impl Renderer {
                 texture_entry(1),
                 sampler_entry(2),
                 uniform_entry(3, wgpu::ShaderStages::FRAGMENT),
+                // Part 6 SSAO: scene depth (textureLoad only) + SsaoU
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                uniform_entry(5, wgpu::ShaderStages::FRAGMENT),
             ],
         });
 
@@ -3585,6 +3650,8 @@ impl Renderer {
             &post_targets.b2_view,
             &post_samp,
             &post_buf,
+            &depth,
+            &ssao_buf,
         );
         // initial EASU size constants (rewritten on resize/upscale change)
         let (sc_w, sc_h) = post_targets.scene_size();
@@ -3753,6 +3820,7 @@ impl Renderer {
             post_targets,
             post_samp,
             post_buf,
+            ssao_buf,
             post_pipe_linear,
             aux_h_buf,
             aux_v_buf,
@@ -3885,6 +3953,8 @@ impl Renderer {
         bloom: &wgpu::TextureView,
         samp: &wgpu::Sampler,
         post_buf: &wgpu::Buffer,
+        depth: &wgpu::TextureView,
+        ssao_buf: &wgpu::Buffer,
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("comp-bg"),
@@ -3906,6 +3976,18 @@ impl Renderer {
                     binding: 3,
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                         buffer: post_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(depth),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: ssao_buf,
                         offset: 0,
                         size: None,
                     }),
@@ -3984,6 +4066,8 @@ impl Renderer {
             &t.b2_view,
             &self.post_samp,
             &self.post_buf,
+            &self.depth,
+            &self.ssao_buf,
         );
         // Phase 11: the pack bind group follows the (resized) pack target
         let bg_pack = Self::comp_bg(
@@ -3993,6 +4077,8 @@ impl Renderer {
             &t.b2_view,
             &self.post_samp,
             &self.pack_buf,
+            &self.depth,
+            &self.ssao_buf,
         );
         if let Some((pipe, _)) = self.pack_pipe.take() {
             self.pack_pipe = Some((pipe, bg_pack));
@@ -4059,7 +4145,9 @@ impl Renderer {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Depth32Float,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            // Part 6 SSAO: the composite samples scene depth (read-only;
+            // multisample stays 1 so textureLoad is legal everywhere)
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
         tex.create_view(&wgpu::TextureViewDescriptor::default())
@@ -5136,6 +5224,8 @@ impl Renderer {
                     &self.post_targets.b2_view,
                     &self.post_samp,
                     &self.pack_buf,
+                    &self.depth,
+                    &self.ssao_buf,
                 );
                 self.pack_pipe = Some((pipe, bg));
             }
@@ -6058,6 +6148,17 @@ impl Renderer {
         };
         self.queue
             .write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post_u));
+        // Part 6 SSAO: inverse view-projection + (strength, radius,
+        // near, far). Radius is fixed this slice (kernel arrives next);
+        // near/far mirror the projection built above (0.1, fog_end+96).
+        self.queue.write_buffer(
+            &self.ssao_buf,
+            0,
+            bytemuck::bytes_of(&SsaoU {
+                inv_vp: inv_vp.to_cols_array_2d(),
+                params: [post.ssao.clamp(0.0, 2.0), 0.5, 0.1, sky.fog_end + 96.0],
+            }),
+        );
 
         // Phase 11 §34: bridge engine state → the active pack's uniforms
         // (OptiFine-style alias subset — see shaders.rs PackUniform docs)
@@ -7168,6 +7269,28 @@ mod shader_tests {
         assert!((u - 1.0).abs() < 1e-6);
         let (_, v) = project_sun_uv(persp, [0.0, 1.0, -1.0]).expect("up");
         assert!((v - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn glam_depth_convention_is_zero_to_one() {
+        // Pins the depth convention our linearizer assumes: project the
+        // near/far plane centers and read NDC z. If glam ever flips to
+        // [-1,1], this fails LOUDLY and linear_view_z must switch to d*2-1.
+        use glam::Vec3;
+        let vp = Mat4::perspective_rh(1.0, 1.0, 0.1, 100.0)
+            * Mat4::look_at_rh(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0), Vec3::Y);
+        let ndc_z = |p: Vec3| {
+            let c = vp * p.extend(1.0);
+            (c / c.w).z
+        };
+        assert!(
+            (ndc_z(Vec3::new(0.0, 0.0, -0.1)) - 0.0).abs() < 1e-4,
+            "near maps to 0"
+        );
+        assert!(
+            (ndc_z(Vec3::new(0.0, 0.0, -100.0)) - 1.0).abs() < 1e-4,
+            "far maps to 1"
+        );
     }
 
     /// All embedded WGSL must parse AND type-check with the exact naga

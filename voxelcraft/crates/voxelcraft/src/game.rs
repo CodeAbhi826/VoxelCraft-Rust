@@ -311,6 +311,8 @@ pub struct Settings {
     /// Part 6 volumetric sun shafts 0..1 (default OFF — vanilla has no
     /// light shafts; independent toggle, options key `volumetric`).
     pub volumetric: f32,
+    /// Part 6 SSAO 0..2 (default OFF; independent toggle, key `ssao`)
+    pub ssao: f32,
     /// 1.6: FSR 1.0 upscale mode — 0 Native (FSR fully off, pass
     /// skipped), 1 Ultra Quality (1.3x), 2 Quality (1.5x), 3 Balanced
     /// (1.7x), 4 Performance (2.0x), 5 Custom (custom_scale). Old saves
@@ -492,6 +494,7 @@ impl Default for Settings {
             shadow_quality: 0, // OFF — vanilla look (engine extra, opt-in)
             shader_mode: 0,    // OFF — vanilla graphics identical to real game
             volumetric: 0.0,   // OFF — no light shafts by default
+            ssao: 0.0,         // OFF — no ambient occlusion pass by default
             upscale: 0,
             custom_scale: 1.25,
             sharpness: 60,
@@ -776,6 +779,10 @@ impl Settings {
         if self.volumetric > 0.0 {
             s.push_str(&format!(";volumetric={:.2}", self.volumetric));
         }
+        // Part 6 SSAO (default OFF)
+        if self.ssao > 0.0 {
+            s.push_str(&format!(";ssao={:.2}", self.ssao));
+        }
         // Round 14: the keybind table rides key_<action> pairs (the
         // Controls screen's rebinds persist)
         {
@@ -939,6 +946,8 @@ impl Settings {
                 "shader" => st.shader_mode = v.parse().unwrap_or(0).min(2),
                 // Part 6 volumetric shafts (0..1, default OFF)
                 "volumetric" => st.volumetric = v.parse().unwrap_or(st.volumetric).clamp(0.0, 1.0),
+                // Part 6 SSAO (0..2, default OFF; > 1.5 = depth debug)
+                "ssao" => st.ssao = v.parse().unwrap_or(st.ssao).clamp(0.0, 2.0),
                 // 2026-09-20: the external shader-pack selection (an
                 // unknown/stale name re-validates against the live scan
                 // when the Shaders screen opens — deserialize keeps it)
@@ -28538,6 +28547,8 @@ impl GameApp {
                     sharpen: self.settings.rcas_amount(),
                     // Part 6 volumetric shafts (independent toggle)
                     volumetric: self.settings.volumetric,
+                    // Part 6 SSAO (independent toggle)
+                    ssao: self.settings.ssao,
                 },
                 clouds: if self.settings.graphics >= 1 && !nether {
                     self.settings.clouds_level
@@ -30183,6 +30194,9 @@ mod settings_tests {
         s.volumetric = 0.65;
         let r3 = Settings::deserialize(&s.serialize());
         assert!((r3.volumetric - 0.65).abs() < 1e-6);
+        s.ssao = 2.0;
+        let r4 = Settings::deserialize(&s.serialize());
+        assert!((r4.ssao - 2.0).abs() < 1e-6);
         assert_eq!(r2.biome_blend, 4);
         assert_eq!(r2.smooth_level, 1);
         assert_eq!(r2.clouds_level, 1);

@@ -240,6 +240,7 @@ PLAN-FINAL §5 toggle list, audited against code:
 | Grading presets | Present | Table + Shaders-screen row + unit test + in-game V1 (modes 1/2) |
 | Tiers fast / fancy / fabulous | Present | `graphics` setting (fabulous = soft shadows + full post) |
 | Volumetric sun shafts | Present, V1 open | Radial-blur god-rays in composite (pre-exposure), sun UV CPU-projected (behind-camera zeroes strength), `volumetric` setting default 0; projection + WGSL validated in-test |
+| SSAO | Partial (plumbing) | SsaoU (invVP + str/radius/near/far) + scene-depth rebind on all 4 composite sites; linear-depth debug view at strength > 1.5; glam [0,1] convention proven in-test; kernel + tour queued |
 
 ## 5.1r Lighting status (2026-10-11, Part 5)
 

@@ -7235,3 +7235,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z162 - Part 6: volumetric sun shafts (code, V1 open)
 - God-rays radial blur in POST_SHADER (pre-exposure, 12 taps, distance decay); project_sun_uv() CPU projection (perspective-correct, behind-rejects); PostParams.volumetric + setting/options-key/round-trip. Local: projection test + naga WGSL validation + roundtrip + check + fmt all green. (Caught my own identity-matrix test bug by hand-math before running.)
+
+## 2026-10-12z163 - Part 6: SSAO slice 1 plumbing (code, verified locally)
+- SsaoU uniform + depth rebind (4 composite sites) + linearize debug view + glam [0,1] convention probe + ssao setting/options/round-trip. Local: naga validation, convention probe, both-crate checks, fmt all green. (One descriptor-body deletion repaired pre-commit; net deletions: 1 intended.) Kernel + tour queued.

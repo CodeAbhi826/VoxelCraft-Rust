@@ -7241,3 +7241,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z164 - SSAO red fix (clippy x2, verified locally)
 - doc-lazy-continuation on SsaoU docs (blank-line restructure); too-many-arguments on comp_bg (SsaoInputs param struct, RenderFrame precedent; struct lives at module level, all 4 sites). Local: check + clippy + naga + fmt green. (One in-impl struct placement caught by inspection pre-compile.)
+
+## 2026-10-12z164 - closed (CI-green 38250811315, 12/12 after fix)

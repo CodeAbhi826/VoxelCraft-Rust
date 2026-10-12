@@ -197,3 +197,4 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-12: z152 hi-res epic (6.2) + gap queue (6.3) in CI. Part 5 remaining: skins epic, toggle-costs (procedure done), SSR/SSAO/volumetric. Part 6 queue: hi-res slices, display application.
 - 2026-10-12: z155 sampler closed green. Next: skins slice 4 (atlas stow + FaceTex rewrite).
 - 2026-10-12: z161 skins V1 closed (agent). Part 5 remaining: SSR/SSAO/volumetric epics. Next: volumetric slice (cheapest first).
+- 2026-10-12: z164 SSAO fix closed green. Next: SSAO kernel slice.

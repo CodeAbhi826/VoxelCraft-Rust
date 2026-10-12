@@ -7170,4 +7170,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-12z143 - closed (CI-green 38189109039, 12/12; 2d0cc4f run superseded by push, content carried in-tree)
 
 ## 2026-10-12z144 - Part 6: display-transform parsing (code+test, application next)
-- DisplayTr (rotation/translation/scale, identity defaults) parsed from model JSON, merged child-over-parent, carried through variant rotation; merge test covers override + defaults + empty-map. No local compile (load 1.73, busy) — CI verifies. Consumers (baker/held) queued.
+- DisplayTr (rotation/translation/scale, identity defaults) parsed from model JSON, merged child-over-parent, carried through variant rotation; merge test covers override + defaults + empty-map. Verified locally post-push (load allowed): new test passes, cargo check clean, full-workspace fmt clean — CI re-verifies. Consumers need item-model resolution first (baker is block-def driven); re-scoped accordingly.
+
+## 2026-10-12z144 - closed (CI-green 38189671946, 12/12; fc7220b run superseded, content carried)

@@ -186,3 +186,4 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-12: Part 6 opens (crosshair slice in CI). Next: close z142, then item/block render-forms audit.
 - 2026-10-12: z142 crosshair closed green. Next: Part 6 render-forms matrix.
 - 2026-10-12: z143 6.1 matrix closed green. Next: display-transform parsing (model.rs).
+- 2026-10-12: z144 display-parse closed green, locally verified too. Next: item-model resolution slice.

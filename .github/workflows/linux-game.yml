@@ -397,7 +397,7 @@ jobs:
           mkdir -p run10 && pushd run10 >/dev/null
           set +e
           timeout 240 xvfb-run -a -s "-screen 0 1280x720x24" \
-            env WGPU_BACKEND=Vulkan E2E_VISUAL=1 E2E_SEED=95 E2E_DEPTH_CLEAR=1 \
+            env WGPU_BACKEND=Vulkan E2E_VISUAL=1 E2E_SEED=95 E2E_DEPTH_CLEAR=0.99 \
             "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-visual.log
           CODE=$?
           set -e

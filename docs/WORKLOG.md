@@ -7259,3 +7259,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - E2E_DEPTH_CLEAR=1 (env-gated, vc-render dump precedent) clears scene depth to 0.5: raw mid-gray => sampler works + scene never wrote; raw white => sampling path broken. Corrupts depth testing tour-wide by design - this tours captures are diagnostic-only, not V1. Local: check + naga + fmt green.
 
 ## 2026-10-12z168 - closed (CI-green 38286247166, 12/12)
+
+## 2026-10-12z169 - SSAO 0.99 probe (code, verified locally)
+- 0.5 probe decoded: uniform sRGB-187 = live clear read (sampler + binding exonerated) but everything culled (near=0.1 skews depth past 0.9), so write-vs-stale undecided. E2E_DEPTH_CLEAR now takes a float; workflow 0.99 lets near ground pass: gradient => writes land, uniform => writes never land. Normal baseline (tour8b) confirmed full terrain, so near-field must write. Local: check + fmt green. Tour captures diagnostic-only.

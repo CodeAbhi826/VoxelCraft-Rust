@@ -249,3 +249,19 @@ PLAN-FINAL §5 toggle list, audited against code:
 | Free-down rule | Deviated, disclosed | `light.rs` docs: engine lights upward too — "not vanilla's free-down rule" |
 | Weather darkening | Present + tested | Rain/thunder gray-blend constants + `sky_factor` tests |
 | Sky / fog / clouds / moon | Present + V1 | Moon disc V1'd in-game; fog end/start wiki-approximated (disclosed in code) |
+
+## 6.1 Item/block render forms (2026-10-12, Part 6)
+
+| Form | Status | Provenance |
+|---|---|---|
+| Placed blocks | Present | Mesher path (established) |
+| GUI / inventory / hotbar icons | Present | Isometric CPU baker (`item_icon_cache.rs`) |
+| Held first-person | Present | `push_held_item`: textured cube or bare arm + swing/equip/bob, last in billboard stream |
+| Dropped items | Present | 3D mini-block cuboid + spin/bob (`entities.rs`) |
+| `display` transforms | Absent | Zero hits in `model.rs` + render |
+| Item-frame display / armor stand | Absent | Item id maps only; no display renderer, no stand entity |
+| Custom player skins | Absent | Carried from §5.1m (queued epic) |
+
+Note: `item_icon_cache.rs` module docs still claim "NO first-person
+hand renderer" — stale (predates `push_held_item`); queued for a
+one-line doc fix with the next code slice touching that file.

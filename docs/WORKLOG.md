@@ -7163,3 +7163,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Half-arm-8 (16-span) replaced by full-span snap(15k); thickness untouched. Unit test asserts emitted-quad union is exactly 15x15 at k=1 (passes locally). Note: two whitespace-only placeholder edits caught and repaired mid-slice; new rule is to compose full blocks before sending edits.
 
 ## 2026-10-12z142 - closed (CI-green 38167230298 + WASM green)
+
+## 2026-10-12z143 - Part 6: render-forms matrix (6.1 audit)
+- Held/dropped corrected to Present (push_held_item + 3D mini-blocks); display transforms + item-frame/stand Absent; staledoc in item_icon_cache queued for next code touch. Misplaced-top edit reverted, section appended at end.

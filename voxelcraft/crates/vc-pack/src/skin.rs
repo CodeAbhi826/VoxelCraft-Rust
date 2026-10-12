@@ -247,7 +247,10 @@ mod tests {
                 px[i..i + 4].copy_from_slice(&[9, 8, 7, 255]);
             }
         }
-        let skin = PlayerSkin { model: SkinModel::Classic, rgba: px };
+        let skin = PlayerSkin {
+            model: SkinModel::Classic,
+            rgba: px,
+        };
         // head front (face 3) = 8x8 marker
         let f = sample_skin_box(&skin, "head", false, 3).expect("head front");
         assert_eq!(f.len(), 8 * 8 * 4);
@@ -255,7 +258,10 @@ mod tests {
         // arm front width follows the model: 4x12 classic, 3x12 slim
         let a = sample_skin_box(&skin, "arm_r", false, 3).expect("arm");
         assert_eq!(a.len(), 4 * 12 * 4);
-        let slim = PlayerSkin { model: SkinModel::Slim, rgba: vec![0u8; 64 * 64 * 4] };
+        let slim = PlayerSkin {
+            model: SkinModel::Slim,
+            rgba: vec![0u8; 64 * 64 * 4],
+        };
         let sa = sample_skin_box(&slim, "arm_r", false, 3).expect("slim arm");
         assert_eq!(sa.len(), 3 * 12 * 4);
         // unknown part / face index → None (procedural fallback)

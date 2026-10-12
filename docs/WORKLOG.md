@@ -7272,3 +7272,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-13z171 - SSAO translation-proof band (code, verified locally)
 - Raw spatial gradient (top 253.7 -> bottom 238.8, correctly signed) proves depth+sampler; linear white twice with valid depth isolates the inv_vp path. Slice: (2.7,3.0] band renders eye*0.005 + CAMPOS log line for exact byte comparison (black = dead bytes, mismatch = broken multiply). Local: check + naga + fmt green.
+
+## 2026-10-13z171 - closed (CI-green 38292267007, 12/12)

@@ -7203,3 +7203,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z152 - Part 6: hi-res epic + wider gap queue (docs, owner-ordered)
 - 6.2 records the 7-12 slice hi-res plan + risks + L3 note. 6.3 points at the matrix tiers with freshness corrections (ogg/fonts/interp/shadows/crosshair/display/item-entry done since). Toggle-costs row had already landed (interrupted call committed nothing new).
+
+## 2026-10-12z153 - Part 5: skins loader (code+test, no local verify - load 5.48)
+- vc-pack::skin: 64x64/64x32 validate + transparent upgrade + slim flag; rejects others, never panics. 6.1 row flipped to Partial(loader). Regions + rig sampling queued (text-sourced rects only, L5).

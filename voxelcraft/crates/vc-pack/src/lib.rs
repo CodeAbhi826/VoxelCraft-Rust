@@ -9,4 +9,5 @@ pub mod font;
 pub mod legacy_aliases;
 pub mod model;
 pub mod pack;
+pub mod skin;
 pub mod zip;

@@ -1202,6 +1202,22 @@ fn linear_view_z(uv: vec2<f32>) -> f32 {
     return -view.z / max(view.w, 1e-6);
 }
 
+fn sample_depth(uv: vec2<f32>) -> f32 {
+    let dim = textureDimensions(depth_tex);
+    let px = clamp(
+        vec2<i32>(uv * vec2<f32>(dim)),
+        vec2<i32>(0, 0),
+        vec2<i32>(dim) - vec2<i32>(1, 1),
+    );
+    return textureLoad(depth_tex, px, 0);
+}
+
+fn view_pos(uv: vec2<f32>, d: f32) -> vec3<f32> {
+    let ndc = vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, d, 1.0);
+    let v = SU.inv_vp * ndc;
+    return v.xyz / max(v.w, 1e-6);
+}
+
 struct VsOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -1364,6 +1380,47 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             0.0,
             1.0,
         ));
+    }
+
+    // SSAO kernel (slice 2): view-space depth taps around the pixel
+    // with depth-derived normals; single pass, no separate blur (a
+    // documented limitation — calibrated on real-GPU later). Gains
+    // below are [ESTIMATED / engine-tuned], set for a subtle crease
+    // darkening at the default radius, not a measured curve.
+    if (SU.params.x > 0.001 && SU.params.x <= 1.5) {
+        let d0 = sample_depth(uv);
+        if (d0 < 0.9999) {
+            // sky has no occluders
+            let c = view_pos(uv, d0);
+            let dimf = vec2<f32>(textureDimensions(depth_tex));
+            let ex = view_pos(
+                uv + vec2<f32>(1.0 / dimf.x, 0.0),
+                sample_depth(uv + vec2<f32>(1.0 / dimf.x, 0.0)),
+            );
+            let ey = view_pos(
+                uv + vec2<f32>(0.0, 1.0 / dimf.y),
+                sample_depth(uv + vec2<f32>(0.0, 1.0 / dimf.y)),
+            );
+            var n = normalize(cross(ex - c, ey - c) + vec3<f32>(1e-6));
+            if (dot(n, -c) < 0.0) {
+                n = -n;
+            }
+            let dist = max(-c.z, 0.5);
+            let step = SU.params.y * 0.06 / dist;
+            // 8 taps ring by angle (a taps array would need constant
+            // indexing — naga rejects the loop index here)
+            var occ = 0.0;
+            for (var i = 0; i < 8; i = i + 1) {
+                let a = f32(i) * 0.7853982;
+                let suv = uv + vec2<f32>(cos(a), sin(a)) * step;
+                let s = view_pos(suv, sample_depth(suv));
+                let diff = s - c;
+                let dlen = length(diff);
+                let facing = max(dot(n, diff / max(dlen, 1e-4)), 0.0);
+                occ += facing * clamp(1.0 - dlen / max(SU.params.y * 2.0, 1e-4), 0.0, 1.0);
+            }
+            col *= 1.0 - SU.params.x * clamp(occ / 8.0 * 1.6, 0.0, 1.0);
+        }
     }
 
     // exposure

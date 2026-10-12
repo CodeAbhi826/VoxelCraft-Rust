@@ -7243,3 +7243,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - doc-lazy-continuation on SsaoU docs (blank-line restructure); too-many-arguments on comp_bg (SsaoInputs param struct, RenderFrame precedent; struct lives at module level, all 4 sites). Local: check + clippy + naga + fmt green. (One in-impl struct placement caught by inspection pre-compile.)
 
 ## 2026-10-12z164 - closed (CI-green 38250811315, 12/12 after fix)
+
+## 2026-10-12z165 - Part 6: SSAO kernel (code, V1 open)
+- View-space 8-tap kernel (derivative normals, hemisphere gate, range fade, engine-tuned gains) + E2E stages ssaodebug/ssao + workflow 8-capture loop. Naga caught dynamic-index rejection pre-commit (procedural angles fix). Local: naga + checks + fmt green.

@@ -17282,7 +17282,9 @@ impl GameApp {
     /// feature-shader modes 1/2 and capture; 4 captures mode 2; 5 stages
     /// the interpolate proof (black/white animation on the grass-top
     /// tile, timer mid-blend); 6 captures it (mid-gray = blend working);
-    /// then midnight + clear weather, captures the moon, verdicts, done.
+    /// 7 stages ssao=2.0 and captures the linear-depth debug view;
+    /// 8 captures the kernel at ssao=1.0; then midnight + clear
+    /// weather, captures the moon, verdicts, done.
     #[cfg(not(target_arch = "wasm32"))]
     fn e2e_visual(&mut self) {
         match self.e2e_visual_stage {
@@ -17365,6 +17367,22 @@ impl GameApp {
             }
             6 => {
                 if self.e2e_visual_capture("interp") {
+                    // SSAO debug view first (linear depth proves the
+                    // plumbing), then the kernel — one stage per capture
+                    // so each PNG renders under its own settings
+                    self.settings.ssao = 2.0;
+                    self.e2e_visual_stage = 7;
+                }
+            }
+            7 => {
+                if self.e2e_visual_capture("ssaodebug") {
+                    self.settings.ssao = 1.0;
+                    self.e2e_visual_stage = 8;
+                }
+            }
+            8 => {
+                if self.e2e_visual_capture("ssao") {
+                    self.settings.ssao = 0.0;
                     self.day_time = 18000.0f32 / 24000.0;
                     self.weather.force_clear(10000);
                     // face the midnight moon: at day_time 0.75 the moon
@@ -17373,7 +17391,7 @@ impl GameApp {
                     // the level camera never sees the disc
                     self.player.yaw = std::f32::consts::PI;
                     self.player.pitch = 1.19;
-                    self.e2e_visual_stage = 7;
+                    self.e2e_visual_stage = 9;
                 }
             }
             _ => {

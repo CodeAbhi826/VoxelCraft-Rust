@@ -389,7 +389,7 @@ jobs:
           echo "PHASES OK - the phase meter spans update+draw in-game (min coverage >= 0.9, F3 phase row captured)"
 
           # Part 5 E2E_VISUAL — the visual-proofs leg (tint fix,
-          # feature-shader modes 1+2, interpolate blend, moon disc): six captures for V1
+          # feature-shader modes 1+2, interpolate blend, SSAO pair, moon disc): eight captures for V1
           # review. Assertions stay loose by design (boot-cleanly + all
           # six files landed + VERDICT OK); lavapipe pixels are noise,
           # so the proof is the reviewed capture. Seed 95 = open plains
@@ -408,10 +408,10 @@ jobs:
             exit 1
           fi
           grep -q "e2e: visual VERDICT OK" smoke-visual.log || { echo "FAIL: the visual E2E verdict is not OK"; exit 1; }
-          for v in baseline colormap mode1 mode2 interp moon; do
+          for v in baseline colormap mode1 mode2 interp ssaodebug ssao moon; do
             test -s run10/screenshots/e2e_visual_${v}_*.png || { echo "FAIL: visual capture $v missing"; exit 1; }
           done
-          echo "VISUAL OK - six proof captures saved (tint, modes, interp, moon)"
+          echo "VISUAL OK - eight proof captures saved (tint, modes, interp, ssao, moon)"
 
           # 1.11: solo-mob turntable (E2E_TURNTABLE=1, TURNTABLE_MOB=name,
           # default creeper) — one subject alone on flat grass, HUD hidden,

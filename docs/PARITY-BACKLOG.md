@@ -199,7 +199,7 @@ until owner numeric diffs arrive; tune then, not now.
 | Engine shadow pass | Present | Sun shadow map + 3x3 PCF, strength 0..1 (0 disables); OFF in Vanilla mode |
 | Pack shadow-stage + gbuffers (2B.7) | Epic, arch-deferred | Chain design + honest EngineDependent uniform matrix; the gbuffers→deferred→composite→final restructuring belongs to the vc-iris sister project's activation milestone by documented design (iris.rs), not to this repo |
 | OptiFine-style compat matrix (2B.6) | Absent | Plan-only references; no shipped Supported/Partial/Unsupported matrix |
-| Per-toggle costs + Low/Med/High/Ultra tiers | Absent, blocked | Needs real-GPU numbers (lavapipe is noise); code marks the UI as pending |
+| Per-toggle costs + Low/Med/High/Ultra tiers | Procedure-defined, awaiting owner numbers | No local release builds (thermal) and lavapipe is noise, so costs are measured owner-side on the downloadable build: fixed scene + seed 95, `--gpu-timing`, 5 runs per toggle on/off, median `gpu_ms` delta from bench JSON; tiers sized from those deltas when they arrive (P1: numeric results only) |
 
 ## 5.1o OptiFine-style compat matrix (2026-10-11, Part 5)
 
@@ -266,3 +266,36 @@ PLAN-FINAL §5 toggle list, audited against code:
 Note: `item_icon_cache.rs` module docs still claim "NO first-person
 hand renderer" — stale (predates `push_held_item`); queued for a
 one-line doc fix with the next code slice touching that file.
+
+## 6.2 Hi-res texture tiles (2026-10-12, Part 6 — owner-ordered)
+
+Today every pack texture is nearest-downsampled to 16×16 (`TILE_PX`,
+512² atlas); mipmaps 0–4 exist but resolution scaling does not. Plan:
+parameterized tile size (16→512) + atlas growth + mesher UV math +
+mip regen (3–5 slices) + icon baker/GUI cells (1–2) + tour V1 (1) =
+~7–12 slices (R3 range). Risks: atlas VRAM/mip cost needs real-GPU
+numbers; pack-override edge cases multiply with tile sizes. Legal:
+user files stay local-only (L3); nothing bundled.
+
+## 6.3 Wider gaps vs the real game (2026-10-12 — matrix pointer)
+
+Source of truth for breadth is `docs/PARITY-MATRIX-1.16.5.md` (Phase 2);
+below is the short queue with freshness corrections — re-verify each
+row against code before building, the matrix predates Part 5/6 work:
+- Rendering/packs: hi-res tiles (§6.2), CTM/custom-sky (§5.1o
+  Unsupported), gbuffers (sister project), SSR/SSAO/volumetric
+  (absent), ~70 particle types + sprites, music/discs/jukebox,
+  entity-model loading (48 kinds billboards), F3 combos + pie,
+  subtitles overlay, chat subsystem, full keybind list, languages,
+  container GUIs (smoker/blast/stonecutter/loom/smithing/cartography/
+  lectern/dispenser/dropper/shulker), skin-layer meshes.
+- Gameplay: crawl/spectator caps, sweep (needs swords),
+  rails/minecarts, buttons/tripwire, plates, piston-block entity,
+  16 effects, raids, advancements, commands + bridge, scoreboard,
+  A* pathfinding, datapack-driven drops + Looting, stonecutter/
+  smithing/recipe-book/tipped/fireworks/maps/books.
+- World: biomes 28/66, structures (bastion/end-city/igloo/outpost/
+  portal-wrecks/shipwrecks/monument/hut + ocean set), blocks 533/846.
+- Fresh since the matrix: pack ogg decode, font providers (Partial),
+  interpolate, entity shadows, crosshair 15, display parse,
+  item-model entry — do NOT rebuild these.

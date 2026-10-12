@@ -7198,3 +7198,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z151 - Part 5: colour-harness tooling (code, no local verify - load 4.58)
 - colordiff bin (vc-render): two PNGs + grid -> per-cell means/deltas/hot-count, numbers-only, overlap on size mismatch, exit-2 on unreadable. Owner runs on private captures (P1). Backlog row added as Partial(tooling). Hand-reviewed (strides/indices/types); CI compiles+fmt-verifies.
+
+## 2026-10-12z151 - closed (CI-green 38199907430, 12/12)
+
+## 2026-10-12z152 - Part 6: hi-res epic + wider gap queue (docs, owner-ordered)
+- 6.2 records the 7-12 slice hi-res plan + risks + L3 note. 6.3 points at the matrix tiers with freshness corrections (ogg/fonts/interp/shadows/crosshair/display/item-entry done since). Toggle-costs row had already landed (interrupted call committed nothing new).

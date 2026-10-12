@@ -208,4 +208,58 @@ mod tests {
         let body_front = part_faces(16, 16, 8, 12, 4)[3];
         assert_eq!(body_front, (20, 20, 8, 12));
     }
+
+    /// Sample one box face from a validated skin: part name + layer
+    /// (false = inner, true = outer) + face index (0..6 in
+    /// part_faces() order) → row-major RGBA of the face rect.
+    /// Unknown parts and out-of-range faces yield None (callers keep
+    /// procedural art). Slim arms sample the 3-wide boxes.
+    pub fn sample_skin_box(
+        skin: &PlayerSkin,
+        part: &str,
+        outer: bool,
+        face: usize,
+    ) -> Option<Vec<u8>> {
+        let p = SKIN_PARTS.iter().find(|p| p.name == part)?;
+        let w = if part.contains("arm") {
+            arm_width(skin.model)
+        } else {
+            p.w
+        };
+        let origin = if outer { p.outer } else { p.inner };
+        let faces = part_faces(origin.0, origin.1, w, p.h, p.d);
+        let (x, y, fw, fh) = *faces.get(face)?;
+        let mut out = Vec::with_capacity((fw * fh * 4) as usize);
+        for row in 0..fh {
+            let src = (((y + row) * 64 + x) * 4) as usize;
+            out.extend_from_slice(&skin.rgba[src..src + (fw * 4) as usize]);
+        }
+        Some(out)
+    }
+
+    #[test]
+    fn sampler_reads_faces_and_falls_back() {
+        // paint the head-front rect a marker color on a 64x64 skin
+        let mut px = vec![0u8; 64 * 64 * 4];
+        for y in 8..16u32 {
+            for x in 8..16u32 {
+                let i = ((y * 64 + x) * 4) as usize;
+                px[i..i + 4].copy_from_slice(&[9, 8, 7, 255]);
+            }
+        }
+        let skin = PlayerSkin { model: SkinModel::Classic, rgba: px };
+        // head front (face 3) = 8x8 marker
+        let f = sample_skin_box(&skin, "head", false, 3).expect("head front");
+        assert_eq!(f.len(), 8 * 8 * 4);
+        assert!(f.chunks_exact(4).all(|c| c == [9, 8, 7, 255]));
+        // arm front width follows the model: 4x12 classic, 3x12 slim
+        let a = sample_skin_box(&skin, "arm_r", false, 3).expect("arm");
+        assert_eq!(a.len(), 4 * 12 * 4);
+        let slim = PlayerSkin { model: SkinModel::Slim, rgba: vec![0u8; 64 * 64 * 4] };
+        let sa = sample_skin_box(&slim, "arm_r", false, 3).expect("slim arm");
+        assert_eq!(sa.len(), 3 * 12 * 4);
+        // unknown part / face index → None (procedural fallback)
+        assert!(sample_skin_box(&skin, "cape", false, 3).is_none());
+        assert!(sample_skin_box(&skin, "head", false, 6).is_none());
+    }
 }

@@ -1992,6 +1992,38 @@ mod tests {
         }
     }
 
+    /// end-to-end without playback: registry → pick → resample → wav
+    /// bytes → spatialize, all deterministic under a fixed seed (the
+    /// headless proof: everything up to the speaker; actual playback
+    /// still needs an audio device, disclosed)
+    #[test]
+    fn end_to_end_registry_to_wav_without_playback() {
+        let mut reg = SoundRegistry::from_json(SOUNDS_JSON).unwrap();
+        reg.overlay(
+            r##"{"pack.e2e": {"category": "blocks", "volume": 0.5,
+                "sounds": [{"name": "pack/e2e", "volume": 1.0,
+                            "pitch": 1.0, "weight": 1}]}}"##,
+        )
+        .expect("overlay");
+        let mut bank = SoundBank::generate();
+        let slot = bank.add_recipe("pack/e2e", vec![0.0, 0.5, -0.5, 1.0]);
+        let mut rng = Rng::new(99);
+        let r = reg.pick("pack.e2e", &mut rng, &bank).expect("resolves");
+        assert_eq!(r.recipe, slot);
+        assert!((r.volume - 0.5).abs() < 1e-6, "volume {}", r.volume);
+        assert_eq!(r.pitch, 1.0);
+        // resample + wav encode are byte-deterministic across runs
+        let wav = to_wav16(&resample(&bank.data[slot], r.pitch), RATE);
+        let wav2 = to_wav16(&resample(&bank.data[slot], r.pitch), RATE);
+        assert!(!wav.is_empty());
+        assert_eq!(wav, wav2, "wav bytes must be deterministic");
+        // spatialize: global passes through; 8/16 geometry → 0.25 vol
+        assert_eq!(spatialize(None, [0.0, 0.0, 0.0], 0.0, 16.0), (1.0, 0.0));
+        let (v, pan) = spatialize(Some([8.0, 0.0, 0.0]), [0.0, 0.0, 0.0], 0.0, 16.0);
+        assert!((v - 0.25).abs() < 1e-6, "vol {v}");
+        assert!((pan - 0.8).abs() < 1e-6, "pan {pan}");
+    }
+
     /// spatialization: falloff + pan direction (spec: attenuation,
     /// spatial positioning)
     #[test]

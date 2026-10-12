@@ -7192,3 +7192,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z149 - Part 5: font ASCII wiring (code+tests, no local verify - load 2.69)
 - build_ascii_glyphs() (bitmap + legacy page-00, later-wins, 8x8/5-bit packing); FontSource::Providers + renderer-transparent png_glyphs arm; loader tries font/default.json only when no font.png (3 exhaustive matches extended); vc-pack builder test + loader takeover test. 5.1n row flipped to Partial.
+
+## 2026-10-12z150 - Part 5: sounds headless end-to-end proof (test, no local verify - load 2.93)
+- end_to_end_registry_to_wav_without_playback: overlay -> pick (seed 99) -> resample -> wav determinism -> spatialize exact geometry. API shapes verified by reading (volume/pitch fields defaulted). Playback itself still needs hardware (disclosed). (Two destructive edit slips on this file caught+repaired pre-commit; additive-only rule re-asserted.)

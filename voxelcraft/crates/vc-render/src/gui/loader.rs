@@ -184,27 +184,32 @@ pub fn load_from_pack(
         overridden += 1;
     }
 
+    // Part 5 2B.4: pack font providers — font/default.json supplies
+    // bitmap/legacy glyphs for the ASCII range, but only when no
+    // explicit font.png took over (explicit sheets win; established
+    // precedence). Malformed JSON or unresolvable files keep builtin.
+    // (Placed BEFORE the overridden==0 gate: a providers-only pack
+    // must count as an override, or it can never take effect.)
+    if matches!(set.font, FontSource::BuiltinArray) {
+        let provider_font = stack
+            .read_first("font/default.json")
+            .and_then(|(bytes, _)| vc_pack::font::parse_font(&bytes).ok())
+            .and_then(|providers| {
+                let read = |k: &str| stack.read_first(k).map(|(b, _)| b);
+                vc_pack::font::build_ascii_glyphs(&providers, &read)
+            });
+        if let Some(g) = provider_font {
+            set.font = FontSource::Providers(g);
+            overridden += 1;
+        }
+    }
+
     if overridden == 0 {
         return Ok(None);
     }
     // T10 fix (2026-10-01): the old `applied` list was built per sheet and
     // then discarded — dead bookkeeping contradicting its own comment; the
     // per-pack sheet log belongs to the pack-texture merge path
-    // Part 5 2B.4: pack font providers — font/default.json supplies
-    // bitmap/legacy glyphs for the ASCII range, but only when no
-    // explicit font.png took over (explicit sheets win; established
-    // precedence). Malformed JSON or unresolvable files keep builtin.
-    if matches!(set.font, FontSource::BuiltinArray) {
-        if let Some((bytes, _)) = stack.read_first("font/default.json") {
-            if let Ok(providers) = vc_pack::font::parse_font(&bytes) {
-                let read = |k: &str| stack.read_first(k).map(|(b, _)| b);
-                if let Some(g) = vc_pack::font::build_ascii_glyphs(&providers, &read) {
-                    set.font = FontSource::Providers(g);
-                    overridden += 1;
-                }
-            }
-        }
-    }
     Ok(Some(set))
 }
 
@@ -442,7 +447,10 @@ mod tests {
         });
         let mut sheet = Vec::new();
         image::DynamicImage::ImageRgba8(img)
-            .write_to(&mut std::io::Cursor::new(&mut sheet), image::ImageFormat::Png)
+            .write_to(
+                &mut std::io::Cursor::new(&mut sheet),
+                image::ImageFormat::Png,
+            )
             .unwrap();
         let json = br#"{"providers": [
             {"type": "bitmap", "file": "font/ascii.png",

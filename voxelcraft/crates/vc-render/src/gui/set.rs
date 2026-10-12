@@ -76,26 +76,26 @@ impl FontSource {
     /// None for BuiltinArray (callers keep `ui::FONT`).
     pub fn png_glyphs(&self) -> Option<Box<[[u8; 8]; 96]>> {
         match self {
-            FontSource::Providers(g) => return Some(g.clone()),
-            FontSource::BuiltinArray => return None,
+            FontSource::Providers(g) => Some(g.clone()),
+            FontSource::BuiltinArray => None,
             FontSource::Png(px) => {
                 if px.len() != 128 * 48 * 4 {
                     return None;
                 }
-        let mut glyphs = Box::new([[0u8; 8]; 96]);
-        for (i, g) in glyphs.iter_mut().enumerate() {
-            let col = (i % 16) * 8;
-            let row = (i / 16) * 8;
-            for (gy, grow) in g.iter_mut().enumerate() {
-                for gx in 0..5usize {
-                    let idx = (row + gy) * 128 + col + gx;
-                    if px.get(idx..idx + 4).map(|p| p[3] >= 128).unwrap_or(false) {
-                        *grow |= 1 << (4 - gx);
+                let mut glyphs = Box::new([[0u8; 8]; 96]);
+                for (i, g) in glyphs.iter_mut().enumerate() {
+                    let col = (i % 16) * 8;
+                    let row = (i / 16) * 8;
+                    for (gy, grow) in g.iter_mut().enumerate() {
+                        for gx in 0..5usize {
+                            let idx = (row + gy) * 128 + col + gx;
+                            if px.get(idx..idx + 4).map(|p| p[3] >= 128).unwrap_or(false) {
+                                *grow |= 1 << (4 - gx);
+                            }
+                        }
                     }
                 }
-            }
-        }
-        Some(glyphs)
+                Some(glyphs)
             }
         }
     }

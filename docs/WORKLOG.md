@@ -7254,3 +7254,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z167 - SSAO dims discriminator (code, verified locally)
 - Raw debug now encodes textureDimensions health in g channel: yellow-white = dims ok + content 1.0 (unwritten/stale view); red = dims broken (lavapipe query gap). Local: naga green, fmt clean. Discriminates the two surviving hypotheses next tour.
+
+## 2026-10-12z168 - SSAO clear-value probe (code, verified locally)
+- E2E_DEPTH_CLEAR=1 (env-gated, vc-render dump precedent) clears scene depth to 0.5: raw mid-gray => sampler works + scene never wrote; raw white => sampling path broken. Corrupts depth testing tour-wide by design - this tours captures are diagnostic-only, not V1. Local: check + naga + fmt green.

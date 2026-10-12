@@ -6572,10 +6572,19 @@ impl Renderer {
         } else {
             &self.depth
         };
+        // DIAGNOSTIC (SSAO white-debug hunt): E2E_DEPTH_CLEAR=1 clears
+        // scene depth to 0.5 instead of 1.0 — if the raw view then reads
+        // mid-gray, the sampler works and the scene never wrote; if
+        // still white, the sampling path itself is broken. Tour-only.
+        let depth_clear = if std::env::var("E2E_DEPTH_CLEAR").is_ok() {
+            0.5
+        } else {
+            1.0
+        };
         let depth_att = wgpu::RenderPassDepthStencilAttachment {
             view: depth_view,
             depth_ops: Some(wgpu::Operations {
-                load: wgpu::LoadOp::Clear(1.0),
+                load: wgpu::LoadOp::Clear(depth_clear),
                 store: wgpu::StoreOp::Store,
             }),
             stencil_ops: None,

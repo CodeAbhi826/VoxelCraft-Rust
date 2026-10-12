@@ -7229,3 +7229,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z160 - Part 5: skins V1 tour-prep (code, verified locally)
 - E2E_SKIN=1 paints asymmetric marker skin (red right arm) into skins/ + selects it pre-atlas; fkeys leg carries the env so F5 captures photograph it (sidedness + orientation in one leg). Stale 5.1m skins row now points at 6.1. Local check + fmt clean; tour V1 queued.
+
+## 2026-10-12z161 - Part 5: skins V1 CLOSED (tour 38242267654 green, agent V1 + pixel forensics)
+- F5 behind/front captures show marker-skinned player (flat part colors, 61px head / 31px limbs = exact part geometry); opposite limb pairs per side (yellow/cyan vs red/magenta). Side-profile geometry explains the hidden blue body (limb z-footprint == body z-footprint). Residual: absolute L/R rests on reference labeling (rig chain code-verified); owner can close with a text skin. Front-view red centered 639.5/640 measured.

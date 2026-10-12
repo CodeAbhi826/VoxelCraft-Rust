@@ -7251,3 +7251,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z166 - SSAO white-debug diagnosis (code+test, verified locally)
 - Tour ssaodebug all-white: kernel capture normal-world => depth reads 1.0 everywhere OR reconstruction degenerate. CPU round-trip test PROVES the math (formula exonerated); split debug (raw vs linear) discriminates next tour. No device/bind errors in tour log. Row flipped to anomaly-open with the evidence chain.
+
+## 2026-10-12z167 - SSAO dims discriminator (code, verified locally)
+- Raw debug now encodes textureDimensions health in g channel: yellow-white = dims ok + content 1.0 (unwritten/stale view); red = dims broken (lavapipe query gap). Local: naga green, fmt clean. Discriminates the two surviving hypotheses next tour.

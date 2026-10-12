@@ -1384,7 +1384,11 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             vec2<i32>(0, 0),
             vec2<i32>(dim) - vec2<i32>(1, 1),
         );
-        col = vec3<f32>(textureLoad(depth_tex, px, 0));
+        // g channel encodes whether the dimensions query itself
+        // works: yellow-white = dims ok + content 1.0; red = dims
+        // broken (0,0) so every tap reads texel (0,0).
+        let dims_ok = select(0.0, 1.0, dim.x > 100u && dim.y > 100u);
+        col = vec3<f32>(textureLoad(depth_tex, px, 0), dims_ok, 0.0);
     }
     if (SU.params.x > 2.5) {
         let lin = linear_view_z(uv);

@@ -180,7 +180,7 @@ owner approval — shapes need documented sources first (4.0 method).
 |---|---|---|
 | Block models (`models/block/*.json` + parent chains + texture vars) | Present, vanilla semantics | resolve_model: child-overrides-parent, `#var` chains depth-capped, 7+ unit tests |
 | Pack blockstate dispatch → mesher | Present end-to-end | compile_block_dispatch → installed ModelSet → mesher by_state reads |
-| Item models (`models/item/*.json`) | Absent | Nothing reads item paths; icons bake per block id from atlas tiles (isometric CPU baker) — verified by repo-wide grep, zero hits |
+| Item models (`models/item/*.json`) | Partial | `resolve_item_model` entry point tested (chains + display merge + missing→fallback rule); no builtin content and no baker/held callers yet |
 | Entity textures (`textures/entity/*.png`) | Absent | No pack path exists; mobs render procedural art (turntable-proven). Pack reskinning of entities is a queued epic |
 | Custom player skins (64×64, slim) | Absent | Procedural sprite only; needs loader + layout + rig variants (queued epic) |
 

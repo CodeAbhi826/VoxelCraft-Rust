@@ -7173,3 +7173,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - DisplayTr (rotation/translation/scale, identity defaults) parsed from model JSON, merged child-over-parent, carried through variant rotation; merge test covers override + defaults + empty-map. Verified locally post-push (load allowed): new test passes, cargo check clean, full-workspace fmt clean — CI re-verifies. Consumers need item-model resolution first (baker is block-def driven); re-scoped accordingly.
 
 ## 2026-10-12z144 - closed (CI-green 38189671946, 12/12; fc7220b run superseded, content carried)
+
+## 2026-10-12z145 - Part 6: item-model resolution entry (code+test)
+- resolve_item_model() reuses block machinery (chains/vars/display) for models/item/ paths; test covers bare+namespaced locs, display merge, missing-fallback Err. Builtin pack has no item JSONs (9 block only) so no callers yet — baker plumbing queued. 6.1 row flipped Absent->Partial.

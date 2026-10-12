@@ -310,6 +310,19 @@ pub fn install_for_tests(set: ModelSet) {
 
 const PARENT_DEPTH_CAP: usize = 32;
 
+/// Resolve an ITEM model (e.g. "item/stick" or "voxelcraft:item/stick"):
+/// identical machinery to blocks (parent chains, texture vars, display
+/// merge) — only the path root differs (`models/item/`). A missing item
+/// model is a routine fallback, not a failure: callers fall back to the
+/// block-icon or flat-tile path (the builtin pack ships no item JSONs;
+/// third-party packs may).
+pub fn resolve_item_model(
+    loc: &str,
+    read: &dyn Fn(&str) -> Option<Vec<u8>>,
+) -> Result<CompiledModel, String> {
+    resolve_model(&normalize_loc(loc), read)
+}
+
 /// Resolve a model by location (e.g. "voxelcraft:block/oak_slab"), walking the
 /// parent chain. `read` fetches raw bytes for a location minus namespace
 /// normalization (we keep the `voxelcraft:` prefix in loc keys).
@@ -926,6 +939,31 @@ mod tests {
         ]);
         let m2 = resolve_model("voxelcraft:block/oak_slab", &p2).unwrap();
         assert!(m2.display.is_empty());
+    }
+
+    #[test]
+    fn item_models_resolve_through_the_same_machinery() {
+        let generated = r##"{
+            "textures": {"layer0": "item/stick"},
+            "display": {
+                "gui": {"rotation": [0, 0, 0], "scale": [1, 1, 1]}
+            }
+        }"##;
+        let stick = r##"{
+            "parent": "item/generated",
+            "textures": {"layer0": "item/stick"}
+        }"##;
+        let p = pack(&[
+            ("models/item/generated.json", generated),
+            ("models/item/stick.json", stick),
+        ]);
+        // bare and namespaced locs route to models/item/
+        let m = resolve_item_model("item/stick", &p).unwrap();
+        assert!(m.display.get("gui").is_some());
+        let m2 = resolve_item_model("voxelcraft:item/stick", &p).unwrap();
+        assert_eq!(m2.display.len(), 1);
+        // missing item model is the documented fallback path (Err, no panic)
+        assert!(resolve_item_model("item/nonexistent", &p).is_err());
     }
 
     #[test]

@@ -7238,3 +7238,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z163 - Part 6: SSAO slice 1 plumbing (code, verified locally)
 - SsaoU uniform + depth rebind (4 composite sites) + linearize debug view + glam [0,1] convention probe + ssao setting/options/round-trip. Local: naga validation, convention probe, both-crate checks, fmt all green. (One descriptor-body deletion repaired pre-commit; net deletions: 1 intended.) Kernel + tour queued.
+
+## 2026-10-12z164 - SSAO red fix (clippy x2, verified locally)
+- doc-lazy-continuation on SsaoU docs (blank-line restructure); too-many-arguments on comp_bg (SsaoInputs param struct, RenderFrame precedent; struct lives at module level, all 4 sites). Local: check + clippy + naga + fmt green. (One in-impl struct placement caught by inspection pre-compile.)

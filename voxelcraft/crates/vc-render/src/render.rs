@@ -49,15 +49,24 @@ struct PostUniform {
     s: [f32; 4],
 }
 
-/// SSAO uniforms (Part 6): inverse view-projection for position
-/// reconstruction + (strength, radius, near, far). Strength 0 = off;
-/// > 1.5 shows the linear-depth debug view (slice-1 proof surface —
-/// the depth plumbing renders before any kernel exists).
+/// SSAO uniforms (Part 6).
+///
+/// Inverse view-projection for position reconstruction, plus
+/// `(strength, radius, near, far)`. Strength 0 = off; above 1.5 shows
+/// the linear-depth debug view (the slice-1 proof surface — the depth
+/// plumbing renders before any kernel exists).
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct SsaoU {
     inv_vp: [[f32; 4]; 4],
     params: [f32; 4],
+}
+
+/// The SSAO pair every composite bind group carries (keeps `comp_bg`
+/// under clippy's argument limit — same precedent as `RenderFrame`).
+struct SsaoInputs<'a> {
+    depth: &'a wgpu::TextureView,
+    ssao_buf: &'a wgpu::Buffer,
 }
 
 /// FSR 1.0 EASU size constants: (src_w, src_h, dst_w, dst_h) — the
@@ -3650,8 +3659,10 @@ impl Renderer {
             &post_targets.b2_view,
             &post_samp,
             &post_buf,
-            &depth,
-            &ssao_buf,
+            SsaoInputs {
+                depth: &depth,
+                ssao_buf: &ssao_buf,
+            },
         );
         // initial EASU size constants (rewritten on resize/upscale change)
         let (sc_w, sc_h) = post_targets.scene_size();
@@ -3953,8 +3964,7 @@ impl Renderer {
         bloom: &wgpu::TextureView,
         samp: &wgpu::Sampler,
         post_buf: &wgpu::Buffer,
-        depth: &wgpu::TextureView,
-        ssao_buf: &wgpu::Buffer,
+        ssao: SsaoInputs<'_>,
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("comp-bg"),
@@ -3982,12 +3992,12 @@ impl Renderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::TextureView(depth),
+                    resource: wgpu::BindingResource::TextureView(ssao.depth),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: ssao_buf,
+                        buffer: ssao.ssao_buf,
                         offset: 0,
                         size: None,
                     }),
@@ -4066,8 +4076,10 @@ impl Renderer {
             &t.b2_view,
             &self.post_samp,
             &self.post_buf,
-            &self.depth,
-            &self.ssao_buf,
+            SsaoInputs {
+                depth: &self.depth,
+                ssao_buf: &self.ssao_buf,
+            },
         );
         // Phase 11: the pack bind group follows the (resized) pack target
         let bg_pack = Self::comp_bg(
@@ -4077,8 +4089,10 @@ impl Renderer {
             &t.b2_view,
             &self.post_samp,
             &self.pack_buf,
-            &self.depth,
-            &self.ssao_buf,
+            SsaoInputs {
+                depth: &self.depth,
+                ssao_buf: &self.ssao_buf,
+            },
         );
         if let Some((pipe, _)) = self.pack_pipe.take() {
             self.pack_pipe = Some((pipe, bg_pack));
@@ -5224,8 +5238,10 @@ impl Renderer {
                     &self.post_targets.b2_view,
                     &self.post_samp,
                     &self.pack_buf,
-                    &self.depth,
-                    &self.ssao_buf,
+                    SsaoInputs {
+                        depth: &self.depth,
+                        ssao_buf: &self.ssao_buf,
+                    },
                 );
                 self.pack_pipe = Some((pipe, bg));
             }

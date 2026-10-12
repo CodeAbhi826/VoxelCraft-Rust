@@ -240,7 +240,7 @@ PLAN-FINAL §5 toggle list, audited against code:
 | Grading presets | Present | Table + Shaders-screen row + unit test + in-game V1 (modes 1/2) |
 | Tiers fast / fancy / fabulous | Present | `graphics` setting (fabulous = soft shadows + full post) |
 | Volumetric sun shafts | Present, V1 open | Radial-blur god-rays in composite (pre-exposure), sun UV CPU-projected (behind-camera zeroes strength), `volumetric` setting default 0; projection + WGSL validated in-test |
-| SSAO | Present, debug anomaly open | Kernel + plumbing green in CI; tour ssaodebug showed all-white (depth reads 1.0 OR reconstruction degenerate) — CPU round-trip test proves the math, raw-depth view discriminates next tour |
+| SSAO | Present, math proof open | Kernel + plumbing green in CI; raw-depth tours prove sampler+binding (values track clear); SELF-BUG FOUND: strength clamped to 2.0 made the linear view (>2.5) unreachable — fixed (clamp 3.0, stage at 3.0), normal-clear tour queued to validate reconstruction on GPU |
 
 ## 5.1r Lighting status (2026-10-11, Part 5)
 

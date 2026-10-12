@@ -6246,7 +6246,7 @@ impl Renderer {
             0,
             bytemuck::bytes_of(&SsaoU {
                 inv_vp: inv_vp.to_cols_array_2d(),
-                params: [post.ssao.clamp(0.0, 2.0), 0.5, 0.1, sky.fog_end + 96.0],
+                params: [post.ssao.clamp(0.0, 3.0), 0.5, 0.1, sky.fog_end + 96.0],
             }),
         );
 

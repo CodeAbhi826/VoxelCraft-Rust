@@ -261,7 +261,7 @@ PLAN-FINAL §5 toggle list, audited against code:
 | Dropped items | Present | 3D mini-block cuboid + spin/bob (`entities.rs`) |
 | `display` transforms | Partial | Parsed + merged child-over-parent into `CompiledModel` (identity defaults, tested); application needs item-model resolution first — the icon baker is block-def driven, not model-driven (re-scoped 2026-10-12) |
 | Item-frame display / armor stand | Absent | Item id maps only; no display renderer, no stand entity |
-| Custom player skins | Partial (loader + regions + sampler) | `vc-pack::skin`: validation/upgrade/slim flag, region table + face rects (wiki totals validated), per-face sampler with fallback; GPU/rig rewire queued |
+| Custom player skins | Partial (loader + regions + sampler + stow map) | `vc-pack::skin`: validation/upgrade, region table (wiki totals validated), per-face sampler, 72-face tile mapping with 4x5 stow extent (2 body bottoms overflow, tested); atlas blit + rig rewire + tour queued |
 
 Note: `item_icon_cache.rs` module docs still claim "NO first-person
 hand renderer" — stale (predates `push_held_item`); queued for a

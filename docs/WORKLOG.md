@@ -7214,3 +7214,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - sample_skin_box(): part + layer + face -> RGBA rect, None fallback; test covers marker read, classic/slim arm widths, unknown part/face. Pure addition (54+/0-), index math hand-checked against in-bounds rects. GPU/rig rewire + tour queued.
 
 ## 2026-10-12z155 - closed (CI-green 38202947683, 12/12; fmt-only fix, logic was green)
+
+## 2026-10-12z156 - Part 5: skins stow mapping (code+test, verified locally)
+- skin_face_map(): 72 faces -> tiles + src rects with 4x5 stow extent; the two body-bottom crossers overflow to row 4 (my free-cell analysis was wrong - head-outer occupies row 0; the failing test caught it before commit). 5/5 skin tests green locally; fmt clean. Next: atlas blit + FaceTex rewrite.

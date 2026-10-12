@@ -126,6 +126,93 @@ pub fn arm_width(model: SkinModel) -> u32 {
     }
 }
 
+/// Engine face-index → part_faces() index. The engine numbers faces
+/// +x/-x/+y/-y/+z/-z (0..6); part_faces() yields
+/// top/bottom/side/front/side/back. Sides: +x takes the net-left face,
+/// -x the net-right face (orientation assumption — settled by the
+/// asymmetric-skin tour in slice 5).
+pub const ENGINE_FACE_ORDER: [usize; 6] = [2, 4, 0, 1, 3, 5];
+
+/// One skin face mapped into a 4×4 atlas stow block: tile offset from
+/// the block origin + tile-local rect.
+pub struct SkinFaceMap {
+    pub part: &'static str,
+    pub outer: bool,
+    pub engine_face: usize,
+    pub tile_dx: u32,
+    pub tile_dy: u32,
+    pub rect: [u8; 4],
+    /// skin-absolute source rect (x, y, w, h): the stow blits every
+    /// face from src into (tile, rect), so tiles hold exactly the
+    /// face pixels and no verbatim skin copy is needed.
+    pub src: (u32, u32, u32, u32),
+}
+
+/// Full mapping for all 6 parts × 2 layers × 6 faces (72 entries)
+/// plus the stow extent in tiles. Faces that would cross a tile edge
+/// (the two body bottoms — the 4x4 block is fully occupied, verified
+/// by the occupancy pass) overflow into rows below the block; None
+/// when unplaceable (callers keep procedural art).
+pub fn skin_face_map() -> Option<(Vec<SkinFaceMap>, u32, u32)> {
+    struct Raw {
+        part: &'static str,
+        outer: bool,
+        engine_face: usize,
+        x: u32,
+        y: u32,
+        w: u32,
+        h: u32,
+    }
+    let mut raws = Vec::with_capacity(72);
+    for p in SKIN_PARTS {
+        for (outer, origin) in [(false, p.inner), (true, p.outer)] {
+            let faces = part_faces(origin.0, origin.1, p.w, p.h, p.d);
+            for engine_face in 0..6usize {
+                let (x, y, fw, fh) = faces[ENGINE_FACE_ORDER[engine_face]];
+                raws.push(Raw {
+                    part: p.name,
+                    outer,
+                    engine_face,
+                    x,
+                    y,
+                    w: fw,
+                    h: fh,
+                });
+            }
+        }
+    }
+    // overflow placement needs no reservation map: slots address
+    // rows below the 4x4 block deterministically (slot k → (k%4, 4+k/4)).
+    let mut out = Vec::with_capacity(72);
+    let mut overflow = 0u32;
+    for r in raws {
+        let crosses = r.x % 16 + r.w > 16 || r.y % 16 + r.h > 16;
+        let (tdx, tdy, rect) = if !crosses {
+            (
+                r.x / 16,
+                r.y / 16,
+                [(r.x % 16) as u8, (r.y % 16) as u8, r.w as u8, r.h as u8],
+            )
+        } else {
+            // overflow rows below the 4x4 block, left to right
+            let slot = overflow;
+            overflow += 1;
+            (slot % 4, 4 + slot / 4, [0, 0, r.w as u8, r.h as u8])
+        };
+        out.push(SkinFaceMap {
+            part: r.part,
+            outer: r.outer,
+            engine_face: r.engine_face,
+            tile_dx: tdx,
+            tile_dy: tdy,
+            rect,
+            src: (r.x, r.y, r.w, r.h),
+        });
+    }
+    let tiles_h = 4 + overflow.div_ceil(4);
+    Some((out, 4, tiles_h))
+}
+
 /// Six face rects (x, y, w, h) for a part net at (u, v): row 1 holds
 /// top + bottom, row 2 holds side/front/side/back.
 pub fn part_faces(u: u32, v: u32, w: u32, h: u32, d: u32) -> [(u32, u32, u32, u32); 6] {
@@ -267,5 +354,54 @@ mod tests {
         // unknown part / face index → None (procedural fallback)
         assert!(sample_skin_box(&skin, "cape", false, 3).is_none());
         assert!(sample_skin_box(&skin, "head", false, 6).is_none());
+    }
+
+    /// every mapped face stays inside one 16px atlas tile: rect origin
+    /// + size never cross a tile edge. The two crossing body bottoms
+    /// overflow into row 4 (extent 4x5); src rects always agree in size
+    /// and sit inside the 64x64 skin.
+    #[test]
+    fn face_map_tiles_without_crossing() {
+        let (map, tw, th) = skin_face_map().expect("72 faces place");
+        assert_eq!(map.len(), 72, "6 parts x 2 layers x 6 faces");
+        assert_eq!((tw, th), (4, 5), "4x4 block + one overflow row");
+        for m in &map {
+            assert!(m.tile_dx < tw && m.tile_dy < th, "stow bounds");
+            let (rx, ry, rw, rh) = (
+                m.rect[0] as u32,
+                m.rect[1] as u32,
+                m.rect[2] as u32,
+                m.rect[3] as u32,
+            );
+            assert!(
+                rx + rw <= 16 && ry + rh <= 16,
+                "{} face {} crosses a tile edge",
+                m.part,
+                m.engine_face
+            );
+            assert!(rw > 0 && rh > 0);
+            let (sx, sy, sw, sh) = m.src;
+            assert_eq!((sw, sh), (rw, rh), "src/rect size agree");
+            assert!(sx + sw <= 64 && sy + sh <= 64, "src in skin");
+        }
+        // spot: head front lands in tile (0,0) at rect (8,8,8,8)
+        let hf = map
+            .iter()
+            .find(|m| m.part == "head" && !m.outer && m.engine_face == 4)
+            .expect("head front");
+        assert_eq!((hf.tile_dx, hf.tile_dy), (0, 0));
+        assert_eq!(hf.rect, [8, 8, 8, 8]);
+        // the two body bottoms overflowed to row 4 at rect origin
+        let redirected: Vec<_> = map
+            .iter()
+            .filter(|m| m.part == "body" && m.engine_face == 3)
+            .collect();
+        assert_eq!(redirected.len(), 2);
+        for m in redirected {
+            assert_eq!((m.rect[2], m.rect[3]), (8, 4));
+            assert_eq!((m.rect[0], m.rect[1]), (0, 0));
+            assert_eq!(m.tile_dy, 4, "overflow row");
+            assert_eq!((m.src.2, m.src.3), (8, 4));
+        }
     }
 }

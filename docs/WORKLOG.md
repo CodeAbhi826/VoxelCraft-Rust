@@ -7223,3 +7223,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z158 - Part 5: skins FaceTex table (code+test, verified locally)
 - FaceTex tile->tiles[6] (all construction via uniform/head_tex helpers; single emission reader updated); player_skin_face_tex(base) builds per-part tables (inner layer); test asserts head tile/rect + 4x5 extent + part order. 9/9 entity_model tests green locally; fmt clean. Next: settings + stow hookup + selection.
+
+## 2026-10-12z159 - Part 5: skins wiring (code, verified locally)
+- skin+slim... `skin` setting (sanitized filename, round-trip tested) -> try_stow_skin at atlas build (both call sites) -> SKINNED_PLAYER static (ModelSet-install precedent) -> selection in push_player_model; find_skin_block allocator + test. Local: check + allocator test + clippy clean, fmt clean. Inner layer only; slim rig + tour V1 queued. (One signature-line deletion repaired pre-commit.)

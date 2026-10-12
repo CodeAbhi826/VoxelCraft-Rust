@@ -290,6 +290,9 @@ pub struct Settings {
     pub vsync: bool,
     /// vanilla Entity Shadows (soft ground shadows under creatures)
     pub entity_shadows: bool,
+    /// Part 5 skins: custom skin filename under `skins/` (None =
+    /// procedural art). Sanitized to a bare filename on parse.
+    pub skin_file: Option<String>,
     /// vanilla Biome Blend: 0..4 → OFF / 1x1 / 3x3 / 5x5 / 7x7
     pub biome_blend: u8,
     /// 0 = fast, 1 = fancy, 2 = fabulous (fancy + soft shadows + full post)
@@ -480,6 +483,7 @@ impl Default for Settings {
             fullscreen: false,
             vsync: true,
             entity_shadows: true,
+            skin_file: None,
             biome_blend: 2, // 3x3 — the vanilla default blend look
             graphics: 1,
             shadow_quality: 0, // OFF — vanilla look (engine extra, opt-in)
@@ -760,6 +764,10 @@ impl Settings {
             // the master key too (vanilla's own name for it)
             s.push_str(&format!(";soundCategory_master={:.3}", self.volume));
         }
+        // Part 5 skins: the custom skin filename (absent = procedural)
+        if let Some(name) = &self.skin_file {
+            s.push_str(&format!(";skin={name}"));
+        }
         // Round 14: the keybind table rides key_<action> pairs (the
         // Controls screen's rebinds persist)
         {
@@ -902,6 +910,16 @@ impl Settings {
                 "fs" => st.fullscreen = v == "1",
                 "vsync" => st.vsync = v == "1",
                 "eshad" => st.entity_shadows = v == "1",
+                // Part 5 skins: bare filename under skins/ only
+                // (paths, separators and empties fall back to None)
+                "skin" => {
+                    st.skin_file =
+                        if v.is_empty() || v.contains('/') || v.contains('\\') || v.contains("..") {
+                            None
+                        } else {
+                            Some(v.to_string())
+                        }
+                }
                 "bblend" => st.biome_blend = v.parse().unwrap_or(2).min(4),
                 // legacy key from older saves
                 "fancy" => st.graphics = if v == "1" { 1 } else { 0 },
@@ -2828,9 +2846,52 @@ fn apply_pack_sounds(
     }
 }
 
+/// Part 5 skins: the installed skinned player rig (rebuilt on every
+/// atlas compile when a skin stows; None = procedural art). Mirrors
+/// the ModelSet install precedent — boot/reload own the writes, the
+/// per-frame read is an uncontended lock.
+static SKINNED_PLAYER: std::sync::RwLock<Option<vc_gameplay::entity_model::EntityModel>> =
+    std::sync::RwLock::new(None);
+
+/// Load + validate `skins/<name>`, stow its faces past `next_free`,
+/// and install the skinned rig. Every failure mode (unset, bad name,
+/// missing file, bad PNG, unplaceable map, no room) clears back to
+/// procedural art — never a half-skinned player.
+fn install_player_skin(atlas: &mut [u8], next_free: u16, skin_file: Option<&str>) {
+    use vc_gameplay::entity_model::{player as player_factory, player_skin_face_tex};
+    let done = (|| {
+        let name = skin_file?;
+        if name.is_empty() {
+            return None;
+        }
+        let bytes = std::fs::read(std::path::Path::new("skins").join(name)).ok()?;
+        // Classic slot layout; the slim flag rides the future slim rig
+        // (slots are shared, so the stow is identical either way)
+        let skin = vc_pack::skin::load_skin(&bytes, vc_pack::skin::SkinModel::Classic).ok()?;
+        let (map, tw, th) = vc_pack::skin::skin_face_map()?;
+        let base = vc_render::textures::find_skin_block(next_free, tw, th)?;
+        vc_render::textures::blit_skin_faces(atlas, base, &skin.rgba, &map);
+        let mut model = player_factory();
+        if let Some(table) = player_skin_face_tex(base) {
+            for (part_name, tex) in table {
+                if let Some(part) = model.parts.iter_mut().find(|p| p.name == part_name) {
+                    for b in part.boxes.iter_mut() {
+                        b.tex = tex;
+                    }
+                }
+            }
+        }
+        Some(model)
+    })();
+    if let Ok(mut slot) = SKINNED_PLAYER.write() {
+        *slot = done;
+    }
+}
+
 fn compile_pack_atlas(
     builtin: Option<&std::sync::Arc<dyn vc_pack::pack::PackSource>>,
     packs_in_application_order: &[std::sync::Arc<dyn vc_pack::pack::PackSource>],
+    skin_file: Option<&str>,
 ) -> (Vec<u8>, Vec<vc_render::textures::AnimatedTile>) {
     let mut atlas = vc_render::textures::generate_atlas();
 
@@ -2872,7 +2933,7 @@ fn compile_pack_atlas(
     };
 
     // 3. merge pack textures into the atlas (fills set.tiles + animations)
-    let (mut animations, _pack_tiles_used) =
+    let (mut animations, next_free) =
         vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
     let n_models: usize = set.by_state.values().map(|v| v.len()).sum();
     vc_pack::model::install(set);
@@ -2885,6 +2946,10 @@ fn compile_pack_atlas(
             pack.as_ref(),
         ));
     }
+    // Part 5 skins: stow the configured skin file past the pack
+    // allocation (or clear back to procedural art — every failure
+    // mode funnels through install_player_skin's None path)
+    install_player_skin(&mut atlas, next_free, skin_file);
     vc_render::render::report_boot_log(&format!(
         "model dispatch: {} states, {} applied models, {} pack textures, {} animations, {} resource pack(s) active",
         vc_pack::model::models().map(|m| m.by_state.len()).unwrap_or(0),
@@ -2985,7 +3050,11 @@ impl GameApp {
         #[cfg(target_arch = "wasm32")]
         let user_packs: Vec<(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)> = Vec::new();
         let enabled_packs = enabled_pack_sources(&settings, &classic_art, &user_packs);
-        let (mut atlas, animations) = compile_pack_atlas(builtin_pack.as_ref(), &enabled_packs);
+        let (mut atlas, animations) = compile_pack_atlas(
+            builtin_pack.as_ref(),
+            &enabled_packs,
+            settings.skin_file.as_deref(),
+        );
         // 2026-09-20: the labPBR material scan over the enabled stack —
         // each pack's `_n`/`_s` companion coverage; the strongest pack's
         // count is the honest headline number (per-tile union is the
@@ -8375,10 +8444,17 @@ impl GameApp {
         // OnceLock'd static rig (the model_for precedent — bounded,
         // per-kind-constant, leaked for the process lifetime)
         static PLAYER_MODEL: std::sync::OnceLock<EntityModel> = std::sync::OnceLock::new();
-        let model = PLAYER_MODEL.get_or_init(|| {
-            use vc_gameplay::entity_model::player as player_factory;
-            player_factory()
-        });
+        // Part 5 skins: a stowed custom skin replaces the procedural
+        // rig (same boxes/animation — only the FaceTex changes)
+        let skinned = SKINNED_PLAYER.read().ok();
+        let skinned_ref = skinned.as_ref().and_then(|o| o.as_ref());
+        let model = match skinned_ref {
+            Some(m) => m,
+            None => PLAYER_MODEL.get_or_init(|| {
+                use vc_gameplay::entity_model::player as player_factory;
+                player_factory()
+            }),
+        };
         let pos = self.player.pos;
         let yaw = self.player.yaw;
         // walk phase: horizontal speed drives the accumulator cadence
@@ -11583,7 +11659,11 @@ impl GameApp {
             .rev()
             .filter_map(|n| self.pack_source_by_name(n))
             .collect();
-        let (mut atlas, animations) = compile_pack_atlas(self.builtin_pack.as_ref(), &app_order);
+        let (mut atlas, animations) = compile_pack_atlas(
+            self.builtin_pack.as_ref(),
+            &app_order,
+            self.settings.skin_file.as_deref(),
+        );
         // 2026-09-20: refresh the labPBR material-map count for the new
         // stack (the same scan the boot runs)
         self.labpbr_tiles = app_order
@@ -30039,6 +30119,7 @@ mod settings_tests {
         s.fullscreen = true;
         s.vsync = false;
         s.entity_shadows = false;
+        s.skin_file = Some("hero.png".to_string());
         s.biome_blend = 4;
         s.smooth_level = 1;
         s.clouds_level = 1;
@@ -30048,6 +30129,7 @@ mod settings_tests {
         assert!(r2.fullscreen);
         assert!(!r2.vsync);
         assert!(!r2.entity_shadows);
+        assert_eq!(r2.skin_file.as_deref(), Some("hero.png"));
         assert_eq!(r2.biome_blend, 4);
         assert_eq!(r2.smooth_level, 1);
         assert_eq!(r2.clouds_level, 1);

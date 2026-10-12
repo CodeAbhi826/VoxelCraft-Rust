@@ -5599,7 +5599,26 @@ pub fn merge_pack_textures(
     (animations, next_tile)
 }
 
-/// blit a 16×16 RGBA frame into an atlas tile slot
+/// First free atlas block for a skin stow: scans w-wide columns for
+/// the first (bx, by) with every block tile at/after `next_free`
+/// (pack allocation is sequential, so all such tiles are free).
+/// `w`/`h` are the block dims in tiles (skins: 4x5). None when no
+/// room (callers keep procedural art).
+pub fn find_skin_block(next_free: u16, w: u32, h: u32) -> Option<u16> {
+    if w == 0 || h == 0 || w > 32 || h > 32 {
+        return None;
+    }
+    let mut bx = 0u32;
+    while bx + w <= 32 {
+        for by in 0..=(32 - h) {
+            if by * 32 + bx >= next_free as u32 {
+                return Some((by * 32 + bx) as u16);
+            }
+        }
+        bx += w;
+    }
+    None
+}
 /// Stow a validated 64x64 skin into atlas tiles for the player rig
 /// (Part 5 skins epic): every mapped face blits from its skin-absolute
 /// src rect into (base + tile) at the mapped sub-rect. `base` is the
@@ -5638,6 +5657,7 @@ pub fn blit_skin_faces(
     }
 }
 
+/// blit a 16×16 RGBA frame into an atlas tile slot
 fn blit_16(atlas: &mut [u8], tile: u16, frame: &[u8]) {
     let tx = (tile % 32) as usize;
     let ty = (tile / 32) as usize;
@@ -6253,6 +6273,19 @@ mod v110_tests {
         // so the overflow tile stays zero (blit ran, nothing to copy)
         let i1 = ((64 * ATLAS_SIZE + 0) * 4) as usize;
         assert_eq!(&atlas[i1..i1 + 4], &[0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn skin_block_allocator_scans_columns() {
+        // empty atlas: block at origin
+        assert_eq!(find_skin_block(0, 4, 5), Some(0));
+        // next_free inside a column pushes down it: 800 → 800, 801 → 832
+        assert_eq!(find_skin_block(800, 4, 5), Some(800));
+        assert_eq!(find_skin_block(801, 4, 5), Some(832));
+        // no room: past the last fitting origin
+        assert_eq!(find_skin_block(1020, 4, 5), None);
+        assert_eq!(find_skin_block(0, 0, 5), None);
+        assert_eq!(find_skin_block(0, 33, 5), None);
     }
 
     #[test]

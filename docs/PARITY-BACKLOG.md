@@ -258,7 +258,7 @@ PLAN-FINAL §5 toggle list, audited against code:
 | GUI / inventory / hotbar icons | Present | Isometric CPU baker (`item_icon_cache.rs`) |
 | Held first-person | Present | `push_held_item`: textured cube or bare arm + swing/equip/bob, last in billboard stream |
 | Dropped items | Present | 3D mini-block cuboid + spin/bob (`entities.rs`) |
-| `display` transforms | Absent | Zero hits in `model.rs` + render |
+| `display` transforms | Partial | Parsed + merged child-over-parent into `CompiledModel` (identity defaults, tested); application in icon baker / held cube is the next slice |
 | Item-frame display / armor stand | Absent | Item id maps only; no display renderer, no stand entity |
 | Custom player skins | Absent | Carried from §5.1m (queued epic) |
 

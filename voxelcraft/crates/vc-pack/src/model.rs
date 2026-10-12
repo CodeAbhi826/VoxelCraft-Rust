@@ -90,6 +90,28 @@ pub struct ModelJson {
     pub ambientocclusion: bool,
     #[serde(default)]
     pub elements: Option<Vec<ElementJson>>,
+    /// per-view display transforms (view name → rotation/translation/
+    /// scale triples; Part 6 2B.3 — keys are pack-defined strings,
+    /// merged child-overrides-parent per key like texture vars)
+    #[serde(default)]
+    pub display: Option<HashMap<String, DisplayTr>>,
+}
+
+/// One view's display transform: degrees / model-space units / factors.
+/// Missing triples default to identity (rotation/translation zeros,
+/// scale ones) — no pack is required to spell them out.
+#[derive(Deserialize, Clone, Debug)]
+pub struct DisplayTr {
+    #[serde(default)]
+    pub rotation: [f32; 3],
+    #[serde(default)]
+    pub translation: [f32; 3],
+    #[serde(default = "display_identity_scale")]
+    pub scale: [f32; 3],
+}
+
+fn display_identity_scale() -> [f32; 3] {
+    [1.0, 1.0, 1.0]
 }
 
 fn default_true() -> bool {
@@ -230,6 +252,8 @@ pub struct CompiledElement {
 pub struct CompiledModel {
     pub ambientocclusion: bool,
     pub elements: Vec<CompiledElement>,
+    /// merged per-view display transforms (child wins per key)
+    pub display: HashMap<String, DisplayTr>,
     /// source location (debug/F3)
     pub loc: String,
 }
@@ -329,6 +353,16 @@ pub fn resolve_model(
         .iter()
         .find_map(|j| j.elements.clone())
         .unwrap_or_default();
+    // display transforms: parents first, child last → child overrides
+    // parent per view key (same merge rule as texture vars)
+    let mut display: HashMap<String, DisplayTr> = HashMap::new();
+    for json in chain.iter().rev() {
+        if let Some(d) = &json.display {
+            for (k, v) in d {
+                display.insert(k.clone(), v.clone());
+            }
+        }
+    }
 
     // resolve texture variables (#ref chains, depth cap)
     let resolve_var = |name: &str| -> String {
@@ -378,6 +412,7 @@ pub fn resolve_model(
     Ok(CompiledModel {
         ambientocclusion,
         elements: compiled_elements,
+        display,
         loc: loc.to_string(),
     })
 }
@@ -554,6 +589,7 @@ pub fn apply_variant_rotation(m: &CompiledModel, x_rot: i32, y_rot: i32) -> Comp
     CompiledModel {
         ambientocclusion: m.ambientocclusion,
         elements,
+        display: m.display.clone(),
         loc: m.loc.clone(),
     }
 }
@@ -852,6 +888,44 @@ mod tests {
         assert!(up.verts.iter().all(|v| (v[1] - 8.0).abs() < 0.001));
         // cullface survived the chain
         assert_eq!(up.cullface, Some(FaceDir::Up));
+    }
+
+    #[test]
+    fn display_transforms_merge_child_over_parent() {
+        let parent = r##"{
+            "display": {
+                "gui": {"rotation": [30, 45, 0], "translation": [0, 0, 0], "scale": [0.625, 0.625, 0.625]},
+                "head": {"translation": [0, 13, 7]}
+            }
+        }"##;
+        let child = r##"{
+            "parent": "block/base",
+            "display": {
+                "gui": {"rotation": [0, 0, 0], "scale": [1, 1, 1]}
+            }
+        }"##;
+        let p = pack(&[
+            ("models/block/base.json", parent),
+            ("models/block/tool.json", child),
+        ]);
+        let m = resolve_model("voxelcraft:block/tool", &p).unwrap();
+        // child gui wins wholesale per key; missing triples are identity
+        let gui = m.display.get("gui").expect("gui display");
+        assert_eq!(gui.rotation, [0.0, 0.0, 0.0]);
+        assert_eq!(gui.translation, [0.0, 0.0, 0.0]);
+        assert_eq!(gui.scale, [1.0, 1.0, 1.0]);
+        // parent head survives untouched; omitted scale defaults to 1
+        let head = m.display.get("head").expect("head display");
+        assert_eq!(head.translation, [0.0, 13.0, 7.0]);
+        assert_eq!(head.scale, [1.0, 1.0, 1.0]);
+        // models without display compile to an empty map
+        let p2 = pack(&[
+            ("models/block/slab.json", SLAB_BASE),
+            ("models/block/oak_slab.json", OAK_SLAB),
+            ("models/block/block.json", BLOCK_BLOCK),
+        ]);
+        let m2 = resolve_model("voxelcraft:block/oak_slab", &p2).unwrap();
+        assert!(m2.display.is_empty());
     }
 
     #[test]

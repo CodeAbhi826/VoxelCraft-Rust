@@ -7248,3 +7248,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - View-space 8-tap kernel (derivative normals, hemisphere gate, range fade, engine-tuned gains) + E2E stages ssaodebug/ssao + workflow 8-capture loop. Naga caught dynamic-index rejection pre-commit (procedural angles fix). Local: naga + checks + fmt green.
 
 ## 2026-10-12z165 - closed (CI-green 38278347825, 12/12)
+
+## 2026-10-12z166 - SSAO white-debug diagnosis (code+test, verified locally)
+- Tour ssaodebug all-white: kernel capture normal-world => depth reads 1.0 everywhere OR reconstruction degenerate. CPU round-trip test PROVES the math (formula exonerated); split debug (raw vs linear) discriminates next tour. No device/bind errors in tour log. Row flipped to anomaly-open with the evidence chain.

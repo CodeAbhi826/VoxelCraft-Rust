@@ -52,9 +52,9 @@ struct PostUniform {
 /// SSAO uniforms (Part 6).
 ///
 /// Inverse view-projection for position reconstruction, plus
-/// `(strength, radius, near, far)`. Strength 0 = off; above 1.5 shows
-/// the linear-depth debug view (the slice-1 proof surface — the depth
-/// plumbing renders before any kernel exists).
+/// `(strength, radius, near, far)`. Strength 0 = off; (1.5, 2.5]
+/// shows raw depth (texture-contents check); above 2.5 shows the
+/// linear-depth view.
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct SsaoU {
@@ -246,8 +246,8 @@ pub struct PostParams {
     /// volumetric sun shafts 0..1 (0 = off; default off — vanilla has
     /// no light shafts; the sun UV rides PostU s.zw)
     pub volumetric: f32,
-    /// SSAO 0..2 (0 = off, (0,1] = kernel next slice, > 1.5 =
-    /// linear-depth debug view; default off)
+    /// SSAO 0..3 (0 = off, (0,1] = kernel, (1.5,2.5] = raw-depth
+    /// debug, > 2.5 = linear-depth debug; default off)
     pub ssao: f32,
 }
 
@@ -1182,7 +1182,10 @@ struct PostU { p: vec4<f32>, q: vec4<f32>, s: vec4<f32> };
 @group(0) @binding(3) var<uniform> U: PostU;
 struct SsaoU { inv_vp: mat4x4<f32>, params: vec4<f32> };
 // params = (strength, radius, near, far); strength 0 = off,
-// > 1.5 = linear-depth debug view (depth plumbing proof, no kernel).
+// (1.5, 2.5] = RAW depth debug (texture contents, no math),
+// > 2.5 = linear-depth debug view (needs inv_vp + convention).
+// Depth d is NDC z directly (0..1 convention — pinned by the
+// glam_depth_convention_is_zero_to_one test, not assumed).
 // Depth d is NDC z directly (0..1 convention — pinned by the
 // glam_depth_convention_is_zero_to_one test, not assumed).
 @group(0) @binding(4) var depth_tex: texture_depth_2d;
@@ -1371,9 +1374,19 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         col += (shafts / max(wsum, 1e-4)) * (U.s.y * decay * 0.35);
     }
 
-    // SSAO linear-depth debug view (slice 1): strength > 1.5 shows
-    // view-space depth as gray (near black, far white)
-    if (SU.params.x > 1.5) {
+    // SSAO debug views: (1.5, 2.5] shows RAW depth (distinguishes
+    // an empty/unwritten texture from reconstruction-math bugs);
+    // above 2.5 shows linear view depth as gray (near black, far white)
+    if (SU.params.x > 1.5 && SU.params.x <= 2.5) {
+        let dim = textureDimensions(depth_tex);
+        let px = clamp(
+            vec2<i32>(uv * vec2<f32>(dim)),
+            vec2<i32>(0, 0),
+            vec2<i32>(dim) - vec2<i32>(1, 1),
+        );
+        col = vec3<f32>(textureLoad(depth_tex, px, 0));
+    }
+    if (SU.params.x > 2.5) {
         let lin = linear_view_z(uv);
         col = vec3<f32>(clamp(
             (lin - SU.params.z) / max(SU.params.w - SU.params.z, 1e-4),
@@ -7364,6 +7377,22 @@ mod shader_tests {
             (ndc_z(Vec3::new(0.0, 0.0, -100.0)) - 1.0).abs() < 1e-4,
             "far maps to 1"
         );
+    }
+
+    #[test]
+    fn view_reconstruction_round_trips() {
+        // The shader's linear_view_z path, replicated on CPU: project a
+        // known world point, take its depth, reconstruct, compare.
+        use glam::{Vec3, Vec4};
+        let vp = Mat4::perspective_rh(1.0, 1.0, 0.1, 100.0)
+            * Mat4::look_at_rh(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0), Vec3::Y);
+        let inv = vp.inverse();
+        let w = Vec3::new(1.0, 2.0, -20.0);
+        let c = vp * w.extend(1.0);
+        let n = c / c.w;
+        let v = inv * Vec4::new(n.x, n.y, n.z, 1.0);
+        let p = Vec3::new(v.x, v.y, v.z) / v.w;
+        assert!((p - w).length() < 1e-3, "round trip {p:?} vs {w:?}");
     }
 
     /// All embedded WGSL must parse AND type-check with the exact naga

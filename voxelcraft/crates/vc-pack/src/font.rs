@@ -163,6 +163,65 @@ pub fn rasterize_bitmap(chars: &[String], file_bytes: &[u8]) -> Result<Vec<Bitma
     Ok(out)
 }
 
+/// One rasterized legacy-Unicode glyph: 16×16 alpha + nibble width.
+pub struct LegacyGlyph {
+    pub ch: char,
+    pub width: u32,
+    pub alpha: Vec<u8>,
+}
+
+/// Rasterize one legacy-Unicode template page (256×256 PNG, 16×16 grid
+/// of 16px glyphs) using the sizes table (0xFFFF bytes; high nibble =
+/// start col, low nibble = end col). Pages D8–DF are UTF-16 surrogates
+/// and invalid — rejected, never rendered. Never panics on bad input.
+pub fn rasterize_legacy(
+    page: u8,
+    page_png: &[u8],
+    sizes: &[u8],
+) -> Result<Vec<LegacyGlyph>, String> {
+    if (0xD8..=0xDF).contains(&page) {
+        return Err(format!("font legacy: page {page:02X} is a surrogate page"));
+    }
+    if sizes.len() != 0xFFFF {
+        return Err(format!(
+            "font legacy: sizes is {} bytes, want 65535",
+            sizes.len()
+        ));
+    }
+    let img = image::load_from_memory(page_png)
+        .map_err(|e| format!("font legacy: bad page PNG: {e}"))?
+        .to_rgba8();
+    if img.dimensions() != (256, 256) {
+        return Err(format!(
+            "font legacy: page is {:?}, want 256x256",
+            img.dimensions()
+        ));
+    }
+    let mut out = Vec::with_capacity(256);
+    for i in 0..256u32 {
+        let code = (page as u32) * 256 + i;
+        let Some(ch) = char::from_u32(code) else {
+            continue;
+        };
+        let wbyte = sizes[code as usize];
+        let (start, end) = (wbyte >> 4, wbyte & 0x0F);
+        let width = if end >= start {
+            (end - start + 1) as u32
+        } else {
+            1
+        };
+        let (gx, gy) = ((i % 16) * 16, (i / 16) * 16);
+        let mut alpha = vec![0u8; 256];
+        for y in 0..16u32 {
+            for x in 0..16u32 {
+                alpha[(y * 16 + x) as usize] = img.get_pixel(gx + x, gy + y)[3];
+            }
+        }
+        out.push(LegacyGlyph { ch, width, alpha });
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -227,5 +286,36 @@ mod tests {
         )
         .is_err());
         assert!(rasterize_bitmap(&["AB".to_string()], b"garbage").is_err());
+    }
+
+    #[test]
+    fn legacy_page_rasterizes_widths_and_rejects_surrogates() {
+        // 256x256 page: cell (0,0) fully inked, cell (1,0) ink in x 0..5
+        let img = image::RgbaImage::from_fn(256, 256, |x, y| {
+            if x < 16 && y < 16 {
+                image::Rgba([255, 255, 255, 255])
+            } else if (16..22).contains(&x) && y < 16 {
+                image::Rgba([255, 255, 255, 255])
+            } else {
+                image::Rgba([0, 0, 0, 0])
+            }
+        });
+        let mut png = Vec::new();
+        image::DynamicImage::ImageRgba8(img)
+            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+            .unwrap();
+        // sizes: glyph 0 full (0x0F), glyph 1 cols 0..5 (0x05), rest empty
+        let mut sizes = vec![0u8; 0xFFFF];
+        sizes[0] = 0x0F;
+        sizes[1] = 0x05;
+        let glyphs = rasterize_legacy(0x00, &png, &sizes).unwrap();
+        assert_eq!(glyphs.len(), 256);
+        assert_eq!(glyphs[0].ch, '\0');
+        assert_eq!(glyphs[0].width, 16);
+        assert_eq!(glyphs[1].width, 6);
+        // surrogate pages rejected; bad shapes error, never panic
+        assert!(rasterize_legacy(0xD8, &png, &sizes).is_err());
+        assert!(rasterize_legacy(0x00, &png, &sizes[..100]).is_err());
+        assert!(rasterize_legacy(0x00, b"garbage", &sizes).is_err());
     }
 }

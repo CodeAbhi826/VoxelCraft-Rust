@@ -7184,3 +7184,8 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z147 - Part 5: font providers parse + bitmap rasterize (code+test)
 - New vc-pack::font: bitmap (file/ascent/height/chars) + legacy_unicode (template/sizes) parse, unknown types recorded Unsupported; grid rasterize with auto width + \0 skip; 2 tests. No local compile (load 3.64) — CI verifies. Wiring into FontSource is next.
+
+## 2026-10-12z147 - closed (CI-green 38197150731 after fix; test bug was mine, fixture ink ran to cell edge)
+
+## 2026-10-12z148 - Part 5: legacy_unicode rasterize (code+test, verified locally)
+- rasterize_legacy(): 256x256 page validation, nibble widths, surrogate D8-DF rejection; test covers widths (16/6), page count, all three rejections. All 3 font tests pass locally; fmt clean. (One edit ate the test-module header mid-slice; repaired + fmt-verified.)

@@ -308,6 +308,9 @@ pub struct Settings {
     /// on the Shaders screen, never the vanilla video layout. Revives
     /// the legacy `shader` options key (old saves migrate free).
     pub shader_mode: u8,
+    /// Part 6 volumetric sun shafts 0..1 (default OFF — vanilla has no
+    /// light shafts; independent toggle, options key `volumetric`).
+    pub volumetric: f32,
     /// 1.6: FSR 1.0 upscale mode — 0 Native (FSR fully off, pass
     /// skipped), 1 Ultra Quality (1.3x), 2 Quality (1.5x), 3 Balanced
     /// (1.7x), 4 Performance (2.0x), 5 Custom (custom_scale). Old saves
@@ -488,6 +491,7 @@ impl Default for Settings {
             graphics: 1,
             shadow_quality: 0, // OFF — vanilla look (engine extra, opt-in)
             shader_mode: 0,    // OFF — vanilla graphics identical to real game
+            volumetric: 0.0,   // OFF — no light shafts by default
             upscale: 0,
             custom_scale: 1.25,
             sharpness: 60,
@@ -768,6 +772,10 @@ impl Settings {
         if let Some(name) = &self.skin_file {
             s.push_str(&format!(";skin={name}"));
         }
+        // Part 6 volumetric shafts (default OFF)
+        if self.volumetric > 0.0 {
+            s.push_str(&format!(";volumetric={:.2}", self.volumetric));
+        }
         // Round 14: the keybind table rides key_<action> pairs (the
         // Controls screen's rebinds persist)
         {
@@ -929,6 +937,8 @@ impl Settings {
                 // built-in feature-shader selector (default OFF); old
                 // saves carrying 0..2 migrate free
                 "shader" => st.shader_mode = v.parse().unwrap_or(0).min(2),
+                // Part 6 volumetric shafts (0..1, default OFF)
+                "volumetric" => st.volumetric = v.parse().unwrap_or(st.volumetric).clamp(0.0, 1.0),
                 // 2026-09-20: the external shader-pack selection (an
                 // unknown/stale name re-validates against the live scan
                 // when the Shaders screen opens — deserialize keeps it)
@@ -28526,6 +28536,8 @@ impl GameApp {
                     },
                     // 1.6: user Sharpness for modes 1..=5, forced 0 at Native
                     sharpen: self.settings.rcas_amount(),
+                    // Part 6 volumetric shafts (independent toggle)
+                    volumetric: self.settings.volumetric,
                 },
                 clouds: if self.settings.graphics >= 1 && !nether {
                     self.settings.clouds_level
@@ -30168,6 +30180,9 @@ mod settings_tests {
         assert!(!r2.vsync);
         assert!(!r2.entity_shadows);
         assert_eq!(r2.skin_file.as_deref(), Some("hero.png"));
+        s.volumetric = 0.65;
+        let r3 = Settings::deserialize(&s.serialize());
+        assert!((r3.volumetric - 0.65).abs() < 1e-6);
         assert_eq!(r2.biome_blend, 4);
         assert_eq!(r2.smooth_level, 1);
         assert_eq!(r2.clouds_level, 1);

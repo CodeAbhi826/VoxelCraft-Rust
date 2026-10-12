@@ -223,6 +223,9 @@ pub struct PostParams {
     pub shadows: f32,
     /// RCAS sharpen amount for the FSR-lite upscale (0 = off)
     pub sharpen: f32,
+    /// volumetric sun shafts 0..1 (0 = off; default off — vanilla has
+    /// no light shafts; the sun UV rides PostU s.zw)
+    pub volumetric: f32,
 }
 
 /// Part 5 built-in grade presets: (bloom, vignette, saturation, exposure)
@@ -233,6 +236,27 @@ pub const GRADE_PRESETS: [(u8, &str, [f32; 4]); 3] = [
     (1, "vanilla+", [0.55, 0.14, 1.07, 1.0]),
     (2, "cinematic", [0.85, 0.32, 1.16, 1.06]),
 ];
+
+/// Project the sun direction to screen UV for the god-rays stage.
+/// `vp_cols` is the column-major view-projection matrix; the sun is a
+/// direction (w=0 skips translation — correct at infinity). Returns
+/// None when the sun is behind the camera (clip w <= 0); the writer
+/// zeroes the shaft strength there. UV follows the post V-flip
+/// (v = 0.5 − ndc.y/2).
+pub fn project_sun_uv(vp_cols: [[f32; 4]; 4], sun: [f32; 3]) -> Option<(f32, f32)> {
+    let v = [sun[0], sun[1], sun[2], 0.0];
+    let mut clip = [0.0f32; 4];
+    for (i, c) in clip.iter_mut().enumerate() {
+        *c = vp_cols[0][i] * v[0]
+            + vp_cols[1][i] * v[1]
+            + vp_cols[2][i] * v[2]
+            + vp_cols[3][i] * v[3];
+    }
+    if clip[3] <= 0.0 {
+        return None;
+    }
+    Some((clip[0] / clip[3] * 0.5 + 0.5, 0.5 - clip[1] / clip[3] * 0.5))
+}
 
 /// Grade row for a post mode; unknown modes fall back to off.
 pub fn grade_preset(mode: u8) -> (f32, f32, f32, f32) {
@@ -1265,6 +1289,26 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // bloom
     if (U.q.x > 0.001) {
         col += textureSample(bloom, samp, uv).rgb * U.q.x;
+    }
+
+    // volumetric sun shafts (Part 6 completion of the Part 5 feature
+    // list): radial blur toward the sun's screen position, pre-exposure.
+    // s.y = strength (0 skips all taps), s.zw = sun uv (computed
+    // CPU-side; strength is zeroed there when the sun is behind the
+    // camera, so off-screen suns cost nothing and add nothing).
+    if (U.s.y > 0.001) {
+        let sun_uv = U.s.zw;
+        let delta = (uv - sun_uv) * 0.0625;
+        var shafts = vec3<f32>(0.0);
+        var wsum = 0.0;
+        for (var i = 0; i < 12; i = i + 1) {
+            let t = f32(i) / 11.0;
+            let w = 1.0 - t;
+            shafts += textureSample(scene, samp, uv - delta * f32(i)).rgb * w;
+            wsum += w;
+        }
+        let decay = clamp(1.0 - distance(uv, sun_uv) * 1.4, 0.0, 1.0);
+        col += (shafts / max(wsum, 1e-4)) * (U.s.y * decay * 0.35);
     }
 
     // exposure
@@ -5999,7 +6043,18 @@ impl Renderer {
             q: [bloom, vig, sat, exp],
             // FSR 1.0 RCAS lobe scale: post.sharpen maps 0..1 → the
             // FsrRcasCon factor (1.0 = maximum sharpness, 0 = off)
-            s: [post.sharpen.clamp(0.0, 1.0), 0.0, 0.0, 0.0],
+            // Part 6 volumetric shafts: sun screen UV rides s.zw; the
+            // strength zeroes when the sun is behind the camera
+            s: {
+                let (vs, su, sv) = match project_sun_uv(
+                    vp.to_cols_array_2d(),
+                    [sky.sun_dir.x, sky.sun_dir.y, sky.sun_dir.z],
+                ) {
+                    Some((u, v)) => (post.volumetric.clamp(0.0, 1.0), u, v),
+                    None => (0.0, 0.5, 0.5),
+                };
+                [post.sharpen.clamp(0.0, 1.0), vs, su, sv]
+            },
         };
         self.queue
             .write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post_u));
@@ -7091,6 +7146,28 @@ mod shader_tests {
         assert_eq!(grade_preset(2), (0.85, 0.32, 1.16, 1.06));
         assert_eq!(grade_preset(0), (0.0, 0.0, 1.0, 1.0));
         assert_eq!(grade_preset(9), (0.0, 0.0, 1.0, 1.0));
+    }
+
+    #[test]
+    fn sun_projection_centers_edges_and_rejects_behind() {
+        // perspective VP (f=1, near=0.1, far=100, cols-major): a sun
+        // direction has clip.w = -z_view, so ahead lands on screen
+        // under the post V-flip (v = 0.5 − ndc.y/2) and behind (w<0)
+        // rejects. Identity would give w=0 for directions — the test
+        // must use a real projection.
+        let persp = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, -1.002, -1.0],
+            [0.0, 0.0, -0.2002, 0.0],
+        ];
+        let (u, v) = project_sun_uv(persp, [0.0, 0.0, -1.0]).expect("ahead");
+        assert!((u - 0.5).abs() < 1e-6 && (v - 0.5).abs() < 1e-6);
+        assert!(project_sun_uv(persp, [0.0, 0.0, 1.0]).is_none());
+        let (u, _) = project_sun_uv(persp, [1.0, 0.0, -1.0]).expect("east");
+        assert!((u - 1.0).abs() < 1e-6);
+        let (_, v) = project_sun_uv(persp, [0.0, 1.0, -1.0]).expect("up");
+        assert!((v - 0.0).abs() < 1e-6);
     }
 
     /// All embedded WGSL must parse AND type-check with the exact naga

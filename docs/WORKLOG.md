@@ -7232,3 +7232,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z161 - Part 5: skins V1 CLOSED (tour 38242267654 green, agent V1 + pixel forensics)
 - F5 behind/front captures show marker-skinned player (flat part colors, 61px head / 31px limbs = exact part geometry); opposite limb pairs per side (yellow/cyan vs red/magenta). Side-profile geometry explains the hidden blue body (limb z-footprint == body z-footprint). Residual: absolute L/R rests on reference labeling (rig chain code-verified); owner can close with a text skin. Front-view red centered 639.5/640 measured.
+
+## 2026-10-12z162 - Part 6: volumetric sun shafts (code, V1 open)
+- God-rays radial blur in POST_SHADER (pre-exposure, 12 taps, distance decay); project_sun_uv() CPU projection (perspective-correct, behind-rejects); PostParams.volumetric + setting/options-key/round-trip. Local: projection test + naga WGSL validation + roundtrip + check + fmt all green. (Caught my own identity-matrix test bug by hand-math before running.)

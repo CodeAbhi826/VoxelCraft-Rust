@@ -200,3 +200,4 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-12: z164 SSAO fix closed green. Next: SSAO kernel slice.
 - 2026-10-12: z165 SSAO kernel closed green. Tour dispatched for ssaodebug+ssao V1.
 - 2026-10-12: z168 clear-probe closed green. Discriminator tour dispatched (mid-gray => scene never wrote; white => sampling path).
+- 2026-10-12: z169 0.99-probe closed green. Discriminator tour dispatched.

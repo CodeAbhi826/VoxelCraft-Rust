@@ -7262,3 +7262,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z169 - SSAO 0.99 probe (code, verified locally)
 - 0.5 probe decoded: uniform sRGB-187 = live clear read (sampler + binding exonerated) but everything culled (near=0.1 skews depth past 0.9), so write-vs-stale undecided. E2E_DEPTH_CLEAR now takes a float; workflow 0.99 lets near ground pass: gradient => writes land, uniform => writes never land. Normal baseline (tour8b) confirmed full terrain, so near-field must write. Local: check + fmt green. Tour captures diagnostic-only.
+
+## 2026-10-12z169 - closed (CI-green 38288506621, 12/12)

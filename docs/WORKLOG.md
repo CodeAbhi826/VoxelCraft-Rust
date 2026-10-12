@@ -7166,3 +7166,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-12z143 - Part 6: render-forms matrix (6.1 audit)
 - Held/dropped corrected to Present (push_held_item + 3D mini-blocks); display transforms + item-frame/stand Absent; staledoc in item_icon_cache queued for next code touch. Misplaced-top edit reverted, section appended at end.
+
+## 2026-10-12z143 - closed (CI-green 38189109039, 12/12; 2d0cc4f run superseded by push, content carried in-tree)

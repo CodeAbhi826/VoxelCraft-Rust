@@ -1398,12 +1398,15 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             1.0,
         ));
     }
-    // inv_vp translation proof (2.7, 3.0]: the camera world position
-    // lives in inv_vp[3].xyz — renders eye*0.005 so the bytes are
-    // checkable against the e2e CAMPOS log line. Black = dead/zero
-    // bytes; a color mismatch with the log = broken multiply.
+    // inv_vp multiply-vs-input proof (2.7, 3.0]: the translation
+    // band proved the bytes live and correct, yet the linear view
+    // stays white — so either the mat-vec multiply or its `ndc`
+    // input misbehaves. Multiplying by a CONSTANT extracts column 3
+    // through the multiply path: (0,255,0)-family (matches the CAMPOS
+    // prediction) = multiply fine, suspect ndc; anything else =
+    // broken multiply in-shader, go analytic (no matrix).
     if (SU.params.x > 2.7) {
-        col = SU.inv_vp[3].xyz * 0.005;
+        col = (SU.inv_vp * vec4<f32>(0.0, 0.0, 0.0, 1.0)).xyz * 0.005;
     }
 
     // SSAO kernel (slice 2): view-space depth taps around the pixel
@@ -7415,6 +7418,21 @@ mod shader_tests {
         let v = inv * Vec4::new(n.x, n.y, n.z, 1.0);
         let p = Vec3::new(v.x, v.y, v.z) / v.w;
         assert!((p - w).length() < 1e-3, "round trip {p:?} vs {w:?}");
+    }
+
+    #[test]
+    fn ssao_uniform_layout_is_shader_matched() {
+        // Pins the SsaoU byte layout the composite shader reads:
+        // 64-byte column-major inv_vp + 16-byte params at offset 64.
+        // A size/offset drift here would silently scramble every
+        // matrix read while scalar params kept working.
+        assert_eq!(std::mem::size_of::<SsaoU>(), 80);
+        let u = SsaoU {
+            inv_vp: [[0.0; 4]; 4],
+            params: [3.0, 0.5, 0.1, 200.0],
+        };
+        let b: &[f32; 20] = bytemuck::cast_ref(&u);
+        assert_eq!(&b[16..20], &[3.0, 0.5, 0.1, 200.0]);
     }
 
     /// All embedded WGSL must parse AND type-check with the exact naga

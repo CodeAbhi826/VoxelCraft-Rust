@@ -17964,8 +17964,12 @@ impl GameApp {
         // the border grid contributes thousands of yellow-green line
         // pixels; the terrain's own yellow (flowers) is in both counts and
         // cancels — the margin threshold sits above the lighting/cloud
-        // drift noise
-        let ok = on_n > off_n + 300;
+        // drift noise. 2026-10-13: 300 → 200 — a real-GPU run measured
+        // margin 244 with borders visibly rendering (their yellowish
+        // contribution dithers out of the counter band on Intel, so the
+        // count under-reports vs lavapipe); 200 stays 4× above the worst
+        // documented drift (51) while passing both drivers.
+        let ok = on_n > off_n + 200;
         vc_render::render::report_boot_log(&format!(
             "e2e: fkeys border-visibility yellow px on={on_n} off={off_n} margin={} — {}",
             on_n as i64 - off_n as i64,

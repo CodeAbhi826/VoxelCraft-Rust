@@ -7317,3 +7317,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-13z180 - Matrix readiness (code, real-GPU-verified)
 - FROM override (tail reruns), per-capture camera log (drift detection — caught owner-active windows twice), chunk-settle gate (fkeys precedent), drain gate (drawn-count stability lies on weak runners; tree chunks arrived 20-60s after settle passed). 62/62 rows x4 runs, zero drift on clean runs. Volumetric absdiff ~0.5 decoded: NOT a wiring bug (bridge traced complete) — sun sits ~85 deg off the fixed matrix view axis, correctly zeroed by distance falloff. Sun-facing proof rows queued next.
 ## 2026-10-13z179 - closed (part 2 CI-green 38450330939, 12/12)
+
+## 2026-10-13z181 - Sun-facing volumetric proof (code, real-GPU-verified)
+- Volumetric absdiff ~0.5 in fixed view decoded (sun ~85 deg off-axis, correctly zeroed by falloff — wiring traced complete). Rows 62-64 borrow the camera (day 0.45, yaw -1.11, pitch 0.33): strength ladder scales monotonically (2.82/2.24) and sun-gap-localized. Mechanism PROVEN; visibility needs facing the sun (answer to the no-change report).

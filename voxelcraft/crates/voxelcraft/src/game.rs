@@ -17502,6 +17502,10 @@ impl GameApp {
         s.gpu_meshing = false;
         self.day_time = 0.30;
         self.show_debug = false;
+        // fixed spawn view (seed-95 E2E spawn faces yaw 0.79/pitch 0 —
+        // sun-facing rows below borrow the camera and must restore it)
+        self.player.yaw = 0.79;
+        self.player.pitch = 0.0;
         self.world_game_time = 6000;
         self.weather.force_clear(100000);
         let name = match i {
@@ -17760,6 +17764,32 @@ impl GameApp {
             61 => {
                 s.gpu_meshing = true;
                 "gmesh1"
+            }
+            // sun-facing volumetric proof (day 0.45 old-afternoon sun at
+            // ~19 deg elevation sits dead-center at yaw -1.11/pitch 0.33;
+            // the fixed matrix view keeps the sun ~85 deg off-axis so
+            // shafts correctly read zero there — these rows borrow the
+            // camera to prove the pipe itself)
+            62 => {
+                self.day_time = 0.45;
+                self.player.yaw = -1.11;
+                self.player.pitch = 0.33;
+                s.volumetric = 0.3;
+                "sunvol03"
+            }
+            63 => {
+                self.day_time = 0.45;
+                self.player.yaw = -1.11;
+                self.player.pitch = 0.33;
+                s.volumetric = 0.65;
+                "sunvol065"
+            }
+            64 => {
+                self.day_time = 0.45;
+                self.player.yaw = -1.11;
+                self.player.pitch = 0.33;
+                s.volumetric = 1.0;
+                "sunvol10"
             }
             _ => return None,
         };

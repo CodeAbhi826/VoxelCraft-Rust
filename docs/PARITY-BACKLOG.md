@@ -240,7 +240,7 @@ PLAN-FINAL §5 toggle list, audited against code:
 | Grading presets | Present | Table + Shaders-screen row + unit test + in-game V1 (modes 1/2) |
 | Tiers fast / fancy / fabulous | Present | `graphics` setting (fabulous = soft shadows + full post) |
 | Volumetric sun shafts | Present, V1 open | Radial-blur god-rays in composite (pre-exposure), sun UV CPU-projected (behind-camera zeroes strength), `volumetric` setting default 0; projection + WGSL validated in-test |
-| SSAO | Present, analytic verdict open | inv_vp bytes proven correct in-shader (translation match) yet linear white ⇒ matrix path abandoned for reconstruction: CamU scalars + analytic_world drive linear + kernel (CPU-mirrored in-test). Next tour at 2.6: black ground = FIXED; white = depth-side bug |
+| SSAO | Present, analytic re-verdict open | SELF-BUG: stray minus in the linear band (dot already equals -vz) blacked the first analytic tour. Kernel PROVEN on real GPU (-4.7%, n=48k, tint-masked). Re-tour at 2.6 decides |
 
 ## 5.1r Lighting status (2026-10-11, Part 5)
 

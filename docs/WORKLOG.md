@@ -7290,3 +7290,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Consequence: only the linear-debug normalization stays white on both drivers with all inputs proven — analytic bypass (z173) decides it; next z173-binary local run gives the verdict with zero driver doubt. No local build performed (CI builds, local runs).
 
 ## 2026-10-13z173 - closed (CI-green 38332495215, 12/12; fmt fix verified)\n
+## 2026-10-13z174 - SSAO analytic sign fix (code, CI-verified)
+- Uniform-black analytic tour decoded: stray minus (dot already equals -vz>0) clamped everything to 0. One-line fix. Kernel stands proven on real GPU (-4.7%). Local check skipped (load ~2.6/2); CI gates.

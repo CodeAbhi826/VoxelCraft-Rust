@@ -1431,10 +1431,11 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         col = vec3<f32>(textureLoad(depth_tex, px, 0), dims_ok, 0.0);
     }
     if (SU.params.x > 2.5 && SU.params.x <= 2.7) {
-        // linear view depth, matrix-free: forward weight of the
-        // reconstructed offset (black = near, white = far/sky)
+        // linear view depth, matrix-free: dot(offset, fwd) already
+        // equals -vz (positive in front) — no extra negation (a stray
+        // minus blacked the whole view on the first analytic tour)
         let w = analytic_world(uv, sample_depth(uv));
-        let lin = -dot(w - CU.eye.xyz, CU.fwd.xyz);
+        let lin = dot(w - CU.eye.xyz, CU.fwd.xyz);
         col = vec3<f32>(clamp(
             (lin - CU.proj.z) / max(CU.proj.w - CU.proj.z, 1e-4),
             0.0,

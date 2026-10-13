@@ -7313,3 +7313,7 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-13z179 - Matrix part 2 + MSAA-8 degrade (code, real-GPU-verified)
 - Rows 31-61 (fov rest, mip/aniso, shadows, smooth, bioblend, times, weather, 8 moons, F3, msaa, occl, labpbr, gmesh) + camera line per capture (perturbation detection). Local: 62/62 captures, VERDICT OK. REAL FINDINGS: msaa8 panics on reference iGPU (no adapter-specific feature) -> degrade-to-max + effective log (msaa8->4 proven); gmesh compute path proven (GPU done 1). Caveat: late-row views drifted (likely physical input on live desktop) — cam log now flags it; content review on clean rerun.
+
+## 2026-10-13z180 - Matrix readiness (code, real-GPU-verified)
+- FROM override (tail reruns), per-capture camera log (drift detection — caught owner-active windows twice), chunk-settle gate (fkeys precedent), drain gate (drawn-count stability lies on weak runners; tree chunks arrived 20-60s after settle passed). 62/62 rows x4 runs, zero drift on clean runs. Volumetric absdiff ~0.5 decoded: NOT a wiring bug (bridge traced complete) — sun sits ~85 deg off the fixed matrix view axis, correctly zeroed by distance falloff. Sun-facing proof rows queued next.
+## 2026-10-13z179 - closed (part 2 CI-green 38450330939, 12/12)

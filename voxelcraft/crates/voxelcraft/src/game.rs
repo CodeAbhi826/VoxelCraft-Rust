@@ -2029,6 +2029,11 @@ pub struct GameApp {
     e2e_matrix_wait: u8,
     /// E2E_MATRIX: every row's capture landed
     e2e_matrix_ok: bool,
+    /// E2E_MATRIX chunk-settle: previous frame's drawn-chunk count +
+    /// stability counter (fkeys precedent — row 0 must not capture
+    /// mid-streaming-burst or later rows see a different world)
+    e2e_matrix_last_chunks: u32,
+    e2e_matrix_stable: u8,
     /// 1A.6: E2E_ICONIC — the iconic-cast capture leg ran once
     e2e_iconic_done: bool,
     /// 1.11: E2E_TURNTABLE — solo-mob capture leg ran once
@@ -3638,9 +3643,14 @@ impl GameApp {
             e2e_visual_stage: 0,
             e2e_visual_ok: true,
             e2e_matrix_done: false,
-            e2e_matrix_stage: 0,
+            e2e_matrix_stage: std::env::var("E2E_MATRIX_FROM")
+                .ok()
+                .and_then(|v| v.parse::<usize>().ok())
+                .unwrap_or(0),
             e2e_matrix_wait: 0,
             e2e_matrix_ok: true,
+            e2e_matrix_last_chunks: 0,
+            e2e_matrix_stable: 0,
             e2e_iconic_done: false,
             e2e_iconic_stage: 0,
             e2e_iconic_settle: 0,
@@ -18880,7 +18890,21 @@ impl GameApp {
             let (pcx, pcz) = (px_f.div_euclid(16), pz_f.div_euclid(16));
             let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
             let matrix_ready = in_world && self.world.chunks.contains_key(&(pcx, pcz));
-            if matrix_ready {
+            // chunk-settle: all rows must see the SAME world. Drawn-count
+            // stability alone is NOT enough (far chunks arrive minutes
+            // later on weak runners while the count sits still) — gate
+            // on drained queues: nothing left to generate or mesh.
+            if in_world {
+                let drained =
+                    self.gen_inflight.is_empty() && self.mesh_inflight.is_empty();
+                if drained && self.stats.chunks == self.e2e_matrix_last_chunks {
+                    self.e2e_matrix_stable = self.e2e_matrix_stable.saturating_add(1);
+                } else {
+                    self.e2e_matrix_stable = 0;
+                }
+                self.e2e_matrix_last_chunks = self.stats.chunks;
+            }
+            if matrix_ready && self.e2e_matrix_stable >= 10 {
                 self.e2e_matrix();
             }
         }

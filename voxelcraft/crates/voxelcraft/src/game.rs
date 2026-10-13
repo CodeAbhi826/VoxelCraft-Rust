@@ -18895,8 +18895,7 @@ impl GameApp {
             // later on weak runners while the count sits still) — gate
             // on drained queues: nothing left to generate or mesh.
             if in_world {
-                let drained =
-                    self.gen_inflight.is_empty() && self.mesh_inflight.is_empty();
+                let drained = self.gen_inflight.is_empty() && self.mesh_inflight.is_empty();
                 if drained && self.stats.chunks == self.e2e_matrix_last_chunks {
                     self.e2e_matrix_stable = self.e2e_matrix_stable.saturating_add(1);
                 } else {

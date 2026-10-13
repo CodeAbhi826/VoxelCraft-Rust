@@ -7295,3 +7295,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-13z175 - Phases timestamp map-after-submit (code, real-GPU-verified next)
 - Real-GPU panic (Queue::submit: ts-stage still mapped) decoded: map_async ran before submit of the encoder holding the staging copy; lavapipe never arms timestamps so CI stayed green. Fix: pump encodes resolve+copy and returns issued; arm maps after submit. CI cannot exercise it (no timestamps on lavapipe) — verification is a local phases-leg run on the tour binary.
+
+## 2026-10-13z175 - closed (CI-green 38334567216, 12/12)

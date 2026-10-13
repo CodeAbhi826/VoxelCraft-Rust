@@ -240,7 +240,7 @@ PLAN-FINAL §5 toggle list, audited against code:
 | Grading presets | Present | Table + Shaders-screen row + unit test + in-game V1 (modes 1/2) |
 | Tiers fast / fancy / fabulous | Present | `graphics` setting (fabulous = soft shadows + full post) |
 | Volumetric sun shafts | Present, V1 open | Radial-blur god-rays in composite (pre-exposure), sun UV CPU-projected (behind-camera zeroes strength), `volumetric` setting default 0; projection + WGSL validated in-test |
-| SSAO | Present, multiply-vs-input open | Translation band MATCHED the CAMPOS prediction exactly (bytes live+correct); linear still white ⇒ mat-vec multiply or its ndc input. Slice: constant-multiply band (same prediction) + layout unit test |
+| SSAO | Present, analytic verdict open | inv_vp bytes proven correct in-shader (translation match) yet linear white ⇒ matrix path abandoned for reconstruction: CamU scalars + analytic_world drive linear + kernel (CPU-mirrored in-test). Next tour at 2.6: black ground = FIXED; white = depth-side bug |
 
 ## 5.1r Lighting status (2026-10-11, Part 5)
 

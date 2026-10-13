@@ -7279,3 +7279,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Translation band MATCHED prediction exactly (raw col3 = +10*eye -> (0,255,0)): inv_vp bytes live+correct in-shader. Slice: constant-multiply band (same (0,255,0) prediction; match = multiply fine/suspect ndc, else broken multiply -> analytic bypass) + SsaoU layout unit test (80 bytes, params at 16). Local check SKIPPED (machine busy, load ~2 on 2 cores); CI is the gate.
 
 ## 2026-10-13z172 - closed (CI-green 38329889429, 12/12)
+
+## 2026-10-13z173 - SSAO analytic bypass (code, CI-verified)
+- Matrix path abandoned for reconstruction (bytes proven right, linear still white): new CamU scalars (tanH/aspect/near/far + eye/fwd/right) + analytic_world drive linear + kernel; inv_vp kept for forensics. CPU mirror test (tour CAMPOS eye) asserts analytic == matrix == truth. E2E stage at 2.6: black ground = FIXED, white = depth-side. Local check skipped (load ~2.8/2); CI gates.

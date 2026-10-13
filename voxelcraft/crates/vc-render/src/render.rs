@@ -62,11 +62,27 @@ struct SsaoU {
     params: [f32; 4],
 }
 
+/// Analytic camera uniforms (Part 6): matrix-free world
+/// reconstruction for SSAO/SSR. `proj` = (tan(fov/2), aspect, near,
+/// far); `eye`/`fwd`/`right` = camera basis (up = right×fwd
+/// in-shader). Added when the inv_vp path proved undebuggable on
+/// lavapipe (bytes proven correct in-shader, yet the linear view
+/// stayed white) — plain scalars leave no room for layout doubt.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct CamU {
+    proj: [f32; 4],
+    eye: [f32; 4],
+    fwd: [f32; 4],
+    right: [f32; 4],
+}
+
 /// The SSAO pair every composite bind group carries (keeps `comp_bg`
 /// under clippy's argument limit — same precedent as `RenderFrame`).
 struct SsaoInputs<'a> {
     depth: &'a wgpu::TextureView,
     ssao_buf: &'a wgpu::Buffer,
+    cam_buf: &'a wgpu::Buffer,
 }
 
 /// FSR 1.0 EASU size constants: (src_w, src_h, dst_w, dst_h) — the
@@ -1190,6 +1206,30 @@ struct SsaoU { inv_vp: mat4x4<f32>, params: vec4<f32> };
 // glam_depth_convention_is_zero_to_one test, not assumed).
 @group(0) @binding(4) var depth_tex: texture_depth_2d;
 @group(0) @binding(5) var<uniform> SU: SsaoU;
+struct CamU { proj: vec4<f32>, eye: vec4<f32>, fwd: vec4<f32>, right: vec4<f32> };
+// proj = (tan(fov/2), aspect, near, far); eye/fwd/right = camera
+// basis (up = right×fwd). Matrix-free world reconstruction — the
+// inv_vp path is kept for forensics but no longer trusted.
+@group(0) @binding(6) var<uniform> CU: CamU;
+
+fn analytic_world(uv: vec2<f32>, d: f32) -> vec3<f32> {
+    let nx = uv.x * 2.0 - 1.0;
+    let ny = 1.0 - uv.y * 2.0;
+    let rd = normalize(vec3<f32>(
+        nx * CU.proj.x * CU.proj.y,
+        ny * CU.proj.x,
+        -1.0,
+    ));
+    // view-space z of NDC depth d, then the along-ray distance whose
+    // z-component lands there (both negative → t positive)
+    let vz = -CU.proj.z * CU.proj.w
+        / max(CU.proj.w - d * (CU.proj.w - CU.proj.z), 1e-6);
+    let t = vz / min(rd.z, -1e-6);
+    let v = rd * t;
+    // view -z IS the look direction: forward weight is -v.z
+    let up = cross(CU.right.xyz, CU.fwd.xyz);
+    return CU.eye.xyz + CU.right.xyz * v.x + up * v.y - CU.fwd.xyz * v.z;
+}
 
 fn linear_view_z(uv: vec2<f32>) -> f32 {
     let dim = textureDimensions(depth_tex);
@@ -1216,9 +1256,9 @@ fn sample_depth(uv: vec2<f32>) -> f32 {
 }
 
 fn view_pos(uv: vec2<f32>, d: f32) -> vec3<f32> {
-    let ndc = vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, d, 1.0);
-    let v = SU.inv_vp * ndc;
-    return v.xyz / max(v.w, 1e-6);
+    // matrix-free since the white-linear hunt (inv_vp kept for
+    // forensics only — see the (2.7, 3.0] band)
+    return analytic_world(uv, d);
 }
 
 struct VsOut {
@@ -1390,10 +1430,13 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         let dims_ok = select(0.0, 1.0, dim.x > 100u && dim.y > 100u);
         col = vec3<f32>(textureLoad(depth_tex, px, 0), dims_ok, 0.0);
     }
-    if (SU.params.x > 2.5) {
-        let lin = linear_view_z(uv);
+    if (SU.params.x > 2.5 && SU.params.x <= 2.7) {
+        // linear view depth, matrix-free: forward weight of the
+        // reconstructed offset (black = near, white = far/sky)
+        let w = analytic_world(uv, sample_depth(uv));
+        let lin = -dot(w - CU.eye.xyz, CU.fwd.xyz);
         col = vec3<f32>(clamp(
-            (lin - SU.params.z) / max(SU.params.w - SU.params.z, 1e-4),
+            (lin - CU.proj.z) / max(CU.proj.w - CU.proj.z, 1e-4),
             0.0,
             1.0,
         ));
@@ -1927,6 +1970,7 @@ pub struct Renderer {
     post_samp: wgpu::Sampler,
     post_buf: wgpu::Buffer,
     ssao_buf: wgpu::Buffer,
+    cam_buf: wgpu::Buffer,
     /// composite pipeline variant targeting the LINEAR pack handoff target
     /// (used instead of `post_pipe` when a shader-pack stage is active —
     /// Phase 11 §34: the pack sees linear color, its pass does the sRGB
@@ -3503,6 +3547,12 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let cam_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("cam-uniform"),
+            size: std::mem::size_of::<CamU>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let aux_h_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("post-aux-h"),
             size: std::mem::size_of::<AuxUniform>() as u64,
@@ -3604,6 +3654,8 @@ impl Renderer {
                     count: None,
                 },
                 uniform_entry(5, wgpu::ShaderStages::FRAGMENT),
+                // Part 6 analytic camera (matrix-free reconstruction)
+                uniform_entry(6, wgpu::ShaderStages::FRAGMENT),
             ],
         });
 
@@ -3746,6 +3798,7 @@ impl Renderer {
             SsaoInputs {
                 depth: &depth,
                 ssao_buf: &ssao_buf,
+                cam_buf: &cam_buf,
             },
         );
         // initial EASU size constants (rewritten on resize/upscale change)
@@ -3916,6 +3969,7 @@ impl Renderer {
             post_samp,
             post_buf,
             ssao_buf,
+            cam_buf,
             post_pipe_linear,
             aux_h_buf,
             aux_v_buf,
@@ -4086,6 +4140,14 @@ impl Renderer {
                         size: None,
                     }),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: ssao.cam_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
             ],
         })
     }
@@ -4163,6 +4225,7 @@ impl Renderer {
             SsaoInputs {
                 depth: &self.depth,
                 ssao_buf: &self.ssao_buf,
+                cam_buf: &self.cam_buf,
             },
         );
         // Phase 11: the pack bind group follows the (resized) pack target
@@ -4176,6 +4239,7 @@ impl Renderer {
             SsaoInputs {
                 depth: &self.depth,
                 ssao_buf: &self.ssao_buf,
+                cam_buf: &self.cam_buf,
             },
         );
         if let Some((pipe, _)) = self.pack_pipe.take() {
@@ -5325,6 +5389,7 @@ impl Renderer {
                     SsaoInputs {
                         depth: &self.depth,
                         ssao_buf: &self.ssao_buf,
+                        cam_buf: &self.cam_buf,
                     },
                 );
                 self.pack_pipe = Some((pipe, bg));
@@ -6257,6 +6322,33 @@ impl Renderer {
             bytemuck::bytes_of(&SsaoU {
                 inv_vp: inv_vp.to_cols_array_2d(),
                 params: [post.ssao.clamp(0.0, 3.0), 0.5, 0.1, sky.fog_end + 96.0],
+            }),
+        );
+        // Part 6 analytic camera: same frame, no matrix. Right falls
+        // back to +X if pitch ever goes fully vertical (lookAt shares
+        // the degeneracy, so the game never sustains it — this just
+        // keeps the shader NaN-free on the singular frame).
+        let right = {
+            let r = dir.cross(Vec3::Y);
+            if r.length_squared() < 1e-8 {
+                Vec3::X
+            } else {
+                r.normalize()
+            }
+        };
+        self.queue.write_buffer(
+            &self.cam_buf,
+            0,
+            bytemuck::bytes_of(&CamU {
+                proj: [
+                    (cam.fov * 0.5).tan(),
+                    aspect,
+                    0.1,
+                    sky.fog_end + 96.0,
+                ],
+                eye: [cam.eye.x, cam.eye.y, cam.eye.z, 0.0],
+                fwd: [dir.x, dir.y, dir.z, 0.0],
+                right: [right.x, right.y, right.z, 0.0],
             }),
         );
 
@@ -7433,6 +7525,52 @@ mod shader_tests {
         };
         let b: &[f32; 20] = bytemuck::cast_ref(&u);
         assert_eq!(&b[16..20], &[3.0, 0.5, 0.1, 200.0]);
+    }
+
+    #[test]
+    fn analytic_world_matches_matrix_inverse() {
+        // The shader's analytic_world, replicated on CPU: project
+        // known points, reconstruct from (uv, depth) with scalars
+        // only, and compare against the matrix inverse. Uses the real
+        // tour CAMPOS eye so the numbers are tour-representative.
+        use glam::{Vec2, Vec3, Vec4};
+        let eye = Vec3::new(-287.5, 66.621, -311.5);
+        let (yaw, pitch, fov) = (0.7f32, -0.15f32, 1.2f32);
+        let (aspect, near, far) = (1280.0f32 / 720.0, 0.1f32, 240.0f32);
+        let dir = Vec3::new(
+            yaw.sin() * pitch.cos(),
+            pitch.sin(),
+            -yaw.cos() * pitch.cos(),
+        );
+        let right = dir.cross(Vec3::Y).normalize();
+        let up = right.cross(dir);
+        let tan_h = (fov * 0.5).tan();
+        let vp = Mat4::perspective_rh(fov, aspect, near, far)
+            * Mat4::look_at_rh(eye, eye + dir, Vec3::Y);
+        let inv = vp.inverse();
+        let ws = [
+            // on-axis at t=8, on-axis at t=15, off-axis high at t≈29
+            Vec3::new(-282.4, 65.4, -317.5),
+            Vec3::new(-277.9, 64.4, -322.8),
+            Vec3::new(-268.4, 70.1, -334.2),
+        ];
+        for w in ws {
+            let c = vp * w.extend(1.0);
+            let n = c / c.w;
+            let uv = Vec2::new(n.x * 0.5 + 0.5, 0.5 - n.y * 0.5);
+            let d = n.z;
+            let nx = uv.x * 2.0 - 1.0;
+            let ny = 1.0 - uv.y * 2.0;
+            let rd = Vec3::new(nx * tan_h * aspect, ny * tan_h, -1.0).normalize();
+            let vz = -near * far / (far - d * (far - near));
+            let t = vz / rd.z.min(-1e-6);
+            let v = rd * t;
+            let got = eye + right * v.x + up * v.y - dir * v.z;
+            let m = inv * Vec4::new(n.x, n.y, n.z, 1.0);
+            let want = Vec3::new(m.x, m.y, m.z) / m.w;
+            assert!((got - want).length() < 1e-2, "analytic {got:?} vs matrix {want:?}");
+            assert!((got - w).length() < 1e-2, "analytic {got:?} vs true {w:?}");
+        }
     }
 
     /// All embedded WGSL must parse AND type-check with the exact naga

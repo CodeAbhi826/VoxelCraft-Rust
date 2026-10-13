@@ -17284,8 +17284,8 @@ impl GameApp {
     /// feature-shader modes 1/2 and capture; 4 captures mode 2; 5 stages
     /// the interpolate proof (black/white animation on the grass-top
     /// tile, timer mid-blend); 6 captures it (mid-gray = blend working);
-    /// 7 stages ssao=3.0 and captures the inv_vp translation proof
-    /// (eye*0.005, checked against the CAMPOS log line);
+    /// 7 stages ssao=2.6 and captures the matrix-free linear-depth
+    /// view (black ground = analytic reconstruction proven on GPU);
     /// 8 captures the kernel at ssao=1.0; then midnight + clear
     /// weather, captures the moon, verdicts, done.
     #[cfg(not(target_arch = "wasm32"))]
@@ -17370,10 +17370,10 @@ impl GameApp {
             }
             6 => {
                 if self.e2e_visual_capture("interp") {
-                    // SSAO linear-depth view (strength 3.0 = GPU test of
-                    // the reconstruction math — near ground must render
-                    // near-black); kernel next stage
-                    self.settings.ssao = 3.0;
+                    // SSAO linear-depth view, now matrix-free (2.6):
+                    // near ground must render near-black. White again
+                    // indicts the depth/uv side, not any matrix.
+                    self.settings.ssao = 2.6;
                     self.e2e_visual_stage = 7;
                 }
             }

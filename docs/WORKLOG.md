@@ -7292,3 +7292,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-13z173 - closed (CI-green 38332495215, 12/12; fmt fix verified)\n
 ## 2026-10-13z174 - SSAO analytic sign fix (code, CI-verified)
 - Uniform-black analytic tour decoded: stray minus (dot already equals -vz>0) clamped everything to 0. One-line fix. Kernel stands proven on real GPU (-4.7%). Local check skipped (load ~2.6/2); CI gates.
+
+## 2026-10-13z175 - Phases timestamp map-after-submit (code, real-GPU-verified next)
+- Real-GPU panic (Queue::submit: ts-stage still mapped) decoded: map_async ran before submit of the encoder holding the staging copy; lavapipe never arms timestamps so CI stayed green. Fix: pump encodes resolve+copy and returns issued; arm maps after submit. CI cannot exercise it (no timestamps on lavapipe) — verification is a local phases-leg run on the tour binary.

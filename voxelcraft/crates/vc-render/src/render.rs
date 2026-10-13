@@ -6086,23 +6086,22 @@ impl Renderer {
     /// Called with the frame encoder before submit; issues at most one
     /// resolve+copy while none is in flight, then harvests completions
     /// (channel pattern mirrors the GPU mesher's readback).
-    fn pump_timestamps(&mut self, encoder: &mut wgpu::CommandEncoder) {
+    /// 1.5: resolve scene-pass timestamps into the staging buffer.
+    /// Returns true when a fresh copy was encoded — the caller maps
+    /// the staging buffer AFTER submit (mapping first is a validation
+    /// error: the pending copy targets a mapped buffer; real-GPU-only
+    /// crash, lavapipe never arms timestamps so CI stayed green).
+    fn pump_timestamps(&mut self, encoder: &mut wgpu::CommandEncoder) -> bool {
+        let mut issued = false;
         if self.gpu_timing && !self.ts_inflight {
-            if let (Some(qs), Some(rs), Some(st)) = (
+            if let (Some(qs), Some(rs), Some(_st)) = (
                 self.ts_query.as_ref(),
                 self.ts_resolve.as_ref(),
                 self.ts_stage.as_ref(),
             ) {
                 encoder.resolve_query_set(qs, 0..2, rs, 0);
-                encoder.copy_buffer_to_buffer(rs, 0, st, 0, 16);
-                let (tx, rx) = std::sync::mpsc::channel::<()>();
-                st.slice(..).map_async(wgpu::MapMode::Read, move |res| {
-                    if res.is_ok() {
-                        let _ = tx.send(());
-                    }
-                });
-                self.ts_ready = Some(rx);
-                self.ts_inflight = true;
+                encoder.copy_buffer_to_buffer(rs, 0, _st, 0, 16);
+                issued = true;
             }
         }
         if self.ts_inflight {
@@ -6124,6 +6123,26 @@ impl Renderer {
                 }
                 self.ts_inflight = false;
             }
+        }
+        issued
+    }
+
+    /// 1.5: map the timestamp staging buffer for readback — called
+    /// AFTER queue.submit (see pump_timestamps). Sets inflight so the
+    /// next frame only polls/completes instead of re-issuing.
+    fn arm_timestamp_readback(&mut self) {
+        if !self.gpu_timing || self.ts_inflight {
+            return;
+        }
+        if let Some(st) = self.ts_stage.as_ref() {
+            let (tx, rx) = std::sync::mpsc::channel::<()>();
+            st.slice(..).map_async(wgpu::MapMode::Read, move |res| {
+                if res.is_ok() {
+                    let _ = tx.send(());
+                }
+            });
+            self.ts_ready = Some(rx);
+            self.ts_inflight = true;
         }
     }
 
@@ -7159,10 +7178,14 @@ impl Renderer {
             }
         }
 
-        // 1.5: resolve scene-pass timestamps before the frame submits
-        self.pump_timestamps(&mut encoder);
+        // 1.5: resolve scene-pass timestamps before the frame submits;
+        // the staging-buffer map happens after submit (pump doc)
+        let ts_issued = self.pump_timestamps(&mut encoder);
 
         self.queue.submit(Some(encoder.finish()));
+        if ts_issued {
+            self.arm_timestamp_readback();
+        }
         // Round A (F2): readback while the swapchain texture is still
         // valid (present() would invalidate it)
         self.capture_frame_if_requested(&frame);

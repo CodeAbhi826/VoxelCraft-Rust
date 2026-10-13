@@ -7300,3 +7300,10 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-13z176 - FKEYS threshold 200 (code, real-GPU-measured)
 - Release run: margin 244 (borders render, 2 thin lines, correct crosshair, marker-skin player OK); debug run -334 with only 6 chunks meshed (scene genuinely border-poor). 300 was calibrated on chunk-rich CI scenes; 200 passes both drivers 4x above documented drift (51). Local debug-build F3 capture verified borders/crosshair/skins visually.
+
+## 2026-10-13z174 - closed (CI-green 38334104924, 12/12)
+## 2026-10-13local2 - SSAO analytic PROVEN on real GPU (owner-authorized local run)
+- Sign-fixed linear at 2.6: top 180 / mid 51 / bot 35, and the capture shows a textbook depth ramp (black foreground, gray mid-terrain, pale trees, white sky). Reconstruction + kernel (earlier -4.7%) both proven on real hardware. Matrix-linear white stays unexplained, bypassed and documented.
+## 2026-10-13z176 - closed (CI-green 38335916641, 12/12)
+## 2026-10-13z177 - Brightness default 0.0 -> 0.5 (code, verified locally)
+- minecraft.wiki Options.txt pins gamma default 0.5; our 0.0 ("Moody") comment was false. Fixed default + v1-fallback. Day-scene lift measured +0.0% (expected: brightness only floors dark light, min_light 0.05 -> 0.175 — nights/caves are where it lands).

@@ -205,3 +205,4 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-13: z171 translation-proof closed green. Bytes-vs-multiply tour dispatched.
 - 2026-10-13: z172 constant-multiply band closed green. Multiply-vs-input tour dispatched.
 - 2026-10-13: z173 analytic closed green. Tour dispatched (builds z173 binary for local full sweep).\n- 2026-10-13: z175 timestamps closed green. Verification via local phases run (CI cannot reach path). Owner hardware report triaged; local debug build started; real-GPU gate now primary.
+- 2026-10-13: z174/z176 closed green; analytic SSAO proven on real GPU (linear ramp correct); brightness parity fix (0.5) verified day-neutral locally. Next: matrix leg, water leg, damage/HUD.

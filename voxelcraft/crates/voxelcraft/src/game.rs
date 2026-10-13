@@ -481,8 +481,8 @@ impl Default for Settings {
             cat_volumes: [1.0; 9],
             binds: KeyBinds::default(),
             fov: 70.0,
-            // Moody (vanilla default brightness 0.0)
-            brightness: 0.0,
+            // Brightness 0..1 (vanilla gamma default 0.5, wiki Options.txt)
+            brightness: 0.5,
             smooth_level: 2,
             clouds_level: 2,
             gui_scale: 0,
@@ -1052,7 +1052,7 @@ impl Settings {
         if !defv2 {
             st.shadow_quality = 0;
             st.aniso = 1;
-            st.brightness = 0.0;
+            st.brightness = 0.5;
             st.volume = 1.0;
             st.music_volume = 1.0;
         }

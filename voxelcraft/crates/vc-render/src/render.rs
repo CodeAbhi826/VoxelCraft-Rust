@@ -6340,12 +6340,7 @@ impl Renderer {
             &self.cam_buf,
             0,
             bytemuck::bytes_of(&CamU {
-                proj: [
-                    (cam.fov * 0.5).tan(),
-                    aspect,
-                    0.1,
-                    sky.fog_end + 96.0,
-                ],
+                proj: [(cam.fov * 0.5).tan(), aspect, 0.1, sky.fog_end + 96.0],
                 eye: [cam.eye.x, cam.eye.y, cam.eye.z, 0.0],
                 fwd: [dir.x, dir.y, dir.z, 0.0],
                 right: [right.x, right.y, right.z, 0.0],
@@ -7568,7 +7563,10 @@ mod shader_tests {
             let got = eye + right * v.x + up * v.y - dir * v.z;
             let m = inv * Vec4::new(n.x, n.y, n.z, 1.0);
             let want = Vec3::new(m.x, m.y, m.z) / m.w;
-            assert!((got - want).length() < 1e-2, "analytic {got:?} vs matrix {want:?}");
+            assert!(
+                (got - want).length() < 1e-2,
+                "analytic {got:?} vs matrix {want:?}"
+            );
             assert!((got - w).length() < 1e-2, "analytic {got:?} vs true {w:?}");
         }
     }

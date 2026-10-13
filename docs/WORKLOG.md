@@ -7310,3 +7310,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-13z178 - Matrix leg part 1 (code, real-GPU-verified)
 - E2E_MATRIX instrument: 31 rows (base, modes, vol/ssao ladders, FSR 0-4, custom 1.3, sharp, FXAA, tiers, clouds, particles, shadows, brightness, fov30) + exit gates + F2-dumper guard. Local real-GPU run: 31/31 captures, VERDICT OK. Grades scale (mode1 6.9, mode2 24.4 vs base). Two harness bugs caught locally (exit-gate miss, dumper steal) that CI could never see.
+
+## 2026-10-13z179 - Matrix part 2 + MSAA-8 degrade (code, real-GPU-verified)
+- Rows 31-61 (fov rest, mip/aniso, shadows, smooth, bioblend, times, weather, 8 moons, F3, msaa, occl, labpbr, gmesh) + camera line per capture (perturbation detection). Local: 62/62 captures, VERDICT OK. REAL FINDINGS: msaa8 panics on reference iGPU (no adapter-specific feature) -> degrade-to-max + effective log (msaa8->4 proven); gmesh compute path proven (GPU done 1). Caveat: late-row views drifted (likely physical input on live desktop) — cam log now flags it; content review on clean rerun.

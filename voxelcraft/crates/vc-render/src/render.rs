@@ -3842,12 +3842,22 @@ impl Renderer {
         let fmt_feats = |f| adapter.get_texture_format_features(f).flags;
         let color_ms = fmt_feats(wgpu::TextureFormat::Rgba8Unorm);
         let depth_ms = fmt_feats(wgpu::TextureFormat::Depth32Float);
+        // 8x additionally needs TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
+        // on the DEVICE (adapter flags alone lie: ANV reports X8 but
+        // create_texture(8x) is a validation panic without the feature —
+        // caught by the E2E matrix msaa8 row on real hardware; same
+        // degrade-to-max precedent as set_shadow_quality).
+        let adapter_specific = device
+            .features()
+            .contains(wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES);
         let msaa_max = if color_ms.contains(
             wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X4
                 | wgpu::TextureFormatFeatureFlags::MULTISAMPLE_RESOLVE,
         ) && depth_ms.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X4)
         {
-            if color_ms.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X8) {
+            if adapter_specific
+                && color_ms.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X8)
+            {
                 8
             } else {
                 4
@@ -4456,6 +4466,12 @@ impl Renderer {
     /// current quality settings (F3 / E2E stats)
     pub fn texture_quality(&self) -> (u8, u8) {
         (self.mip_levels, self.aniso)
+    }
+
+    /// effective MSAA sample count after degrade-to-device-max (an msaa8
+    /// request on a 4-max device reports 4 — the E2E matrix logs it)
+    pub fn msaa_samples(&self) -> u8 {
+        self.msaa
     }
 
     /// world bind group over a given atlas view + sampler (binding set:

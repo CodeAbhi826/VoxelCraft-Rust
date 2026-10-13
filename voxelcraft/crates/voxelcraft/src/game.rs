@@ -17444,9 +17444,14 @@ impl GameApp {
             let path = dir.join(format!("e2e_matrix_{name}_{}.png", chrono_like_stamp()));
             let wrote = std::fs::write(&path, &bytes).is_ok();
             vc_render::render::report_boot_log(&format!(
-                "e2e: matrix {name} {} ({} bytes)",
+                "e2e: matrix {name} {} ({} bytes) cam {:.1} {:.1} {:.1} yaw {:.2} pitch {:.2}",
                 if wrote { "saved" } else { "WRITE FAILED" },
-                bytes.len()
+                bytes.len(),
+                self.player.pos.x,
+                self.player.pos.y,
+                self.player.pos.z,
+                self.player.yaw,
+                self.player.pitch
             ));
             self.e2e_matrix_ok &= wrote && bytes.len() > 1000;
             true
@@ -17614,9 +17619,138 @@ impl GameApp {
                 s.fov = 30.0;
                 "fov30"
             }
-            // (rows 31+: fov rest, mip/aniso, shadings, smooth,
-            // bioblend, times, weather, moons, f3, msaa, occl,
-            // labpbr, gpu meshing — next slice)
+            31 => {
+                s.fov = 50.0;
+                "fov50"
+            }
+            32 => {
+                s.fov = 90.0;
+                "fov90"
+            }
+            33 => {
+                s.fov = 110.0;
+                "fov110"
+            }
+            34 => {
+                s.mipmap_levels = 0;
+                "mip0"
+            }
+            35 => {
+                s.mipmap_levels = 2;
+                "mip2"
+            }
+            36 => {
+                s.aniso = 4;
+                "aniso4"
+            }
+            37 => {
+                s.aniso = 8;
+                "aniso8"
+            }
+            38 => {
+                s.aniso = 16;
+                "aniso16"
+            }
+            39 => {
+                s.entity_shadows = false;
+                "entshad0"
+            }
+            40 => {
+                s.smooth_level = 0;
+                "smooth0"
+            }
+            41 => {
+                s.smooth_level = 1;
+                "smooth1"
+            }
+            42 => {
+                s.biome_blend = 0;
+                "bioblend0"
+            }
+            43 => {
+                s.biome_blend = 4;
+                "bioblend4"
+            }
+            44 => {
+                self.day_time = 0.0;
+                "tod00"
+            }
+            45 => {
+                self.day_time = 0.5;
+                "tod50"
+            }
+            46 => {
+                self.weather.force_rain(100000);
+                "rain"
+            }
+            47 => {
+                self.weather.force_thunder(100000);
+                "thunder"
+            }
+            48 => {
+                self.day_time = 0.75;
+                self.world_game_time = 18000;
+                "moon0"
+            }
+            49 => {
+                self.day_time = 0.75;
+                self.world_game_time = 42000;
+                "moon1"
+            }
+            50 => {
+                self.day_time = 0.75;
+                self.world_game_time = 66000;
+                "moon2"
+            }
+            51 => {
+                self.day_time = 0.75;
+                self.world_game_time = 90000;
+                "moon3"
+            }
+            52 => {
+                self.day_time = 0.75;
+                self.world_game_time = 114000;
+                "moon4"
+            }
+            53 => {
+                self.day_time = 0.75;
+                self.world_game_time = 138000;
+                "moon5"
+            }
+            54 => {
+                self.day_time = 0.75;
+                self.world_game_time = 162000;
+                "moon6"
+            }
+            55 => {
+                self.day_time = 0.75;
+                self.world_game_time = 186000;
+                "moon7"
+            }
+            56 => {
+                self.show_debug = true;
+                "f3on"
+            }
+            57 => {
+                s.msaa = 4;
+                "msaa4"
+            }
+            58 => {
+                s.msaa = 8;
+                "msaa8"
+            }
+            59 => {
+                s.occlusion = false;
+                "occl0"
+            }
+            60 => {
+                s.labpbr = true;
+                "labpbr1"
+            }
+            61 => {
+                s.gpu_meshing = true;
+                "gmesh1"
+            }
             _ => return None,
         };
         self.renderer.set_upscale(self.settings.upscale_factor());
@@ -17631,6 +17765,12 @@ impl GameApp {
                 (None, _) => "CPU (no compute adapter)".to_string(),
             };
             vc_render::render::report_boot_log(&format!("e2e: matrix gmesh {backend}"));
+        }
+        if name == "msaa8" {
+            vc_render::render::report_boot_log(&format!(
+                "e2e: matrix msaa8 effective={}",
+                self.renderer.msaa_samples()
+            ));
         }
         Some(name)
     }

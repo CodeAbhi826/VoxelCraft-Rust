@@ -7282,3 +7282,11 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-13z173 - SSAO analytic bypass (code, CI-verified)
 - Matrix path abandoned for reconstruction (bytes proven right, linear still white): new CamU scalars (tanH/aspect/near/far + eye/fwd/right) + analytic_world drive linear + kernel; inv_vp kept for forensics. CPU mirror test (tour CAMPOS eye) asserts analytic == matrix == truth. E2E stage at 2.6: black ground = FIXED, white = depth-side. Local check skipped (load ~2.8/2); CI gates.
+
+## 2026-10-13local1 - Real-GPU local run (CI-built z172 binary, owner-authorized)
+- Pipeline proven: downloaded `voxelcraft-linux-single-file` (run 38330496950) to ~/.local/share/opencode/local-bin (outside repo), ran E2E_VISUAL seed 95 on DISPLAY=:1 (real iGPU, Vulkan): EXIT=0, VERDICT OK, 8/8 captures, CAMPOS identical to CI (-287.500 66.621 -311.500, deterministic across drivers).
+- Multiply band: (0,255,0) EXACT on real GPU — matches lavapipe bit-for-bit. Driver exonerated for uniforms/matrix-multiply.
+- Kernel effect MEASURED (real GPU, same view, tint-masked untinted pixels, n=48243): mean luminance 138.6 (off) -> 132.1 (on), delta -4.7%. Subtle crease darkening exactly as designed; lavapipe ssao capture visually identical (dark-navy blue-tinted trees both). Kernel WORKS on both drivers with matrix view_pos.
+- Consequence: only the linear-debug normalization stays white on both drivers with all inputs proven — analytic bypass (z173) decides it; next z173-binary local run gives the verdict with zero driver doubt. No local build performed (CI builds, local runs).
+
+## 2026-10-13z173 - closed (CI-green 38332495215, 12/12; fmt fix verified)\n

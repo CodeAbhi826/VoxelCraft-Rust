@@ -7306,4 +7306,4 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Sign-fixed linear at 2.6: top 180 / mid 51 / bot 35, and the capture shows a textbook depth ramp (black foreground, gray mid-terrain, pale trees, white sky). Reconstruction + kernel (earlier -4.7%) both proven on real hardware. Matrix-linear white stays unexplained, bypassed and documented.
 ## 2026-10-13z176 - closed (CI-green 38335916641, 12/12)
 ## 2026-10-13z177 - Brightness default 0.0 -> 0.5 (code, verified locally)
-- minecraft.wiki Options.txt pins gamma default 0.5; our 0.0 ("Moody") comment was false. Fixed default + v1-fallback. Day-scene lift measured +0.0% (expected: brightness only floors dark light, min_light 0.05 -> 0.175 — nights/caves are where it lands).
+- Public wiki Options.txt pins gamma default 0.5; our 0.0 ("Moody") comment was false. Fixed default + v1-fallback. Day-scene lift measured +0.0% (expected: brightness only floors dark light, min_light 0.05 -> 0.175 — nights/caves are where it lands).

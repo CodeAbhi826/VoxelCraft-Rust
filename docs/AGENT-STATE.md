@@ -203,3 +203,4 @@ the tree; pushed history untouched pending explicit rewrite order).
 - 2026-10-12: z169 0.99-probe closed green. Discriminator tour dispatched.
 - 2026-10-12: z170 linear-reachability fix closed green. Validation tour dispatched (expect near-black ground = reconstruction proven on GPU).
 - 2026-10-13: z171 translation-proof closed green. Bytes-vs-multiply tour dispatched.
+- 2026-10-13: z172 constant-multiply band closed green. Multiply-vs-input tour dispatched.

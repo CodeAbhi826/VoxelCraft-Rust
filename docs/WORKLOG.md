@@ -7277,3 +7277,5 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-13z172 - SSAO multiply-vs-input band (code, CI-verified)
 - Translation band MATCHED prediction exactly (raw col3 = +10*eye -> (0,255,0)): inv_vp bytes live+correct in-shader. Slice: constant-multiply band (same (0,255,0) prediction; match = multiply fine/suspect ndc, else broken multiply -> analytic bypass) + SsaoU layout unit test (80 bytes, params at 16). Local check SKIPPED (machine busy, load ~2 on 2 cores); CI is the gate.
+
+## 2026-10-13z172 - closed (CI-green 38329889429, 12/12)

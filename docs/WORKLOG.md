@@ -7307,3 +7307,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 ## 2026-10-13z176 - closed (CI-green 38335916641, 12/12)
 ## 2026-10-13z177 - Brightness default 0.0 -> 0.5 (code, verified locally)
 - Public wiki Options.txt pins gamma default 0.5; our 0.0 ("Moody") comment was false. Fixed default + v1-fallback. Day-scene lift measured +0.0% (expected: brightness only floors dark light, min_light 0.05 -> 0.175 — nights/caves are where it lands).
+
+## 2026-10-13z178 - Matrix leg part 1 (code, real-GPU-verified)
+- E2E_MATRIX instrument: 31 rows (base, modes, vol/ssao ladders, FSR 0-4, custom 1.3, sharp, FXAA, tiers, clouds, particles, shadows, brightness, fov30) + exit gates + F2-dumper guard. Local real-GPU run: 31/31 captures, VERDICT OK. Grades scale (mode1 6.9, mode2 24.4 vs base). Two harness bugs caught locally (exit-gate miss, dumper steal) that CI could never see.

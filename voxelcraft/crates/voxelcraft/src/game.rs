@@ -2020,6 +2020,15 @@ pub struct GameApp {
     e2e_visual_stage: u8,
     /// Part 5 E2E_VISUAL: every stage's captures landed
     e2e_visual_ok: bool,
+    /// E2E_MATRIX — full option-matrix capture leg ran once (≈60 rows:
+    /// every graphics value one-by-one on the real GPU)
+    e2e_matrix_done: bool,
+    /// E2E_MATRIX row index into the matrix table
+    e2e_matrix_stage: usize,
+    /// E2E_MATRIX settle frames remaining before the row's capture
+    e2e_matrix_wait: u8,
+    /// E2E_MATRIX: every row's capture landed
+    e2e_matrix_ok: bool,
     /// 1A.6: E2E_ICONIC — the iconic-cast capture leg ran once
     e2e_iconic_done: bool,
     /// 1.11: E2E_TURNTABLE — solo-mob capture leg ran once
@@ -3628,6 +3637,10 @@ impl GameApp {
             e2e_visual_done: false,
             e2e_visual_stage: 0,
             e2e_visual_ok: true,
+            e2e_matrix_done: false,
+            e2e_matrix_stage: 0,
+            e2e_matrix_wait: 0,
+            e2e_matrix_ok: true,
             e2e_iconic_done: false,
             e2e_iconic_stage: 0,
             e2e_iconic_settle: 0,
@@ -17418,8 +17431,241 @@ impl GameApp {
         }
     }
 
-    /// 1A.6: E2E_ICONIC stage build — a flat grass stage around the
-    /// player's chunk center, the iconic mob roster in a line (MobKind
+    /// E2E_MATRIX — full option-matrix capture leg (owner-ordered
+    /// real-GPU instrument: every graphics value one-by-one, fixed
+    /// base, fixed seed/camera). Rows are single-axis deltas from the
+    /// base below; each row settles 4 frames then captures. Local-only
+    /// verification (no CI workflow leg — CI still compiles it).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_matrix_capture(&mut self, name: &str) -> bool {
+        if let Some(bytes) = self.renderer.take_screenshot_png() {
+            let dir = std::path::Path::new("screenshots");
+            let _ = std::fs::create_dir_all(dir);
+            let path = dir.join(format!("e2e_matrix_{name}_{}.png", chrono_like_stamp()));
+            let wrote = std::fs::write(&path, &bytes).is_ok();
+            vc_render::render::report_boot_log(&format!(
+                "e2e: matrix {name} {} ({} bytes)",
+                if wrote { "saved" } else { "WRITE FAILED" },
+                bytes.len()
+            ));
+            self.e2e_matrix_ok &= wrote && bytes.len() > 1000;
+            true
+        } else {
+            self.renderer.screenshot_request = true;
+            false
+        }
+    }
+
+    /// E2E_MATRIX row table: reset to base, apply one delta, return the
+    /// capture name (None = table exhausted). Structural setters run in
+    /// e2e_matrix (all guarded/idempotent — same calls as the options
+    /// screen, plus after_settings_change for the bridged rest).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_matrix_apply(&mut self, i: usize) -> Option<&'static str> {
+        let s = &mut self.settings;
+        s.shader_mode = 0;
+        s.volumetric = 0.0;
+        s.ssao = 0.0;
+        s.upscale = 0;
+        s.custom_scale = 1.3;
+        s.sharpness = 60;
+        s.aa_mode = 0;
+        s.graphics = 1;
+        s.clouds_level = 2;
+        s.particles = 0;
+        s.shadow_quality = 0;
+        s.brightness = 0.5;
+        s.fov = 70.0;
+        s.mipmap_levels = 4;
+        s.aniso = 1;
+        s.entity_shadows = true;
+        s.smooth_level = 2;
+        s.biome_blend = 2;
+        s.msaa = 0;
+        s.occlusion = true;
+        s.labpbr = false;
+        s.gpu_meshing = false;
+        self.day_time = 0.30;
+        self.show_debug = false;
+        self.world_game_time = 6000;
+        self.weather.force_clear(100000);
+        let name = match i {
+            0 => "base",
+            1 => {
+                s.shader_mode = 1;
+                "mode1"
+            }
+            2 => {
+                s.shader_mode = 2;
+                "mode2"
+            }
+            3 => {
+                s.volumetric = 0.3;
+                "vol03"
+            }
+            4 => {
+                s.volumetric = 0.65;
+                "vol065"
+            }
+            5 => {
+                s.volumetric = 1.0;
+                "vol10"
+            }
+            6 => {
+                s.ssao = 0.5;
+                "ssao05"
+            }
+            7 => {
+                s.ssao = 1.0;
+                "ssao10"
+            }
+            8 => {
+                s.upscale = 1;
+                "up1"
+            }
+            9 => {
+                s.upscale = 2;
+                "up2"
+            }
+            10 => {
+                s.upscale = 3;
+                "up3"
+            }
+            11 => {
+                s.upscale = 4;
+                "up4"
+            }
+            12 => {
+                s.upscale = 5;
+                "up5a"
+            }
+            13 => {
+                s.upscale = 5;
+                s.custom_scale = 2.0;
+                "up5b"
+            }
+            14 => {
+                s.upscale = 2;
+                s.sharpness = 0;
+                "up2sharp0"
+            }
+            15 => {
+                s.upscale = 2;
+                s.sharpness = 100;
+                "up2sharp100"
+            }
+            16 => {
+                s.aa_mode = 1;
+                "aa1"
+            }
+            17 => {
+                s.graphics = 0;
+                "gfx0"
+            }
+            18 => {
+                s.graphics = 2;
+                "gfx2"
+            }
+            19 => {
+                s.clouds_level = 0;
+                "cloud0"
+            }
+            20 => {
+                s.clouds_level = 1;
+                "cloud1"
+            }
+            21 => {
+                s.particles = 1;
+                "part1"
+            }
+            22 => {
+                s.particles = 2;
+                "part2"
+            }
+            23 => {
+                s.shadow_quality = 1;
+                "shad1"
+            }
+            24 => {
+                s.shadow_quality = 2;
+                "shad2"
+            }
+            25 => {
+                s.shadow_quality = 3;
+                "shad3"
+            }
+            26 => {
+                s.brightness = 0.0;
+                "bri0"
+            }
+            27 => {
+                s.brightness = 0.25;
+                "bri025"
+            }
+            28 => {
+                s.brightness = 0.75;
+                "bri075"
+            }
+            29 => {
+                s.brightness = 1.0;
+                "bri1"
+            }
+            30 => {
+                s.fov = 30.0;
+                "fov30"
+            }
+            // (rows 31+: fov rest, mip/aniso, shadings, smooth,
+            // bioblend, times, weather, moons, f3, msaa, occl,
+            // labpbr, gpu meshing — next slice)
+            _ => return None,
+        };
+        self.renderer.set_upscale(self.settings.upscale_factor());
+        self.renderer.set_aa_mode(self.settings.aa_mode);
+        self.renderer
+            .set_shadow_quality(self.settings.shadow_map_px());
+        self.after_settings_change();
+        if name == "gmesh1" {
+            let backend = match (&self.renderer.gpu_mesh, self.settings.gpu_meshing) {
+                (Some(m), true) => format!("GPU (done {})", m.jobs_done),
+                (Some(_), false) => "CPU (setting off)".to_string(),
+                (None, _) => "CPU (no compute adapter)".to_string(),
+            };
+            vc_render::render::report_boot_log(&format!("e2e: matrix gmesh {backend}"));
+        }
+        Some(name)
+    }
+
+    /// E2E_MATRIX driver: apply row every tick (idempotent), settle 4
+    /// frames, capture, advance; verdict + direct exit like FKEYS.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_matrix(&mut self) {
+        let Some(name) = self.e2e_matrix_apply(self.e2e_matrix_stage) else {
+            let ok = self.e2e_matrix_ok;
+            vc_render::render::report_boot_log(&format!(
+                "e2e: matrix {} rows — MATRIX VERDICT {}",
+                self.e2e_matrix_stage,
+                if ok { "OK" } else { "FAILED" }
+            ));
+            self.e2e_matrix_done = true;
+            self.dbg_exit_summary();
+            std::process::exit(if ok { 0 } else { 1 });
+        };
+        if self.e2e_matrix_wait > 0 {
+            self.e2e_matrix_wait -= 1;
+            // arm once (on stage entry): re-arming every tick spams
+            // readbacks and starves present on some compositors
+            if self.e2e_matrix_wait == 3 {
+                self.renderer.screenshot_request = true;
+            }
+            return;
+        }
+        if self.e2e_matrix_capture(name) {
+            self.e2e_matrix_stage += 1;
+            self.e2e_matrix_wait = 4;
+        }
+    }
+
+    /// 1A.6: E2E_ICONIC stage build — a flat grass stage around the    /// player's chunk center, the iconic mob roster in a line (MobKind
     /// rows only: the Wither boss and the Ender Dragon are separate boss
     /// systems, and the dragon renders as a camera-facing billboard
     /// sprite, so four orbit angles would be degenerate for it anyway),
@@ -18481,6 +18727,23 @@ impl GameApp {
                 self.e2e_visual();
             }
         }
+        // E2E_MATRIX — full option-matrix capture leg (owner-ordered
+        // real-GPU instrument). Same world-entry + chunk-ready guard as
+        // the visual leg; the driver applies one row per stage with a
+        // 4-frame settle, exiting directly with the verdict like FKEYS.
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_MATRIX").is_ok() && !self.e2e_matrix_done {
+            let (px_f, pz_f) = (
+                self.player.pos.x.floor() as i32,
+                self.player.pos.z.floor() as i32,
+            );
+            let (pcx, pcz) = (px_f.div_euclid(16), pz_f.div_euclid(16));
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            let matrix_ready = in_world && self.world.chunks.contains_key(&(pcx, pcz));
+            if matrix_ready {
+                self.e2e_matrix();
+            }
+        }
         // Round A: E2E_FKEYS — the function-key contract leg. Stage 0
         // waits for world entry (the captures must show the WORLD, not
         // the intro), then runs the keys (leaves camera BEHIND + capture
@@ -19093,12 +19356,18 @@ impl GameApp {
                 let visual_pending = std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done;
                 #[cfg(target_arch = "wasm32")]
                 let visual_pending = false;
+                // E2E_MATRIX owns the exit while its ~60-row ladder runs
+                #[cfg(not(target_arch = "wasm32"))]
+                let matrix_pending = std::env::var("E2E_MATRIX").is_ok() && !self.e2e_matrix_done;
+                #[cfg(target_arch = "wasm32")]
+                let matrix_pending = false;
                 if !fkeys_pending
                     && !iconic_pending
                     && !phases_pending
                     && !turntable_pending
                     && !survey_pending
                     && !visual_pending
+                    && !matrix_pending
                 {
                     vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                     self.dbg_exit_summary();
@@ -19169,6 +19438,11 @@ impl GameApp {
             let visual_pending = std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done;
             #[cfg(target_arch = "wasm32")]
             let visual_pending = false;
+            // E2E_MATRIX owns the exit while its ~60-row ladder runs
+            #[cfg(not(target_arch = "wasm32"))]
+            let matrix_pending = std::env::var("E2E_MATRIX").is_ok() && !self.e2e_matrix_done;
+            #[cfg(target_arch = "wasm32")]
+            let matrix_pending = false;
             if t_in > 2.2
                 && !fkeys_pending
                 && !iconic_pending
@@ -19176,6 +19450,7 @@ impl GameApp {
                 && !turntable_pending
                 && !survey_pending
                 && !visual_pending
+                && !matrix_pending
             {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();
@@ -28626,6 +28901,7 @@ impl GameApp {
         #[cfg(not(target_arch = "wasm32"))]
         if self.renderer.screenshot_png.is_some()
             && !(std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done)
+            && !(std::env::var("E2E_MATRIX").is_ok() && !self.e2e_matrix_done)
             && (self.e2e_fkeys_stage == 0 || self.e2e_fkeys_stage > 3)
             // 1A.6: while the E2E_ICONIC ladder is armed the PNG is its
             // capture — the F2 dumper would otherwise consume it in the

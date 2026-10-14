@@ -7345,3 +7345,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-15z187 - Part 6 slice 1: held-item display transforms (code, tested)
 - push_held_item now applies the firstperson_righthand DisplayTr (scale/rotate/translate about the anchor, pre-swing) resolved from installed pack models; identity without pack data (builtin ships none) so the live look is unchanged. New DisplayTr::apply + math test (vc-pack, green); merge path already tested. Plain-smoke boot green locally; CI gates.
+
+## 2026-10-15z188 - Part 6 slice 2: atlas-grid consts (code, tested)
+- §6.2 hi-res groundwork, behavior-neutral: ATLAS_COLS + tile_xy() helper; put() and the skin-test sampler flow through TILE_PX/ATLAS_COLS/ATLAS_SIZE (fixes two hardcoded-16/512 strides). New grid-consistency test green; full textures suite (48) green; clippy clean. Growing tiles later = consts + art/mip follow-ups.

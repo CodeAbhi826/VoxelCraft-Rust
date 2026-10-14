@@ -1,10 +1,10 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
-## Current (2026-10-14, branch test/full-sweep-2026-09-25 — rendering-issues stage)
-- Rendering stage (owner-ordered, real-GPU-gated): SSAO proven (-4.7%), timestamp fix, FKEYS-200, brightness-0.5, matrix 62+3 rows, MSAA-8 degrade, volumetric sun-proof — all CI-green. WATER leg CLOSED on real GPU (z183): blue pool, flow 0.37, VERDICT OK; gray-water alarm decoded as rim occlusion (engine exonerated).
-- HEAD: c933c3d water leg + f0e058b mesh gate (z182/z183) pushed; CI watch armed.
-- NEXT: HUD silent-paths fix staged in tree (drink-heal/regen/instant dirty+feedback) → commit on CI green → damage/death-feel review → rendering close-out → Part 6 (§6.1 display forms, §6.2 hi-res tiles).
-- (Note: older sections below describe the pre-rendering-stage tree; the branch has moved on. Full state refresh queued with the rendering close-out.)
+## Current (2026-10-15, branch test/full-sweep-2026-09-25 — Part 6)
+- Rendering stage CLOSED (z186 review): water blue + flow + no holes; damage audit clean; matrix 65/65 technically reviewed (zero drift, ladders behave); owner questions queued silently (POM/PBR, flicker/z-fight specifics, UI/HUD specifics, frametime scope, cinematic discovery, night brightness, matrix content V1 at full-plan end).
+- Shipped since: z184 clippy fix, z185 HUD silent-paths fix (both CI-green), z187 Part 6 slice 1 (held-item firstperson display transform, CI-green).
+- Now: Part 6 slice 2 (§6.2 hi-res tiles: atlas-grid const groundwork, behavior-neutral) in tree, verifying.
+- (Note: older sections below describe the pre-rendering-stage tree; the branch has moved on.)
 
 ## Current (pre-rendering-stage, kept for history)
 - Part: **2 CLOSED** (packet z60, 2026-10-09) — all slices green; only owner-blocked items remain.

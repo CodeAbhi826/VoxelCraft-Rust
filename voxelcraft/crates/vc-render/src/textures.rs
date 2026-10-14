@@ -40,18 +40,32 @@ mod weather_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
+/// Part 6 §6.2 (hi-res tiles, slice 1): the atlas grid width in tiles.
+/// All tile↔pixel math flows through these three consts (ATLAS_SIZE ==
+/// ATLAS_COLS * TILE_PX, pinned by test); growing tiles later means
+/// changing the consts (+ art/mip follow-ups), not re-deriving strides.
+pub const ATLAS_COLS: usize = 32;
+
+/// tile index → grid (column, row)
+#[inline]
+pub fn tile_xy(t: u16) -> (i32, i32) {
+    (
+        (t % ATLAS_COLS as u16) as i32,
+        (t / ATLAS_COLS as u16) as i32,
+    )
+}
 
 #[inline]
 // 8 scalar params — the whole atlas-painter vocabulary (300+ call
 // sites) is written against this shape; silenced deliberately.
 #[allow(clippy::too_many_arguments)]
 fn put(a: &mut [u8], t: u16, x: i32, y: i32, r: i32, g: i32, b: i32, al: i32) {
-    let tx = (t % 32) as i32;
-    let ty = (t / 32) as i32;
-    if !(0..=15).contains(&x) || !(0..=15).contains(&y) {
+    let (tx, ty) = tile_xy(t);
+    if !(0..TILE_PX as i32).contains(&x) || !(0..TILE_PX as i32).contains(&y) {
         return;
     }
-    let idx = ((ty * 16 + y) as usize * ATLAS_SIZE + (tx * 16 + x) as usize) * 4;
+    let idx =
+        ((ty * TILE_PX as i32 + y) as usize * ATLAS_SIZE + (tx * TILE_PX as i32 + x) as usize) * 4;
     a[idx] = r.clamp(0, 255) as u8;
     a[idx + 1] = g.clamp(0, 255) as u8;
     a[idx + 2] = b.clamp(0, 255) as u8;
@@ -5726,6 +5740,23 @@ pub fn tick_animations(anims: &mut [AnimatedTile], dt: f32) -> Vec<(u16, u16)> {
 mod pack_tex_tests {
     use super::*;
 
+    /// Part 6 §6.2 (hi-res tiles, slice 1): the atlas grid consts agree
+    /// (size == cols × tile) and tile_xy + put land row-1 tiles at the
+    /// right byte offset — the groundwork later slices grow.
+    #[test]
+    fn atlas_grid_consts_agree() {
+        assert_eq!(ATLAS_SIZE, ATLAS_COLS * TILE_PX);
+        assert_eq!(tile_xy(10), (10, 0));
+        assert_eq!(tile_xy(33), (1, 1));
+        let mut a = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
+        put(&mut a, 33, 0, 0, 200, 100, 50, 255);
+        let i = ((1 * TILE_PX) * ATLAS_SIZE + (1 * TILE_PX)) * 4;
+        assert_eq!([a[i], a[i + 1], a[i + 2], a[i + 3]], [200, 100, 50, 255]);
+        // out-of-tile writes are dropped, never panicking the painter
+        put(&mut a, 33, 16, 0, 1, 1, 1, 255);
+        assert_eq!([a[i], a[i + 1], a[i + 2], a[i + 3]], [200, 100, 50, 255]);
+    }
+
     /// 2026-09-20: the labPBR material scan — a NAPP-style pack
     /// providing `_n`/`_s` companions for an overridable tile counts
     /// once; corrupt or absent companions don't; vanilla-only packs
@@ -6597,9 +6628,10 @@ mod v113_art_tests {
         let mut a = vec![0u8; 512 * 512 * 4];
         player_skin_art(&mut a, TILE_MOB_PLAYER);
         let px = |x: i32, y: i32| -> [u8; 4] {
-            let tx = (TILE_MOB_PLAYER % 32) as i32;
-            let ty = (TILE_MOB_PLAYER / 32) as i32;
-            let i = ((ty * 16 + y) as usize * 512 + (tx * 16 + x) as usize) * 4;
+            let (tx, ty) = tile_xy(TILE_MOB_PLAYER);
+            let i = ((ty * TILE_PX as i32 + y) as usize * ATLAS_SIZE
+                + (tx * TILE_PX as i32 + x) as usize)
+                * 4;
             [a[i], a[i + 1], a[i + 2], a[i + 3]]
         };
         // torso center rows are the cyan tunic, not skin

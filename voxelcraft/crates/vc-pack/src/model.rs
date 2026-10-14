@@ -110,6 +110,44 @@ pub struct DisplayTr {
     pub scale: [f32; 3],
 }
 
+impl DisplayTr {
+    /// the identity transform (absent view or absent model)
+    pub fn identity() -> Self {
+        Self {
+            rotation: [0.0, 0.0, 0.0],
+            translation: [0.0, 0.0, 0.0],
+            scale: [1.0, 1.0, 1.0],
+        }
+    }
+
+    /// apply to a point about an anchor: scale, then rotate, then
+    /// translate. Rotation is extrinsic XYZ (v' = Rz·Ry·Rx·v, degrees) —
+    /// a disclosed clean-room approximation of the reference order;
+    /// single-axis rotations (the common pack case) are order-exact.
+    pub fn apply(&self, p: [f32; 3], anchor: [f32; 3]) -> [f32; 3] {
+        let mut v = [
+            (p[0] - anchor[0]) * self.scale[0],
+            (p[1] - anchor[1]) * self.scale[1],
+            (p[2] - anchor[2]) * self.scale[2],
+        ];
+        for (i, deg) in self.rotation.iter().enumerate() {
+            let (s, c) = deg.to_radians().sin_cos();
+            let (x, y, z) = (v[0], v[1], v[2]);
+            // intrinsic XYZ: rotate about X, then the new Y, then new Z
+            match i {
+                0 => v = [x, c * y - s * z, s * y + c * z],
+                1 => v = [c * x + s * z, y, -s * x + c * z],
+                _ => v = [c * x - s * y, s * x + c * y, z],
+            }
+        }
+        [
+            v[0] + anchor[0] + self.translation[0],
+            v[1] + anchor[1] + self.translation[1],
+            v[2] + anchor[2] + self.translation[2],
+        ]
+    }
+}
+
 fn display_identity_scale() -> [f32; 3] {
     [1.0, 1.0, 1.0]
 }
@@ -939,6 +977,39 @@ mod tests {
         ]);
         let m2 = resolve_model("voxelcraft:block/oak_slab", &p2).unwrap();
         assert!(m2.display.is_empty());
+    }
+
+    #[test]
+    fn display_apply_math() {
+        // identity is a fixed point
+        let id = DisplayTr::identity();
+        assert_eq!(id.apply([1.0, 2.0, 3.0], [4.0, 5.0, 6.0]), [1.0, 2.0, 3.0]);
+        // scale about the anchor + translation, no rotation
+        let st = DisplayTr {
+            rotation: [0.0, 0.0, 0.0],
+            translation: [1.0, 2.0, 3.0],
+            scale: [2.0, 2.0, 2.0],
+        };
+        assert_eq!(st.apply([1.0, 0.0, 0.0], [0.0, 0.0, 0.0]), [3.0, 2.0, 3.0]);
+        // single-axis 90° rotations about the anchor (order-exact)
+        let ry = DisplayTr {
+            rotation: [0.0, 90.0, 0.0],
+            translation: [0.0, 0.0, 0.0],
+            scale: [1.0, 1.0, 1.0],
+        };
+        let r = ry.apply([1.0, 0.0, 0.0], [0.0, 0.0, 0.0]);
+        assert!(
+            (r[0] - 0.0).abs() < 1e-6 && (r[1] - 0.0).abs() < 1e-6 && (r[2] + 1.0).abs() < 1e-6
+        );
+        let rx = DisplayTr {
+            rotation: [90.0, 0.0, 0.0],
+            translation: [0.0, 0.0, 0.0],
+            scale: [1.0, 1.0, 1.0],
+        };
+        let r = rx.apply([5.0, 6.0, 5.0], [5.0, 5.0, 5.0]);
+        assert!(
+            (r[0] - 5.0).abs() < 1e-6 && (r[1] - 5.0).abs() < 1e-6 && (r[2] - 6.0).abs() < 1e-6
+        );
     }
 
     #[test]

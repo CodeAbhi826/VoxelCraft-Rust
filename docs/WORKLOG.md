@@ -7335,3 +7335,13 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-14z185 - HUD silent-path refresh (code, CI-run)
 - Drink-heal, regen-tick-heal, and /effect instant paths now set ui.dirty (bars were stale); instant-harm also gets death cause + hurt sound (was a silent HP drain). Recon found all other damage paths already refresh. Verdict via CI gates.
+
+## 2026-10-14z186 - Rendering stage close-out (review, real-GPU evidence)
+- Water CLOSED (z183): blue pool in-frame, flow meandiff 0.37, underwater OK, no holes in test pool, spawn dry. Gray-water alarm decoded as rim occlusion (leg-side fix); engine tint/mesh/upload exonerated with instruments (all reverted).
+- Damage/HUD: silent heal/harm paths fixed (z185, CI-green); full audit of all 16 player-damage sites: every path has hurt sound + ui.dirty; death causes everywhere except pearl-edge (teleport sound + dirty present) and /kill-debug (instant, disclosed). check_death clean (totem honored).
+- Matrix technical review (local run11, 65/65 VERDICT OK, zero camera drift): ssao ladder darkens (119.7/113.4), sunvol brightens (96.8->101), moons/tod/fov behave, no blanks (sd 38+ everywhere). Honest dispositions: bri rows day-invariant by design (floor-only mechanic — night effect UNTESTED); near-identical rows (aniso/mip/bioblend/smooth/labpbr/gmesh/parts) are no-crash/no-corruption evidence only, fine effects ride dedicated tests; msaa4 +4.8 watch-item (likely cloud drift between rows, not a verdict).
+- Queued silently for owner (no unprompted asks): POM/PBR pack status, flicker/z-fight specifics, UI/HUD specifics, frametime-profiling scope, cinematic/Vanilla+ discovery vs pack-override, night-brightness verification, matrix content V1 (owner eyes at full-plan end per standing directive).
+- E2E_WATER stays local-only like E2E_MATRIX (needs real GPU; CI compiles it via fmt/test/clippy).
+
+## 2026-10-15z187 - Part 6 slice 1: held-item display transforms (code, tested)
+- push_held_item now applies the firstperson_righthand DisplayTr (scale/rotate/translate about the anchor, pre-swing) resolved from installed pack models; identity without pack data (builtin ships none) so the live look is unchanged. New DisplayTr::apply + math test (vc-pack, green); merge path already tested. Plain-smoke boot green locally; CI gates.

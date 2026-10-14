@@ -11550,6 +11550,25 @@ impl GameApp {
     /// world exactly like vanilla's separate hand pass — walls closer
     /// than the hand never clip it.
     #[allow(clippy::too_many_arguments)]
+    /// Part 6 §6.1: the held block's first-person display transform.
+    /// Identity unless an installed pack model defines
+    /// `firstperson_righthand` for the block's default state (builtin
+    /// ships none — third-party packs may; the icon baker stays
+    /// block-def driven, this covers the view model only).
+    fn held_display_tr(block: u16) -> vc_pack::model::DisplayTr {
+        let state = default_state(block);
+        if let Some(set) = vc_pack::model::models() {
+            if let Some(choice) = set.by_state.get(&state).and_then(|v| v.first()) {
+                if let Some(alt) = choice.alts.first() {
+                    if let Some(tr) = alt.model.display.get("firstperson_righthand") {
+                        return tr.clone();
+                    }
+                }
+            }
+        }
+        vc_pack::model::DisplayTr::identity()
+    }
+
     fn push_held_item(&mut self, right: [f32; 3], up: [f32; 3], dir: [f32; 3], eye: [f32; 3]) {
         use vc_particles::particles::ParticleVertex;
         let held = self.player.inv.slots[self.player.selected];
@@ -11641,9 +11660,14 @@ impl GameApp {
             };
         if !held.is_empty() {
             // the held block: 0.30 cube centered on the anchor, per-face
-            // tiles from the block's default state
+            // tiles from the block's default state. Part 6 §6.1: the
+            // pack display transform (firstperson_righthand) shapes the
+            // cube first (identity without a pack model); the swing/bob
+            // view animation below then moves the whole assembly.
+            let dtr = Self::held_display_tr(held.block);
+            let anchor = [ax, ay, az];
             let hs = 0.15_f32;
-            let corners_local: [[f32; 3]; 8] = [
+            let mut corners_local: [[f32; 3]; 8] = [
                 [ax - hs, ay - hs, az - hs],
                 [ax + hs, ay - hs, az - hs],
                 [ax - hs, ay + hs, az - hs],
@@ -11653,6 +11677,9 @@ impl GameApp {
                 [ax - hs, ay + hs, az + hs],
                 [ax + hs, ay + hs, az + hs],
             ];
+            for c in corners_local.iter_mut() {
+                *c = dtr.apply(*c, anchor);
+            }
             let w: Vec<[f32; 3]> = corners_local
                 .iter()
                 .map(|l| to_world(l[0], l[1], l[2]))

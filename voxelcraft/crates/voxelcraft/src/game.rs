@@ -13028,10 +13028,14 @@ impl GameApp {
                             // HP — the potion-magnitude shape; damage rides
                             // the armor path, disclosed)
                             EffectKind::InstantHealth => {
-                                self.player.heal(2.0_f32.powi(amp as i32 + 1))
+                                self.player.heal(2.0_f32.powi(amp as i32 + 1));
+                                self.ui.dirty = true;
                             }
                             EffectKind::InstantDamage => {
                                 self.player.damage(2.0_f32.powi(amp as i32 + 1));
+                                self.death_cause = "DIED FROM MAGIC".into();
+                                self.play_event("entity.player.hurt", None, 1.0);
+                                self.ui.dirty = true;
                             }
                             _ => self.player.effects.apply(
                                 kind,
@@ -22854,6 +22858,8 @@ impl GameApp {
                         }
                         if eheal > 0.0 {
                             self.player.heal(eheal);
+                            // regen-tick bars refresh (stale-bars report)
+                            self.ui.dirty = true;
                         }
                     }
 
@@ -25467,6 +25473,9 @@ impl GameApp {
                                     self.death_cause = "DIED FROM MAGIC".into();
                                     self.play_event("entity.player.hurt", None, 1.0);
                                 }
+                                // bars refresh on both heal and harm (the
+                                // stale-bars report: healing never set dirty)
+                                self.ui.dirty = true;
                             }
                             vc_render::render::report_boot_log(&format!(
                                 "e2e: drank {} (+{h} hp → {})",

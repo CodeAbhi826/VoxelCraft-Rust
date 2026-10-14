@@ -1,6 +1,12 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
-## Current
+## Current (2026-10-14, branch test/full-sweep-2026-09-25 — rendering-issues stage)
+- Rendering stage (owner-ordered, real-GPU-gated): SSAO proven (-4.7%), timestamp fix, FKEYS-200, brightness-0.5, matrix 62+3 rows, MSAA-8 degrade, volumetric sun-proof — all CI-green. WATER leg CLOSED on real GPU (z183): blue pool, flow 0.37, VERDICT OK; gray-water alarm decoded as rim occlusion (engine exonerated).
+- HEAD: c933c3d water leg + f0e058b mesh gate (z182/z183) pushed; CI watch armed.
+- NEXT: HUD silent-paths fix staged in tree (drink-heal/regen/instant dirty+feedback) → commit on CI green → damage/death-feel review → rendering close-out → Part 6 (§6.1 display forms, §6.2 hi-res tiles).
+- (Note: older sections below describe the pre-rendering-stage tree; the branch has moved on. Full state refresh queued with the rendering close-out.)
+
+## Current (pre-rendering-stage, kept for history)
 - Part: **2 CLOSED** (packet z60, 2026-10-09) — all slices green; only owner-blocked items remain.
 - Owner directive 2026-10-09: when the plan is over, ship a downloadable build for testing on the owner's PC (local verification pass after CI).
 - HEAD: survey V1 done (48 framed / 17 unknowns logged); ui-snaps slice staged (uncommitted).

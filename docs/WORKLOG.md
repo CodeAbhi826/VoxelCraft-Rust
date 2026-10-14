@@ -7320,3 +7320,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-13z181 - Sun-facing volumetric proof (code, real-GPU-verified)
 - Volumetric absdiff ~0.5 in fixed view decoded (sun ~85 deg off-axis, correctly zeroed by falloff — wiring traced complete). Rows 62-64 borrow the camera (day 0.45, yaw -1.11, pitch 0.33): strength ladder scales monotonically (2.82/2.24) and sun-gap-localized. Mechanism PROVEN; visibility needs facing the sun (answer to the no-change report).
+
+## 2026-10-14z182 - Still-water top-face regression gate (code, CI-verified next)
+- New vc-mesh test pins still-source top-face emission (normals 2/3 at 14/16 heights, WATER-kind tint 192) + mesh_rev() getter for the E2E post-build-mesh gate. Fell out of the water-gray hunt (engine exonerated, see z183).

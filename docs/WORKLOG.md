@@ -7329,3 +7329,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 - Big finding: the engine was EXONERATED. The gray-water alarm was rim occlusion (2-high rim hides the surface from a ground-level eye — sightline geometry), not a tint/mesher/upload bug. Proven via magenta-shader + vert-dump + probe instruments (all reverted). Fix was leg-side: flush rim, 7-block distance, slight pitch. Pool renders BLUE, no holes.
 - Also bundled (7 lines): vsync-off in smoke/E2E runs (throttled-compositor stall guard).
 - Slice note: 391 lines, over the ~300 guideline — kept whole as one coherent instrument.
+
+## 2026-10-14z184 - Clippy fix (code, CI re-run)
+- CI 38646806195 red on clippy::unnecessary-cast (unsigned_abs already u64) in the z183 flow check. 3-line fix, clippy-clean locally. HUD slice still staged, commits on green.

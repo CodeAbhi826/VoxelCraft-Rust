@@ -7351,3 +7351,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-15z189 - Part 6 slice 3: drop-item ground display (code, tested)
 - Item entities now resolve the pack "ground" display transform per block (closure passed in so vc-sim stays pack-free; identity without pack data, look unchanged). Same XYZ TRS order as DisplayTr::apply. New cuboid-shape test (scale doubles height, translation lifts) green; existing cuboid test updated (identity closure); full entities suite green. Smoke boot green locally; CI gates.
+
+## 2026-10-15z190 - Part 6 slice 4: shader grid templates (code, tested)
+- §6.2 unlock: terrain/water shaders are now grid templates (ATLAS_COLS_U/F markers) formatted by grid_shader() at pipeline build. Formatted output at COLS=32 is byte-identical (seam-guard asserts unchanged and passing); naga + full-shader validation run on formatted source; new marker asserts route future literals through the helper. E2E_VISUAL 8/8 green on the real driver. CI gates.

@@ -468,7 +468,7 @@ fn vs_main(
     let ao = (flags >> 3u) & 3u;
     let tile_i = (v_data.z >> 18u) & 0x3FFFu;
     let uv = vec2<f32>(f32((v_data.z >> 10u) & 0xFFu), f32((v_data.z >> 2u) & 0xFFu)) / 16.0;
-    let tile = vec2<f32>(f32(tile_i % 32u), f32(tile_i / 32u));
+    let tile = vec2<f32>(f32(tile_i % ATLAS_COLS_U), f32(tile_i / ATLAS_COLS_U));
     let sky = f32((v_data.w >> 4u) & 0xFu) / 15.0;
     let block = f32(v_data.w & 0xFu) / 15.0;
     let world = vc16_pos(v_data, origin);
@@ -557,8 +557,8 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     //     The spec's LOD metric (max per-component |derivative|) never
     //     exceeds the vector-length metric used here, so the band is
     //     always >= the truly-needed one — never under-protected.
-    var gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
-    var gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
+    var gdx = dpdx(in.uv) / vec2<f32>(ATLAS_COLS_F, ATLAS_COLS_F);
+    var gdy = dpdy(in.uv) / vec2<f32>(ATLAS_COLS_F, ATLAS_COLS_F);
     let glen = max(length(gdx), length(gdy));
     let gcap = 4.0 / 512.0;
     if (glen > gcap) {
@@ -568,10 +568,10 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     }
     // capped gradient in FACE-uv units (tile = 1.0); tgrad*16 = mip-0
     // texels per pixel = the LOD the sampler will select (<= 4 under cap)
-    let tgrad = max(length(gdx), length(gdy)) * 32.0;
-    let band = clamp(max(tgrad * 16.0, 1.0), 1.0, 4.0) / 32.0;
+    let tgrad = max(length(gdx), length(gdy)) * ATLAS_COLS_F;
+    let band = clamp(max(tgrad * 16.0, 1.0), 1.0, 4.0) / ATLAS_COLS_F;
     let fuv = clamp(fract(in.uv), vec2<f32>(band), vec2<f32>(1.0 - band));
-    let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
+    let tuv = (in.tile + fuv) / vec2<f32>(ATLAS_COLS_F, ATLAS_COLS_F);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     if (c.a < 0.5) { discard; }
     let day = G.misc.x;
@@ -693,7 +693,7 @@ fn vs_main(
     let ao = (flags >> 3u) & 3u;
     let tile_i = (v_data.z >> 18u) & 0x3FFFu;
     let uv = vec2<f32>(f32((v_data.z >> 10u) & 0xFFu), f32((v_data.z >> 2u) & 0xFFu)) / 16.0;
-    let tile = vec2<f32>(f32(tile_i % 32u), f32(tile_i / 32u));
+    let tile = vec2<f32>(f32(tile_i % ATLAS_COLS_U), f32(tile_i / ATLAS_COLS_U));
     let sky = f32((v_data.w >> 4u) & 0xFu) / 15.0;
     let block = f32(v_data.w & 0xFu) / 15.0;
     // §18 water tint: resolve the packed index in the vertex stage
@@ -747,8 +747,8 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // the measured ~60px dark grid on the surface). The scroll offset is
     // uniform across the surface (ZERO derivative contribution), so the
     // analytic gradients still come from the pre-fract `in.uv`.
-    var gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
-    var gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
+    var gdx = dpdx(in.uv) / vec2<f32>(ATLAS_COLS_F, ATLAS_COLS_F);
+    var gdy = dpdy(in.uv) / vec2<f32>(ATLAS_COLS_F, ATLAS_COLS_F);
     let glen = max(length(gdx), length(gdy));
     let gcap = 4.0 / 512.0;
     if (glen > gcap) {
@@ -756,10 +756,10 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         gdx = gdx * gs;
         gdy = gdy * gs;
     }
-    let tgrad = max(length(gdx), length(gdy)) * 32.0;
-    let band = clamp(max(tgrad * 16.0, 1.0), 1.0, 4.0) / 32.0;
+    let tgrad = max(length(gdx), length(gdy)) * ATLAS_COLS_F;
+    let band = clamp(max(tgrad * 16.0, 1.0), 1.0, 4.0) / ATLAS_COLS_F;
     let fuv = clamp(fract(in.uv + scroll), vec2<f32>(band), vec2<f32>(1.0 - band));
-    let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
+    let tuv = (in.tile + fuv) / vec2<f32>(ATLAS_COLS_F, ATLAS_COLS_F);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     let day = G.misc.x;
     // water is a flat plane — the up normal is exact
@@ -2157,6 +2157,18 @@ struct ScenePipes {
     cloud_blend: wgpu::RenderPipeline,
 }
 
+/// Part 6 §6.2: atlas-grid injection for the tile-mapping shaders.
+/// TERRAIN_SHADER/WATER_SHADER are templates: ATLAS_COLS_U/F mark the
+/// grid-coupled literals (today 32u/32.0) while TILE_PX-coupled scales
+/// (the *16.0 texel math) stay literal. Formatted output at COLS=32 is
+/// byte-identical to the old consts (pinned by the seam-guard tests
+/// below, which run on the formatted source).
+fn grid_shader(template: &str) -> String {
+    template
+        .replace("ATLAS_COLS_U", &format!("{}u", textures::ATLAS_COLS))
+        .replace("ATLAS_COLS_F", &format!("{}.0", textures::ATLAS_COLS))
+}
+
 /// build one full scene-pipeline set at `samples` (1 or 4/8). Shader
 /// sources are the module consts; layouts are the Renderer's shared bgl's.
 fn build_scene_pipes(
@@ -2214,11 +2226,11 @@ fn build_scene_pipes(
 
     let terrain_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("terrain"),
-        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(TERRAIN_SHADER)),
+        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Owned(grid_shader(TERRAIN_SHADER))),
     });
     let water_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("water"),
-        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(WATER_SHADER)),
+        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Owned(grid_shader(WATER_SHADER))),
     });
     let sky_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("sky"),
@@ -7622,9 +7634,13 @@ mod shader_tests {
     /// `cargo test` instead of at device-creation time on a real GPU.
     #[test]
     fn wgsl_shaders_validate() {
+        // Part 6 §6.2: terrain/water are grid templates — validate the
+        // formatted source (what the driver compiles), not the raw consts.
+        let terrain = grid_shader(TERRAIN_SHADER);
+        let water = grid_shader(WATER_SHADER);
         let shaders: &[(&str, &str)] = &[
-            ("terrain", TERRAIN_SHADER),
-            ("water", WATER_SHADER),
+            ("terrain", &terrain),
+            ("water", &water),
             ("sky", SKY_SHADER),
             ("cloud", CLOUD_SHADER),
             ("ui", UI_SHADER),
@@ -7679,7 +7695,21 @@ mod shader_tests {
     /// this test fails loudly instead.
     #[test]
     fn terrain_water_seam_guards_present() {
-        for (name, src) in [("terrain", TERRAIN_SHADER), ("water", WATER_SHADER)] {
+        // Part 6 §6.2: the consts are grid templates — assert the guards
+        // on the FORMATTED source (byte-identical at COLS=32, so every
+        // historical assertion below still holds verbatim) and pin the
+        // template markers so future edits keep new grid literals routed
+        // through grid_shader() instead of hardcoding 32s.
+        for (name, template) in [("terrain", TERRAIN_SHADER), ("water", WATER_SHADER)] {
+            assert!(
+                template.contains("ATLAS_COLS_U") && template.contains("ATLAS_COLS_F"),
+                "{name}: grid literals must use the ATLAS_COLS markers"
+            );
+            let src = grid_shader(template);
+            assert!(
+                !src.contains("ATLAS_COLS_"),
+                "{name}: unexpanded grid marker reached the compiler"
+            );
             assert!(
                 src.contains("textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy)"),
                 "{name}: explicit-gradient atlas sampling missing"
@@ -7756,10 +7786,11 @@ mod shader_tests {
     /// type error here would otherwise only surface at GPU boot.
     #[test]
     fn builtin_terrain_water_shaders_are_valid_wgsl() {
-        for (name, src) in [("terrain", TERRAIN_SHADER), ("water", WATER_SHADER)] {
+        for (name, template) in [("terrain", TERRAIN_SHADER), ("water", WATER_SHADER)] {
+            let src = grid_shader(template);
             let mut fe = naga::front::wgsl::Frontend::new();
             let module = fe
-                .parse(src)
+                .parse(&src)
                 .unwrap_or_else(|e| panic!("{name}: WGSL parse error: {e}"));
             let mut val = naga::valid::Validator::new(
                 naga::valid::ValidationFlags::all(),

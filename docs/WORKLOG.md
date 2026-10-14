@@ -7323,3 +7323,9 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-14z182 - Still-water top-face regression gate (code, CI-verified next)
 - New vc-mesh test pins still-source top-face emission (normals 2/3 at 14/16 heights, WATER-kind tint 192) + mesh_rev() getter for the E2E post-build-mesh gate. Fell out of the water-gray hunt (engine exonerated, see z183).
+
+## 2026-10-14z183 - Water visual leg closed on real GPU (code, real-GPU-verified)
+- E2E_WATER builds a sealed pool in the spawn view (real edit path + remesh fence), captures pool/surface/flow-pair/under, exits with verdict. Flow proven numerically (meandiff 0.37); spawn dry; camera pinned; clear sky.
+- Big finding: the engine was EXONERATED. The gray-water alarm was rim occlusion (2-high rim hides the surface from a ground-level eye — sightline geometry), not a tint/mesher/upload bug. Proven via magenta-shader + vert-dump + probe instruments (all reverted). Fix was leg-side: flush rim, 7-block distance, slight pitch. Pool renders BLUE, no holes.
+- Also bundled (7 lines): vsync-off in smoke/E2E runs (throttled-compositor stall guard).
+- Slice note: 391 lines, over the ~300 guideline — kept whole as one coherent instrument.

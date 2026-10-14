@@ -7332,3 +7332,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-14z184 - Clippy fix (code, CI re-run)
 - CI 38646806195 red on clippy::unnecessary-cast (unsigned_abs already u64) in the z183 flow check. 3-line fix, clippy-clean locally. HUD slice still staged, commits on green.
+
+## 2026-10-14z185 - HUD silent-path refresh (code, CI-run)
+- Drink-heal, regen-tick-heal, and /effect instant paths now set ui.dirty (bars were stale); instant-harm also gets death cause + hurt sound (was a silent HP drain). Recon found all other damage paths already refresh. Verdict via CI gates.

@@ -133,7 +133,7 @@ impl DisplayTr {
         for (i, deg) in self.rotation.iter().enumerate() {
             let (s, c) = deg.to_radians().sin_cos();
             let (x, y, z) = (v[0], v[1], v[2]);
-            // intrinsic XYZ: rotate about X, then the new Y, then new Z
+            // extrinsic XYZ (v' = Rz·Ry·Rx·v)
             match i {
                 0 => v = [x, c * y - s * z, s * y + c * z],
                 1 => v = [c * x + s * z, y, -s * x + c * z],
@@ -145,6 +145,22 @@ impl DisplayTr {
             v[1] + anchor[1] + self.translation[1],
             v[2] + anchor[2] + self.translation[2],
         ]
+    }
+    /// rotation-only part about the origin (same XYZ order) — for
+    /// callers that handle scale/translation in their own space (the
+    /// icon baker fits scale itself).
+    pub fn rotated(&self, p: [f32; 3]) -> [f32; 3] {
+        let mut v = p;
+        for (i, deg) in self.rotation.iter().enumerate() {
+            let (s, c) = deg.to_radians().sin_cos();
+            let (x, y, z) = (v[0], v[1], v[2]);
+            match i {
+                0 => v = [x, c * y - s * z, s * y + c * z],
+                1 => v = [c * x + s * z, y, -s * x + c * z],
+                _ => v = [c * x - s * y, s * x + c * y, z],
+            }
+        }
+        v
     }
 }
 
@@ -1009,6 +1025,16 @@ mod tests {
         let r = rx.apply([5.0, 6.0, 5.0], [5.0, 5.0, 5.0]);
         assert!(
             (r[0] - 5.0).abs() < 1e-6 && (r[1] - 5.0).abs() < 1e-6 && (r[2] - 6.0).abs() < 1e-6
+        );
+        // rotated() matches apply() with unit scale / zero translation
+        let t = DisplayTr {
+            rotation: [0.0, 0.0, 90.0],
+            translation: [9.0, 9.0, 9.0],
+            scale: [7.0, 7.0, 7.0],
+        };
+        let r = t.rotated([1.0, 0.0, 0.0]);
+        assert!(
+            (r[0] - 0.0).abs() < 1e-6 && (r[1] - 1.0).abs() < 1e-6 && (r[2] - 0.0).abs() < 1e-6
         );
     }
 

@@ -24,7 +24,8 @@
 
 use rustc_hash::FxHashMap;
 
-use vc_blocks::blocks::{def, is_cross, AIR};
+use vc_blocks::blocks::{def, default_state, is_cross, AIR};
+use vc_pack::model::{models, DisplayTr};
 
 /// Opaque handle into the icon atlas — the cell index (`row * 32 + col`
 /// in the 2048x2048, 64px-cell grid). Do NOT construct directly: the
@@ -99,7 +100,23 @@ fn texel(atlas: &[u8], tile: u16, x: i32, y: i32) -> [u8; 4] {
 /// deterministic — the same atlas bytes produce byte-identical icons.
 /// Returns false when the block has no drawable model (AIR / missing
 /// def) — callers fall back to the flat tile.
-pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8]) -> bool {
+/// Part 6 §6.1: resolve a block's pack "gui" display transform for the
+/// icon baker (identity without an installed pack model).
+pub fn gui_display_tr(block: u16) -> DisplayTr {
+    let state = default_state(block);
+    if let Some(set) = models() {
+        if let Some(choice) = set.by_state.get(&state).and_then(|v| v.first()) {
+            if let Some(alt) = choice.alts.first() {
+                if let Some(tr) = alt.model.display.get("gui") {
+                    return tr.clone();
+                }
+            }
+        }
+    }
+    DisplayTr::identity()
+}
+
+pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8], display: &DisplayTr) -> bool {
     if block == AIR || out.len() < (ICON_CELL_PX * ICON_CELL_PX * 4) as usize {
         return false;
     }
@@ -146,15 +163,23 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8]) -> bool {
     // corner indexing: i = y*4 + z*2 + x with each axis {0: -, 1: +}
     let idx = |y: usize, z: usize, x: usize| y * 4 + z * 2 + x;
     let mut corners = [(0f32, 0f32); 8];
+    // Part 6 §6.1: pack "gui" rotation shapes the cube before
+    // projection (identity without a pack model)
     for y in [0usize, 1] {
         for z in [0usize, 1] {
             for x in [0usize, 1] {
-                corners[idx(y, z, x)] = proj(x as f32 - 0.5, y as f32 - 0.5, z as f32 - 0.5);
+                let r = display.rotated([x as f32 - 0.5, y as f32 - 0.5, z as f32 - 0.5]);
+                corners[idx(y, z, x)] = proj(r[0], r[1], r[2]);
             }
         }
     }
-    // fit into the margin box (56 px), centered, uniform scale
+    // fit into the margin box (56 px), centered, uniform scale.
+    // The pack scale rides as a post-fit multiplier (the fit itself is
+    // scale-blind by construction) and the pack translation shifts the
+    // fitted window (model-y up maps to screen-y down); cross sprites
+    // keep the legacy untransformed blit (follow-up).
     let box_px = (ICON_CELL_PX - cam.margin_px * 2) as f32;
+    let mean_scale = (display.scale[0] + display.scale[1] + display.scale[2]) / 3.0;
     let min_x = corners.iter().map(|c| c.0).fold(f32::INFINITY, f32::min);
     let max_x = corners
         .iter()
@@ -167,9 +192,12 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8]) -> bool {
         .fold(f32::NEG_INFINITY, f32::max);
     let span_x = (max_x - min_x).max(1e-6);
     let span_y = (max_y - min_y).max(1e-6);
-    let scale = (box_px / span_x).min(box_px / span_y);
-    let off_x = cam.margin_px as f32 + (box_px - span_x * scale) * 0.5 - min_x * scale;
-    let off_y = cam.margin_px as f32 + (box_px - span_y * scale) * 0.5 - min_y * scale;
+    let scale = (box_px / span_x).min(box_px / span_y) * mean_scale;
+    let off_x = cam.margin_px as f32 + (box_px - span_x * scale) * 0.5 - min_x * scale
+        + display.translation[0] * scale;
+    let off_y = cam.margin_px as f32 + (box_px - span_y * scale) * 0.5
+        - min_y * scale
+        - display.translation[1] * scale;
     let s: Vec<(f32, f32)> = corners
         .iter()
         .map(|(x, y)| (x * scale + off_x, y * scale + off_y))
@@ -452,7 +480,7 @@ impl ItemIconCache {
         for key in batch {
             let (cell, _evicted) = self.core.allocate(key);
             let mut buf = [0u8; (ICON_CELL_PX * ICON_CELL_PX * 4) as usize];
-            if bake_block_icon(atlas, key.0, &mut buf) {
+            if bake_block_icon(atlas, key.0, &mut buf, &gui_display_tr(key.0)) {
                 let col = cell % ICON_GRID;
                 let row = cell / ICON_GRID;
                 queue.write_texture(
@@ -551,7 +579,7 @@ mod tests {
         let atlas = crate::textures::generate_atlas();
         for (block, name) in [(3u16, "dirt"), (1u16, "stone"), (5u16, "planks")] {
             let mut out = [0u8; 64 * 64 * 4];
-            let ok = bake_block_icon(&atlas, block, &mut out);
+            let ok = bake_block_icon(&atlas, block, &mut out, &DisplayTr::identity());
             assert!(ok, "{name} must bake");
             let dir = format!("{}/target", env!("CARGO_MANIFEST_DIR"));
             let _ = std::fs::create_dir_all(&dir);
@@ -676,7 +704,7 @@ mod tests {
         let atlas = fake_atlas();
         let mut out = [0u8; 64 * 64 * 4];
         // block 3 = a real cube block (dirt): bake by block id (the API)
-        let ok = bake_block_icon(&atlas, 3, &mut out);
+        let ok = bake_block_icon(&atlas, 3, &mut out, &DisplayTr::identity());
         assert!(ok, "a cube block must bake");
         // non-empty
         assert!(out.as_chunks::<4>().0.iter().any(|c| c[3] != 0));
@@ -689,16 +717,46 @@ mod tests {
         let atlas = fake_atlas();
         let mut a = [0u8; 64 * 64 * 4];
         let mut b = [0u8; 64 * 64 * 4];
-        bake_block_icon(&atlas, 3, &mut a);
-        bake_block_icon(&atlas, 3, &mut b);
+        bake_block_icon(&atlas, 3, &mut a, &DisplayTr::identity());
+        bake_block_icon(&atlas, 3, &mut b, &DisplayTr::identity());
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn gui_display_scale_resizes_icon() {
+        // Part 6 §6.1: a pack "gui" scale multiplies the fitted icon —
+        // half scale must paint strictly fewer opaque pixels (and > 0)
+        let atlas = fake_atlas();
+        let mut full = [0u8; 64 * 64 * 4];
+        let mut half = [0u8; 64 * 64 * 4];
+        assert!(bake_block_icon(
+            &atlas,
+            3,
+            &mut full,
+            &DisplayTr::identity()
+        ));
+        let small = DisplayTr {
+            rotation: [0.0, 0.0, 0.0],
+            translation: [0.0, 0.0, 0.0],
+            scale: [0.5, 0.5, 0.5],
+        };
+        assert!(bake_block_icon(&atlas, 3, &mut half, &small));
+        let opaque = |buf: &[u8; 64 * 64 * 4]| buf.chunks(4).filter(|p| p[3] > 0).count();
+        let (n_full, n_half) = (opaque(&full), opaque(&half));
+        assert!(n_full > 100, "identity icon paints something");
+        assert!(n_half > 0 && n_half < n_full, "{n_half} vs {n_full}");
     }
 
     #[test]
     fn air_bakes_nothing() {
         let atlas = fake_atlas();
         let mut out = [0u8; 64 * 64 * 4];
-        assert!(!bake_block_icon(&atlas, AIR, &mut out));
+        assert!(!bake_block_icon(
+            &atlas,
+            AIR,
+            &mut out,
+            &DisplayTr::identity()
+        ));
     }
 
     #[test]
@@ -752,7 +810,12 @@ mod tests {
         // the flat blit_tile path (the D8 fallback contract)
         let atlas = fake_atlas();
         let mut out = [0u8; 64 * 64 * 4];
-        assert!(!bake_block_icon(&atlas, AIR, &mut out));
+        assert!(!bake_block_icon(
+            &atlas,
+            AIR,
+            &mut out,
+            &DisplayTr::identity()
+        ));
         assert!(out.iter().all(|&b| b == 0));
     }
 

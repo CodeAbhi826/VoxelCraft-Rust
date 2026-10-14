@@ -7354,3 +7354,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-15z190 - Part 6 slice 4: shader grid templates (code, tested)
 - §6.2 unlock: terrain/water shaders are now grid templates (ATLAS_COLS_U/F markers) formatted by grid_shader() at pipeline build. Formatted output at COLS=32 is byte-identical (seam-guard asserts unchanged and passing); naga + full-shader validation run on formatted source; new marker asserts route future literals through the helper. E2E_VISUAL 8/8 green on the real driver. CI gates.
+
+## 2026-10-15z191 - Part 6 slice 5: gui display for icons (code, tested)
+- bake_block_icon takes the pack "gui" DisplayTr (rotation pre-projection, scale as post-fit multiplier, translation shifts the fitted window; cross sprites documented follow-up). run_bakes resolves via models() (identity default, look unchanged). New scale test (half-scale paints fewer pixels); DisplayTr::rotated + test in vc-pack. Full vc-render suite (219) + vc-pack (46) green; clippy clean. CI gates.

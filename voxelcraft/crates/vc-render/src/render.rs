@@ -4474,6 +4474,12 @@ impl Renderer {
         self.msaa
     }
 
+    /// mesh-set revision (E2E water leg: proves post-build remeshes
+    /// landed — revision advanced past the build snapshot)
+    pub fn mesh_rev(&self) -> u64 {
+        self.mesh_rev
+    }
+
     /// world bind group over a given atlas view + sampler (binding set:
     /// globals, atlas, sampler, shadow map, shadow sampler, shadow
     /// uniforms, biome-tint LUT — see world_bgl)

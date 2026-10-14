@@ -1351,6 +1351,63 @@ mod tests {
         }
     }
 
+    /// still-water source top-face gate: a lone WATER source with air
+    /// above must emit top-face water geometry (normal 2/3) at the
+    /// 14/16 still surface — the owner-reported invisible-surface hunt.
+    #[test]
+    fn still_source_emits_top_face() {
+        let mut c = Chunk::empty();
+        c.set_state(8, 8, 8, WATER);
+        let c = Arc::new(c);
+        let snap = [
+            None,
+            Some(Arc::clone(&c)),
+            None,
+            Some(Arc::clone(&c)),
+            Some(Arc::clone(&c)),
+            Some(Arc::clone(&c)),
+            None,
+            Some(Arc::clone(&c)),
+            None,
+        ];
+        let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
+        assert!(
+            !md.water.0.is_empty(),
+            "still source must emit water geometry"
+        );
+        let mut top_pys: Vec<u32> = Vec::new();
+        for v in md.water.0.iter() {
+            let normal = ((v.w1 >> 16) as u8) & 7;
+            if normal == 2 || normal == 3 {
+                top_pys.push(v.w1 & 0xFFFF);
+            }
+        }
+        assert!(
+            !top_pys.is_empty(),
+            "still source must emit a top/bottom water face"
+        );
+        top_pys.sort_unstable();
+        top_pys.dedup();
+        // still source at y=8: bottom face (8*128) + 14/16 surface
+        // (8*128+112) — pins the surface height against regressions
+        assert_eq!(top_pys, vec![1024, 1136]);
+        // tint gate: top-face verts must carry the WATER-kind index
+        // (plains-family slot), not TINT_NONE — an untinted top face
+        // renders the gray base art (the owner-reported gray water)
+        let mut top_tints: Vec<u8> = Vec::new();
+        for v in md.water.0.iter() {
+            let normal = ((v.w1 >> 16) as u8) & 7;
+            if normal == 2 || normal == 3 {
+                top_tints.push(((v.w3 >> 8) & 0xff) as u8);
+            }
+        }
+        top_tints.sort_unstable();
+        top_tints.dedup();
+        // 192 = KIND_WATER<<6 | plains-family slot 0 — an untinted top
+        // face would render the gray base art (the reported gray water)
+        assert_eq!(top_tints, vec![192]);
+    }
+
     /// T3 fix gate (2026-10-01): a falling water column renders FULL-height
     /// side sheets. The old `above == b` compared the raw STATE id above to
     /// the WATER BLOCK id (9) — flowing states 89..=95 never matched, so the

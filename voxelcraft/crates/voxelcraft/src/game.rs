@@ -2034,6 +2034,28 @@ pub struct GameApp {
     /// mid-streaming-burst or later rows see a different world)
     e2e_matrix_last_chunks: u32,
     e2e_matrix_stable: u8,
+    /// E2E_WATER — still-water/flow visual leg ran once
+    e2e_water_done: bool,
+    /// E2E_WATER stage machine (0 build, 1 mesh-gate, 2 pool,
+    /// 3 surface, 4 flow0, 5 flow1, 6 under)
+    e2e_water_stage: u8,
+    /// E2E_WATER settle frames remaining (u16: the rig-mesh fallback
+    /// deadline is 600, past u8 range)
+    e2e_water_wait: u16,
+    /// E2E_WATER: every capture landed
+    e2e_water_ok: bool,
+    /// E2E_WATER drain counter (matrix lesson: fixed waits outrun the
+    /// debug mesher — build only on drained queues, capture only on
+    /// drained queues again after the build)
+    e2e_water_stable: u8,
+    /// E2E_WATER rig coordinates (snapshot at build; the player may
+    /// still be settling and recompute would drift)
+    e2e_water_cx: i32,
+    e2e_water_gy: i32,
+    e2e_water_cz: i32,
+    /// E2E_WATER mesh revision at build (gate: proceed only after
+    /// strictly newer meshes applied — proves the rig was remeshed)
+    e2e_water_rev: u64,
     /// 1A.6: E2E_ICONIC — the iconic-cast capture leg ran once
     e2e_iconic_done: bool,
     /// 1.11: E2E_TURNTABLE — solo-mob capture leg ran once
@@ -3651,6 +3673,15 @@ impl GameApp {
             e2e_matrix_ok: true,
             e2e_matrix_last_chunks: 0,
             e2e_matrix_stable: 0,
+            e2e_water_done: false,
+            e2e_water_stage: 0,
+            e2e_water_wait: 0,
+            e2e_water_ok: true,
+            e2e_water_stable: 0,
+            e2e_water_cx: 0,
+            e2e_water_gy: 0,
+            e2e_water_cz: 0,
+            e2e_water_rev: 0,
             e2e_iconic_done: false,
             e2e_iconic_stage: 0,
             e2e_iconic_settle: 0,
@@ -17441,6 +17472,328 @@ impl GameApp {
         }
     }
 
+    /// E2E_WATER — still-water/flow visual leg (owner hardware report:
+    /// no flow, holes). Builds a sealed pool IN the spawn view through
+    /// the real state path, captures pool/surface/flow-pair/under. The
+    /// flow pair (same view ~20 frames apart) proves texture motion
+    /// numerically; hole-hunting is review of pool/surface.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_water_capture(&mut self, name: &str) -> bool {
+        if let Some(bytes) = self.renderer.take_screenshot_png() {
+            let dir = std::path::Path::new("screenshots");
+            let _ = std::fs::create_dir_all(dir);
+            let path = dir.join(format!("e2e_water_{name}_{}.png", chrono_like_stamp()));
+            let wrote = std::fs::write(&path, &bytes).is_ok();
+            vc_render::render::report_boot_log(&format!(
+                "e2e: water {name} {} ({} bytes) cam {:.1} {:.1} {:.1} yaw {:.2} pitch {:.2}",
+                if wrote { "saved" } else { "WRITE FAILED" },
+                bytes.len(),
+                self.player.pos.x,
+                self.player.pos.y,
+                self.player.pos.z,
+                self.player.yaw,
+                self.player.pitch
+            ));
+            self.e2e_water_ok &= wrote && bytes.len() > 1000;
+            if name == "pool" {
+                // spawn-wetness recheck (flood reaching the camera would
+                // fog the pool capture despite the pinned dry pose)
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: water poolcam feet={} eye={} (9=water)",
+                    self.world.get_block(
+                        self.player.pos.x.floor() as i32,
+                        self.player.pos.y.floor() as i32,
+                        self.player.pos.z.floor() as i32
+                    ),
+                    self.world.get_block(
+                        self.player.eye().x.floor() as i32,
+                        self.player.eye().y.floor() as i32,
+                        self.player.eye().z.floor() as i32
+                    ),
+                ));
+            }
+            if name == "flow1" {
+                self.e2e_water_flow_check();
+            }
+            true
+        } else {
+            self.renderer.screenshot_request = true;
+            false
+        }
+    }
+
+    /// E2E_WATER flow proof: mean-abs diff flow0 vs flow1 (same view —
+    /// only the water UV scroll moves). Anything above sensor noise
+    /// means the surface animates; the exact number is the evidence.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_water_flow_check(&mut self) {
+        let dir = std::path::Path::new("screenshots");
+        let mut flows: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+            .map(|rd| {
+                rd.filter_map(|e| e.ok())
+                    .map(|e| e.path())
+                    .filter(|p| {
+                        p.file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|n| n.starts_with("e2e_water_flow"))
+                            .unwrap_or(false)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        flows.sort();
+        if flows.len() < 2 {
+            return;
+        }
+        let px = |p: &std::path::PathBuf| {
+            std::fs::read(p)
+                .ok()
+                .and_then(|b| image::load_from_memory(&b).ok())
+                .map(|i| i.to_rgba8().into_raw())
+                .unwrap_or_default()
+        };
+        let (a, b) = (px(&flows[0]), px(&flows[1]));
+        let n = a.len().min(b.len()) / 4;
+        let mut s = 0u64;
+        for i in 0..n {
+            s += (a[4 * i] as i64 - b[4 * i] as i64).unsigned_abs() as u64
+                + (a[4 * i + 1] as i64 - b[4 * i + 1] as i64).unsigned_abs() as u64
+                + (a[4 * i + 2] as i64 - b[4 * i + 2] as i64).unsigned_abs() as u64;
+        }
+        let mean = if n > 0 {
+            s as f64 / n as f64 / 3.0
+        } else {
+            0.0
+        };
+        vc_render::render::report_boot_log(&format!("e2e: water flow meandiff={mean:.2}"));
+        self.e2e_water_ok &= mean > 0.1;
+    }
+
+    /// E2E_WATER builder + stage machine. A sealed stone basin with
+    /// a 2-deep source pool goes 7 blocks ahead of the spawn eye (the
+    /// pinned camera already faces it): flush 1-high rim (a taller rim
+    /// hides the surface from a ground-level eye — the gray-water false
+    /// alarm), slight downward pitch. Underwater parks the feet on the
+    /// pool floor (eye submerged). No falls tower (every bare-source
+    /// variant leaks sideways and floods spawn — returns as a walled
+    /// shaft, not a bare source).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_water(&mut self) {
+        // stay unpaused (focus-loss auto-pause puts menu blur in captures;
+        // fkeys/iconic precedent) + fixed clear sky (natural weather would
+        // confound the still-water review)
+        self.screen = Screen::Game;
+        // camera home: HARDCODED seed-95 spawn pose (matrix-proven
+        // across runs) pinned every tick stages 0-4 — snapshot-at-build
+        // drifted 50 blocks on river current + mouse; the underwater
+        // stage sets its own pose deliberately
+        if self.e2e_water_stage < 5 {
+            self.player.pos.x = -287.5;
+            self.player.pos.y = 65.0;
+            self.player.pos.z = -311.5;
+            self.player.yaw = 0.79;
+            // pitched slightly down (-0.15): centers the pool while
+            // keeping the horizon (the rim is flush now, so a level
+            // eye already clears it — no steep angle needed)
+            self.player.pitch = -0.15;
+        }
+        let yaw = self.player.yaw;
+        let pitch = self.player.pitch;
+        let d = Vec3::new(
+            yaw.sin() * pitch.cos(),
+            pitch.sin(),
+            -yaw.cos() * pitch.cos(),
+        );
+        match self.e2e_water_stage {
+            0 => {
+                // drain gate FIRST (initial world meshed before the rig
+                // lands — otherwise the rig queues behind hundreds of
+                // sections on weak runners and no capture shows it)
+                if self.gen_inflight.is_empty() && self.mesh_inflight.is_empty() {
+                    self.e2e_water_stable = self.e2e_water_stable.saturating_add(1);
+                } else {
+                    self.e2e_water_stable = 0;
+                    return;
+                }
+                if self.e2e_water_stable < 10 {
+                    return;
+                }
+                // sunk rig (-1): the eye looks DOWN into the pool (a
+                // raised rim blocks the surface from a level eye) —
+                // floor dug in, low rim, surface ~2.6 below the eye
+                let e = self.player.eye();
+                let cx = (e.x + d.x * 7.0).floor() as i32;
+                let cz = (e.z + d.z * 7.0).floor() as i32;
+                let gy = self.player.pos.y.floor() as i32 - 1;
+                // basin: stone floor + rim, pool water 2 deep
+                for dx in -3i32..=3 {
+                    for dz in -3i32..=3 {
+                        let edge = dx.abs() == 3 || dz.abs() == 3;
+                        self.test_place(STONE, cx + dx, gy - 2, cz + dz);
+                        self.test_place(STONE, cx + dx, gy - 1, cz + dz);
+                        if edge {
+                            // flush rim (top at 65 == water surface level):
+                            // any higher hides the surface from a
+                            // ground-level eye behind stone (the
+                            // gray-water false alarm, decoded 2026-10-14)
+                            self.test_place(STONE, cx + dx, gy, cz + dz);
+                        } else {
+                            self.test_place(WATER, cx + dx, gy - 1, cz + dz);
+                            self.test_place(WATER, cx + dx, gy, cz + dz);
+                        }
+                        if !edge {
+                            // clear above the water surface only (dy 0 is
+                            // the pool's top water layer — keep it)
+                            for dy in 1..4 {
+                                self.test_place(AIR, cx + dx, gy + dy, cz + dz);
+                            }
+                        }
+                    }
+                }
+                // NO falls tower (every bare-source variant leaks sideways
+                // off the rig and floods spawn — still pool + scroll +
+                // underwater cover the report; falling columns return with
+                // a walled-shaft design, not a bare source)
+                // placement probe: read back three rig cells (distinguishes
+                // "placement failed" from "rendering failed" in review)
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: water probe pool={} rim={} (want {} {}) spawnfeet={} spawneye={}",
+                    self.world.get_block(cx, gy - 1, cz),
+                    self.world.get_block(cx + 3, gy, cz),
+                    WATER,
+                    STONE,
+                    self.world.get_block(
+                        self.player.pos.x.floor() as i32,
+                        self.player.pos.y.floor() as i32,
+                        self.player.pos.z.floor() as i32
+                    ),
+                    self.world.get_block(
+                        self.player.eye().x.floor() as i32,
+                        self.player.eye().y.floor() as i32,
+                        self.player.eye().z.floor() as i32
+                    ),
+                ));
+                // render-dirty fence: test_place covers light+sim, but the
+                // remesh dispatch needs explicit dirty sections for the rig
+                // (bare-state E2E edits otherwise never reach the mesher)
+                for ox in -1..=1 {
+                    for oz in -1..=1 {
+                        self.world.mark_sections_dirty(
+                            ((cx + ox * 8).div_euclid(16), (cz + oz * 8).div_euclid(16)),
+                            0xFFFF,
+                            vc_world::world::CAUSE_GEOMETRY,
+                        );
+                    }
+                }
+                self.e2e_water_cx = cx;
+                self.e2e_water_gy = gy;
+                self.e2e_water_cz = cz;
+                self.e2e_water_rev = self.renderer.mesh_rev();
+                // fixed clear sky for the run (natural rain streaks would
+                // confound the still-water review)
+                self.weather.force_clear(100000);
+                self.e2e_water_stage = 1;
+                self.e2e_water_stable = 0;
+                // rig-mesh deadline (600 frames): spreading water can keep
+                // global queues busy past any fixed wait on weak runners —
+                // the gate below falls back to proceed-anyway with a log
+                self.e2e_water_wait = 0;
+            }
+            1 => {
+                // post-build-mesh gate: revision advanced (SOME remesh
+                // applied after the build) AND rig chunks currently clean
+                // (a full pass completed) — decay dirt alone never passes
+                // without a fresh apply; 900-frame fallback logs
+                let (cx, _gy, cz) = (self.e2e_water_cx, self.e2e_water_gy, self.e2e_water_cz);
+                let mut rig_dirty = false;
+                for ox in -1..=1 {
+                    for oz in -1..=1 {
+                        if self.world.dirty.contains_key(&(
+                            (cx + ox * 8).div_euclid(16),
+                            (cz + oz * 8).div_euclid(16),
+                        )) {
+                            rig_dirty = true;
+                        }
+                    }
+                }
+                let advanced = self.renderer.mesh_rev() != self.e2e_water_rev;
+                // fallback sticks once fired (wait keeps counting past it)
+                if self.e2e_water_wait <= 900 {
+                    if advanced && !rig_dirty {
+                        self.e2e_water_stable = self.e2e_water_stable.saturating_add(1);
+                    } else {
+                        self.e2e_water_stable = 0;
+                        self.e2e_water_wait = self.e2e_water_wait.saturating_add(1);
+                        if self.e2e_water_wait > 900 {
+                            vc_render::render::report_boot_log(
+                                "e2e: water rig never clean — proceeding anyway",
+                            );
+                        }
+                        return;
+                    }
+                    if self.e2e_water_stable < 10 {
+                        return;
+                    }
+                }
+                if self.e2e_water_capture("pool") {
+                    self.e2e_water_stage = 2;
+                    self.e2e_water_wait = 4;
+                }
+            }
+            2 => {
+                if self.e2e_water_wait > 0 {
+                    self.e2e_water_wait -= 1;
+                    return;
+                }
+                if self.e2e_water_capture("surface") {
+                    self.e2e_water_stage = 3;
+                    self.e2e_water_wait = 4;
+                }
+            }
+            3 => {
+                if self.e2e_water_wait > 0 {
+                    self.e2e_water_wait -= 1;
+                    return;
+                }
+                if self.e2e_water_capture("flow0") {
+                    self.e2e_water_stage = 4;
+                    self.e2e_water_wait = 20;
+                }
+            }
+            4 => {
+                if self.e2e_water_wait > 0 {
+                    self.e2e_water_wait -= 1;
+                    return;
+                }
+                if self.e2e_water_capture("flow1") {
+                    // underwater: feet on the sunk pool floor (eye
+                    // submerged) — build-snapshot coords, not recompute
+                    self.player.pos.x = self.e2e_water_cx as f32 + 0.5;
+                    self.player.pos.z = self.e2e_water_cz as f32 + 0.5;
+                    self.player.pos.y = self.e2e_water_gy as f32 - 1.0;
+                    self.e2e_water_stage = 5;
+                    self.e2e_water_wait = 6;
+                }
+            }
+            _ => {
+                if self.e2e_water_wait > 0 {
+                    self.e2e_water_wait -= 1;
+                    return;
+                }
+                if self.e2e_water_capture("under") {
+                    let ok = self.e2e_water_ok;
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: water 5 captures — WATER VERDICT {}",
+                        if ok { "OK" } else { "FAILED" }
+                    ));
+                    self.e2e_water_done = true;
+                    self.dbg_exit_summary();
+                    std::process::exit(if ok { 0 } else { 1 });
+                }
+            }
+        }
+    }
+
     /// E2E_MATRIX — full option-matrix capture leg (owner-ordered
     /// real-GPU instrument: every graphics value one-by-one, fixed
     /// base, fixed seed/camera). Rows are single-axis deltas from the
@@ -18830,6 +19183,13 @@ impl GameApp {
                 self.settings.render_distance = rd.clamp(2, 12);
             }
         }
+        // smoke/E2E runs never benefit from vsync waits (headless or
+        // occluded windows: a throttled compositor stalls Fifo present
+        // for seconds per frame — caught a 1-frame-in-127s run live).
+        // Idempotent: set_vsync early-returns when already off.
+        if self.smoke {
+            self.renderer.set_vsync(false);
+        }
         if std::env::var("E2E_CONTAINERS").is_ok() && !self.e2e_containers_done {
             self.e2e_containers();
             self.e2e_containers_done = true;
@@ -18905,6 +19265,24 @@ impl GameApp {
             let visual_ready = in_world && self.world.chunks.contains_key(&(pcx, pcz));
             if visual_ready {
                 self.e2e_visual();
+            }
+        }
+
+        // E2E_WATER — still-water/flow visual leg (owner hardware
+        // report). Same world-entry + chunk-ready guard as the visual
+        // leg; the machine builds once, settles, captures 5, exits
+        // directly with the verdict like FKEYS.
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_WATER").is_ok() && !self.e2e_water_done {
+            let (px_f, pz_f) = (
+                self.player.pos.x.floor() as i32,
+                self.player.pos.z.floor() as i32,
+            );
+            let (pcx, pcz) = (px_f.div_euclid(16), pz_f.div_euclid(16));
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            let water_ready = in_world && self.world.chunks.contains_key(&(pcx, pcz));
+            if water_ready {
+                self.e2e_water();
             }
         }
         // E2E_MATRIX — full option-matrix capture leg (owner-ordered
@@ -19554,6 +19932,11 @@ impl GameApp {
                 let matrix_pending = std::env::var("E2E_MATRIX").is_ok() && !self.e2e_matrix_done;
                 #[cfg(target_arch = "wasm32")]
                 let matrix_pending = false;
+                // E2E_WATER owns the exit while its build+5-capture run goes
+                #[cfg(not(target_arch = "wasm32"))]
+                let water_pending = std::env::var("E2E_WATER").is_ok() && !self.e2e_water_done;
+                #[cfg(target_arch = "wasm32")]
+                let water_pending = false;
                 if !fkeys_pending
                     && !iconic_pending
                     && !phases_pending
@@ -19561,6 +19944,7 @@ impl GameApp {
                     && !survey_pending
                     && !visual_pending
                     && !matrix_pending
+                    && !water_pending
                 {
                     vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                     self.dbg_exit_summary();
@@ -19636,6 +20020,11 @@ impl GameApp {
             let matrix_pending = std::env::var("E2E_MATRIX").is_ok() && !self.e2e_matrix_done;
             #[cfg(target_arch = "wasm32")]
             let matrix_pending = false;
+            // E2E_WATER owns the exit while its build+5-capture run goes
+            #[cfg(not(target_arch = "wasm32"))]
+            let water_pending = std::env::var("E2E_WATER").is_ok() && !self.e2e_water_done;
+            #[cfg(target_arch = "wasm32")]
+            let water_pending = false;
             if t_in > 2.2
                 && !fkeys_pending
                 && !iconic_pending
@@ -19644,6 +20033,7 @@ impl GameApp {
                 && !survey_pending
                 && !visual_pending
                 && !matrix_pending
+                && !water_pending
             {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();
@@ -29095,6 +29485,7 @@ impl GameApp {
         if self.renderer.screenshot_png.is_some()
             && !(std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done)
             && !(std::env::var("E2E_MATRIX").is_ok() && !self.e2e_matrix_done)
+            && !(std::env::var("E2E_WATER").is_ok() && !self.e2e_water_done)
             && (self.e2e_fkeys_stage == 0 || self.e2e_fkeys_stage > 3)
             // 1A.6: while the E2E_ICONIC ladder is armed the PNG is its
             // capture — the F2 dumper would otherwise consume it in the

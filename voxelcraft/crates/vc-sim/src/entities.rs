@@ -204,6 +204,13 @@ impl ItemSystem {
     /// painter-ordered far→near by the face normal vs the camera
     /// direction (the shared billboard pipeline has no depth-write,
     /// exactly like push_held_item's cube and the entity models).
+    ///
+    /// Part 6 §6.1: `display` resolves per-block (rotation, translation,
+    /// scale) triples — the pack "ground" view (identity without a pack
+    /// model; the caller owns model resolution so the sim stays
+    /// pack-free). Applied to the cuboid about its center before the
+    /// spin/bob (same XYZ order as DisplayTr::apply); the painter order
+    /// still uses the unrotated normals (cosmetic under spin, disclosed).
     pub fn build_vertices(
         &self,
         time: f32,
@@ -211,6 +218,7 @@ impl ItemSystem {
         up: [f32; 3],
         dir: [f32; 3],
         out: &mut Vec<vc_particles::particles::ParticleVertex>,
+        display: &dyn Fn(u16) -> ([f32; 3], [f32; 3], [f32; 3]),
     ) {
         let _ = (right, up); // basis unused: the cube is world-space
         let half = 0.125f32; // 0.25-block item cuboid (vanilla)
@@ -228,6 +236,21 @@ impl ItemSystem {
                     it.light * it.tint[1] * k,
                     it.light * it.tint[2] * k,
                 ]
+            };
+            // pack display transform for this block (identity default)
+            let (drot, dtra, dscl) = display(it.block);
+            let dc = |p: [f32; 3]| -> [f32; 3] {
+                let mut v = [p[0] * dscl[0], p[1] * dscl[1], p[2] * dscl[2]];
+                for (i, deg) in drot.iter().enumerate() {
+                    let (s, c) = deg.to_radians().sin_cos();
+                    let (x, y, z) = (v[0], v[1], v[2]);
+                    match i {
+                        0 => v = [x, c * y - s * z, s * y + c * z],
+                        1 => v = [c * x + s * z, y, -s * x + c * z],
+                        _ => v = [c * x - s * y, s * x + c * y, z],
+                    }
+                }
+                [v[0] + dtra[0], v[1] + dtra[1], v[2] + dtra[2]]
             };
             // (corners CCW seen from outside, normal, shade, tile, uv per corner)
             let faces: [CuboidFace; 6] = [
@@ -338,7 +361,7 @@ impl ItemSystem {
                     ]
                 };
                 for ci in [0usize, 1, 2, 0, 2, 3] {
-                    let cn = corners[ci];
+                    let cn = dc(corners[ci]);
                     let rz = rot(cn[0], cn[2]);
                     out.push(vc_particles::particles::ParticleVertex {
                         pos: [it.pos[0] + rz[0], cy + cn[1], it.pos[2] + rz[1]],
@@ -1174,6 +1197,7 @@ mod tests {
             [0.0, 1.0, 0.0],
             [0.0, 0.0, -1.0],
             &mut out,
+            &|_| ([0.0; 3], [0.0; 3], [1.0; 3]),
         );
         // 2026-09-21: a full painter-ordered cuboid — 6 faces × 6
         // verts — replaces the old single billboard quad ("not the
@@ -1187,6 +1211,33 @@ mod tests {
             assert!((0.0..=1.0).contains(&v.uv[0]));
             assert!((0.0..=1.0).contains(&v.uv[1]));
         }
+    }
+
+    #[test]
+    fn item_display_transform_shapes_cuboid() {
+        // Y-only channels (the Y spin never touches them): scale 2
+        // doubles the hover cuboid height, +5 translation lifts it
+        let mut is = ItemSystem::new(5);
+        is.drop_block(0, 70, 0, GRASS, 3, 15, 0);
+        let mut out = Vec::new();
+        is.build_vertices(
+            1.0,
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, -1.0],
+            &mut out,
+            &|_| ([0.0; 3], [0.0, 5.0, 0.0], [2.0; 3]),
+        );
+        assert_eq!(out.len(), 36, "six faces per item cuboid");
+        let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+        for v in &out {
+            lo = lo.min(v.pos[1]);
+            hi = hi.max(v.pos[1]);
+        }
+        // base cuboid spans 0.25 in Y; scaled it spans 0.50
+        assert!((hi - lo - 0.50).abs() < 1e-4, "scaled height {lo}..{hi}");
+        // idle hover sits just off the floor (cy ≈ 70.3); +5 lifts it
+        assert!(lo > 74.5 && hi < 76.0, "lifted cuboid {lo}..{hi}");
     }
 
     // ---------------- Phase E1: XP orbs ----------------

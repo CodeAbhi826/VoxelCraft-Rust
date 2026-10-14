@@ -11550,23 +11550,28 @@ impl GameApp {
     /// world exactly like vanilla's separate hand pass — walls closer
     /// than the hand never clip it.
     #[allow(clippy::too_many_arguments)]
-    /// Part 6 §6.1: the held block's first-person display transform.
-    /// Identity unless an installed pack model defines
-    /// `firstperson_righthand` for the block's default state (builtin
-    /// ships none — third-party packs may; the icon baker stays
-    /// block-def driven, this covers the view model only).
-    fn held_display_tr(block: u16) -> vc_pack::model::DisplayTr {
+    /// Part 6 §6.1: a block's display transform for a pack view
+    /// (`firstperson_righthand` for the held cube, `ground` for drops).
+    /// Identity unless an installed pack model defines the view for the
+    /// block's default state (builtin ships none — third-party packs
+    /// may; the icon baker stays block-def driven).
+    fn display_tr_for(block: u16, view: &str) -> vc_pack::model::DisplayTr {
         let state = default_state(block);
         if let Some(set) = vc_pack::model::models() {
             if let Some(choice) = set.by_state.get(&state).and_then(|v| v.first()) {
                 if let Some(alt) = choice.alts.first() {
-                    if let Some(tr) = alt.model.display.get("firstperson_righthand") {
+                    if let Some(tr) = alt.model.display.get(view) {
                         return tr.clone();
                     }
                 }
             }
         }
         vc_pack::model::DisplayTr::identity()
+    }
+
+    /// Part 6 §6.1: the held block's first-person display transform.
+    fn held_display_tr(block: u16) -> vc_pack::model::DisplayTr {
+        Self::display_tr_for(block, "firstperson_righthand")
     }
 
     fn push_held_item(&mut self, right: [f32; 3], up: [f32; 3], dir: [f32; 3], eye: [f32; 3]) {
@@ -29334,10 +29339,21 @@ impl GameApp {
                 .build_vertices(right, up, &mut self.particle_verts);
             // item entities share the billboard pipeline (§22 progressive)
             // — 3D spinning mini-blocks since the 2026-09-21 round
-            // (needs the camera dir for the painter face order)
-            self.sim
-                .items
-                .build_vertices(self.time, right, up, dir, &mut self.particle_verts);
+            // (needs the camera dir for the painter face order).
+            // Part 6 §6.1: per-block pack "ground" display transforms
+            // (identity without a pack model — resolved here so the sim
+            // stays pack-free).
+            self.sim.items.build_vertices(
+                self.time,
+                right,
+                up,
+                dir,
+                &mut self.particle_verts,
+                &|b| {
+                    let t = Self::display_tr_for(b, "ground");
+                    (t.rotation, t.translation, t.scale)
+                },
+            );
             // §27/§29 villagers: crossed-quad sprites, villager scale
             vc_gameplay::villagers::build_vertices(
                 &self.sim.villagers.list,

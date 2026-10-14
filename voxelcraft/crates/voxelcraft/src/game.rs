@@ -17556,9 +17556,9 @@ impl GameApp {
         let n = a.len().min(b.len()) / 4;
         let mut s = 0u64;
         for i in 0..n {
-            s += (a[4 * i] as i64 - b[4 * i] as i64).unsigned_abs() as u64
-                + (a[4 * i + 1] as i64 - b[4 * i + 1] as i64).unsigned_abs() as u64
-                + (a[4 * i + 2] as i64 - b[4 * i + 2] as i64).unsigned_abs() as u64;
+            s += (a[4 * i] as i64 - b[4 * i] as i64).unsigned_abs()
+                + (a[4 * i + 1] as i64 - b[4 * i + 1] as i64).unsigned_abs()
+                + (a[4 * i + 2] as i64 - b[4 * i + 2] as i64).unsigned_abs();
         }
         let mean = if n > 0 {
             s as f64 / n as f64 / 3.0

@@ -7366,3 +7366,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-15z194 - Clippy fix (code, CI re-run)
 - CI red on unnecessary-cast (ATLAS_COLS is already u16) in PACK_TILE_MAX. One-line fix, clippy-clean locally incl. tests.
+
+## 2026-10-15z195 - Part 6 slice 8: gui display for sprites (code, tested)
+- Icon baker cross-sprite path honors pack gui scale (blit size) + translation (offsets); rotation stays cube-only (disclosed). Also replaced sprite-blit 16/64 literals with TILE_PX/ICON_CELL_PX. New sprite scale test green; full vc-render suite (220) green; clippy clean. CI gates.

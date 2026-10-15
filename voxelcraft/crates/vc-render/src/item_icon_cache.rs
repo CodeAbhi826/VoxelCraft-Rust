@@ -125,21 +125,29 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8], display: &Displ
     let cam = IsoCamera::default();
 
     // ---- cross-rendered blocks: flat sprite (vanilla behavior for
-    // cross models — flowers, crops, torches, saplings)
+    // cross models — flowers, crops, torches, saplings).
+    // Part 6 §6.1 (gui display, sprites): the pack scale sizes the
+    // blit and the pack translation shifts it (rotation stays
+    // cube-path-only — sprites remain axis-aligned, disclosed).
     if is_cross(block) {
         let tile = d.tiles[2];
-        let size = (ICON_CELL_PX - cam.margin_px * 2) as i32; // 56
+        let mean_scale = (display.scale[0] + display.scale[1] + display.scale[2]) / 3.0;
+        let size = ((ICON_CELL_PX - cam.margin_px * 2) as f32 * mean_scale).max(1.0) as i32;
         let off = cam.margin_px as i32;
+        let off_x = off + (display.translation[0] * size as f32) as i32;
+        let off_y = off - (display.translation[1] * size as f32) as i32;
         for y in 0..size {
             for x in 0..size {
-                let sx = x * 16 / size;
-                let sy = y * 16 / size;
+                let sx = x * TILE_PX as i32 / size;
+                let sy = y * TILE_PX as i32 / size;
                 let c = texel(atlas, tile, sx, sy);
-                let dst = (((off + y) * 64) + off + x) as usize * 4;
-                out[dst] = c[0];
-                out[dst + 1] = c[1];
-                out[dst + 2] = c[2];
-                out[dst + 3] = c[3];
+                let dst = (((off_y + y) * ICON_CELL_PX as i32) + off_x + x) as usize * 4;
+                if dst + 3 < out.len() && off_x + x >= 0 && off_y + y >= 0 {
+                    out[dst] = c[0];
+                    out[dst + 1] = c[1];
+                    out[dst + 2] = c[2];
+                    out[dst + 3] = c[3];
+                }
             }
         }
         return true;
@@ -177,8 +185,8 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8], display: &Displ
     // fit into the margin box (56 px), centered, uniform scale.
     // The pack scale rides as a post-fit multiplier (the fit itself is
     // scale-blind by construction) and the pack translation shifts the
-    // fitted window (model-y up maps to screen-y down); cross sprites
-    // keep the legacy untransformed blit (follow-up).
+    // fitted window (model-y up maps to screen-y down); the cross-sprite
+    // path above honors scale/translation the same way.
     let box_px = (ICON_CELL_PX - cam.margin_px * 2) as f32;
     let mean_scale = (display.scale[0] + display.scale[1] + display.scale[2]) / 3.0;
     let min_x = corners.iter().map(|c| c.0).fold(f32::INFINITY, f32::min);
@@ -745,6 +753,32 @@ mod tests {
         let opaque = |buf: &[u8; 64 * 64 * 4]| buf.chunks(4).filter(|p| p[3] > 0).count();
         let (n_full, n_half) = (opaque(&full), opaque(&half));
         assert!(n_full > 100, "identity icon paints something");
+        assert!(n_half > 0 && n_half < n_full, "{n_half} vs {n_full}");
+    }
+
+    #[test]
+    fn gui_display_scale_resizes_sprite() {
+        // Part 6 §6.1 (sprites): the same scale rule on the flat-sprite
+        // path — half scale paints strictly fewer opaque pixels (and > 0)
+        use vc_blocks::blocks::FLOWER_RED;
+        let atlas = fake_atlas();
+        let mut full = [0u8; 64 * 64 * 4];
+        let mut half = [0u8; 64 * 64 * 4];
+        assert!(bake_block_icon(
+            &atlas,
+            FLOWER_RED,
+            &mut full,
+            &DisplayTr::identity()
+        ));
+        let small = DisplayTr {
+            rotation: [0.0, 0.0, 0.0],
+            translation: [0.0, 0.0, 0.0],
+            scale: [0.5, 0.5, 0.5],
+        };
+        assert!(bake_block_icon(&atlas, FLOWER_RED, &mut half, &small));
+        let opaque = |buf: &[u8; 64 * 64 * 4]| buf.chunks(4).filter(|p| p[3] > 0).count();
+        let (n_full, n_half) = (opaque(&full), opaque(&half));
+        assert!(n_full > 100, "identity sprite paints something");
         assert!(n_half > 0 && n_half < n_full, "{n_half} vs {n_full}");
     }
 

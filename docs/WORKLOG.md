@@ -7363,3 +7363,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-15z193 - Part 6 slice 7: pixel-grid centralization (code, tested)
 - §6.2 grid: ATLAS_COLS now lives in vc-blocks (single source; vc-render re-exports). All 12 hand-rolled tile%32 strides + skin-stow compose bound + PACK_TILE_MAX + icon texel 16/512 literals flow through consts. No behavior change (full vc-render suite 219 green; clippy clean). Rust-side grid is now fully centralized; shaders already template through grid_shader().
+
+## 2026-10-15z194 - Clippy fix (code, CI re-run)
+- CI red on unnecessary-cast (ATLAS_COLS is already u16) in PACK_TILE_MAX. One-line fix, clippy-clean locally incl. tests.

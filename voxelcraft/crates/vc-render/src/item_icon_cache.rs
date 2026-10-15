@@ -105,16 +105,9 @@ fn texel(atlas: &[u8], tile: u16, x: i32, y: i32) -> [u8; 4] {
 /// icon baker (identity without an installed pack model).
 pub fn gui_display_tr(block: u16) -> DisplayTr {
     let state = default_state(block);
-    if let Some(set) = models() {
-        if let Some(choice) = set.by_state.get(&state).and_then(|v| v.first()) {
-            if let Some(alt) = choice.alts.first() {
-                if let Some(tr) = alt.model.display.get("gui") {
-                    return tr.clone();
-                }
-            }
-        }
-    }
-    DisplayTr::identity()
+    models()
+        .and_then(|set| vc_pack::model::lookup_display(&set.by_state, state, "gui"))
+        .unwrap_or_else(DisplayTr::identity)
 }
 
 /// Part 6 §6.1: isometric projection shared by the proxy-cube and

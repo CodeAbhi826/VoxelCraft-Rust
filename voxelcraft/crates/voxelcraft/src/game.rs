@@ -2056,6 +2056,18 @@ pub struct GameApp {
     /// E2E_WATER mesh revision at build (gate: proceed only after
     /// strictly newer meshes applied — proves the rig was remeshed)
     e2e_water_rev: u64,
+    /// E2E_DISPLAY — held-item display-transform proof leg ran once
+    e2e_display_done: bool,
+    /// E2E_DISPLAY stage (0 grant+settle, 1 capture A, 2 mutate,
+    /// 3 capture B, 4 diff+verdict)
+    e2e_display_stage: u8,
+    /// E2E_DISPLAY settle frames remaining
+    e2e_display_wait: u16,
+    /// E2E_DISPLAY: every capture landed + diff passed
+    e2e_display_ok: bool,
+    /// E2E_DISPLAY scale-2 override (tests the wiring downstream of
+    /// model lookup — lookup itself is unit-tested pure)
+    e2e_display_override: Option<vc_pack::model::DisplayTr>,
     /// 1A.6: E2E_ICONIC — the iconic-cast capture leg ran once
     e2e_iconic_done: bool,
     /// 1.11: E2E_TURNTABLE — solo-mob capture leg ran once
@@ -3682,6 +3694,11 @@ impl GameApp {
             e2e_water_gy: 0,
             e2e_water_cz: 0,
             e2e_water_rev: 0,
+            e2e_display_done: false,
+            e2e_display_stage: 0,
+            e2e_display_wait: 0,
+            e2e_display_ok: true,
+            e2e_display_override: None,
             e2e_iconic_done: false,
             e2e_iconic_stage: 0,
             e2e_iconic_settle: 0,
@@ -11550,20 +11567,18 @@ impl GameApp {
     /// may; the icon baker stays block-def driven).
     fn display_tr_for(block: u16, view: &str) -> vc_pack::model::DisplayTr {
         let state = default_state(block);
-        if let Some(set) = vc_pack::model::models() {
-            if let Some(choice) = set.by_state.get(&state).and_then(|v| v.first()) {
-                if let Some(alt) = choice.alts.first() {
-                    if let Some(tr) = alt.model.display.get(view) {
-                        return tr.clone();
-                    }
-                }
-            }
-        }
-        vc_pack::model::DisplayTr::identity()
+        vc_pack::model::models()
+            .and_then(|set| vc_pack::model::lookup_display(&set.by_state, state, view))
+            .unwrap_or_else(vc_pack::model::DisplayTr::identity)
     }
 
     /// Part 6 §6.1: the held block's first-person display transform.
-    fn held_display_tr(block: u16) -> vc_pack::model::DisplayTr {
+    /// The E2E_DISPLAY override (if armed) tests the wiring downstream
+    /// of model lookup; otherwise the installed pack model or identity.
+    fn held_display_tr(&self, block: u16) -> vc_pack::model::DisplayTr {
+        if let Some(tr) = self.e2e_display_override.clone() {
+            return tr;
+        }
         Self::display_tr_for(block, "firstperson_righthand")
     }
 
@@ -11658,7 +11673,7 @@ impl GameApp {
             // pack display transform (firstperson_righthand) shapes the
             // cube first (identity without a pack model); the swing/bob
             // view animation below then moves the whole assembly.
-            let dtr = Self::held_display_tr(held.block);
+            let dtr = self.held_display_tr(held.block);
             let anchor = [ax, ay, az];
             let hs = 0.15_f32;
             let mut corners_local: [[f32; 3]; 8] = [
@@ -17497,6 +17512,143 @@ impl GameApp {
         }
     }
 
+    /// E2E_DISPLAY — held-item display-transform proof leg (Part 6
+    /// §6.1 verification arc). Grants a stone block, captures the held
+    /// cube at identity (A), arms a scale-2 override, captures again
+    /// (B); the bottom-right-quadrant diff proves the wiring moves
+    /// pixels live (model lookup itself is unit-tested pure). The held
+    /// cube is camera-space, so no camera pin or chunk gate is needed —
+    /// only world entry.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_display_capture(&mut self, name: &str) -> bool {
+        if let Some(bytes) = self.renderer.take_screenshot_png() {
+            let dir = std::path::Path::new("screenshots");
+            let _ = std::fs::create_dir_all(dir);
+            let path = dir.join(format!("e2e_display_{name}_{}.png", chrono_like_stamp()));
+            let wrote = std::fs::write(&path, &bytes).is_ok();
+            vc_render::render::report_boot_log(&format!(
+                "e2e: display {name} {} ({} bytes)",
+                if wrote { "saved" } else { "WRITE FAILED" },
+                bytes.len()
+            ));
+            self.e2e_display_ok &= wrote && bytes.len() > 1000;
+            true
+        } else {
+            self.renderer.screenshot_request = true;
+            false
+        }
+    }
+
+    /// E2E_DISPLAY diff proof: mean-abs diff of the bottom-right
+    /// quadrant (the held cube lives there) between captures A and B.
+    /// Same pose, same world — only the display scale differs.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_display_diff(&mut self) {
+        let dir = std::path::Path::new("screenshots");
+        let mut shots: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+            .map(|rd| {
+                rd.filter_map(|e| e.ok())
+                    .map(|e| e.path())
+                    .filter(|p| {
+                        p.file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|n| n.starts_with("e2e_display_"))
+                            .unwrap_or(false)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        shots.sort();
+        if shots.len() < 2 {
+            return;
+        }
+        let px = |p: &std::path::PathBuf| {
+            std::fs::read(p)
+                .ok()
+                .and_then(|b| image::load_from_memory(&b).ok())
+                .map(|i| i.to_rgba8())
+                .unwrap_or_else(|| image::RgbaImage::new(0, 0))
+        };
+        let (a, b) = (px(&shots[0]), px(&shots[1]));
+        let (w, h) = (a.width().min(b.width()), a.height().min(b.height()));
+        let (mut s, mut n) = (0u64, 0u64);
+        for y in h / 2..h {
+            for x in w / 2..w {
+                let pa = a.get_pixel(x, y);
+                let pb = b.get_pixel(x, y);
+                s += (pa[0] as i64 - pb[0] as i64).unsigned_abs()
+                    + (pa[1] as i64 - pb[1] as i64).unsigned_abs()
+                    + (pa[2] as i64 - pb[2] as i64).unsigned_abs();
+                n += 1;
+            }
+        }
+        let mean = if n > 0 {
+            s as f64 / n as f64 / 3.0
+        } else {
+            0.0
+        };
+        vc_render::render::report_boot_log(&format!("e2e: display quadrantdiff={mean:.2}"));
+        self.e2e_display_ok &= mean > 1.0;
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_display(&mut self) {
+        // stay unpaused like the other capture legs + pinned spawn pose
+        // (the hand is camera-space, but the quadrant diff divides by a
+        // static background — drift would pollute the numerator)
+        self.screen = Screen::Game;
+        self.player.pos.x = -287.5;
+        self.player.pos.y = 65.0;
+        self.player.pos.z = -311.5;
+        self.player.yaw = 0.79;
+        self.player.pitch = 0.0;
+        match self.e2e_display_stage {
+            0 => {
+                // grant a stone block into the selected hotbar slot
+                self.player.inv.slots[self.player.selected] =
+                    vc_inventory::inventory::ItemStack::new(STONE, 1);
+                self.e2e_display_stage = 1;
+                self.e2e_display_wait = 10;
+            }
+            1 => {
+                if self.e2e_display_wait > 0 {
+                    self.e2e_display_wait -= 1;
+                    return;
+                }
+                if self.e2e_display_capture("A") {
+                    // arm the scale-2 override (the wiring under test)
+                    self.e2e_display_override = Some(vc_pack::model::DisplayTr {
+                        rotation: [0.0, 0.0, 0.0],
+                        translation: [0.0, 0.0, 0.0],
+                        scale: [2.0, 2.0, 2.0],
+                    });
+                    self.e2e_display_stage = 2;
+                    self.e2e_display_wait = 6;
+                }
+            }
+            2 => {
+                if self.e2e_display_wait > 0 {
+                    self.e2e_display_wait -= 1;
+                    return;
+                }
+                if self.e2e_display_capture("B") {
+                    self.e2e_display_stage = 3;
+                }
+            }
+            _ => {
+                self.e2e_display_diff();
+                let ok = self.e2e_display_ok;
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: display 2 captures — DISPLAY VERDICT {}",
+                    if ok { "OK" } else { "FAILED" }
+                ));
+                self.e2e_display_done = true;
+                self.dbg_exit_summary();
+                std::process::exit(if ok { 0 } else { 1 });
+            }
+        }
+    }
+
     /// E2E_WATER — still-water/flow visual leg (owner hardware report:
     /// no flow, holes). Builds a sealed pool IN the spawn view through
     /// the real state path, captures pool/surface/flow-pair/under. The
@@ -19293,6 +19445,15 @@ impl GameApp {
             }
         }
 
+        // E2E_DISPLAY — held-item display proof leg (Part 6 §6.1).
+        // Camera-space hand needs no chunks — world entry suffices.
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_DISPLAY").is_ok() && !self.e2e_display_done {
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            if in_world {
+                self.e2e_display();
+            }
+        }
         // E2E_WATER — still-water/flow visual leg (owner hardware
         // report). Same world-entry + chunk-ready guard as the visual
         // leg; the machine builds once, settles, captures 5, exits
@@ -19962,6 +20123,12 @@ impl GameApp {
                 let water_pending = std::env::var("E2E_WATER").is_ok() && !self.e2e_water_done;
                 #[cfg(target_arch = "wasm32")]
                 let water_pending = false;
+                // E2E_DISPLAY owns the exit while its grant+2-capture run goes
+                #[cfg(not(target_arch = "wasm32"))]
+                let display_pending =
+                    std::env::var("E2E_DISPLAY").is_ok() && !self.e2e_display_done;
+                #[cfg(target_arch = "wasm32")]
+                let display_pending = false;
                 if !fkeys_pending
                     && !iconic_pending
                     && !phases_pending
@@ -19970,6 +20137,7 @@ impl GameApp {
                     && !visual_pending
                     && !matrix_pending
                     && !water_pending
+                    && !display_pending
                 {
                     vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                     self.dbg_exit_summary();
@@ -20050,6 +20218,11 @@ impl GameApp {
             let water_pending = std::env::var("E2E_WATER").is_ok() && !self.e2e_water_done;
             #[cfg(target_arch = "wasm32")]
             let water_pending = false;
+            // E2E_DISPLAY owns the exit while its grant+2-capture run goes
+            #[cfg(not(target_arch = "wasm32"))]
+            let display_pending = std::env::var("E2E_DISPLAY").is_ok() && !self.e2e_display_done;
+            #[cfg(target_arch = "wasm32")]
+            let display_pending = false;
             if t_in > 2.2
                 && !fkeys_pending
                 && !iconic_pending
@@ -20059,6 +20232,7 @@ impl GameApp {
                 && !visual_pending
                 && !matrix_pending
                 && !water_pending
+                && !display_pending
             {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();
@@ -29527,6 +29701,7 @@ impl GameApp {
             && !(std::env::var("E2E_VISUAL").is_ok() && !self.e2e_visual_done)
             && !(std::env::var("E2E_MATRIX").is_ok() && !self.e2e_matrix_done)
             && !(std::env::var("E2E_WATER").is_ok() && !self.e2e_water_done)
+            && !(std::env::var("E2E_DISPLAY").is_ok() && !self.e2e_display_done)
             && (self.e2e_fkeys_stage == 0 || self.e2e_fkeys_stage > 3)
             // 1A.6: while the E2E_ICONIC ladder is armed the PNG is its
             // capture — the F2 dumper would otherwise consume it in the

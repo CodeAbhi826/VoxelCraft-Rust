@@ -7375,3 +7375,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-15z197 - Clippy fix (code, CI re-run)
 - CI red on too_many_arguments (raster_quad 9/7) + complex-type (quads tuple). IconQuad alias + deliberate allow (file precedent). Clippy-clean lib+tests locally.
+
+## 2026-10-15z198 - Part 6 slice 10: display proof leg (code, real-GPU-verified)
+- New E2E_DISPLAY leg: grants stone, captures held cube at identity (A), arms a scale-2 override, captures again (B); bottom-right-quadrant diff proves the wiring moves pixels live (quadrantdiff 24.59, VERDICT OK, pinned spawn view; A/B viewed: 1x vs ~2x stone cube). lookup_display() extracted pure (shared by held/drop/icon lookups) + unit-tested (present/missing). CI gates.

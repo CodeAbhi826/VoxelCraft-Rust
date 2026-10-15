@@ -320,6 +320,23 @@ pub struct AppliedModel {
     pub weight: u32,
 }
 
+/// look up a pack display transform for a blockstate + view (the
+/// first alternative of the first choice). Pure over the map (no
+/// globals) so view-model, drop, icon and E2E paths share one tested
+/// implementation; None = identity default.
+pub fn lookup_display(
+    by_state: &FxHashMap<u16, Vec<ModelChoice>>,
+    state: u16,
+    view: &str,
+) -> Option<DisplayTr> {
+    by_state
+        .get(&state)
+        .and_then(|v| v.first())
+        .and_then(|c| c.alts.first())
+        .and_then(|a| a.model.display.get(view))
+        .cloned()
+}
+
 /// A per-state model CHOICE: one of `alts` is picked (weighted, hashed by
 /// world position). Variant random-model arrays become one choice with N
 /// alternatives; multipart cases become N independent choices (all apply).
@@ -1036,6 +1053,38 @@ mod tests {
         assert!(
             (r[0] - 0.0).abs() < 1e-6 && (r[1] - 1.0).abs() < 1e-6 && (r[2] - 0.0).abs() < 1e-6
         );
+    }
+
+    #[test]
+    fn display_lookup_reads_first_alt_view() {
+        // hand-built registry (no globals): present view resolves,
+        // missing view/state yield None (identity default downstream)
+        let mut display = HashMap::new();
+        display.insert(
+            "firstperson_righthand".to_string(),
+            DisplayTr {
+                rotation: [0.0, 0.0, 0.0],
+                translation: [0.0, 0.0, 0.0],
+                scale: [2.0, 2.0, 2.0],
+            },
+        );
+        let model = Arc::new(CompiledModel {
+            ambientocclusion: true,
+            elements: Vec::new(),
+            display,
+            loc: "test".to_string(),
+        });
+        let mut by_state: FxHashMap<u16, Vec<ModelChoice>> = FxHashMap::default();
+        by_state.insert(
+            9,
+            vec![ModelChoice {
+                alts: vec![AppliedModel { model, weight: 1 }],
+            }],
+        );
+        let got = lookup_display(&by_state, 9, "firstperson_righthand").expect("view present");
+        assert_eq!(got.scale, [2.0, 2.0, 2.0]);
+        assert!(lookup_display(&by_state, 9, "gui").is_none());
+        assert!(lookup_display(&by_state, 10, "firstperson_righthand").is_none());
     }
 
     #[test]

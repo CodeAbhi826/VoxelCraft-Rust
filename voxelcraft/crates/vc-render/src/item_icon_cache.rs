@@ -160,7 +160,14 @@ fn fit_to_box(
 /// rasterizer are shared. Returns false when no usable model exists
 /// (no elements, no kept faces, or an unresolvable texture) — the
 /// caller falls back to the legacy proxy.
+/// one icon face for the rasterizer: screen quad, tile, brightness,
+/// optional per-corner uvs (None = full-tile legacy mapping)
+type IconQuad = ([(f32, f32); 4], u16, f32, Option<[[f32; 2]; 4]>);
+
 /// shared parallelogram rasterizer (proxy cube + model elements).
+// 9 params — the flat call keeps both call sites one-liners; bundling
+// into a struct would just move the fields, silenced deliberately.
+#[allow(clippy::too_many_arguments)]
 fn raster_quad(
     out: &mut [u8],
     atlas: &[u8],
@@ -240,7 +247,7 @@ pub fn bake_model_icon(
     use vc_pack::model::FaceDir;
     let cam = IsoCamera::default();
     // gather (screen quad, tile, shade, uv corners), Up/West/South first
-    let mut quads: Vec<([(f32, f32); 4], u16, f32, [[f32; 2]; 4])> = Vec::new();
+    let mut quads: Vec<IconQuad> = Vec::new();
     for el in elements {
         for f in &el.faces {
             let shade = match f.dir {
@@ -265,7 +272,7 @@ pub fn bake_model_icon(
                 ]);
                 pts[i] = iso_proj(cam.yaw_deg, cam.pitch_deg, r[0], r[1], r[2]);
             }
-            quads.push((pts, tile, shade, f.uvs));
+            quads.push((pts, tile, shade, Some(f.uvs)));
         }
     }
     if quads.is_empty() {
@@ -287,7 +294,7 @@ pub fn bake_model_icon(
     out.iter_mut().for_each(|b| *b = 0);
     for (pts, tile, bright, uvq) in quads {
         let (p0, p1, p2, p3) = (map(pts[0]), map(pts[1]), map(pts[2]), map(pts[3]));
-        raster_quad(out, atlas, p0, p1, p2, p3, tile, bright, Some(uvq));
+        raster_quad(out, atlas, p0, p1, p2, p3, tile, bright, uvq);
     }
     out.as_chunks::<4>().0.iter().any(|c| c[3] != 0)
 }

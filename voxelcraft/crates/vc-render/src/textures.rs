@@ -5070,7 +5070,7 @@ pub const PACK_TILE_BASE: u16 = vc_blocks::blocks::TILE_MAX + 1;
 /// hard cap: 32×32 tile grid = 1024 tiles in the 512² atlas
 /// ([merge atlas] was 255 in the 256² atlas — packs were locked out once
 /// TILE_MAX passed 255)
-pub const PACK_TILE_MAX: u16 = ATLAS_COLS as u16 * ATLAS_COLS as u16 - 1;
+pub const PACK_TILE_MAX: u16 = ATLAS_COLS * ATLAS_COLS - 1;
 
 /// 2.1e: the unknown-block placeholder tile — the same magenta/black
 /// 8×8 checker language as draw_missing_tile, painted at the

@@ -117,9 +117,199 @@ pub fn gui_display_tr(block: u16) -> DisplayTr {
     DisplayTr::identity()
 }
 
+/// Part 6 §6.1: isometric projection shared by the proxy-cube and
+/// model-element icon paths (yaw 45 / pitch 30 orthographic; screen x
+/// right, screen y down).
+fn iso_proj(yaw_deg: f32, pitch_deg: f32, x: f32, y: f32, z: f32) -> (f32, f32) {
+    let (sy, cy) = (yaw_deg.to_radians().sin(), yaw_deg.to_radians().cos());
+    let (sp, cp) = (pitch_deg.to_radians().sin(), pitch_deg.to_radians().cos());
+    // rotate Y by yaw, then X by pitch, keep (screen_x, screen_y) and
+    // drop depth (orthographic)
+    let x1 = x * cy + z * sy;
+    let z1 = -x * sy + z * cy;
+    let y1 = y * cp - z1 * sp;
+    (x1, -y1)
+}
+
+/// fit projected points into the margin box: uniform scale (times the
+/// pack mean-scale multiplier) + centering offsets (plus pack
+/// translation shifts in model units, y-up).
+fn fit_to_box(
+    pts: &[(f32, f32)],
+    box_px: f32,
+    margin_px: f32,
+    mean_scale: f32,
+    shift_x: f32,
+    shift_y: f32,
+) -> (f32, f32, f32) {
+    let min_x = pts.iter().map(|c| c.0).fold(f32::INFINITY, f32::min);
+    let max_x = pts.iter().map(|c| c.0).fold(f32::NEG_INFINITY, f32::max);
+    let min_y = pts.iter().map(|c| c.1).fold(f32::INFINITY, f32::min);
+    let max_y = pts.iter().map(|c| c.1).fold(f32::NEG_INFINITY, f32::max);
+    let span_x = (max_x - min_x).max(1e-6);
+    let span_y = (max_y - min_y).max(1e-6);
+    let scale = (box_px / span_x).min(box_px / span_y) * mean_scale;
+    let off_x = margin_px + (box_px - span_x * scale) * 0.5 - min_x * scale + shift_x * scale;
+    let off_y = margin_px + (box_px - span_y * scale) * 0.5 - min_y * scale - shift_y * scale;
+    (scale, off_x, off_y)
+}
+
+/// Part 6 §6.1 (model-driven icons): render installed pack-model
+/// faces instead of the block-def proxy cube. Keeps the iso-visible
+/// three (Up/West/South, same shades as the proxy); shade, fit and
+/// rasterizer are shared. Returns false when no usable model exists
+/// (no elements, no kept faces, or an unresolvable texture) — the
+/// caller falls back to the legacy proxy.
+/// shared parallelogram rasterizer (proxy cube + model elements).
+fn raster_quad(
+    out: &mut [u8],
+    atlas: &[u8],
+    p0: (f32, f32),
+    p1: (f32, f32),
+    p2: (f32, f32),
+    p3: (f32, f32),
+    tile: u16,
+    bright: f32,
+    uvq: Option<[[f32; 2]; 4]>,
+) {
+    // parallelogram basis: e1 = p1-p0 (u axis), e2 = p3-p0 (v axis)
+    let e1 = [p1.0 - p0.0, p1.1 - p0.1];
+    let e2 = [p3.0 - p0.0, p3.1 - p0.1];
+    let det = e1[0] * e2[1] - e1[1] * e2[0];
+    if det.abs() < 1e-9 {
+        return; // degenerate face (never for a real cube)
+    }
+    let minx = p0.0.min(p1.0).min(p2.0).min(p3.0).floor().max(0.0) as i32;
+    let maxx =
+        p0.0.max(p1.0)
+            .max(p2.0)
+            .max(p3.0)
+            .ceil()
+            .min(ICON_CELL_PX as f32 - 1.0) as i32;
+    let miny = p0.1.min(p1.1).min(p2.1).min(p3.1).floor().max(0.0) as i32;
+    let maxy =
+        p0.1.max(p1.1)
+            .max(p2.1)
+            .max(p3.1)
+            .ceil()
+            .min(ICON_CELL_PX as f32 - 1.0) as i32;
+    for py in miny..=maxy {
+        for px in minx..=maxx {
+            let dx = px as f32 + 0.5 - p0.0;
+            let dy = py as f32 + 0.5 - p0.1;
+            // exact affine inverse (parallelogram)
+            let u = (dx * e2[1] - dy * e2[0]) / det;
+            let v = (e1[0] * dy - e1[1] * dx) / det;
+            if !(-0.001..=1.001).contains(&u) || !(-0.001..=1.001).contains(&v) {
+                continue;
+            }
+            // nearest texel (v=0 is the tile's top row). Model faces
+            // carry explicit uv corners (0..1 of the texture);
+            // the proxy cube maps the full tile the legacy way.
+            let (su, sv) = match &uvq {
+                Some(q) => (
+                    q[0][0] + u * (q[1][0] - q[0][0]) + v * (q[3][0] - q[0][0]),
+                    q[0][1] + u * (q[1][1] - q[0][1]) + v * (q[3][1] - q[0][1]),
+                ),
+                None => (u, 1.0 - v),
+            };
+            let tx = (su.clamp(0.0, 0.9999) * TILE_PX as f32) as i32;
+            let ty = (sv.clamp(0.0, 0.9999) * TILE_PX as f32) as i32;
+            let c = texel(atlas, tile, tx, ty);
+            if c[3] == 0 {
+                continue; // transparent texel (cross-style side tiles)
+            }
+            let dst = ((py * ICON_CELL_PX as i32) + px) as usize * 4;
+            if dst + 3 < out.len() {
+                out[dst] = (c[0] as f32 * bright) as u8;
+                out[dst + 1] = (c[1] as f32 * bright) as u8;
+                out[dst + 2] = (c[2] as f32 * bright) as u8;
+                out[dst + 3] = c[3];
+            }
+        }
+    }
+}
+
+pub fn bake_model_icon(
+    atlas: &[u8],
+    elements: &[vc_pack::model::CompiledElement],
+    tiles: &std::collections::HashMap<String, u16>,
+    display: &DisplayTr,
+    out: &mut [u8],
+) -> bool {
+    use vc_pack::model::FaceDir;
+    let cam = IsoCamera::default();
+    // gather (screen quad, tile, shade, uv corners), Up/West/South first
+    let mut quads: Vec<([(f32, f32); 4], u16, f32, [[f32; 2]; 4])> = Vec::new();
+    for el in elements {
+        for f in &el.faces {
+            let shade = match f.dir {
+                // proxy shade table (FACE_TOP/LEFT/RIGHT = 1.0/0.8/0.6)
+                FaceDir::Up => 1.0,
+                FaceDir::West => 0.8,
+                FaceDir::South => 0.6,
+                _ => continue,
+            };
+            let Some(tile) = tiles.get(&f.texture).copied() else {
+                return false;
+            };
+            let mut pts = [(0.0f32, 0.0f32); 4];
+            for (i, v) in f.verts.iter().enumerate() {
+                // ±0.5 cube space (exact dyadic scaling) so the fit and
+                // rasterizer see bit-identical inputs to the proxy path
+                // for full-cube models (pinned by test)
+                let r = display.rotated([
+                    (v[0] - 8.0) / 16.0,
+                    (v[1] - 8.0) / 16.0,
+                    (v[2] - 8.0) / 16.0,
+                ]);
+                pts[i] = iso_proj(cam.yaw_deg, cam.pitch_deg, r[0], r[1], r[2]);
+            }
+            quads.push((pts, tile, shade, f.uvs));
+        }
+    }
+    if quads.is_empty() {
+        return false;
+    }
+    // shared fit over every kept vertex
+    let all: Vec<(f32, f32)> = quads.iter().flat_map(|q| q.0).collect();
+    let box_px = (ICON_CELL_PX - cam.margin_px * 2) as f32;
+    let mean_scale = (display.scale[0] + display.scale[1] + display.scale[2]) / 3.0;
+    let (scale, off_x, off_y) = fit_to_box(
+        &all,
+        box_px,
+        cam.margin_px as f32,
+        mean_scale,
+        display.translation[0],
+        display.translation[1],
+    );
+    let map = |(x, y): (f32, f32)| (x * scale + off_x, y * scale + off_y);
+    out.iter_mut().for_each(|b| *b = 0);
+    for (pts, tile, bright, uvq) in quads {
+        let (p0, p1, p2, p3) = (map(pts[0]), map(pts[1]), map(pts[2]), map(pts[3]));
+        raster_quad(out, atlas, p0, p1, p2, p3, tile, bright, Some(uvq));
+    }
+    out.as_chunks::<4>().0.iter().any(|c| c[3] != 0)
+}
+
 pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8], display: &DisplayTr) -> bool {
     if block == AIR || out.len() < (ICON_CELL_PX * ICON_CELL_PX * 4) as usize {
         return false;
+    }
+    // Part 6 §6.1 (model-driven icons): an installed pack model renders
+    // from its elements; otherwise the legacy block-def proxy below.
+    // (Builtin ships no models, so live behavior is unchanged.)
+    if let Some(set) = models() {
+        let state = default_state(block);
+        if let Some(choice) = set.by_state.get(&state).and_then(|v| v.first()) {
+            if let Some(alt) = choice.alts.first() {
+                if !alt.model.elements.is_empty()
+                    && bake_model_icon(atlas, &alt.model.elements, &set.tiles, display, out)
+                {
+                    return true;
+                }
+            }
+        }
     }
     let d = def(block);
     let cam = IsoCamera::default();
@@ -157,18 +347,8 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8], display: &Displ
     // (orthographic; screen x right, screen y down; the viewer sits at
     // +depth so the TOP, -x (left on screen) and +z (right on screen)
     // faces are the visible three)
-    let yaw = cam.yaw_deg.to_radians();
-    let pitch = cam.pitch_deg.to_radians();
-    let (sy, cy) = (yaw.sin(), yaw.cos());
-    let (sp, cp) = (pitch.sin(), pitch.cos());
-    // rotate Y by yaw, then X by pitch, keep (screen_x, screen_y) and
-    // drop depth (orthographic)
-    let proj = |x: f32, y: f32, z: f32| -> (f32, f32) {
-        let x1 = x * cy + z * sy;
-        let z1 = -x * sy + z * cy;
-        let y1 = y * cp - z1 * sp;
-        (x1, -y1)
-    };
+    let yaw = cam.yaw_deg;
+    let pitch = cam.pitch_deg;
     // corner indexing: i = y*4 + z*2 + x with each axis {0: -, 1: +}
     let idx = |y: usize, z: usize, x: usize| y * 4 + z * 2 + x;
     let mut corners = [(0f32, 0f32); 8];
@@ -178,7 +358,7 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8], display: &Displ
         for z in [0usize, 1] {
             for x in [0usize, 1] {
                 let r = display.rotated([x as f32 - 0.5, y as f32 - 0.5, z as f32 - 0.5]);
-                corners[idx(y, z, x)] = proj(r[0], r[1], r[2]);
+                corners[idx(y, z, x)] = iso_proj(yaw, pitch, r[0], r[1], r[2]);
             }
         }
     }
@@ -189,24 +369,14 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8], display: &Displ
     // path above honors scale/translation the same way.
     let box_px = (ICON_CELL_PX - cam.margin_px * 2) as f32;
     let mean_scale = (display.scale[0] + display.scale[1] + display.scale[2]) / 3.0;
-    let min_x = corners.iter().map(|c| c.0).fold(f32::INFINITY, f32::min);
-    let max_x = corners
-        .iter()
-        .map(|c| c.0)
-        .fold(f32::NEG_INFINITY, f32::max);
-    let min_y = corners.iter().map(|c| c.1).fold(f32::INFINITY, f32::min);
-    let max_y = corners
-        .iter()
-        .map(|c| c.1)
-        .fold(f32::NEG_INFINITY, f32::max);
-    let span_x = (max_x - min_x).max(1e-6);
-    let span_y = (max_y - min_y).max(1e-6);
-    let scale = (box_px / span_x).min(box_px / span_y) * mean_scale;
-    let off_x = cam.margin_px as f32 + (box_px - span_x * scale) * 0.5 - min_x * scale
-        + display.translation[0] * scale;
-    let off_y = cam.margin_px as f32 + (box_px - span_y * scale) * 0.5
-        - min_y * scale
-        - display.translation[1] * scale;
+    let (scale, off_x, off_y) = fit_to_box(
+        &corners,
+        box_px,
+        cam.margin_px as f32,
+        mean_scale,
+        display.translation[0],
+        display.translation[1],
+    );
     let s: Vec<(f32, f32)> = corners
         .iter()
         .map(|(x, y)| (x * scale + off_x, y * scale + off_y))
@@ -240,62 +410,16 @@ pub fn bake_block_icon(atlas: &[u8], block: u16, out: &mut [u8], display: &Displ
     );
 
     let faces = [
-        (top, top_tile, FACE_TOP),
-        (left, side_tile, FACE_LEFT),
-        (right, side_tile, FACE_RIGHT),
+        (top, top_tile, FACE_TOP, None),
+        (left, side_tile, FACE_LEFT, None),
+        (right, side_tile, FACE_RIGHT, None),
     ];
 
     // clear the cell (margin must stay transparent)
     out.iter_mut().for_each(|b| *b = 0);
 
-    for ((p0, p1, p2, p3), tile, bright) in faces {
-        // parallelogram basis: e1 = p1-p0 (u axis), e2 = p3-p0 (v axis)
-        let e1 = [p1.0 - p0.0, p1.1 - p0.1];
-        let e2 = [p3.0 - p0.0, p3.1 - p0.1];
-        let det = e1[0] * e2[1] - e1[1] * e2[0];
-        if det.abs() < 1e-9 {
-            continue; // degenerate face (never for a real cube)
-        }
-        let minx = p0.0.min(p1.0).min(p2.0).min(p3.0).floor().max(0.0) as i32;
-        let maxx =
-            p0.0.max(p1.0)
-                .max(p2.0)
-                .max(p3.0)
-                .ceil()
-                .min(ICON_CELL_PX as f32 - 1.0) as i32;
-        let miny = p0.1.min(p1.1).min(p2.1).min(p3.1).floor().max(0.0) as i32;
-        let maxy =
-            p0.1.max(p1.1)
-                .max(p2.1)
-                .max(p3.1)
-                .ceil()
-                .min(ICON_CELL_PX as f32 - 1.0) as i32;
-        for py in miny..=maxy {
-            for px in minx..=maxx {
-                let dx = px as f32 + 0.5 - p0.0;
-                let dy = py as f32 + 0.5 - p0.1;
-                // exact affine inverse (parallelogram)
-                let u = (dx * e2[1] - dy * e2[0]) / det;
-                let v = (e1[0] * dy - e1[1] * dx) / det;
-                if !(-0.001..=1.001).contains(&u) || !(-0.001..=1.001).contains(&v) {
-                    continue;
-                }
-                // nearest texel (v=0 is the tile's top row)
-                let tx = (u.clamp(0.0, 0.9999) * 16.0) as i32;
-                let ty = ((1.0 - v.clamp(0.0, 0.9999)) * 16.0) as i32;
-                let c = texel(atlas, tile, tx, ty);
-                if c[3] == 0 {
-                    continue; // transparent texel (cross-style side tiles)
-                }
-                let dst = ((py * 64) + px) as usize * 4;
-                if dst + 3 < out.len() {
-                    out[dst] = (c[0] as f32 * bright) as u8;
-                    out[dst + 1] = (c[1] as f32 * bright) as u8;
-                    out[dst + 2] = (c[2] as f32 * bright) as u8;
-                    out[dst + 3] = c[3];
-                }
-            }
-        }
+    for ((p0, p1, p2, p3), tile, bright, uvq) in faces {
+        raster_quad(out, atlas, p0, p1, p2, p3, tile, bright, uvq);
     }
     // any painted pixel?
     out.as_chunks::<4>().0.iter().any(|c| c[3] != 0)
@@ -780,6 +904,84 @@ mod tests {
         let (n_full, n_half) = (opaque(&full), opaque(&half));
         assert!(n_full > 100, "identity sprite paints something");
         assert!(n_half > 0 && n_half < n_full, "{n_half} vs {n_full}");
+    }
+
+    #[test]
+    fn model_cube_matches_proxy_cube() {
+        // Part 6 §6.1: a full-cube pack model (Up/West/South, full-range
+        // uvs, proxy tiles) must bake byte-identical to the legacy
+        // block-def proxy — proves the model path reproduces legacy.
+        use vc_blocks::blocks::{def, DIRT};
+        use vc_pack::model::{CompiledElement, CompiledFace, FaceDir};
+        let atlas = fake_atlas();
+        let d = def(DIRT);
+        let mut tiles = std::collections::HashMap::new();
+        tiles.insert("top".to_string(), d.tiles[0]);
+        tiles.insert("side".to_string(), d.tiles[2]);
+        // proxy-equivalent uvs: the legacy raster maps (u,1-v) per corner
+        let uvs = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+        let face = |dir: FaceDir, verts: [[f32; 3]; 4], texture: &str| CompiledFace {
+            dir,
+            verts,
+            uvs,
+            texture: texture.to_string(),
+            cullface: None,
+            tintindex: -1,
+            shade: true,
+        };
+        let el = CompiledElement {
+            faces: vec![
+                // Up (proxy top order)
+                face(
+                    FaceDir::Up,
+                    [
+                        [0.0, 16.0, 0.0],
+                        [16.0, 16.0, 0.0],
+                        [16.0, 16.0, 16.0],
+                        [0.0, 16.0, 16.0],
+                    ],
+                    "top",
+                ),
+                // West (proxy left order)
+                face(
+                    FaceDir::West,
+                    [
+                        [0.0, 16.0, 0.0],
+                        [0.0, 16.0, 16.0],
+                        [0.0, 0.0, 16.0],
+                        [0.0, 0.0, 0.0],
+                    ],
+                    "side",
+                ),
+                // South (proxy right order)
+                face(
+                    FaceDir::South,
+                    [
+                        [0.0, 16.0, 16.0],
+                        [16.0, 16.0, 16.0],
+                        [16.0, 0.0, 16.0],
+                        [0.0, 0.0, 16.0],
+                    ],
+                    "side",
+                ),
+            ],
+        };
+        let mut a = [0u8; 64 * 64 * 4];
+        let mut b = [0u8; 64 * 64 * 4];
+        assert!(bake_model_icon(
+            &atlas,
+            std::slice::from_ref(&el),
+            &tiles,
+            &DisplayTr::identity(),
+            &mut a
+        ));
+        assert!(bake_block_icon(
+            &atlas,
+            DIRT,
+            &mut b,
+            &DisplayTr::identity()
+        ));
+        assert_eq!(a, b);
     }
 
     #[test]

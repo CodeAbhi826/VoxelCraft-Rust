@@ -7369,3 +7369,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-15z195 - Part 6 slice 8: gui display for sprites (code, tested)
 - Icon baker cross-sprite path honors pack gui scale (blit size) + translation (offsets); rotation stays cube-only (disclosed). Also replaced sprite-blit 16/64 literals with TILE_PX/ICON_CELL_PX. New sprite scale test green; full vc-render suite (220) green; clippy clean. CI gates.
+
+## 2026-10-15z196 - Part 6 slice 9: model-driven icons (code, tested)
+- bake_model_icon renders installed pack-model faces (Up/West/South, proxy shades/fit/rasterizer shared, gui display honored); bake_block_icon tries it first, falls back to legacy proxy (builtin ships no models: live look unchanged). Full-cube model bakes BYTE-IDENTICAL to legacy (equivalence test). Full vc-render suite (221) green; clippy clean. CI gates.

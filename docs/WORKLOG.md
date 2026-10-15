@@ -7372,3 +7372,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-15z196 - Part 6 slice 9: model-driven icons (code, tested)
 - bake_model_icon renders installed pack-model faces (Up/West/South, proxy shades/fit/rasterizer shared, gui display honored); bake_block_icon tries it first, falls back to legacy proxy (builtin ships no models: live look unchanged). Full-cube model bakes BYTE-IDENTICAL to legacy (equivalence test). Full vc-render suite (221) green; clippy clean. CI gates.
+
+## 2026-10-15z197 - Clippy fix (code, CI re-run)
+- CI red on too_many_arguments (raster_quad 9/7) + complex-type (quads tuple). IconQuad alias + deliberate allow (file precedent). Clippy-clean lib+tests locally.

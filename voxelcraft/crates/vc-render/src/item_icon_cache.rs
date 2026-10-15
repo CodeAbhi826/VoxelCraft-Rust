@@ -24,6 +24,7 @@
 
 use rustc_hash::FxHashMap;
 
+use crate::textures::{ATLAS_COLS, ATLAS_SIZE, TILE_PX};
 use vc_blocks::blocks::{def, default_state, is_cross, AIR};
 use vc_pack::model::{models, DisplayTr};
 
@@ -84,11 +85,11 @@ const FACE_RIGHT: f32 = 0.6;
 /// sample one texel of a 16x16 atlas tile (out-of-range reads black)
 #[inline]
 fn texel(atlas: &[u8], tile: u16, x: i32, y: i32) -> [u8; 4] {
-    let tx = (tile % 32) as i32;
-    let ty = (tile / 32) as i32;
-    let px = (tx * 16 + x.clamp(0, 15)) as usize;
-    let py = (ty * 16 + y.clamp(0, 15)) as usize;
-    let idx = (py * 512 + px) * 4;
+    let tx = (tile % ATLAS_COLS) as i32;
+    let ty = (tile / ATLAS_COLS) as i32;
+    let px = (tx * TILE_PX as i32 + x.clamp(0, TILE_PX as i32 - 1)) as usize;
+    let py = (ty * TILE_PX as i32 + y.clamp(0, TILE_PX as i32 - 1)) as usize;
+    let idx = (py * ATLAS_SIZE + px) * 4;
     if idx + 3 < atlas.len() {
         [atlas[idx], atlas[idx + 1], atlas[idx + 2], atlas[idx + 3]]
     } else {

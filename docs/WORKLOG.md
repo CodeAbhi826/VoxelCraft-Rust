@@ -7360,3 +7360,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-15z192 - Part 6 slice 6: tile_uv centralization (code, tested)
 - §6.2 grid: new vc-blocks tile_uv() ([u0,v0,u1,v1], bit-exact) + ATLAS_COLS; converted 6 full-rect UV sites (mobs billboards, arrows, villagers, drop cuboids, stage overlay, held cube). Found + fixed a real bug: arrow billboards used %16//16 (pre-1.12 remnant), sampling tile (12,5) instead of arrow art at 92. vc-blocks/vc-sim/vc-gameplay suites green; clippy clean. CI gates (covers V114 shoot + survey rendering).
+
+## 2026-10-15z193 - Part 6 slice 7: pixel-grid centralization (code, tested)
+- §6.2 grid: ATLAS_COLS now lives in vc-blocks (single source; vc-render re-exports). All 12 hand-rolled tile%32 strides + skin-stow compose bound + PACK_TILE_MAX + icon texel 16/512 literals flow through consts. No behavior change (full vc-render suite 219 green; clippy clean). Rust-side grid is now fully centralized; shaders already template through grid_shader().

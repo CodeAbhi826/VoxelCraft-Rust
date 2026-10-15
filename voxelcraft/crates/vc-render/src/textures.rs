@@ -40,19 +40,14 @@ mod weather_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
-/// Part 6 §6.2 (hi-res tiles, slice 1): the atlas grid width in tiles.
-/// All tile↔pixel math flows through these three consts (ATLAS_SIZE ==
-/// ATLAS_COLS * TILE_PX, pinned by test); growing tiles later means
-/// changing the consts (+ art/mip follow-ups), not re-deriving strides.
-pub const ATLAS_COLS: usize = 32;
+// Part 6 §6.2 grid: single source of truth lives in vc-blocks (the
+// mesher/particle/mob crates consume it without depending on vc-render).
+pub use vc_blocks::blocks::ATLAS_COLS;
 
 /// tile index → grid (column, row)
 #[inline]
 pub fn tile_xy(t: u16) -> (i32, i32) {
-    (
-        (t % ATLAS_COLS as u16) as i32,
-        (t / ATLAS_COLS as u16) as i32,
-    )
+    ((t % ATLAS_COLS) as i32, (t / ATLAS_COLS) as i32)
 }
 
 #[inline]
@@ -4979,8 +4974,8 @@ pub fn blit_tile(
     out: &mut [u8],
     out_w: usize,
 ) {
-    let tx = (tile % 32) as usize;
-    let ty = (tile / 32) as usize;
+    let tx = (tile % ATLAS_COLS) as usize;
+    let ty = (tile / ATLAS_COLS) as usize;
     for y in 0..TILE_PX {
         for x in 0..TILE_PX {
             let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
@@ -5075,7 +5070,7 @@ pub const PACK_TILE_BASE: u16 = vc_blocks::blocks::TILE_MAX + 1;
 /// hard cap: 32×32 tile grid = 1024 tiles in the 512² atlas
 /// ([merge atlas] was 255 in the 256² atlas — packs were locked out once
 /// TILE_MAX passed 255)
-pub const PACK_TILE_MAX: u16 = 1023;
+pub const PACK_TILE_MAX: u16 = ATLAS_COLS as u16 * ATLAS_COLS as u16 - 1;
 
 /// 2.1e: the unknown-block placeholder tile — the same magenta/black
 /// 8×8 checker language as draw_missing_tile, painted at the
@@ -5148,8 +5143,8 @@ pub fn blend_frames(a: &[u8], b: &[u8], t: f32) -> Vec<u8> {
 /// stays fully transparent (the block itself shows through; drawn by the
 /// alpha-blended billboard pass).
 fn destroy_stage_art(a: &mut [u8], tile: u16, stage: u8) {
-    let tx = (tile % 32) as usize;
-    let ty = (tile / 32) as usize;
+    let tx = (tile % ATLAS_COLS) as usize;
+    let ty = (tile / ATLAS_COLS) as usize;
     // clear the slot first (generate_atlas leaves zeros, but pack flips
     // re-run this painter — idempotency keeps re-applied stages clean)
     for y in 0..TILE_PX {
@@ -5201,8 +5196,8 @@ fn destroy_stage_art(a: &mut [u8], tile: u16, stage: u8) {
 /// Player arm texture — an original look-alike for the held-item view
 /// model).
 fn arm_art(a: &mut [u8], tile: u16) {
-    let tx = (tile % 32) as usize;
-    let ty = (tile / 32) as usize;
+    let tx = (tile % ATLAS_COLS) as usize;
+    let ty = (tile / ATLAS_COLS) as usize;
     let mut rng = Rng::new(0xA2D5);
     for y in 0..TILE_PX {
         for x in 0..TILE_PX {
@@ -5511,8 +5506,8 @@ pub fn merge_pack_textures(
     // animates magma with or without a resource pack.
     {
         let extract_tile = |tile: u16| -> Vec<u8> {
-            let tx = (tile % 32) as usize;
-            let ty = (tile / 32) as usize;
+            let tx = (tile % ATLAS_COLS) as usize;
+            let ty = (tile / ATLAS_COLS) as usize;
             let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
             for y in 0..TILE_PX {
                 for x in 0..TILE_PX {
@@ -5568,8 +5563,8 @@ pub fn merge_pack_textures(
     // a resource pack.
     {
         let extract_tile = |tile: u16| -> Vec<u8> {
-            let tx = (tile % 32) as usize;
-            let ty = (tile / 32) as usize;
+            let tx = (tile % ATLAS_COLS) as usize;
+            let ty = (tile / ATLAS_COLS) as usize;
             let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
             for y in 0..TILE_PX {
                 for x in 0..TILE_PX {
@@ -5647,11 +5642,16 @@ pub fn blit_skin_faces(
 ) {
     let atlas_px = ATLAS_SIZE * ATLAS_SIZE * 4;
     for m in map {
-        let tile = base as u32 + m.tile_dy * 32 + m.tile_dx;
-        if tile > 1023 {
+        // mob-skin stow composes tile ids on the 32-column grid (was a
+        // hardcoded *32/1023 bound — Part 6 §6.2 grid centralization)
+        let tile = base as u32 + m.tile_dy * ATLAS_COLS as u32 + m.tile_dx;
+        if tile >= ATLAS_COLS as u32 * ATLAS_COLS as u32 {
             continue;
         }
-        let (tx, ty) = ((tile % 32) as usize, (tile / 32) as usize);
+        let (tx, ty) = (
+            (tile % ATLAS_COLS as u32) as usize,
+            (tile / ATLAS_COLS as u32) as usize,
+        );
         let (rx, ry, rw, rh) = (
             m.rect[0] as usize,
             m.rect[1] as usize,
@@ -5673,8 +5673,8 @@ pub fn blit_skin_faces(
 
 /// blit a 16×16 RGBA frame into an atlas tile slot
 fn blit_16(atlas: &mut [u8], tile: u16, frame: &[u8]) {
-    let tx = (tile % 32) as usize;
-    let ty = (tile / 32) as usize;
+    let tx = (tile % ATLAS_COLS) as usize;
+    let ty = (tile / ATLAS_COLS) as usize;
     for y in 0..TILE_PX {
         for x in 0..TILE_PX {
             let src = (y * TILE_PX + x) * 4;
@@ -5745,7 +5745,7 @@ mod pack_tex_tests {
     /// right byte offset — the groundwork later slices grow.
     #[test]
     fn atlas_grid_consts_agree() {
-        assert_eq!(ATLAS_SIZE, ATLAS_COLS * TILE_PX);
+        assert_eq!(ATLAS_SIZE, ATLAS_COLS as usize * TILE_PX);
         assert_eq!(tile_xy(10), (10, 0));
         assert_eq!(tile_xy(33), (1, 1));
         let mut a = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
@@ -5970,8 +5970,8 @@ mod pack_tex_tests {
         };
 
         let extract = |tile: u16| -> Vec<u8> {
-            let tx = (tile % 32) as usize;
-            let ty = (tile / 32) as usize;
+            let tx = (tile % ATLAS_COLS) as usize;
+            let ty = (tile / ATLAS_COLS) as usize;
             let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
             for y in 0..TILE_PX {
                 for x in 0..TILE_PX {
@@ -6062,8 +6062,8 @@ mod pack_merge_tests {
 
     /// helper: raw atlas bytes of one tile (RGBA, 16×16)
     fn tile_bytes(atlas: &[u8], tile: u16) -> Vec<u8> {
-        let tx = (tile % 32) as usize;
-        let ty = (tile / 32) as usize;
+        let tx = (tile % ATLAS_COLS) as usize;
+        let ty = (tile / ATLAS_COLS) as usize;
         let mut out = Vec::with_capacity(TILE_PX * TILE_PX * 4);
         for y in 0..TILE_PX {
             let row = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX) * 4;
@@ -6263,8 +6263,8 @@ mod v110_tests {
     use vc_pack::pack::MemorySource;
 
     fn tile_bytes(atlas: &[u8], tile: u16) -> Vec<u8> {
-        let tx = (tile % 32) as usize;
-        let ty = (tile / 32) as usize;
+        let tx = (tile % ATLAS_COLS) as usize;
+        let ty = (tile / ATLAS_COLS) as usize;
         let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
         for y in 0..TILE_PX {
             for x in 0..TILE_PX {

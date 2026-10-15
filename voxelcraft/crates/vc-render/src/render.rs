@@ -5000,8 +5000,8 @@ impl Renderer {
     /// mipmaps active the tile's mip levels are refreshed too (vanilla
     /// uploads each animation frame's own mip chain — same behavior).
     pub fn write_atlas_tile(&mut self, tile: u16, rgba: &[u8]) {
-        let tx = (tile % 32) as u32;
-        let ty = (tile / 32) as u32;
+        let tx = (tile % textures::ATLAS_COLS) as u32;
+        let ty = (tile / textures::ATLAS_COLS) as u32;
         self.queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &self.atlas_tex,

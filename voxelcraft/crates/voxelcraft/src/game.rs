@@ -8479,8 +8479,7 @@ impl GameApp {
         }
         let tile = TILE_WITHER;
         // [1.12 fix] 32-tile atlas rows (was %16//16)
-        let tx = (tile % 32) as f32;
-        let ty = (tile / 32) as f32;
+        let uv = vc_blocks::blocks::tile_uv(tile);
         // hover bob + the charge-phase pulsing tint (black↔blue like the
         // vanilla charge — VERIFIED behavior note)
         let bob = (self.time * 1.2).sin() * 0.25;
@@ -8500,7 +8499,7 @@ impl GameApp {
                     -right[1] * half - up[1] * half,
                     -right[2] * half - up[2] * half,
                 ],
-                [tx / 32.0, ty / 32.0],
+                [uv[0], uv[1]],
             ),
             (
                 [
@@ -8508,7 +8507,7 @@ impl GameApp {
                     right[1] * half - up[1] * half,
                     right[2] * half - up[2] * half,
                 ],
-                [(tx + 1.0) / 32.0, ty / 32.0],
+                [uv[2], uv[1]],
             ),
             (
                 [
@@ -8516,7 +8515,7 @@ impl GameApp {
                     right[1] * half + up[1] * half,
                     right[2] * half + up[2] * half,
                 ],
-                [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
+                [uv[2], uv[3]],
             ),
             (
                 [
@@ -8524,7 +8523,7 @@ impl GameApp {
                     -right[1] * half + up[1] * half,
                     -right[2] * half + up[2] * half,
                 ],
-                [tx / 32.0, (ty + 1.0) / 32.0],
+                [uv[0], uv[3]],
             ),
         ];
         for (v, uv) in corners.iter() {
@@ -8613,8 +8612,7 @@ impl GameApp {
             }
             let tile = TILE_END_CRYSTAL;
             // [1.12 fix] 32-tile atlas rows (was %16//16)
-            let tx = (tile % 32) as f32;
-            let ty = (tile / 32) as f32;
+            let uv = vc_blocks::blocks::tile_uv(tile);
             let bob = (self.time * 1.5 + c.pos[0]).sin() * 0.15;
             let half = 0.8f32;
             let col = [1.0f32, 0.95, 1.0];
@@ -8625,7 +8623,7 @@ impl GameApp {
                         -right[1] * half - up[1] * half,
                         -right[2] * half - up[2] * half,
                     ],
-                    [tx / 32.0, ty / 32.0],
+                    [uv[0], uv[1]],
                 ),
                 (
                     [
@@ -8633,7 +8631,7 @@ impl GameApp {
                         right[1] * half - up[1] * half,
                         right[2] * half - up[2] * half,
                     ],
-                    [(tx + 1.0) / 32.0, ty / 32.0],
+                    [uv[2], uv[1]],
                 ),
                 (
                     [
@@ -8641,7 +8639,7 @@ impl GameApp {
                         right[1] * half + up[1] * half,
                         right[2] * half + up[2] * half,
                     ],
-                    [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
+                    [uv[2], uv[3]],
                 ),
                 (
                     [
@@ -8649,7 +8647,7 @@ impl GameApp {
                         -right[1] * half + up[1] * half,
                         -right[2] * half + up[2] * half,
                     ],
-                    [tx / 32.0, (ty + 1.0) / 32.0],
+                    [uv[0], uv[3]],
                 ),
             ];
             for ci in [0usize, 1, 2, 0, 2, 3] {
@@ -8666,8 +8664,7 @@ impl GameApp {
         if let Some(d) = self.sim.dragon.dragon.as_ref() {
             let tile = TILE_ENDERDRAGON;
             // [1.12 fix] 32-tile atlas rows (was %16//16)
-            let tx = (tile % 32) as f32;
-            let ty = (tile / 32) as f32;
+            let uv = vc_blocks::blocks::tile_uv(tile);
             let half = 3.0f32;
             let hurt = d.dying.is_none() && d.health < 200.0 && (d.health * 10.0) as i32 % 2 == 0;
             let col = if hurt {
@@ -8682,7 +8679,7 @@ impl GameApp {
                         -right[1] * half - up[1] * half,
                         -right[2] * half - up[2] * half,
                     ],
-                    [tx / 32.0, ty / 32.0],
+                    [uv[0], uv[1]],
                 ),
                 (
                     [
@@ -8690,7 +8687,7 @@ impl GameApp {
                         right[1] * half - up[1] * half,
                         right[2] * half - up[2] * half,
                     ],
-                    [(tx + 1.0) / 32.0, ty / 32.0],
+                    [uv[2], uv[1]],
                 ),
                 (
                     [
@@ -8698,7 +8695,7 @@ impl GameApp {
                         right[1] * half + up[1] * half,
                         right[2] * half + up[2] * half,
                     ],
-                    [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
+                    [uv[2], uv[3]],
                 ),
                 (
                     [
@@ -8706,7 +8703,7 @@ impl GameApp {
                         -right[1] * half + up[1] * half,
                         -right[2] * half + up[2] * half,
                     ],
-                    [tx / 32.0, (ty + 1.0) / 32.0],
+                    [uv[0], uv[3]],
                 ),
             ];
             for ci in [0usize, 1, 2, 0, 2, 3] {
@@ -11469,12 +11466,8 @@ impl GameApp {
         let (sky, blk) = face_light_at(&self.world, &self.light, m.pos[0], m.pos[1], m.pos[2]);
         let light = vc_particles::particles::particle_light(sky, blk);
         // atlas UV of the stage tile
-        let tx = (tile % 32) as f32;
-        let ty = (tile / 32) as f32;
-        let u0 = tx / 32.0;
-        let u1 = (tx + 1.0) / 32.0;
-        let v0 = ty / 32.0;
-        let v1 = (ty + 1.0) / 32.0;
+        let uv = vc_blocks::blocks::tile_uv(tile);
+        let (u0, v0, u1, v1) = (uv[0], uv[1], uv[2], uv[3]);
         // inflate 1.5% so the overlay never z-fights the block faces
         let e = 0.0075;
         let (x0, y0, z0) = (
@@ -11634,12 +11627,8 @@ impl GameApp {
         };
         let emit_face =
             |corners: &[[f32; 3]; 4], tile: u16, shade: f32, out: &mut Vec<ParticleVertex>| {
-                let tx = (tile % 32) as f32;
-                let ty = (tile / 32) as f32;
-                let u0 = tx / 32.0;
-                let u1 = (tx + 1.0) / 32.0;
-                let v0 = ty / 32.0;
-                let v1 = (ty + 1.0) / 32.0;
+                let uv = vc_blocks::blocks::tile_uv(tile);
+                let (u0, v0, u1, v1) = (uv[0], uv[1], uv[2], uv[3]);
                 let f = [light * shade; 3];
                 let a = ParticleVertex {
                     pos: corners[0],

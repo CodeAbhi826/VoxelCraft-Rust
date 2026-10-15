@@ -1025,8 +1025,7 @@ pub fn build_vertices(
 ) {
     let tile = TILE_VILLAGER;
     // [1.12 fix] 32-tile atlas rows (was %16//16 — see mobs.rs)
-    let tx = (tile % 32) as f32;
-    let ty = (tile / 32) as f32;
+    let uvr = vc_blocks::blocks::tile_uv(tile);
     for v in list {
         // face the movement direction (billboard around world Y)
         let yaw = v.yaw + time * 0.0; // no spin — grounded NPCs
@@ -1042,19 +1041,10 @@ pub fn build_vertices(
         let bob = 0.0;
         // the quad spans feet..head
         let corners = [
-            (
-                [-rr[0] * half, 0.0, -rr[2] * half],
-                [tx / 32.0, (ty + 1.0) / 32.0],
-            ),
-            (
-                [rr[0] * half, 0.0, rr[2] * half],
-                [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
-            ),
-            (
-                [rr[0] * half, h, rr[2] * half],
-                [(tx + 1.0) / 32.0, ty / 32.0],
-            ),
-            ([-rr[0] * half, h, -rr[2] * half], [tx / 32.0, ty / 32.0]),
+            ([-rr[0] * half, 0.0, -rr[2] * half], [uvr[0], uvr[3]]),
+            ([rr[0] * half, 0.0, rr[2] * half], [uvr[2], uvr[3]]),
+            ([rr[0] * half, h, rr[2] * half], [uvr[2], uvr[1]]),
+            ([-rr[0] * half, h, -rr[2] * half], [uvr[0], uvr[1]]),
         ];
         for ci in [0usize, 1, 2, 0, 2, 3] {
             let (c, uv) = corners[ci];

@@ -7357,3 +7357,6 @@ Part 1 continues: 1.1 phase-meter span, 1.2 STREAMING bench path,
 
 ## 2026-10-15z191 - Part 6 slice 5: gui display for icons (code, tested)
 - bake_block_icon takes the pack "gui" DisplayTr (rotation pre-projection, scale as post-fit multiplier, translation shifts the fitted window; cross sprites documented follow-up). run_bakes resolves via models() (identity default, look unchanged). New scale test (half-scale paints fewer pixels); DisplayTr::rotated + test in vc-pack. Full vc-render suite (219) + vc-pack (46) green; clippy clean. CI gates.
+
+## 2026-10-15z192 - Part 6 slice 6: tile_uv centralization (code, tested)
+- §6.2 grid: new vc-blocks tile_uv() ([u0,v0,u1,v1], bit-exact) + ATLAS_COLS; converted 6 full-rect UV sites (mobs billboards, arrows, villagers, drop cuboids, stage overlay, held cube). Found + fixed a real bug: arrow billboards used %16//16 (pre-1.12 remnant), sampling tile (12,5) instead of arrow art at 92. vc-blocks/vc-sim/vc-gameplay suites green; clippy clean. CI gates (covers V114 shoot + survey rendering).

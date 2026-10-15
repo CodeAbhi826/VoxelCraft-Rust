@@ -7432,8 +7432,7 @@ pub fn build_vertices_culled(
         if m.kind == MobKind::Parrot {
             tile = TILE_PARROT_BASE + ((m.variant & 0x07).min(4) as u16);
         }
-        let tx = (tile % 32) as f32;
-        let ty = (tile / 32) as f32;
+        let uv = vc_blocks::blocks::tile_uv(tile);
         let (s, c) = (m.yaw.sin(), m.yaw.cos());
         let rr = [
             c * right[0] + s * right[2],
@@ -7450,19 +7449,10 @@ pub fn build_vertices_culled(
             col = [1.6, 1.6, 1.6];
         }
         let corners = [
-            (
-                [-rr[0] * half, 0.0, -rr[2] * half],
-                [tx / 32.0, (ty + 1.0) / 32.0],
-            ),
-            (
-                [rr[0] * half, 0.0, rr[2] * half],
-                [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
-            ),
-            (
-                [rr[0] * half, h, rr[2] * half],
-                [(tx + 1.0) / 32.0, ty / 32.0],
-            ),
-            ([-rr[0] * half, h, -rr[2] * half], [tx / 32.0, ty / 32.0]),
+            ([-rr[0] * half, 0.0, -rr[2] * half], [uv[0], uv[3]]),
+            ([rr[0] * half, 0.0, rr[2] * half], [uv[2], uv[3]]),
+            ([rr[0] * half, h, rr[2] * half], [uv[2], uv[1]]),
+            ([-rr[0] * half, h, -rr[2] * half], [uv[0], uv[1]]),
         ];
         // 1.12: an invisible illusioner renders ONLY its 4 false
         // duplicates ("it creates four false duplicates of itself.
@@ -7522,8 +7512,10 @@ pub fn build_arrow_vertices(
 ) {
     for a in arrows {
         let tile = TILE_ARROW;
-        let tx = (tile % 16) as f32;
-        let ty = (tile / 16) as f32;
+        // Part 6 §6.2: 32-column grid (this was %16//16, a pre-1.12-fix
+        // remnant pointing at the wrong tile — the arrow art lives at
+        // tile 92 in 32-col layout)
+        let uv = vc_blocks::blocks::tile_uv(tile);
         let half = 0.35f32;
         let corners = [
             (
@@ -7532,7 +7524,7 @@ pub fn build_arrow_vertices(
                     -right[1] * half - up[1] * half,
                     -right[2] * half - up[2] * half,
                 ],
-                [tx / 32.0, (ty + 1.0) / 32.0],
+                [uv[0], uv[3]],
             ),
             (
                 [
@@ -7540,7 +7532,7 @@ pub fn build_arrow_vertices(
                     right[1] * half - up[1] * half,
                     right[2] * half - up[2] * half,
                 ],
-                [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
+                [uv[2], uv[3]],
             ),
             (
                 [
@@ -7548,7 +7540,7 @@ pub fn build_arrow_vertices(
                     right[1] * half + up[1] * half,
                     right[2] * half + up[2] * half,
                 ],
-                [(tx + 1.0) / 32.0, ty / 32.0],
+                [uv[2], uv[1]],
             ),
             (
                 [
@@ -7556,7 +7548,7 @@ pub fn build_arrow_vertices(
                     -right[1] * half + up[1] * half,
                     -right[2] * half + up[2] * half,
                 ],
-                [tx / 32.0, ty / 32.0],
+                [uv[0], uv[1]],
             ),
         ];
         for ci in [0usize, 1, 2, 0, 2, 3] {

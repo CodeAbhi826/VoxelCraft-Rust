@@ -340,24 +340,23 @@ impl ItemSystem {
             for fi in order {
                 let (corners, _nrm, shade, tile) = &faces[fi];
                 // [1.12 fix] 32-tile atlas rows (was %16//16)
-                let tx = (tile % 32) as f32;
-                let ty = (tile / 32) as f32;
+                let uv = vc_blocks::blocks::tile_uv(*tile);
                 let col = col(*shade);
                 // UV: v flipped so texture top = block top (side faces);
                 // top/bottom map the tile straight on
                 let uvs = if fi < 2 {
                     [
-                        [tx / 32.0, (ty + 1.0) / 32.0],
-                        [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
-                        [(tx + 1.0) / 32.0, ty / 32.0],
-                        [tx / 32.0, ty / 32.0],
+                        [uv[0], uv[3]],
+                        [uv[2], uv[3]],
+                        [uv[2], uv[1]],
+                        [uv[0], uv[1]],
                     ]
                 } else {
                     [
-                        [tx / 32.0, (ty + 1.0) / 32.0],
-                        [tx / 32.0, ty / 32.0],
-                        [(tx + 1.0) / 32.0, ty / 32.0],
-                        [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
+                        [uv[0], uv[3]],
+                        [uv[0], uv[1]],
+                        [uv[2], uv[1]],
+                        [uv[2], uv[3]],
                     ]
                 };
                 for ci in [0usize, 1, 2, 0, 2, 3] {

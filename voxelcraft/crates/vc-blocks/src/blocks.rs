@@ -27,7 +27,21 @@ pub enum SoundFamily {
     None,
 }
 
-// Tile indices inside the 16x16-tile procedural atlas (256x256 px).
+// Tile indices inside the procedural atlas (32-column grid; Part 6 §6.2:
+// the grid width is ATLAS_COLS, mirrored in vc-render's atlas builder —
+// the two consts are pinned equal by test).
+pub const ATLAS_COLS: u16 = 32;
+
+/// tile index → full-tile UV rect [u0, v0, u1, v1] as atlas fractions.
+/// Bit-exact with the historical inline math ((tile%32)/32.0, …) so all
+/// call sites convert without pixel drift; v0 is the tile top.
+#[inline]
+pub fn tile_uv(tile: u16) -> [f32; 4] {
+    let tx = (tile % ATLAS_COLS) as f32;
+    let ty = (tile / ATLAS_COLS) as f32;
+    let c = ATLAS_COLS as f32;
+    [tx / c, ty / c, (tx + 1.0) / c, (ty + 1.0) / c]
+}
 pub const TILE_GRASS_TOP: u16 = 0;
 pub const TILE_GRASS_SIDE: u16 = 1;
 pub const TILE_DIRT: u16 = 2;
@@ -14053,6 +14067,18 @@ pub fn creative_tab_items(tab: CreativeTab) -> Vec<u16> {
 #[cfg(test)]
 mod creative_tab_tests {
     use super::*;
+
+    /// Part 6 §6.2: tile_uv matches the historical inline math exactly
+    /// (same op order — no pixel drift on conversion).
+    #[test]
+    fn tile_uv_rects() {
+        assert_eq!(tile_uv(10), [10.0 / 32.0, 0.0, 11.0 / 32.0, 1.0 / 32.0]);
+        assert_eq!(
+            tile_uv(33),
+            [1.0 / 32.0, 1.0 / 32.0, 2.0 / 32.0, 2.0 / 32.0]
+        );
+        assert_eq!(ATLAS_COLS, 32);
+    }
 
     /// Sub-round 2: the tab order is the classic nine, in vanilla order,
     /// every tab non-empty, and every PICKER_BLOCKS entry lands somewhere

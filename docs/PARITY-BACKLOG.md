@@ -301,8 +301,8 @@ Other owner-listed texture fixes (same verdict):
 |---|---|
 | Leaf close-range per-pixel noise | **Landed** (z203) — structured 4×4 clumps (rimmed / vertical-split / horizontal-split / dappled masks), per-clump tone (±1 shade) + one cut-out per clump. Distinct colours 220→21, 8-px patches 1→15, identical horizontal neighbours 3→91; tests + before/after captures viewed |
 | Oversaturated cyan water | Landed earlier (2026-09-21b; re-verified in the rendering stage z186) |
-| Crosshair colour consistency | Open |
-| Confirm HUD heart/food icons are procedural | Open (verify + record) |
+| Crosshair colour consistency | **Verified — by design** (z205) | Vanilla difference blend: device-snapped white INVERT quads (`BlendFactor::OneMinusDst`, ui.rs `crosshair()/crosshair_quads()`), so the plus is 1−background per channel and shifts colour with the backdrop — that IS the 1.16.5 technique (public /Crosshair reference), kept deliberately over an alpha-white crosshair that vanished on snow (found live). The canvas fallback (no-GPU boot path only) keeps white + dark outline. Queue: owner may prefer a pinned colour over parity (silent question) |
+| Confirm HUD heart/food icons are procedural | **Verified** (z205) | Built-in HUD sprites are painted procedurally in `textures/gui_art.rs` (`draw_heart`/`draw_hunger`/`draw_armor` + variants, unit-tested: `heart_variants_paint_and_clip`, `hunger_variants_paint`) into `GuiTextureSet::build_builtin()`, which never touches disk. A user override API (`gui/loader.rs::load_override`) exists but is called only from tests — the game has no pack/custom path for these sprites today |
 
 ## 6.3 Wider gaps vs the real game (2026-10-12 — matrix pointer)
 

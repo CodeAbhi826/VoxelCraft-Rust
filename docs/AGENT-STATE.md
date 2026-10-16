@@ -1,10 +1,12 @@
 # AGENT-STATE.md — handoff (PLAN-FINAL §0.A6: updated after every slice)
 
-## Current (2026-10-15, branch test/full-sweep-2026-09-25 — Part 6)
-- Rendering stage CLOSED (z186 review): water blue + flow + no holes; damage audit clean; matrix 65/65 technically reviewed (zero drift, ladders behave); owner questions queued silently (POM/PBR, flicker/z-fight specifics, UI/HUD specifics, frametime scope, cinematic discovery, night brightness, matrix content V1 at full-plan end).
-- Shipped & CI-green: z184 clippy, z185 HUD silent-paths, z187–z198 Part 6 slices 1–10 (held/drop/gui display transforms, atlas-grid consts, shader grid templates, tile_uv + arrow-grid bug fix, model-driven icons, E2E_DISPLAY proof leg).
-- Now: Part 6 slice 11 (skin outer layer) — code + tests green, real-GPU captures viewed (agent V1: pure-white outer shell, 0 inner marker colors; no-skin control shows no figure); committing z199.
-- Remaining Part 6: §6.1 item-frame/armor-stand (absent, logged); §6.2 actual 32px tile growth (needs real-GPU VRAM numbers; groundwork z188–z195 done). Then next plan parts.
+## Current (2026-10-16, branch test/full-sweep-2026-09-25 — Part 6)
+- Part 6 landed slices: z187–z199 display transforms / atlas-grid consts / shader grid templates / tile_uv + arrow-grid bug fix / model-driven icons / E2E_DISPLAY leg / skin outer layer (all CI-green).
+- Part 6 §6.2b owner-verdict art redesigns LANDED: z200 TNT (palette+pattern), z201 enderman (eyes/head/body pattern), z202 ghast (silhouette/face/palette), z204 default player skin (palette) — each with unit tests, `cargo fmt --check`, clippy, tile captures agent-viewed (before/after real painted pixels).
+- z203 leaves de-noise (structured clumps; owner "per-pixel noise" fix) — landed with measured before/after numbers.
+- z205 verification: crosshair colour = vanilla difference blend by design (owner question queued on pinning a colour); HUD heart/food icons confirmed procedural (gui_art painters + tests; built-in set never touches disk; the override API is test-only).
+- Remaining Part 6: §6.1 item-frame / armor-stand display forms (absent — needs a new entity + renderer); §6.2 actual hi-res tile growth (needs real-GPU VRAM numbers; groundwork done). Then Part 7.
+- Landmines (new): ALWAYS run `cargo fmt --check` before committing (z200 went red on it); never push while a run is in flight — concurrency cancels it (z203's linux-game leg was cancelled by the z204 push; the cumulative tree is re-covered by the next run).
 - (Note: older sections below describe the pre-rendering-stage tree; the branch has moved on.)
 
 ## Current (pre-rendering-stage, kept for history)

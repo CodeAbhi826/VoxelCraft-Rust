@@ -1015,17 +1015,19 @@ fn enchanted_book_art(a: &mut [u8], t: u16) {
 
 /// Round A (third-person camera): the player skin sprite — clean-room
 /// art mapping the humanoid rig's sub-rects (head rows 1-5 with face
-/// strip on row 3-4, torso+arms rows 6-11, legs rows 12-14). Generic
-/// adventurer palette of our own design (cyan shirt, blue jeans, warm
-/// skin tones) — not a recreation of any existing skin.
+/// strip on row 3-4, torso+arms rows 6-11, legs rows 12-14). Part 6 §3
+/// redesign (owner: palette) — the "desert wanderer" palette: sand tunic,
+/// indigo trousers, warm tan skin, dark hair line and a shaded tunic hem.
+/// Our own design, not a recreation of any existing skin.
 fn player_skin_art(a: &mut [u8], t: u16) {
     // 1.12: the torso front samples rows 6-11 cols 4-11 and the arms
-    // cols 2-3/12-13, so the shirt (cyan) fills the center and the hands
-    // sit at rows 10-11; the eyes are symmetric about the face center
-    // (the old rows showed bare skin on the torso and scrambled marks).
+    // cols 2-3/12-13, so the tunic fills the center and the hands sit at
+    // rows 10-11; the eyes are symmetric about the face center. 6.x: the
+    // palette was re-hued (was cyan tunic + blue jeans) and a hair line
+    // (row 1) plus a shaded hem (rows 10-11) were added.
     let rows = [
         "................",
-        "....SSSSSS......",
+        "....HHHHHH......",
         "....SSSSSS......",
         "....SESSES......",
         "....SSMMSS......",
@@ -1034,19 +1036,21 @@ fn player_skin_art(a: &mut [u8], t: u16) {
         "..CCCCCCCCCCCC..",
         "..CCCCCCCCCCCC..",
         "..CCCCCCCCCCCC..",
-        "..SSCCCCCCCCSS..",
-        "..SSCCCCCCCCSS..",
+        "..SSccccccccSS..",
+        "..SSccccccccSS..",
         "...JJ......JJ...",
         "...JJ......JJ...",
         "...JJ......JJ...",
         "................",
     ];
     art(a, t, rows, &|c| match c {
-        'S' => Some((224, 172, 138, 255)), // skin
-        'E' => Some((40, 48, 60, 255)),    // eyes
-        'M' => Some((150, 96, 80, 255)),   // mouth
-        'C' => Some((0, 150, 168, 255)),   // cyan tunic
-        'J' => Some((52, 70, 120, 255)),   // jeans
+        'S' => Some((176, 124, 92, 255)),  // warm tan skin
+        'H' => Some((58, 42, 34, 255)),    // dark hair
+        'E' => Some((34, 28, 32, 255)),    // eyes
+        'M' => Some((122, 74, 62, 255)),   // mouth
+        'C' => Some((206, 178, 128, 255)), // sand tunic
+        'c' => Some((170, 142, 98, 255)),  // tunic hem shade
+        'J' => Some((56, 54, 100, 255)),   // indigo trousers
         _ => None,
     });
 }
@@ -6781,17 +6785,20 @@ mod v113_art_tests {
                 * 4;
             [a[i], a[i + 1], a[i + 2], a[i + 3]]
         };
-        // torso center rows are the cyan tunic, not skin
-        assert_eq!(px(7, 8), [0, 150, 168, 255]);
-        assert_eq!(px(4, 6), [0, 150, 168, 255]);
-        assert_eq!(px(11, 9), [0, 150, 168, 255]);
-        // hands are skin at rows 10-11, sleeves cyan above
-        assert_eq!(px(2, 10), [224, 172, 138, 255]);
-        assert_eq!(px(2, 7), [0, 150, 168, 255]);
+        // torso center rows are the sand tunic, not skin
+        assert_eq!(px(7, 8), [206, 178, 128, 255]);
+        assert_eq!(px(4, 6), [206, 178, 128, 255]);
+        assert_eq!(px(11, 9), [206, 178, 128, 255]);
+        // hands are skin at rows 10-11, shaded hem above them
+        assert_eq!(px(2, 10), [176, 124, 92, 255]);
+        assert_eq!(px(2, 7), [206, 178, 128, 255]);
+        assert_eq!(px(7, 10), [170, 142, 98, 255]);
+        // a dark hair line caps the head
+        assert_eq!(px(7, 1), [58, 42, 34, 255]);
         // eyes symmetric about the face center (cols 5 and 8)
-        assert_eq!(px(5, 3), [40, 48, 60, 255]);
-        assert_eq!(px(8, 3), [40, 48, 60, 255]);
-        assert_eq!(px(6, 3), [224, 172, 138, 255]);
-        assert_eq!(px(7, 3), [224, 172, 138, 255]);
+        assert_eq!(px(5, 3), [34, 28, 32, 255]);
+        assert_eq!(px(8, 3), [34, 28, 32, 255]);
+        assert_eq!(px(6, 3), [176, 124, 92, 255]);
+        assert_eq!(px(7, 3), [176, 124, 92, 255]);
     }
 }

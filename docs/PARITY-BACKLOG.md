@@ -290,8 +290,8 @@ or traced); V1 evidence is an agent-viewed capture at each slice.
 | Subject | Owner direction | Status |
 |---|---|---|
 | TNT (side/top/bottom) | palette + pattern | **Landed** (z200) — charcoal corrugated casing, bolted amber hazard-tape plate, copper fuse-coil emblem, riveted lid; tests + tile captures viewed |
-| Enderman | eye colour/shape, head, body pattern | Open |
-| Ghast | redesign (silhouette/proportions/palette) | Open |
+| Enderman | eye colour/shape, head, body pattern | **Landed** (z201) — magenta two-block eyes with bright cores, taller skull with rim highlight, violet smoke wisps + foot tint, twin legs; tests + captures viewed |
+| Ghast | redesign (silhouette/proportions/palette) | **Landed** (z202) — bell dome + ridge highlight, amber slit eyes with dark pupils, rounded wailing mouth, flared skirt with four thin frills; tests + before/after captures viewed |
 | Nether portal | swirl motif + frame | Open |
 | Default player skin | palette (+ torso/face mapping fix — done in 1.12) | Open (palette) |
 

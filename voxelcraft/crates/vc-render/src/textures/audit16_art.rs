@@ -634,30 +634,95 @@ pub(super) fn silverfish_egg_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
 /// ghast — the huge white floating cube with closed eyes and the
 /// nine-stand-in tentacles (the 4x4 hitbox reads as the big sprite).
 pub(super) fn ghast_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
+    // Part 6 §3 redesign (owner: ghast). CLEAN-ROOM ORIGINAL: no
+    // third-party pixels were read, copied or traced. A pale-bone
+    // wailer: bell-shaped dome with a bright ridge, amber slit eyes with
+    // dark pupils, a rounded wailing mouth and four thin trailing
+    // frills. Changed vs the replaced art: palette (bone/amber, not
+    // near-white/grey), silhouette (flared bell skirt + thin frills, not
+    // a round blob with thick tentacles) and face pattern. Ids, hitbox
+    // and the hostile-flying role are unchanged.
     let rows = [
         "................",
-        "...GGGGGGGGGG...",
-        "..GGGGGGGGGGGG..",
-        "..GGDDGGGGDDGG..",
-        "..GGDDGGGGDDGG..",
-        "..GGGGGGGGGGGG..",
-        "..GGGGDDDDGGGG..",
-        "..GGGGDDDDGGGG..",
-        "..GGGGGGGGGGGG..",
-        "..GGGGGGGGGGGG..",
-        "...GGGGGGGGGG...",
-        "...TT.TT.TT.T...",
-        "...TT.TT.TT.T...",
-        "..TTT.TT.TT.TT..",
-        "..TT..TT..TT....",
+        "....BBBBBBBB....",
+        "...BBBBHHBBBB...",
+        "..BBBBBBBBBBBB..",
+        "..BePBBBBBBPeB..",
+        "..BBBBBBBBBBBB..",
+        "..BBBBmmmmBBBB..",
+        "..BBBBmmmmBBBB..",
+        "..BBBBBmmBBBBB..",
+        "...BBBBBBBBBB...",
+        "..BBBBBBBBBBBB..",
+        ".BBBBBBBBBBBBBB.",
+        "...b..b..b..b...",
+        "...b..b..b..b...",
+        "....b..b..b.....",
         "................",
     ];
     art(a, t, rows, &|c| match c {
-        'G' => Some((232, 232, 236, 255)),
-        'D' => Some((48, 48, 56, 255)),
-        'T' => Some((214, 214, 220, 255)),
+        'B' => Some((216, 220, 212, 255)),    // pale bone body
+        'H' => Some((238, 242, 234, 255)),    // dome ridge highlight
+        'e' => Some((255, 226, 150, 255)),    // amber eye
+        'P' | 'm' => Some((58, 50, 68, 255)), // pupil + wailing mouth
+        'b' => Some((176, 182, 176, 255)),    // frill shade
         _ => None,
     });
+}
+
+#[cfg(test)]
+mod ghast_redesign_tests {
+    use super::*;
+    use crate::textures::{ATLAS_SIZE, TILE_PX};
+
+    fn scratch() -> Vec<u8> {
+        vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4]
+    }
+    fn px(a: &[u8], x: usize, y: usize) -> [u8; 4] {
+        let i = (y * ATLAS_SIZE + x) * 4;
+        [a[i], a[i + 1], a[i + 2], a[i + 3]]
+    }
+
+    /// Part 6 §3: the redesigned ghast has a bone palette, amber slit
+    /// eyes with dark pupils, a flared skirt and thin frills.
+    #[test]
+    fn ghast_redesign_shape_palette_and_face() {
+        let mut a = scratch();
+        ghast_art(&mut a, 0, &mut Rng::new(1));
+        // dome ridge highlight
+        assert_eq!(px(&a, 7, 2), [238, 242, 234, 255]);
+        // amber eye with a dark pupil on each side
+        assert_eq!(px(&a, 3, 4), [255, 226, 150, 255]);
+        assert_eq!(px(&a, 4, 4), [58, 50, 68, 255]);
+        assert_eq!(px(&a, 12, 4), [255, 226, 150, 255]);
+        assert_eq!(px(&a, 11, 4), [58, 50, 68, 255]);
+        // the flared skirt is the widest body row
+        assert_eq!(px(&a, 1, 11), [216, 220, 212, 255]);
+        assert_eq!(px(&a, 14, 11), [216, 220, 212, 255]);
+        // thin frills hang below the skirt
+        assert_eq!(px(&a, 3, 12), [176, 182, 176, 255]);
+        assert_eq!(px(&a, 4, 14), [176, 182, 176, 255]);
+        // the mouth is a rounded wail: wide top rows, a narrow bottom row
+        assert_eq!(px(&a, 6, 6), [58, 50, 68, 255]);
+        assert_eq!(px(&a, 6, 7), [58, 50, 68, 255]);
+        assert_eq!(px(&a, 7, 8), [58, 50, 68, 255]);
+        assert_eq!(px(&a, 5, 8), [216, 220, 212, 255]);
+    }
+
+    /// Redesign guard: the replaced art's near-white body/tentacle
+    /// greys must not survive in the tile.
+    #[test]
+    fn ghast_redesign_drops_the_old_greys() {
+        let mut a = scratch();
+        ghast_art(&mut a, 0, &mut Rng::new(2));
+        for y in 0..TILE_PX {
+            for x in 0..TILE_PX {
+                let p = px(&a, x, y);
+                assert_ne!(p, [232, 232, 236, 255], "old body grey at ({x},{y})");
+                assert_ne!(p, [214, 214, 220, 255], "old tentacle grey at ({x},{y})");
+            }
+        }
+    }
 }
 
 /// cave spider — the small blue-gray spider with the red eyes (the

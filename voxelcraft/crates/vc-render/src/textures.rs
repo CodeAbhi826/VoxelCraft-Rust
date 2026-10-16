@@ -374,25 +374,106 @@ fn planks(a: &mut [u8], t: u16, rng: &mut Rng) {
 
 const LEAF_SHADES: [[i32; 3]; 4] = [[39, 64, 26], [54, 88, 35], [66, 108, 44], [77, 126, 51]];
 
+/// Leaf-clump masks (Part 6 §3 owner fix: the old art was per-pixel noise).
+/// Each 4×4 mask paints a primary 'P' / darker-secondary 'S' leaf body with
+/// a cut-out 'h'; the per-clump mask + tone (not per-pixel) vary, so the
+/// tile reads as layered foliage instead of static.
+const LEAF_CLUMPS: [[&str; 4]; 4] = [
+    ["PPPP", "PSSP", "PSSP", "PPPh"], // rimmed cluster, corner cut-out
+    ["SSPP", "SSPP", "hPSS", "PPSS"], // vertical split
+    ["PPSS", "PhSS", "SSPP", "SSPP"], // horizontal split
+    ["PSPP", "SPSS", "PPSP", "SSPh"], // dappled
+];
+
 fn leaves(a: &mut [u8], t: u16, rng: &mut Rng) {
-    for y in 0..16 {
-        for x in 0..16 {
-            if rng.next_f32() < 0.12 {
-                put(a, t, x, y, 0, 0, 0, 0);
-            } else {
-                let s = LEAF_SHADES[rng.next_range(4) as usize];
-                put(
-                    a,
-                    t,
-                    x,
-                    y,
-                    jit(s[0], 5, rng),
-                    jit(s[1], 6, rng),
-                    jit(s[2], 5, rng),
-                    255,
-                );
+    // a per-tile base tone with a bounded per-clump step (±1 shade) keeps
+    // the canopy coherent; jitter is per clump, never per pixel
+    let base = rng.next_range(4) as i32;
+    for cy in 0..4 {
+        for cx in 0..4 {
+            let mask = LEAF_CLUMPS[rng.next_range(4) as usize];
+            let step = rng.next_range(3) as i32 - 1;
+            let shade = LEAF_SHADES[(base + step).clamp(0, 3) as usize];
+            let j = (rng.next_f32() * 10.0 - 5.0) as i32;
+            let dark = [shade[0] * 4 / 5, shade[1] * 4 / 5, shade[2] * 4 / 5];
+            for (dy, row) in mask.iter().enumerate() {
+                for (dx, ch) in row.chars().enumerate() {
+                    let (x, y) = ((cx * 4 + dx) as i32, (cy * 4 + dy) as i32);
+                    if ch == 'h' {
+                        put(a, t, x, y, 0, 0, 0, 0);
+                        continue;
+                    }
+                    let c = if ch == 'P' { shade } else { dark };
+                    put(
+                        a,
+                        t,
+                        x,
+                        y,
+                        (c[0] + j).clamp(0, 255),
+                        (c[1] + j).clamp(0, 255),
+                        (c[2] + j).clamp(0, 255),
+                        255,
+                    );
+                }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod leaf_art_tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn tile(seed: u64) -> Vec<[u8; 4]> {
+        let mut a = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
+        leaves(&mut a, 0, &mut Rng::new(seed));
+        let mut out = Vec::with_capacity(TILE_PX * TILE_PX);
+        for y in 0..TILE_PX {
+            for x in 0..TILE_PX {
+                let j = (y * ATLAS_SIZE + x) * 4;
+                out.push([a[j], a[j + 1], a[j + 2], a[j + 3]]);
+            }
+        }
+        out
+    }
+
+    /// Part 6 §3 owner fix: leaves must read as structured clumps, not
+    /// per-pixel noise — several colours form ≥8-pixel patches, the tile
+    /// keeps a handful of cut-outs, and horizontal neighbours repeat.
+    #[test]
+    fn leaf_art_is_clumped_not_noisy() {
+        let px = tile(5);
+        let mut hist: HashMap<[u8; 4], usize> = HashMap::new();
+        for p in &px {
+            *hist.entry(*p).or_default() += 1;
+        }
+        let patchy = hist.iter().filter(|(c, n)| **n >= 8 && c[3] == 255).count();
+        assert!(patchy >= 4, "clump patches too few: {patchy}");
+        let holes = px.iter().filter(|p| p[3] == 0).count();
+        assert!(
+            (3..=48).contains(&holes),
+            "cut-out count {holes} out of range"
+        );
+        let mut pairs = 0;
+        for y in 0..TILE_PX {
+            for x in 0..TILE_PX - 1 {
+                if px[y * TILE_PX + x] == px[y * TILE_PX + x + 1] {
+                    pairs += 1;
+                }
+            }
+        }
+        // structured art repeats neighbours (the noise original scored 3)
+        assert!(
+            pairs >= 60,
+            "still noisy: only {pairs} identical neighbours"
+        );
+    }
+
+    #[test]
+    fn leaf_art_is_deterministic_and_seeded() {
+        assert_eq!(tile(9), tile(9));
+        assert_ne!(tile(9), tile(10));
     }
 }
 

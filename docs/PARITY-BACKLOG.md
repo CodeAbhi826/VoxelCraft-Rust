@@ -295,6 +295,15 @@ or traced); V1 evidence is an agent-viewed capture at each slice.
 | Nether portal | swirl motif + frame | Open |
 | Default player skin | palette (+ torso/face mapping fix — done in 1.12) | Open (palette) |
 
+Other owner-listed texture fixes (same verdict):
+
+| Fix | Status |
+|---|---|
+| Leaf close-range per-pixel noise | **Landed** (z203) — structured 4×4 clumps (rimmed / vertical-split / horizontal-split / dappled masks), per-clump tone (±1 shade) + one cut-out per clump. Distinct colours 220→21, 8-px patches 1→15, identical horizontal neighbours 3→91; tests + before/after captures viewed |
+| Oversaturated cyan water | Landed earlier (2026-09-21b; re-verified in the rendering stage z186) |
+| Crosshair colour consistency | Open |
+| Confirm HUD heart/food icons are procedural | Open (verify + record) |
+
 ## 6.3 Wider gaps vs the real game (2026-10-12 — matrix pointer)
 
 Source of truth for breadth is `docs/PARITY-MATRIX-1.16.5.md` (Phase 2);

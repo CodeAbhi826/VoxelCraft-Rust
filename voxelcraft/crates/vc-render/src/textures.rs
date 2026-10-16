@@ -1086,32 +1086,98 @@ fn spider_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// enderman: extremely tall thin dark frame, glowing eyes
+/// enderman: tall thin void frame with magenta glowing eyes and drifting
+/// violet smoke wisps (Part 6 §3 redesign — owner direction: eye
+/// colour/shape, head, body pattern). CLEAN-ROOM ORIGINAL: no third-party
+/// pixels were read, copied or traced; the composition is generic
+/// tall-dark-figure iconography. Changed vs the replaced art: eye hue
+/// (magenta, two-row almond core), head proportions (taller skull with a
+/// rim highlight), body pattern (smoke wisps + a foot glow). Ids,
+/// hitbox and the hostile-teleporter role are unchanged.
 fn enderman_art(a: &mut [u8], t: u16) {
     let rows = [
-        "....KKKKKK......",
-        "....KKKKKK......",
-        "....VEVVEV......",
-        "....KKKKKK......",
-        "....KKKKKK......",
-        "...K.KKKK.K.....",
-        "...K.KKKK.K.....",
-        "...K.KKKK.K.....",
-        "...K.KKKK.K.....",
-        "...K.KKKK.K.....",
-        "...K.KKKK.K.....",
-        "......KK........",
-        "......KK........",
-        "......KK........",
-        "......KK........",
-        "......KK........",
+        ".....KKKKKK.....",
+        ".....GGKKGG.....",
+        ".....gGKKGg.....",
+        ".....KKKKKK.....",
+        "......KKKK......",
+        "....K.KKKK.K....",
+        "....K.KKKK.K....",
+        "....K.KKKK.K....",
+        "....K.KKKK.K....",
+        "....K.KKKK.K....",
+        "......KKKK......",
+        "......KKKK......",
+        "......K..K......",
+        "......K..K......",
+        "......K..K......",
+        "......K..K......",
     ];
     art(a, t, rows, &|c| match c {
-        'K' => Some((18, 16, 24, 255)),    // void-black body
-        'V' => Some((206, 220, 255, 255)), // pale violet-white eyes
-        'E' => Some((150, 90, 220, 255)),  // violet eye core
+        'K' => Some((14, 12, 20, 255)),    // void-black body
+        'G' => Some((255, 79, 216, 255)),  // magenta eye glow
+        'g' => Some((255, 214, 245, 255)), // bright eye core
         _ => None,
     });
+    // skull rim highlight (the head's top edge reads as a soft crown)
+    for x in 6..=9 {
+        put(a, t, x, 0, 34, 30, 48, 255);
+    }
+    // body pattern: faint violet smoke wisps drifting up the torso
+    for (x, y) in [(7, 5), (8, 7), (7, 9), (8, 11), (7, 13), (8, 14)] {
+        put(a, t, x, y, 40, 34, 62, 255);
+    }
+    // a violet ground-glow tint on the feet
+    put(a, t, 6, 15, 34, 28, 52, 255);
+    put(a, t, 9, 15, 34, 28, 52, 255);
+}
+
+#[cfg(test)]
+mod mob_art_tests {
+    use super::*;
+
+    fn scratch() -> Vec<u8> {
+        vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4]
+    }
+    fn px(a: &[u8], x: usize, y: usize) -> [u8; 4] {
+        let i = (y * ATLAS_SIZE + x) * 4;
+        [a[i], a[i + 1], a[i + 2], a[i + 3]]
+    }
+
+    /// Part 6 §3: the redesigned enderman carries magenta eyes on two
+    /// rows and violet smoke wisps across the torso.
+    #[test]
+    fn enderman_redesign_has_magenta_eyes_and_wisps() {
+        let mut a = scratch();
+        enderman_art(&mut a, 0);
+        // a magenta glow pixel and a bright core pixel on the eye rows
+        assert_eq!(px(&a, 5, 1), [255, 79, 216, 255]);
+        assert_eq!(px(&a, 5, 2), [255, 214, 245, 255]);
+        // the eyes are two separated blocks, not a single bar
+        assert_eq!(px(&a, 7, 1), [14, 12, 20, 255], "eye bridge must be body");
+        // wisps and the foot glow are present
+        for (x, y) in [(8usize, 7usize), (7, 9), (8, 11)] {
+            assert_eq!(px(&a, x, y), [40, 34, 62, 255], "wisp at ({x},{y})");
+        }
+        assert_eq!(px(&a, 6, 15), [34, 28, 52, 255]);
+    }
+
+    /// Redesign guard: the replaced art's pale violet-white eye pixels
+    /// must not survive anywhere in the tile.
+    #[test]
+    fn enderman_redesign_drops_the_old_eye_colour() {
+        let mut a = scratch();
+        enderman_art(&mut a, 0);
+        for y in 0..TILE_PX {
+            for x in 0..TILE_PX {
+                assert_ne!(
+                    px(&a, x, y),
+                    [206, 220, 255, 255],
+                    "old pale-violet eye pixel at ({x},{y})"
+                );
+            }
+        }
+    }
 }
 
 /// cow: blocky body with hide patches, pale horns

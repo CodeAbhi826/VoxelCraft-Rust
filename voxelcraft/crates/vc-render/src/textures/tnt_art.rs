@@ -111,10 +111,7 @@ mod tests {
         // the body rows are low-chroma charcoal
         for x in 0..TILE_PX {
             let p = px(&a, x, 1);
-            let (mx, mn) = (
-                p[0].max(p[1]).max(p[2]),
-                p[0].min(p[1]).min(p[2]),
-            );
+            let (mx, mn) = (p[0].max(p[1]).max(p[2]), p[0].min(p[1]).min(p[2]));
             assert!(mx - mn < 30, "body px {x} not charcoal: {p:?}");
             assert!(p[0] < 90, "body px {x} too bright: {p:?}");
         }

@@ -2,8 +2,9 @@
 
 ## Current (2026-10-15, branch test/full-sweep-2026-09-25 — Part 6)
 - Rendering stage CLOSED (z186 review): water blue + flow + no holes; damage audit clean; matrix 65/65 technically reviewed (zero drift, ladders behave); owner questions queued silently (POM/PBR, flicker/z-fight specifics, UI/HUD specifics, frametime scope, cinematic discovery, night brightness, matrix content V1 at full-plan end).
-- Shipped since: z184 clippy fix, z185 HUD silent-paths fix (both CI-green), z187 Part 6 slice 1 (held-item firstperson display transform, CI-green).
-- Now: Part 6 slice 2 (§6.2 hi-res tiles: atlas-grid const groundwork, behavior-neutral) in tree, verifying.
+- Shipped & CI-green: z184 clippy, z185 HUD silent-paths, z187–z198 Part 6 slices 1–10 (held/drop/gui display transforms, atlas-grid consts, shader grid templates, tile_uv + arrow-grid bug fix, model-driven icons, E2E_DISPLAY proof leg).
+- Now: Part 6 slice 11 (skin outer layer) — code + tests green, real-GPU captures viewed (agent V1: pure-white outer shell, 0 inner marker colors; no-skin control shows no figure); committing z199.
+- Remaining Part 6: §6.1 item-frame/armor-stand (absent, logged); §6.2 actual 32px tile growth (needs real-GPU VRAM numbers; groundwork z188–z195 done). Then next plan parts.
 - (Note: older sections below describe the pre-rendering-stage tree; the branch has moved on.)
 
 ## Current (pre-rendering-stage, kept for history)

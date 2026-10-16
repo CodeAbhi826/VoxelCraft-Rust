@@ -2942,13 +2942,16 @@ fn install_player_skin(atlas: &mut [u8], next_free: u16, skin_file: Option<&str>
         vc_render::textures::blit_skin_faces(atlas, base, &skin.rgba, &map);
         let mut model = player_factory();
         if let Some(table) = player_skin_face_tex(base) {
-            for (part_name, tex) in table {
-                if let Some(part) = model.parts.iter_mut().find(|p| p.name == part_name) {
+            for (part_name, tex, _outer) in &table {
+                if let Some(part) = model.parts.iter_mut().find(|p| p.name == *part_name) {
                     for b in part.boxes.iter_mut() {
-                        b.tex = tex;
+                        b.tex = *tex;
                     }
                 }
             }
+            // Part 6 §6.1: the skin outer layer (hat/jacket) renders as
+            // inflated boxes (transparent regions discard in-shader)
+            vc_gameplay::entity_model::add_skin_outer_boxes(&mut model, &table);
         }
         Some(model)
     })();
@@ -3141,6 +3144,15 @@ impl GameApp {
                     for x in p.inner.0..p.inner.0 + bw {
                         let i = ((y * 64 + x) * 4) as usize;
                         px[i..i + 4].copy_from_slice(&col);
+                    }
+                }
+                // Part 6 §6.1: paint the outer layer white (same bounding
+                // shape at the outer origin) — the F5 captures photograph
+                // it iff the outer boxes render (hat/jacket proof)
+                for y in p.outer.1..p.outer.1 + bh {
+                    for x in p.outer.0..p.outer.0 + bw {
+                        let i = ((y * 64 + x) * 4) as usize;
+                        px[i..i + 4].copy_from_slice(&[255, 255, 255, 255]);
                     }
                 }
             }

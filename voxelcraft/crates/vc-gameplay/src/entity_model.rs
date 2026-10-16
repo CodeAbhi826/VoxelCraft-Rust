@@ -429,24 +429,52 @@ pub fn player() -> EntityModel {
     humanoid(TILE_MOB_PLAYER, false)
 }
 
-/// Skin FaceTex per rig part (inner layer only — the rig carries no
-/// outer boxes) for a stow at atlas tile `base` (Part 5 skins epic).
+/// Skin FaceTex per rig part (inner + outer layers) for a stow at
+/// atlas tile `base` (Part 5 skins epic + Part 6 §6.1 skin layers).
 /// Tiles resolve through the stow block, rects come from the face
 /// map; part names match the player rig (`head/body/arm_r/arm_l/
 /// leg_r/leg_l`). Returns None when the map is unplaceable.
-pub fn player_skin_face_tex(base: u16) -> Option<Vec<(&'static str, FaceTex)>> {
+pub fn player_skin_face_tex(base: u16) -> Option<Vec<(&'static str, FaceTex, FaceTex)>> {
     let (map, _tw, _th) = vc_pack::skin::skin_face_map()?;
     let mut out = Vec::with_capacity(6);
     for part in ["head", "body", "arm_r", "arm_l", "leg_r", "leg_l"] {
-        let mut tiles = [base; 6];
-        let mut rect = [[0u8; 4]; 6];
-        for m in map.iter().filter(|m| m.part == part && !m.outer) {
-            tiles[m.engine_face] = base + (m.tile_dy as u16) * 32 + m.tile_dx as u16;
-            rect[m.engine_face] = m.rect;
-        }
-        out.push((part, FaceTex { tiles, rect }));
+        let layer = |outer: bool| {
+            let mut tiles = [base; 6];
+            let mut rect = [[0u8; 4]; 6];
+            for m in map.iter().filter(|m| m.part == part && m.outer == outer) {
+                tiles[m.engine_face] =
+                    base + (m.tile_dy as u16) * vc_blocks::blocks::ATLAS_COLS + m.tile_dx as u16;
+                rect[m.engine_face] = m.rect;
+            }
+            FaceTex { tiles, rect }
+        };
+        out.push((part, layer(false), layer(true)));
     }
     Some(out)
+}
+
+/// Append the skin outer-layer boxes (hat/jacket/sleeves) to a rig
+/// whose parts already carry the inner boxes: same footprint inflated
+/// 0.5 units per side (the vanilla outer-layer silhouette — slightly
+/// larger so inner never z-fights through), textured from the outer
+/// FaceTex. Pure over the table (no globals) for unit tests; the game
+/// feeds it from player_skin_face_tex.
+pub fn add_skin_outer_boxes(model: &mut EntityModel, table: &[(&'static str, FaceTex, FaceTex)]) {
+    for (part_name, _inner, outer) in table {
+        if let Some(part) = model.parts.iter_mut().find(|p| p.name == *part_name) {
+            // snapshot first (push borrows mutably): off/size/tex are
+            // all Copy scalars/arrays
+            let inners: Vec<([f32; 3], [f32; 3])> =
+                part.boxes.iter().map(|b| (b.off, b.size)).collect();
+            for (off, size) in inners {
+                part.boxes.push(BoxDef {
+                    off: [off[0] - 0.5, off[1] - 0.5, off[2] - 0.5],
+                    size: [size[0] + 1.0, size[1] + 1.0, size[2] + 1.0],
+                    tex: *outer,
+                });
+            }
+        }
+    }
 }
 
 /// the classic 32-px humanoid rig (zombie/skeleton families).
@@ -1537,19 +1565,47 @@ mod tests {
         // maps to skin-abs (8,8) → tile (4,20), rect (8,8,8,8)
         let table = player_skin_face_tex(644).expect("placeable");
         assert_eq!(table.len(), 6);
-        let (_, head) = table.iter().find(|(n, _)| *n == "head").expect("head");
-        assert_eq!(head.tiles[4], 644 + 0 * 32 + 0);
+        let (_, head, head_outer) = table.iter().find(|(n, _, _)| *n == "head").expect("head");
+        assert_eq!(head.tiles[4], 644);
         assert_eq!(head.rect[4], [8, 8, 8, 8]);
+        // the outer (hat) layer resolves to different tiles than inner
+        assert_ne!(head_outer.tiles[4], head.tiles[4]);
         // all six parts present, every face tile inside the 4x5 stow
-        let names: Vec<_> = table.iter().map(|(n, _)| *n).collect();
+        let names: Vec<_> = table.iter().map(|(n, _, _)| *n).collect();
         assert_eq!(
             names,
             vec!["head", "body", "arm_r", "arm_l", "leg_r", "leg_l"]
         );
-        for (name, fx) in &table {
-            for t in fx.tiles {
+        for (name, fx, fx_outer) in &table {
+            for t in fx.tiles.iter().chain(fx_outer.tiles.iter()) {
                 let rel = t - 644;
                 assert!(rel % 32 < 4 && rel / 32 < 5, "{name} tile out of stow");
+            }
+        }
+    }
+
+    #[test]
+    fn skin_outer_boxes_inflate_and_carry_outer_tex() {
+        // Part 6 §6.1: every part with inner boxes gains one outer box
+        // per inner (0.5/side inflation, outer FaceTex)
+        let mut model = player();
+        let before: Vec<usize> = model.parts.iter().map(|p| p.boxes.len()).collect();
+        assert!(before.iter().any(|&n| n > 0));
+        let outer_tex = FaceTex::uniform(999, [0, 0, 16, 16]);
+        let table: Vec<(&'static str, FaceTex, FaceTex)> = model
+            .parts
+            .iter()
+            .map(|p| (p.name, FaceTex::uniform(1, [0, 0, 16, 16]), outer_tex))
+            .collect();
+        add_skin_outer_boxes(&mut model, &table);
+        for (p, n) in model.parts.iter().zip(before.iter()) {
+            assert_eq!(p.boxes.len(), 2 * n, "part {}", p.name);
+            for i in 0..*n {
+                let (inner, outer) = (&p.boxes[i], &p.boxes[i + n]);
+                for a in 0..3 {
+                    assert!((outer.off[a] - (inner.off[a] - 0.5)).abs() < 1e-6);
+                    assert!((outer.size[a] - (inner.size[a] + 1.0)).abs() < 1e-6);
+                }
             }
         }
     }

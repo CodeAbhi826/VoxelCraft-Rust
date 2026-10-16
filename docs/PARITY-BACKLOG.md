@@ -261,9 +261,9 @@ PLAN-FINAL §5 toggle list, audited against code:
 | GUI / inventory / hotbar icons | Present | Isometric CPU baker (`item_icon_cache.rs`) |
 | Held first-person | Present | `push_held_item`: textured cube or bare arm + swing/equip/bob, last in billboard stream |
 | Dropped items | Present | 3D mini-block cuboid + spin/bob (`entities.rs`) |
-| `display` transforms | Partial | Parsed + merged child-over-parent into `CompiledModel` (identity defaults, tested); application needs item-model resolution first — the icon baker is block-def driven, not model-driven (re-scoped 2026-10-12) |
+| `display` transforms | Present (agent-V1'd) | Parsed + merged child-over-parent into `CompiledModel`; `lookup_display()` resolves per-slot, applied to held first-person (z187), dropped ground (z189), GUI icons (z191/z195) and pack-model icons (z196); extrinsic XYZ TRS order, single-axis exact, multi-axis disclosed approximation. Live proof leg E2E_DISPLAY (z198: A/B quadrant diff 24.59, captures viewed) |
 | Item-frame display / armor stand | Absent | Item id maps only; no display renderer, no stand entity |
-| Custom player skins | Present, V1'd (agent) | Loader→FaceTex→atlas stow→skinned rig behind `skin` setting; tour 38242267654: marker colors on correct part geometry, opposite limb pairs per side; L/R absolute rests on reference labeling (rig -X = anatomical right code-verified) — owner-closeable with a text skin |
+| Custom player skins | Present incl. outer layer, V1'd (agent) | Loader→FaceTex(inner+outer)→atlas stow→skinned rig behind `skin` setting; tour 38242267654: marker colors on correct part geometry, opposite limb pairs per side; L/R absolute rests on reference labeling (rig -X = anatomical right code-verified). Part 6 z199: outer layer (hat/jacket/sleeves) renders as 0.5/side-inflated boxes textured from the outer region (transparent regions discard → inner shows); marker+control captures viewed. Owner-closeable with a text skin |
 
 Note: `item_icon_cache.rs` module docs still claim "NO first-person
 hand renderer" — stale (predates `push_held_item`); queued for a
@@ -290,7 +290,7 @@ row against code before building, the matrix predates Part 5/6 work:
   entity-model loading (48 kinds billboards), F3 combos + pie,
   subtitles overlay, chat subsystem, full keybind list, languages,
   container GUIs (smoker/blast/stonecutter/loom/smithing/cartography/
-  lectern/dispenser/dropper/shulker), skin-layer meshes.
+  lectern/dispenser/dropper/shulker), CTM/custom-sky, hi-res tiles.
 - Gameplay: crawl/spectator caps, sweep (needs swords),
   rails/minecarts, buttons/tripwire, plates, piston-block entity,
   16 effects, raids, advancements, commands + bridge, scoreboard,

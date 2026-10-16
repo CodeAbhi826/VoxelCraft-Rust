@@ -6,7 +6,7 @@
 - z203 leaves de-noise (structured clumps; owner "per-pixel noise" fix) — landed with measured before/after numbers.
 - z205 verification: crosshair colour = vanilla difference blend by design (owner question queued on pinning a colour); HUD heart/food icons confirmed procedural (gui_art painters + tests; built-in set never touches disk; the override API is test-only).
 - Remaining Part 6: §6.1 item-frame / armor-stand display forms (absent — needs a new entity + renderer); §6.2 actual hi-res tile growth (needs real-GPU VRAM numbers; groundwork done). Then Part 7.
-- Landmines (new): ALWAYS run `cargo fmt --check` before committing (z200 went red on it); never push while a run is in flight — concurrency cancels it (z203's linux-game leg was cancelled by the z204 push; the cumulative tree is re-covered by the next run).
+- Landmines (new): ALWAYS run `cargo fmt --check` before committing (z200 went red on it); on this branch the push-triggered gates are `ci.yml` + `Build WASM` — wait for BOTH to finish before the next push (concurrency cancels in-flight branch runs; a docs-only push may trigger neither). `linux-game.yml` (the real-GPU E2E legs) triggers on `main` only, so per-commit E2E coverage needs a `workflow_dispatch` at the next Part checkpoint (never alongside a push run).
 - (Note: older sections below describe the pre-rendering-stage tree; the branch has moved on.)
 
 ## Current (pre-rendering-stage, kept for history)
@@ -61,6 +61,13 @@
 - [x] 1.8b vanilla preset + fresh-profile tiering (`7006495`; all legs exit 0; particle knob pre-existed)
 - [x] Chunk migration B–G (complete workspace-wide; only trap-pinning tests/internals remain)
 - [x] Part 1 REVIEW PACKET + adversarial self-review (10 claims; claim 5 WITHDRAWN after V1 viewing — see re-verdict item above)
+
+## TODO — next 5 slices (Part 6 remainder → Part 7)
+- [ ] §6.1 item-frame render form: ITEM_FRAME is a full-cube block today (`TILE_ITEM_FRAME` on all 6 faces, id 151/state 290). Slice 1 = thin flat frame plate on the attached face (mesher custom-shape path, following the cross-sprite/torch precedent in `vc-mesh/src/mesh.rs`); slice 2 = store an item + render the item sprite with 8-step rotation; slice 3 = break/drop behaviour + persistence.
+- [ ] §6.1 armor stand entity (model + pose rules + tests) — absent; needs a new entity (mobs.rs/vc-sim) plus render.
+- [ ] §6.2 hi-res tile growth (owner-ordered): parameterise TILE_PX beyond 16 (atlas 512→1024², mip regen, icon cells, skin stow bounds), then measure real-GPU VRAM/frametime deltas on the reference iGPU (local debug runs are allowed; no release builds).
+- [ ] Part 6 REVIEW PACKET (docs/CHECKPOINTS.md, ≤400 words) + adversarial 10-claim self-review, then Part 7 (remaining gameplay: redstone gaps, rails/minecarts/boats, per-shape collision, pathfinding, villager schedules, raids, beacon, fishing, spectator/crawl, missing GUIs, block long tail, data-driven content, audio/lang/menus).
+- [ ] Owner question queue (silent): POM/PBR pack status, flicker/z-fight specifics, UI/HUD specifics, frametime scope, cinematic discovery, night brightness, matrix content V1 (at full-plan end), crosshair colour (parity vs pinned), nether-portal "frame" reading, §6.2 hi-res tile target size.
 
 ## TODO — later parts (in order)
 - [ ] Part 2 worlds-first (importer → oracle → arch → writer) — Part 3 gameplay core — Part 4 world-gen parity (4.0 LEGAL GATE hard stop first) — Part 5 colour/lighting/packs/shader — Part 6 art/models — Part 7 remaining gameplay — Part 8 quirk parity — Part 9 release

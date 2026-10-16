@@ -279,6 +279,22 @@ mip regen (3–5 slices) + icon baker/GUI cells (1–2) + tour V1 (1) =
 numbers; pack-override edge cases multiply with tile sizes. Legal:
 user files stay local-only (L3); nothing bundled.
 
+## 6.2b Owner-flagged art redesigns (2026-10-12 verdict; Part 6 §3)
+
+Owner verdict (2026-10-08, 5 renders viewed, V1) required original
+redesigns changing ≥3 of silhouette / face-pattern / proportions /
+palette / signature pose while keeping role, hitbox and ids. All
+redesigns are clean-room original (no third-party pixels read, copied
+or traced); V1 evidence is an agent-viewed capture at each slice.
+
+| Subject | Owner direction | Status |
+|---|---|---|
+| TNT (side/top/bottom) | palette + pattern | **Landed** (z200) — charcoal corrugated casing, bolted amber hazard-tape plate, copper fuse-coil emblem, riveted lid; tests + tile captures viewed |
+| Enderman | eye colour/shape, head, body pattern | Open |
+| Ghast | redesign (silhouette/proportions/palette) | Open |
+| Nether portal | swirl motif + frame | Open |
+| Default player skin | palette (+ torso/face mapping fix — done in 1.12) | Open (palette) |
+
 ## 6.3 Wider gaps vs the real game (2026-10-12 — matrix pointer)
 
 Source of truth for breadth is `docs/PARITY-MATRIX-1.16.5.md` (Phase 2);

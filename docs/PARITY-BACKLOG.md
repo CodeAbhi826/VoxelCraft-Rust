@@ -291,9 +291,9 @@ or traced); V1 evidence is an agent-viewed capture at each slice.
 |---|---|---|
 | TNT (side/top/bottom) | palette + pattern | **Landed** (z200) — charcoal corrugated casing, bolted amber hazard-tape plate, copper fuse-coil emblem, riveted lid; tests + tile captures viewed |
 | Enderman | eye colour/shape, head, body pattern | **Landed** (z201) — magenta two-block eyes with bright cores, taller skull with rim highlight, violet smoke wisps + foot tint, twin legs; tests + captures viewed |
-| Ghast | redesign (silhouette/proportions/palette) | **Landed** (z202) — bell dome + ridge highlight, amber slit eyes with dark pupils, rounded wailing mouth, flared skirt with four thin frills; tests + before/after captures viewed |
+| Ghast | redesign (silhouette/proportions/palette) | **Landed** (z202, tile-level V1) — bell dome + ridge highlight, amber slit eyes with dark pupils, rounded wailing mouth, flared skirt with four thin frills; tests + before/after captures viewed. In-game V1 PENDING: the mob survey does not frame the ghast (known gap; needs a `TURNTABLE_MOB=ghast` dispatch) |
 | Nether portal | swirl motif + frame | Open |
-| Default player skin | palette (+ torso/face mapping fix — done in 1.12) | **Landed** (z204) — sand tunic with a shaded hem, indigo trousers, warm tan skin, dark hair cap, symmetric eyes; the 1.12 mapping test updated to the new palette; before/after captures viewed |
+| Default player skin | palette (+ torso/face mapping fix — done in 1.12) | **Landed** (z204, tile-level V1) — sand tunic with a shaded hem, indigo trousers, warm tan skin, dark hair cap, symmetric eyes; the 1.12 mapping test updated to the new palette; before/after captures viewed. In-game V1 PENDING: the FKEYS leg runs `E2E_SKIN=1` (marker skin), so a no-skin third-person capture is owed |
 
 Other owner-listed texture fixes (same verdict):
 

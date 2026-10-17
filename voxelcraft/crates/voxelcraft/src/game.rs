@@ -1745,6 +1745,9 @@ struct WebContainerRec {
     pos: [i32; 3],
     kind: u16,
     slots: Vec<(u16, u16, u8)>,
+    /// Part 6 §6.1: item-frame display rotation in 45° steps
+    #[serde(default)]
+    rot: u8,
 }
 
 pub struct GameApp {
@@ -3925,6 +3928,7 @@ impl GameApp {
         if let Ok(Some(meta)) = vc_anvil::save::read_level_dat(&app.world_dir) {
             for c in meta.containers {
                 let inv = app.sim.containers.entry(c.pos, c.kind);
+                inv.rot = c.rot;
                 for (slot, block, count) in c.slots {
                     if let Some(s) = inv.slots.get_mut(slot as usize) {
                         *s = vc_inventory::inventory::ItemStack::new(block, count);
@@ -6741,6 +6745,7 @@ impl GameApp {
         // containers restore through the boot path's exact semantics
         for c in entry.meta.containers {
             let inv = self.sim.containers.entry(c.pos, c.kind);
+            inv.rot = c.rot;
             for (slot, block, count) in c.slots {
                 if let Some(s) = inv.slots.get_mut(slot as usize) {
                     *s = vc_inventory::inventory::ItemStack::new(block, count);
@@ -6822,6 +6827,7 @@ impl GameApp {
         // containers restore (the native boot path's exact semantics)
         for c in &rec.containers {
             let inv = self.sim.containers.entry(c.pos, c.kind);
+            inv.rot = c.rot;
             for (slot, block, count) in &c.slots {
                 if let Some(s) = inv.slots.get_mut(*slot as usize) {
                     *s = vc_inventory::inventory::ItemStack::new(*block, *count);
@@ -6988,10 +6994,12 @@ impl GameApp {
                 let live =
                     vc_blocks::blocks::state_block(self.world.get_state(pos[0], pos[1], pos[2]));
                 let kind = match live {
-                    CHEST | DISPENSER | DROPPER | HOPPER => live,
+                    CHEST | DISPENSER | DROPPER | HOPPER | ITEM_FRAME => live,
                     _ => match inv.slots.len() {
                         27 => CHEST,
                         5 => HOPPER,
+                        // Part 6 §6.1: 1-slot store = item frame
+                        1 => ITEM_FRAME,
                         _ => DISPENSER,
                     },
                 };
@@ -6999,6 +7007,7 @@ impl GameApp {
                     pos: *pos,
                     kind,
                     slots,
+                    rot: inv.rot,
                 }
             })
             .collect();
@@ -11476,6 +11485,59 @@ impl GameApp {
         }
     }
 
+    /// Part 6 §6.1 (VERIFIED w/Item_Frame): "If the item frame contains an
+    /// item, punching it drops the item, leaving the frame." Returns true
+    /// when an item was popped — the caller must not start a dig on that
+    /// press (the frame itself is untouched by a punch).
+    fn pop_frame_item_on_punch(&mut self, pos: [i32; 3]) -> bool {
+        let item = match self.sim.containers.get(&pos) {
+            Some(f) if !f.slots.is_empty() && !f.slots[0].is_empty() => f.slots[0],
+            _ => return false,
+        };
+        self.sim.containers.entry(pos, ITEM_FRAME).slots[0] =
+            vc_inventory::inventory::ItemStack::EMPTY;
+        let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+        self.sim
+            .items
+            .drop_block(pos[0], pos[1], pos[2], item.block, biome, sky, blk);
+        true
+    }
+
+    /// Part 6 §6.1: the item each frame holds, drawn as a flat quad on the
+    /// frame's plate face. The frames themselves are thin-plate block
+    /// models baked into the chunk mesh; the item they display lives in the
+    /// container store, so it is emitted per frame here (a frame's contents
+    /// must never require a chunk remesh).
+    fn push_frame_items(&mut self) {
+        let mut list: Vec<([i32; 3], u8, u8, u16, f32)> = Vec::new();
+        for (pos, inv) in self.sim.containers.map.iter() {
+            // a frame's store is the 1-slot case (see slot_count)
+            if inv.slots.len() != 1 || inv.slots[0].is_empty() {
+                continue;
+            }
+            let state = self.world.get_state(pos[0], pos[1], pos[2]);
+            if state_block(state) != ITEM_FRAME {
+                continue;
+            }
+            let facing = state.wrapping_sub(ITEM_FRAME_STATE_BASE);
+            if facing >= 4 {
+                continue; // legacy 290 (pre-facing alias): nowhere to hang it
+            }
+            let tile = state_tiles(inv.slots[0].block)[3];
+            let (_, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+            list.push((
+                *pos,
+                facing as u8,
+                inv.rot,
+                tile,
+                vc_particles::particles::particle_light(sky, blk),
+            ));
+        }
+        for (pos, facing, rot, tile, light) in list {
+            frame_item_quad(facing, rot, pos, tile, light, &mut self.particle_verts);
+        }
+    }
+
     /// 2026-09-14: the destroy-stage crack overlay — 6 axis-aligned
     /// quads (slightly inflated, painter-ordered far face first) around
     /// the block being mined, textured with destroy_stage_N (10 stages,
@@ -15544,17 +15606,24 @@ impl GameApp {
 
     /// §27/§29/§26: breaking a container block drops its contents and
     /// removes the block entity (vanilla behavior — also fixes the latent
-    /// entity leak where broken furnaces stayed in the sim map forever)
+    /// entity leak where broken furnaces stayed in the sim map forever).
+    /// Part 6 §6.1: an item frame counts here too — its one held item
+    /// spills like any container's (VERIFIED w/Item_Frame: "An item frame
+    /// drops itself when it's destroyed", and a frame holding an item
+    /// drops both).
     fn drop_container_contents(&mut self, pos: [i32; 3], broke: u16) {
-        // Phase 3 §26: chests / dispensers / droppers / hoppers — the
-        // containers module queues the spill, we turn it into item drops
-        // (and if the player is mid-screen on this very container, close
-        // it — the block is gone).
+        // Phase 3 §26: chests / dispensers / droppers / hoppers (and a
+        // Part 6 item frame's single slot) — the containers module queues
+        // the spill, we turn it into item drops (and if the player is
+        // mid-screen on this very container, close it — the block is gone).
         // Round 12: breaking HALF of a double chest spills BOTH halves'
         // contents at the broken half's location (VERIFIED w/Chest
         // §Breaking, live 2026-09-15 — the surviving half becomes a
         // normal single chest again, empty)
-        if matches!(broke, CHEST | DISPENSER | DROPPER | HOPPER | BARREL) {
+        if matches!(
+            broke,
+            CHEST | DISPENSER | DROPPER | HOPPER | BARREL | ITEM_FRAME
+        ) {
             if broke == CHEST {
                 // collect the neighbor halves' stacks first (borrow
                 // split: containers read, then items dropped)
@@ -23566,11 +23635,18 @@ impl GameApp {
                             .unwrap_or(0);
                         let total = vc_gameplay::tools::mine_time_secs(b, held.block, eff)
                             * vc_gameplay::effects::mining_fatigue_factor(&self.player.effects);
-                        let instant = self.mode.picks_creative() || total <= 0.0;
+                        // Part 6 §6.1 (VERIFIED w/Item_Frame): a punch on a
+                        // frame that holds an item pops the item out and
+                        // leaves the frame — that press starts no dig.
+                        let frame_punch = b == ITEM_FRAME && self.pop_frame_item_on_punch(pos);
+                        let instant = !frame_punch && (self.mode.picks_creative() || total <= 0.0);
                         // (re)start when the crosshair moved to a new block
                         let fresh =
                             !matches!(&self.mining, Some(m) if m.pos == pos && m.block == b);
-                        if fresh {
+                        if frame_punch {
+                            self.mining = None;
+                            self.break_timer = 0.4;
+                        } else if fresh {
                             self.mining = Some(MiningState {
                                 pos,
                                 block: b,
@@ -24545,6 +24621,37 @@ impl GameApp {
                         self.sim.containers.entry(tpos, BARREL);
                         self.open_container(Container::Barrel { pos: tpos });
                         self.place_timer = 0.3;
+                    } else if tb == ITEM_FRAME {
+                        // Part 6 §6.1 (VERIFIED w/Item_Frame): right-click
+                        // on an EMPTY frame places the held item ("Item
+                        // frames can be used to hold ... a single item");
+                        // right-click on a frame that already holds one
+                        // ROTATES the display in 45° steps ("The displayed
+                        // item can be rotated by right-clicking the
+                        // frame"). No GUI ever opens for a frame — the
+                        // slot rides the container store purely so the
+                        // item persists and spills on break.
+                        let cur = self.sim.containers.entry(tpos, ITEM_FRAME).slots[0];
+                        if cur.is_empty() {
+                            let held = self.player.held();
+                            if !held.is_empty() {
+                                let mut put = held;
+                                put.count = 1;
+                                self.sim.containers.entry(tpos, ITEM_FRAME).slots[0] = put;
+                                if self.mode.depletes_items() {
+                                    let h = self.player.held_mut();
+                                    h.count -= 1;
+                                    if h.count == 0 {
+                                        *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                    }
+                                }
+                                self.place_timer = 0.3;
+                            }
+                        } else {
+                            let f = self.sim.containers.entry(tpos, ITEM_FRAME);
+                            f.rot = (f.rot + 1) % 8;
+                            self.place_timer = 0.24;
+                        }
                     } else if tb == SWEET_BERRY_BUSH {
                         // 1.14 (VERIFIED w/Sweet_Berry_Bush §Harvesting):
                         // "Sweet berries can be collected ... by pressing
@@ -26597,10 +26704,13 @@ impl GameApp {
                         self.world.get_state(pos[0], pos[1], pos[2]),
                     );
                     let kind = match live {
-                        CHEST | DISPENSER | DROPPER | HOPPER => live,
+                        CHEST | DISPENSER | DROPPER | HOPPER | ITEM_FRAME => live,
                         _ => match inv.slots.len() {
                             27 => CHEST,
                             5 => HOPPER,
+                            // Part 6 §6.1: the 1-slot store is an item frame
+                            // (block unloaded: infer the kind from the shape)
+                            1 => ITEM_FRAME,
                             _ => DISPENSER,
                         },
                     };
@@ -26608,6 +26718,7 @@ impl GameApp {
                         pos: *pos,
                         kind,
                         slots,
+                        rot: inv.rot,
                     }
                 })
                 .collect(),
@@ -29556,6 +29667,9 @@ impl GameApp {
                     (t.rotation, t.translation, t.scale)
                 },
             );
+            // Part 6 §6.1: items held in item frames (flat quads on the
+            // frame plate — same blended stream as the item entities)
+            self.push_frame_items();
             // §27/§29 villagers: crossed-quad sprites, villager scale
             vc_gameplay::villagers::build_vertices(
                 &self.sim.villagers.list,
@@ -31771,6 +31885,72 @@ pub(crate) fn physics_frozen(world: &vc_world::world::World, pos: Vec3) -> bool 
         .contains_key(&(pos.x.div_euclid(16.0) as i32, pos.z.div_euclid(16.0) as i32))
 }
 
+/// Part 6 §6.1: one flat quad for the item an item frame displays.
+///
+/// `facing` is 0..3 = N/E/S/W — the frame's front normal, matching the
+/// blockstate property window `ITEM_FRAME_STATE_BASE..` (940..=943);
+/// `rot` is the stored 45° display step. The item plane sits just in front
+/// of the frame's plate (the plate model is 1 px thick and 12×12 against
+/// the wall), spans the same 12 px, and is rotated clockwise about the
+/// plate's centre as seen from the front. The geometry here is our own
+/// clean-room choice and is pinned by the unit test below.
+fn frame_item_quad(
+    facing: u8,
+    rot: u8,
+    pos: [i32; 3],
+    tile: u16,
+    light: f32,
+    out: &mut Vec<vc_particles::particles::ParticleVertex>,
+) {
+    use vc_particles::particles::ParticleVertex;
+    // u = the texture-right axis in the xz plane, `axis_x` = whether the
+    // plane is a constant X (east/west) rather than a constant Z
+    // (north/south), `plane` = that constant — the plate is 1 px thick, so
+    // its front face sits 1 px off the wall, +0.01 so the item never
+    // z-fights the plate it hangs on
+    let (ux, uz, axis_x, plane) = match facing & 3 {
+        // north: wall to the south (+Z), front faces −Z
+        0 => (1.0f32, 0.0f32, false, 1.0 - 1.0 / 16.0 - 0.01),
+        // east: wall to the west (−X), front faces +X
+        1 => (0.0, 1.0, true, 1.0 / 16.0 + 0.01),
+        // south: wall to the north (−Z), front faces +Z
+        2 => (-1.0, 0.0, false, 1.0 / 16.0 + 0.01),
+        // west: wall to the east (+X), front faces −X
+        _ => (0.0, -1.0, true, 1.0 - 1.0 / 16.0 - 0.01),
+    };
+    // 45°-step rotation in the plate's plane (clockwise from the front)
+    let th = (rot & 7) as f32 * std::f32::consts::FRAC_PI_4;
+    let (s, c) = th.sin_cos();
+    let half = 6.0 / 16.0; // 12 px, matching the plate
+    let (cx, cz) = if axis_x {
+        (pos[0] as f32 + plane, pos[2] as f32 + 0.5)
+    } else {
+        (pos[0] as f32 + 0.5, pos[2] as f32 + plane)
+    };
+    // corners CCW from the front, (a, b) = (±half, ±half) with a along u
+    // and b up; the uv order matches the mesher's outward face winding
+    let uv = tile_uv(tile);
+    let uvs = [
+        [uv[0], uv[3]],
+        [uv[0], uv[1]],
+        [uv[2], uv[1]],
+        [uv[2], uv[3]],
+    ];
+    let corners = [(-half, -half), (-half, half), (half, half), (half, -half)];
+    let mut pts = [[0.0f32; 3]; 4];
+    for (i, (a, b)) in corners.iter().enumerate() {
+        let (a, b) = (a * c + b * s, -a * s + b * c);
+        pts[i] = [cx + a * ux, pos[1] as f32 + 0.5 + b, cz + a * uz];
+    }
+    for i in [0usize, 1, 2, 0, 2, 3] {
+        out.push(ParticleVertex {
+            pos: pts[i],
+            uv: uvs[i],
+            col: [light, light, light],
+        });
+    }
+}
+
 /// Rolling min/max FPS from the frame-time history (ms). Max frame time
 /// folds UP from 0.0 (→ the minimum FPS); min frame time folds DOWN from
 /// 1A.1: the pure core of the F3 metering, unit-tested below. Given the
@@ -32938,5 +33118,68 @@ mod round14b_settings_tests {
             };
         }
         assert_eq!(stage, 2);
+    }
+}
+
+#[cfg(test)]
+mod frame_item_tests {
+    use super::*;
+
+    /// Part 6 §6.1: the item a frame displays is a flat quad pinned to the
+    /// frame's plate face — one plane per facing, 12 px across, and the
+    /// stored 45° step only ever turns it in that plane (never off it).
+    #[test]
+    fn frame_item_quad_hangs_on_the_plate_per_facing() {
+        let plate_front = 1.0 - 1.0 / 16.0 - 0.01; // plate is 1 px against +Z
+        let wall_side = 1.0 / 16.0 + 0.01;
+        let half = 6.0 / 16.0;
+        let mut v = Vec::new();
+        // north (facing=0): a constant-Z plane in front of the +Z wall
+        frame_item_quad(0, 0, [0, 0, 0], TILE_STONE, 1.0, &mut v);
+        assert_eq!(v.len(), 6, "two triangles");
+        for p in &v {
+            assert!((p.pos[2] - plate_front).abs() < 1e-6, "on the plate face");
+            assert!((p.pos[0] - 0.5).abs() <= half + 1e-6);
+            assert!((p.pos[1] - 0.5).abs() <= half + 1e-6);
+        }
+        // a 45° step keeps the plane but widens the footprint by √2; a 90°
+        // step is a square again (only the uv turns)
+        v.clear();
+        frame_item_quad(0, 1, [0, 0, 0], TILE_STONE, 1.0, &mut v);
+        let max_x = v
+            .iter()
+            .map(|p| (p.pos[0] - 0.5).abs())
+            .fold(0.0f32, f32::max);
+        assert!((max_x - half * std::f32::consts::SQRT_2).abs() < 1e-5);
+        for p in &v {
+            assert!(
+                (p.pos[2] - plate_front).abs() < 1e-6,
+                "rotation is in-plane"
+            );
+        }
+        v.clear();
+        frame_item_quad(0, 2, [0, 0, 0], TILE_STONE, 1.0, &mut v);
+        let max_90 = v
+            .iter()
+            .map(|p| (p.pos[0] - 0.5).abs())
+            .fold(0.0f32, f32::max);
+        assert!((max_90 - half).abs() < 1e-6, "90° is a square again");
+        // the other three facings mirror onto their own walls
+        for (facing, plane_axis, plane_val) in [
+            (1u8, 0usize, wall_side), // east: −X wall, front +X
+            (2, 2, wall_side),        // south: −Z wall, front +Z
+            (3, 0, plate_front),      // west: +X wall, front −X
+        ] {
+            v.clear();
+            frame_item_quad(facing, 0, [3, 4, 5], TILE_STONE, 1.0, &mut v);
+            assert_eq!(v.len(), 6);
+            for p in &v {
+                let want = [3.0, 4.0, 5.0][plane_axis] + plane_val;
+                assert!(
+                    (p.pos[plane_axis] - want).abs() < 1e-6,
+                    "facing {facing} sits on its wall"
+                );
+            }
+        }
     }
 }

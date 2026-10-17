@@ -828,6 +828,10 @@ pub struct ContainerMeta {
     pub kind: u16,
     /// (block id, count) per non-empty slot, with the slot index
     pub slots: Vec<(u16, u16, u8)>,
+    /// Part 6 §6.1: the item frame's display rotation in 45° steps
+    /// (0..=7). Every other container kind ignores it; absent in saves
+    /// written before the item-frame round reads as 0 (no rotation).
+    pub rot: u8,
 }
 
 /// World metadata persisted in `level.dat` (vanilla keys + a `voxelcraft`
@@ -1017,6 +1021,11 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
             n.set("Y", Nbt::Int(c.pos[1]));
             n.set("Z", Nbt::Int(c.pos[2]));
             n.set("Kind", Nbt::Short(c.kind as i16));
+            if c.rot != 0 {
+                // Part 6 §6.1: item-frame rotation; written only when it
+                // is non-zero (old readers ignore the key entirely)
+                n.set("Rot", Nbt::Byte(c.rot as i8));
+            }
             let items: Vec<Nbt> = c
                 .slots
                 .iter()
@@ -1254,6 +1263,8 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
                     pos: [x, y, z],
                     kind,
                     slots,
+                    // Part 6 §6.1: absent in pre-item-frame saves → 0
+                    rot: cf("Rot").and_then(|v| v.as_i64()).unwrap_or(0).clamp(0, 7) as u8,
                 });
             }
         }
@@ -2303,6 +2314,7 @@ mod tests {
                 pos: [-17, 40, 239],
                 kind: 96, // CHEST
                 slots: vec![(3, 82, 4), (7, 84, 2)],
+                rot: 0,
             }],
         };
         write_level_dat(&dir, &meta).unwrap();

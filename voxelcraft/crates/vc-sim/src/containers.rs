@@ -1,7 +1,13 @@
 //! Container block entities (Phase 3): chests (27 slots), dispensers and
-//! droppers (9), hoppers (5). One map keyed by block position; created on
-//! first use (right-click or hopper transfer), spilled as item drops when
-//! the block breaks (the game layer drains `spilled`).
+//! droppers (9), hoppers (5), item frames (1). One map keyed by block
+//! position; created on first use (right-click or hopper transfer),
+//! spilled as item drops when the block breaks (the game layer drains
+//! `spilled`).
+//!
+//! Part 6 §6.1: the item frame is the one entry here that is NOT a UI
+//! container — no screen ever opens for it. Its single slot exists so the
+//! held item rides the persisted container store (save round-trip) and
+//! spills on break like every other container.
 //!
 //! VERIFIED (the reference wiki, 2026-09-04): hopper transfer cooldown is 8
 //! game ticks (2.5 items/s); dispenser/dropper eject ONE item on the
@@ -24,6 +30,12 @@ pub fn slot_count(block: u16) -> Option<usize> {
         BARREL => 27,
         DISPENSER | DROPPER => 9,
         HOPPER => 5,
+        // Part 6 §6.1: the item frame holds exactly ONE item (VERIFIED
+        // w/Item_Frame: "Item frames can be used to hold ... a single
+        // item"; the item is displayed in the frame). The item a frame
+        // holds is drawn on its plate by the game layer — this slot is
+        // not a GUI container.
+        ITEM_FRAME => 1,
         _ => return None,
     })
 }
@@ -31,6 +43,12 @@ pub fn slot_count(block: u16) -> Option<usize> {
 #[derive(Clone, Debug)]
 pub struct ContainerInv {
     pub slots: Vec<ItemStack>,
+    /// Part 6 §6.1: the item frame's display rotation, in 45° steps
+    /// (0..=7; every other container ignores it). VERIFIED w/Item_Frame:
+    /// "The displayed item can be rotated by right-clicking the frame."
+    /// Persisted with the container record so a rotated item survives
+    /// save/reload (vanilla keeps it in the frame's block entity).
+    pub rot: u8,
 }
 
 impl ContainerInv {
@@ -38,6 +56,7 @@ impl ContainerInv {
         let n = slot_count(block).unwrap_or(9);
         ContainerInv {
             slots: vec![ItemStack::EMPTY; n],
+            rot: 0,
         }
     }
 
@@ -130,7 +149,28 @@ mod tests {
         assert_eq!(slot_count(DISPENSER), Some(9));
         assert_eq!(slot_count(DROPPER), Some(9));
         assert_eq!(slot_count(HOPPER), Some(5));
+        // Part 6 §6.1: the item frame holds exactly one item (not a GUI)
+        assert_eq!(slot_count(ITEM_FRAME), Some(1));
+        assert_eq!(ContainerInv::new(ITEM_FRAME).slots.len(), 1);
         assert_eq!(slot_count(STONE), None);
+    }
+
+    #[test]
+    fn frame_item_rides_the_persisted_store_and_spills() {
+        // the frame slot reuses the container store: one item in, one
+        // item spilled when the frame breaks (slice-3 drop behaviour)
+        let mut cs = Containers::default();
+        let pos = [4, 70, -3];
+        {
+            let f = cs.entry(pos, ITEM_FRAME);
+            assert_eq!(f.slots.len(), 1);
+            f.slots[0] = ItemStack::new(DIAMOND_BLOCK, 1);
+        }
+        assert_eq!(cs.get(&pos).unwrap().slots[0].block, DIAMOND_BLOCK);
+        cs.remove(&pos);
+        assert_eq!(cs.spilled.len(), 1);
+        assert_eq!(cs.spilled[0].1[0].block, DIAMOND_BLOCK);
+        assert_eq!(cs.spilled[0].1[0].count, 1);
     }
 
     #[test]

@@ -2071,6 +2071,21 @@ pub struct GameApp {
     /// E2E_DISPLAY scale-2 override (tests the wiring downstream of
     /// model lookup — lookup itself is unit-tested pure)
     e2e_display_override: Option<vc_pack::model::DisplayTr>,
+    /// E2E_FRAMES — item-frame proof leg ran once (Part 6 §6.1)
+    e2e_frames_done: bool,
+    /// E2E_FRAMES stage (0 build, 1 capture A empty, 2 contents +
+    /// capture B, 3 rotate 45° + capture C, 4 diffs + verdict)
+    e2e_frames_stage: u8,
+    /// E2E_FRAMES settle frames remaining
+    e2e_frames_wait: u8,
+    /// E2E_FRAMES: every capture landed + both diffs proved pixels moved
+    e2e_frames_ok: bool,
+    /// E2E_FRAMES rig cells (the three frames, west → east)
+    e2e_frames_pos: [[i32; 3]; 3],
+    /// E2E_FRAMES mesh revision at build (remesh gate, water precedent)
+    e2e_frames_rev: u64,
+    /// E2E_FRAMES drain-gate stability counter (rig before world meshes)
+    e2e_frames_stable: u8,
     /// 1A.6: E2E_ICONIC — the iconic-cast capture leg ran once
     e2e_iconic_done: bool,
     /// 1.11: E2E_TURNTABLE — solo-mob capture leg ran once
@@ -3714,6 +3729,13 @@ impl GameApp {
             e2e_display_wait: 0,
             e2e_display_ok: true,
             e2e_display_override: None,
+            e2e_frames_done: false,
+            e2e_frames_stage: 0,
+            e2e_frames_wait: 0,
+            e2e_frames_ok: true,
+            e2e_frames_pos: [[0; 3]; 3],
+            e2e_frames_rev: 0,
+            e2e_frames_stable: 0,
             e2e_iconic_done: false,
             e2e_iconic_stage: 0,
             e2e_iconic_settle: 0,
@@ -17730,6 +17752,253 @@ impl GameApp {
         }
     }
 
+    /// E2E_FRAMES — item-frame proof leg (Part 6 §6.1 verification arc).
+    /// Builds a stone wall on the north axis of a pinned camera, hangs
+    /// three frames on it through the real state path, then proves
+    /// numerically that (a) a stored item changes pixels inside the frame
+    /// and (b) a 45° display step moves them again — plate, contents and
+    /// rotation wired end to end. The three captures are the V1 material.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_frames_capture(&mut self, name: &str) -> bool {
+        if let Some(bytes) = self.renderer.take_screenshot_png() {
+            let dir = std::path::Path::new("screenshots");
+            let _ = std::fs::create_dir_all(dir);
+            let path = dir.join(format!("e2e_frames_{name}_{}.png", chrono_like_stamp()));
+            let wrote = std::fs::write(&path, &bytes).is_ok();
+            vc_render::render::report_boot_log(&format!(
+                "e2e: frames {name} {} ({} bytes) cam {:.1} {:.1} {:.1} yaw {:.2} pitch {:.2}",
+                if wrote { "saved" } else { "WRITE FAILED" },
+                bytes.len(),
+                self.player.pos.x,
+                self.player.pos.y,
+                self.player.pos.z,
+                self.player.yaw,
+                self.player.pitch
+            ));
+            self.e2e_frames_ok &= wrote && bytes.len() > 1000;
+            true
+        } else {
+            self.renderer.screenshot_request = true;
+            false
+        }
+    }
+
+    /// E2E_FRAMES pixel proof: mean-abs RGB diff between the captures
+    /// whose filenames contain `a` and `b`, sampled over the CENTRE HALF
+    /// of the image — the rig is dead centre by construction, and the crop
+    /// keeps the HUD (bottom), the arm (bottom-right) and the sky (top)
+    /// out of the vote.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_frames_diff(&mut self, a: &str, b: &str) -> f64 {
+        let dir = std::path::Path::new("screenshots");
+        let mut shots: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+            .map(|rd| {
+                rd.filter_map(|e| e.ok())
+                    .map(|e| e.path())
+                    .filter(|p| {
+                        p.file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|n| n.starts_with("e2e_frames_"))
+                            .unwrap_or(false)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        shots.sort();
+        let px = |which: &str| -> image::RgbaImage {
+            shots
+                .iter()
+                .find(|p| {
+                    p.file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| n.contains(which))
+                        .unwrap_or(false)
+                })
+                .and_then(|p| std::fs::read(p).ok())
+                .and_then(|b| image::load_from_memory(&b).ok())
+                .map(|i| i.to_rgba8())
+                .unwrap_or_else(|| image::RgbaImage::new(0, 0))
+        };
+        let (ia, ib) = (px(a), px(b));
+        let (w, h) = (ia.width().min(ib.width()), ia.height().min(ib.height()));
+        let (mut s, mut n) = (0u64, 0u64);
+        for y in h / 4..h * 3 / 4 {
+            for x in w / 4..w * 3 / 4 {
+                let pa = ia.get_pixel(x, y);
+                let pb = ib.get_pixel(x, y);
+                s += (pa[0] as i64 - pb[0] as i64).unsigned_abs()
+                    + (pa[1] as i64 - pb[1] as i64).unsigned_abs()
+                    + (pa[2] as i64 - pb[2] as i64).unsigned_abs();
+                n += 1;
+            }
+        }
+        if n > 0 {
+            s as f64 / n as f64 / 3.0
+        } else {
+            0.0
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn e2e_frames(&mut self) {
+        // unpaused + noon (a night build would dim every capture) + pinned
+        // CARDINAL pose: yaw 0 looks due −Z, so the wall face toward the
+        // camera is +Z and every frame's facing is unambiguously "south"
+        // (window index 2) — no diagonal facing to reason about
+        self.screen = Screen::Game;
+        if self.e2e_frames_stage < 4 {
+            self.player.pos.x = -287.5;
+            self.player.pos.y = 65.0;
+            self.player.pos.z = -311.5;
+            self.player.yaw = 0.0;
+            self.player.pitch = 0.0;
+        }
+        let e = self.player.eye();
+        let (cx, cz) = (e.x.floor() as i32, e.z.floor() as i32);
+        let wy = e.y.floor() as i32;
+        let wall_z = cz - 4;
+        match self.e2e_frames_stage {
+            0 => {
+                // the rig lands only after the world has drained (weak-
+                // runner precedent: a rig queued behind hundreds of world
+                // meshes never reaches a capture)
+                if self.gen_inflight.is_empty() && self.mesh_inflight.is_empty() {
+                    self.e2e_frames_stable = self.e2e_frames_stable.saturating_add(1);
+                } else {
+                    self.e2e_frames_stable = 0;
+                    return;
+                }
+                if self.e2e_frames_stable < 10 {
+                    return;
+                }
+                // corridor first: make the 4-block sight line between the
+                // camera and the rig empty at head height (terrain in front
+                // of the wall would hide the frames; the water leg's
+                // "flood reaching the camera" lesson) — only y = wy/wy+1,
+                // so the block under the player's feet is never touched
+                for dx in -2i32..=2 {
+                    for dz in 0i32..=4 {
+                        for dy in 0..=1 {
+                            self.test_place(AIR, cx + dx, wy + dy, wall_z + 1 + dz);
+                        }
+                    }
+                }
+                // wall 5 wide × 3 tall; the frames hang in the AIR cell
+                // south of it (vanilla: a frame occupies the cell in front
+                // of the wall it is attached to)
+                for dx in -2i32..=2 {
+                    for dy in -1i32..=1 {
+                        self.test_place(STONE, cx + dx, wy + dy, wall_z);
+                    }
+                }
+                let fz = wall_z + 1;
+                for (i, dx) in [-1i32, 0, 1].iter().enumerate() {
+                    let p = [cx + dx, wy, fz];
+                    self.test_place_state(ITEM_FRAME_STATE_BASE + 2, p[0], p[1], p[2]);
+                    self.e2e_frames_pos[i] = p;
+                }
+                let read = |g: &Self, p: [i32; 3]| g.world.get_state(p[0], p[1], p[2]);
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: frames probe wall={} states {}/{}/{} (want {} {} {} {})",
+                    self.world.get_block(cx, wy, wall_z),
+                    read(self, self.e2e_frames_pos[0]),
+                    read(self, self.e2e_frames_pos[1]),
+                    read(self, self.e2e_frames_pos[2]),
+                    STONE,
+                    ITEM_FRAME_STATE_BASE + 2,
+                    ITEM_FRAME_STATE_BASE + 2,
+                    ITEM_FRAME_STATE_BASE + 2,
+                ));
+                // remesh fence: bare-state edits never reach the mesher on
+                // their own (see the water rig's note)
+                for ox in -2i32..=2 {
+                    for oz in 0i32..=4 {
+                        self.world.mark_sections_dirty(
+                            ((cx + ox).div_euclid(16), (wall_z + oz).div_euclid(16)),
+                            0xFFFF,
+                            vc_world::world::CAUSE_GEOMETRY,
+                        );
+                    }
+                }
+                self.world_game_time = 6000; // noon for the run
+                self.weather.force_clear(100000);
+                self.e2e_frames_rev = self.renderer.mesh_rev();
+                self.e2e_frames_stage = 1;
+                self.e2e_frames_wait = 4;
+            }
+            1 => {
+                // gate on the remesh actually landing, then settle
+                if self.renderer.mesh_rev() <= self.e2e_frames_rev {
+                    return;
+                }
+                if self.e2e_frames_wait > 0 {
+                    self.e2e_frames_wait -= 1;
+                    return;
+                }
+                if self.e2e_frames_capture("A") {
+                    self.e2e_frames_stage = 2;
+                    self.e2e_frames_wait = 2;
+                }
+            }
+            2 => {
+                if self.e2e_frames_wait > 0 {
+                    self.e2e_frames_wait -= 1;
+                    return;
+                }
+                // centre frame gets a bright block (the biggest possible
+                // pixel delta); the east frame gets one too, at step 0
+                let mid = self.e2e_frames_pos[1];
+                let east = self.e2e_frames_pos[2];
+                self.sim.containers.entry(mid, ITEM_FRAME).slots[0] =
+                    vc_inventory::inventory::ItemStack::new(DIAMOND_BLOCK, 1);
+                self.sim.containers.entry(east, ITEM_FRAME).slots[0] =
+                    vc_inventory::inventory::ItemStack::new(STONE, 1);
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: frames store mid={} east={} rot={}",
+                    self.sim.containers.get(&mid).unwrap().slots[0].block,
+                    self.sim.containers.get(&east).unwrap().slots[0].block,
+                    self.sim.containers.get(&east).unwrap().rot,
+                ));
+                if self.e2e_frames_capture("B") {
+                    self.e2e_frames_stage = 3;
+                    self.e2e_frames_wait = 2;
+                }
+            }
+            3 => {
+                if self.e2e_frames_wait > 0 {
+                    self.e2e_frames_wait -= 1;
+                    return;
+                }
+                // a 45° step turns the east item inside its own plane: the
+                // whole icon rotates (uv rides the corners) and the wide
+                // diagonal pokes past the 12 px plate
+                self.sim
+                    .containers
+                    .entry(self.e2e_frames_pos[2], ITEM_FRAME)
+                    .rot = 1;
+                if self.e2e_frames_capture("C") {
+                    self.e2e_frames_stage = 4;
+                }
+            }
+            _ => {
+                let d_ab = self.e2e_frames_diff("A", "B");
+                let d_bc = self.e2e_frames_diff("B", "C");
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: frames diffs empty→item={d_ab:.2} item→45deg={d_bc:.2}"
+                ));
+                self.e2e_frames_ok &= d_ab > 1.0 && d_bc > 1.0;
+                let ok = self.e2e_frames_ok;
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: frames 3 captures — FRAMES VERDICT {}",
+                    if ok { "OK" } else { "FAILED" }
+                ));
+                self.e2e_frames_done = true;
+                self.dbg_exit_summary();
+                std::process::exit(if ok { 0 } else { 1 });
+            }
+        }
+    }
+
     /// E2E_WATER — still-water/flow visual leg (owner hardware report:
     /// no flow, holes). Builds a sealed pool IN the spawn view through
     /// the real state path, captures pool/surface/flow-pair/under. The
@@ -19025,6 +19294,13 @@ impl GameApp {
             WATER => water_state(0),
             _ => default_state(block),
         };
+        self.test_place_state(state, x, y, z);
+    }
+
+    /// E2E rig helper: place a raw STATE. Item frames live in the
+    /// 940..=943 window — they have no block-id `default_state` entry to
+    /// route through `test_place`.
+    fn test_place_state(&mut self, state: u16, x: i32, y: i32, z: i32) {
         if let Some((old, new)) = self.world.set_block_state(x, y, z, state) {
             self.light.on_block_changed(&self.world, x, y, z, old, new);
         }
@@ -19533,6 +19809,23 @@ impl GameApp {
             let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
             if in_world {
                 self.e2e_display();
+            }
+        }
+        // E2E_FRAMES — item-frame proof leg (Part 6 §6.1): builds a wall +
+        // three frames in front of a pinned camera and captures empty →
+        // filled → rotated. Same world-entry + chunk-ready guard as the
+        // other rig legs.
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("E2E_FRAMES").is_ok() && !self.e2e_frames_done {
+            let (px_f, pz_f) = (
+                self.player.pos.x.floor() as i32,
+                self.player.pos.z.floor() as i32,
+            );
+            let (pcx, pcz) = (px_f.div_euclid(16), pz_f.div_euclid(16));
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            let frames_ready = in_world && self.world.chunks.contains_key(&(pcx, pcz));
+            if frames_ready {
+                self.e2e_frames();
             }
         }
         // E2E_WATER — still-water/flow visual leg (owner hardware
@@ -20210,6 +20503,12 @@ impl GameApp {
                     std::env::var("E2E_DISPLAY").is_ok() && !self.e2e_display_done;
                 #[cfg(target_arch = "wasm32")]
                 let display_pending = false;
+                // Part 6 §6.1: E2E_FRAMES owns the exit while its
+                // build+3-capture ladder runs
+                #[cfg(not(target_arch = "wasm32"))]
+                let frames_pending = std::env::var("E2E_FRAMES").is_ok() && !self.e2e_frames_done;
+                #[cfg(target_arch = "wasm32")]
+                let frames_pending = false;
                 if !fkeys_pending
                     && !iconic_pending
                     && !phases_pending
@@ -20219,6 +20518,7 @@ impl GameApp {
                     && !matrix_pending
                     && !water_pending
                     && !display_pending
+                    && !frames_pending
                 {
                     vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                     self.dbg_exit_summary();
@@ -20304,6 +20604,12 @@ impl GameApp {
             let display_pending = std::env::var("E2E_DISPLAY").is_ok() && !self.e2e_display_done;
             #[cfg(target_arch = "wasm32")]
             let display_pending = false;
+            // Part 6 §6.1: E2E_FRAMES owns the exit while its
+            // build+3-capture ladder runs
+            #[cfg(not(target_arch = "wasm32"))]
+            let frames_pending = std::env::var("E2E_FRAMES").is_ok() && !self.e2e_frames_done;
+            #[cfg(target_arch = "wasm32")]
+            let frames_pending = false;
             if t_in > 2.2
                 && !fkeys_pending
                 && !iconic_pending
@@ -20314,6 +20620,7 @@ impl GameApp {
                 && !matrix_pending
                 && !water_pending
                 && !display_pending
+                && !frames_pending
             {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
                 self.dbg_exit_summary();

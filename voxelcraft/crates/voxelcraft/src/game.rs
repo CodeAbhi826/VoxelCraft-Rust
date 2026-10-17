@@ -17841,34 +17841,51 @@ impl GameApp {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn e2e_frames(&mut self) {
-        // unpaused + noon (a night build would dim every capture) + pinned
-        // CARDINAL pose: yaw 0 looks due −Z, so the wall face toward the
+        // unpaused + noon (a night build would dim every capture) + a
+        // CARDINAL look: yaw 0 looks due −Z, so the wall face toward the
         // camera is +Z and every frame's facing is unambiguously "south"
-        // (window index 2) — no diagonal facing to reason about
+        // (window index 2) — no diagonal facing to reason about.
+        //
+        // NO POSE TELEPORT: the rig is built ahead of wherever the game
+        // put the player. The first CI run of this leg teleported to the
+        // hardcoded matrix coords (−287.5, 65, −311.5), which belong to
+        // seed 95 — on the default seed (12345, spawn 296,71,280) that is
+        // ungenerated terrain, so the player fell out of the world, the
+        // death screen took the dispatch gate away and the leg stalled to
+        // the timeout. The real spawn is proven safe by the long
+        // turntable/survey legs.
         self.screen = Screen::Game;
-        if self.e2e_frames_stage < 4 {
-            self.player.pos.x = -287.5;
-            self.player.pos.y = 65.0;
-            self.player.pos.z = -311.5;
-            self.player.yaw = 0.0;
-            self.player.pitch = 0.0;
-        }
+        self.player.yaw = 0.0;
+        self.player.pitch = 0.0;
+        self.player.health = 20.0;
         let e = self.player.eye();
         let (cx, cz) = (e.x.floor() as i32, e.z.floor() as i32);
         let wy = e.y.floor() as i32;
         let wall_z = cz - 4;
         match self.e2e_frames_stage {
             0 => {
-                // the rig lands only after the world has drained (weak-
-                // runner precedent: a rig queued behind hundreds of world
-                // meshes never reaches a capture)
+                // never build into an unloaded chunk (set_block_state is a
+                // no-op there, so the wall would silently not exist and the
+                // captures would diff to nothing)
+                if !self
+                    .world
+                    .chunks
+                    .contains_key(&(cx.div_euclid(16), wall_z.div_euclid(16)))
+                {
+                    return;
+                }
+                // the rig lands once the world has drained — but the queues
+                // are never reliably empty at lavapipe's 5-10 fps (fluid and
+                // light work keeps dirtying sections), so the wait is
+                // BUDGETED (90 frames) instead of strict; a strict gate is
+                // what stalled the first CI attempt
+                self.e2e_frames_wait = self.e2e_frames_wait.saturating_add(1);
                 if self.gen_inflight.is_empty() && self.mesh_inflight.is_empty() {
                     self.e2e_frames_stable = self.e2e_frames_stable.saturating_add(1);
                 } else {
                     self.e2e_frames_stable = 0;
-                    return;
                 }
-                if self.e2e_frames_stable < 10 {
+                if self.e2e_frames_stable < 3 && self.e2e_frames_wait < 90 {
                     return;
                 }
                 // corridor first: make the 4-block sight line between the
@@ -17924,10 +17941,13 @@ impl GameApp {
                 self.weather.force_clear(100000);
                 self.e2e_frames_rev = self.renderer.mesh_rev();
                 self.e2e_frames_stage = 1;
-                self.e2e_frames_wait = 4;
+                self.e2e_frames_wait = 8;
             }
             1 => {
-                // gate on the remesh actually landing, then settle
+                // gate on a remesh landing, then settle a longer window:
+                // mesh_rev is GLOBAL, so an unrelated section could satisfy
+                // the first half alone — the settle gives the rig's own
+                // sections time to land before capture A
                 if self.renderer.mesh_rev() <= self.e2e_frames_rev {
                     return;
                 }
@@ -19817,6 +19837,10 @@ impl GameApp {
         // other rig legs.
         #[cfg(not(target_arch = "wasm32"))]
         if std::env::var("E2E_FRAMES").is_ok() && !self.e2e_frames_done {
+            // the turntable/survey precedent (CI-proven 2026-10-09): an E2E
+            // capture leg never dies — it stalls on the death screen to
+            // timeout if it does
+            self.player.health = 20.0;
             let (px_f, pz_f) = (
                 self.player.pos.x.floor() as i32,
                 self.player.pos.z.floor() as i32,

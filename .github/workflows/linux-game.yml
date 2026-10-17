@@ -413,30 +413,6 @@ jobs:
           done
           echo "VISUAL OK - eight proof captures saved (tint, modes, interp, ssao, moon)"
 
-          # Part 6 §6.1 E2E_FRAMES — item-frame proof leg: builds a stone
-          # wall with three item frames on it in front of a pinned camera,
-          # then proves numerically that (a) a stored item changes pixels
-          # inside the frame and (b) a 45° display step moves them again.
-          # Three PNGs (A empty / B filled / C rotated) for V1 review.
-          mkdir -p run11 && pushd run11 >/dev/null
-          set +e
-          timeout 240 xvfb-run -a -s "-screen 0 1280x720x24" \
-            env WGPU_BACKEND=Vulkan E2E_FRAMES=1 \
-            "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-frames.log
-          CODE=$?
-          set -e
-          popd >/dev/null
-          echo "frames smoke exit code: $CODE"
-          if [ "$CODE" -ne 0 ]; then
-            echo "FAIL: frames E2E exited $CODE"
-            exit 1
-          fi
-          grep -q "FRAMES VERDICT OK" smoke-frames.log || { echo "FAIL: the frames E2E verdict is not OK"; exit 1; }
-          for v in A B C; do
-            test -s run11/screenshots/e2e_frames_${v}_*.png || { echo "FAIL: frames capture $v missing"; exit 1; }
-          done
-          echo "FRAMES OK - plate + contents + 45-degree rotation proved live"
-
           # 1.11: solo-mob turntable (E2E_TURNTABLE=1, TURNTABLE_MOB=name,
           # default creeper) — one subject alone on flat grass, HUD hidden,
           # neutral daylight; front/side/back/three-quarter/close-up PNGs
@@ -520,6 +496,35 @@ jobs:
                 f"worst={f['worst_ms']:.1f}ms phases={p} world={w} "
                 f"gpu_ms={d.get('gpu_ms')}")
           EOF
+
+          # Part 6 §6.1 E2E_FRAMES — item-frame proof leg (LAST: a new leg
+          # must never mask the older legs' verification if it fails).
+          # Builds a stone wall + three frames on it ahead of the player,
+          # then proves numerically that (a) a stored item changes pixels
+          # inside the frame and (b) a 45° display step moves them again.
+          # Three PNGs (A empty / B filled / C rotated) for V1 review.
+          # No pose teleport and no E2E_SEED pin: the rig is built ahead of
+          # wherever the game put the player (the default spawn is proven
+          # safe by the long turntable/survey legs), so the leg cannot land
+          # in ungenerated terrain and fall out of the world.
+          mkdir -p run11 && pushd run11 >/dev/null
+          set +e
+          timeout 300 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan E2E_FRAMES=1 \
+            "../$BIN_NAME" --smoke --verbose 2>&1 | tee ../smoke-frames.log
+          CODE=$?
+          set -e
+          popd >/dev/null
+          echo "frames smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: frames E2E exited $CODE"
+            exit 1
+          fi
+          grep -q "FRAMES VERDICT OK" smoke-frames.log || { echo "FAIL: the frames E2E verdict is not OK"; exit 1; }
+          for v in A B C; do
+            test -s run11/screenshots/e2e_frames_${v}_*.png || { echo "FAIL: frames capture $v missing"; exit 1; }
+          done
+          echo "FRAMES OK - plate + contents + 45-degree rotation proved live"
 
           echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 

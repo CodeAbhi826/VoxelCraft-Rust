@@ -1,0 +1,20 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "frame": "voxelcraft:block/item_frame"
+  },
+  "elements": [
+    {
+      "from": [2, 2, 15],
+      "to": [14, 14, 16],
+      "faces": {
+        "north": { "texture": "#frame", "uv": [0, 0, 16, 16] },
+        "south": { "texture": "#frame", "uv": [0, 0, 16, 16], "cullface": "south" },
+        "west":  { "texture": "#frame", "uv": [0, 0, 1, 16] },
+        "east":  { "texture": "#frame", "uv": [15, 0, 16, 16] },
+        "up":    { "texture": "#frame", "uv": [0, 0, 16, 1] },
+        "down":  { "texture": "#frame", "uv": [0, 15, 16, 16] }
+      }
+    }
+  ]
+}

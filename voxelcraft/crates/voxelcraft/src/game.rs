@@ -25851,6 +25851,33 @@ impl GameApp {
                                         (b - GLAZED_TERRACOTTA_BASE) as u8,
                                         facing,
                                     )
+                                } else if b == ITEM_FRAME {
+                                    // Part 6 §6.1: an item frame attaches to
+                                    // the clicked SIDE face only (vanilla
+                                    // frames hang on walls, never ceilings or
+                                    // floors). Its facing is the clicked
+                                    // face's outward normal: `prev` is the
+                                    // frame's own cell and `tpos` the clicked
+                                    // block, so the offset tpos→prev IS that
+                                    // normal. Deny top/bottom clicks (the
+                                    // u16::MAX sentinel).
+                                    let (dx, dy, dz) =
+                                        (prev[0] - tpos[0], prev[1] - tpos[1], prev[2] - tpos[2]);
+                                    // the attachment surface must be a real
+                                    // block (never air or a cross plant) and
+                                    // the click must land on a side face
+                                    let wall = self.world.get_block(tpos[0], tpos[1], tpos[2]);
+                                    if dy != 0 || wall == AIR || is_cross(wall) {
+                                        u16::MAX
+                                    } else {
+                                        let facing = match (dx, dz) {
+                                            (0, -1) => "north",
+                                            (1, 0) => "east",
+                                            (0, 1) => "south",
+                                            _ => "west",
+                                        };
+                                        prop_state_encode(b, &[("facing", facing)]).unwrap_or(b)
+                                    }
                                 } else if b == OAK_SLAB {
                                     // vanilla slabs: clicking the TOP of a block →
                                     // bottom slab; the UNDERSIDE → top slab

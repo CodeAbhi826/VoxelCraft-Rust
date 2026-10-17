@@ -1491,14 +1491,28 @@ mod tests {
         let mut atlas = vc_render::textures::generate_atlas();
         let (anims, _pack_tiles_used) =
             vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
-        // every model face resolved to a real pack tile (planks/cobble)
+        // every model face resolved to a real tile: pack-file textures land
+        // in the pack tile range, while the item frame's model reuses its
+        // procedurally painted tile (Part 6 §6.1)
         assert!(!set.tiles.is_empty(), "no pack textures registered");
         assert!(
-            set.tiles
-                .values()
-                .all(|&t| t >= vc_render::textures::PACK_TILE_BASE),
-            "pack textures must land in the pack tile range"
+            set.tiles.contains_key("voxelcraft:block/item_frame"),
+            "the item-frame model texture must be registered"
         );
+        for (loc, &t) in set.tiles.iter() {
+            if loc == "voxelcraft:block/item_frame" {
+                assert_eq!(
+                    t,
+                    vc_blocks::blocks::TILE_ITEM_FRAME,
+                    "the frame model must reuse the procedural tile"
+                );
+            } else {
+                assert!(
+                    t >= vc_render::textures::PACK_TILE_BASE,
+                    "{loc} must land in the pack tile range (got {t})"
+                );
+            }
+        }
         // the animated strips were recognized — 1.10 adds the built-in
         // magma flowing animation and Round K adds the nether-portal
         // vortex alongside the cobblestone shimmer

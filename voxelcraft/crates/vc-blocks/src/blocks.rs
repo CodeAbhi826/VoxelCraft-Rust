@@ -3464,7 +3464,16 @@ pub const ENDER_CHEST_STATE: u16 = 288;
 /// flower pot
 pub const FLOWER_POT_STATE: u16 = 289;
 /// item frame
+///
+/// Part 6 §6.1: the frame renders as a thin wall plate through the
+/// blockstate/model dispatch. Its facing property window lives at
+/// 940..=943 (N/E/S/W, aligned with the shared FACING prop order).
+/// [`ITEM_FRAME_STATE`] (290) is the legacy pre-facing state — kept so
+/// worlds saved before the facing window still fold to the frame block.
 pub const ITEM_FRAME_STATE: u16 = 290;
+/// item frame facing window: facing 0..3 = N/E/S/W (the §6.1 wall plate)
+pub const ITEM_FRAME_STATE_BASE: u16 = 940;
+pub const ITEM_FRAME_STATE_END: u16 = 943;
 /// tripwire hook: facing(4, N/E/S/W) × powered(2) = 8 states 291..=298
 pub const TRIPWIRE_HOOK_STATE_BASE: u16 = 291;
 pub const TRIPWIRE_HOOK_STATE_END: u16 = 298;
@@ -3784,7 +3793,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 940; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
+pub const STATE_COUNT: usize = 944; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
                                     // states + the V17 armor identity window (845..=860, sub-round 3)
                                     // + Round 13's BOOK/GRINDSTONE identity states (861..=862)
                                     // + the TNT round: TNT's dedicated state (863)
@@ -3800,6 +3809,9 @@ pub const STATE_COUNT: usize = 940; // the V16 window: 805 fire + 806-841 farmin
                                     // + 3.3c bow identity (932)
                                     // + 3.3d tipped identity window (933..=936)
                                     // + 4.2d structure-block identity window (937..=939)
+                                    // + Part 6 §6.1: the item-frame facing window
+                                    // (940..=943, facing N/E/S/W — the wall-plate
+                                    // render form's property states)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -4176,7 +4188,9 @@ pub fn default_state(b: u16) -> u16 {
         COBBLE_WALL => COBBLE_WALL_STATE,
         ENDER_CHEST => ENDER_CHEST_STATE,
         FLOWER_POT => FLOWER_POT_STATE,
-        ITEM_FRAME => ITEM_FRAME_STATE,
+        // Part 6 §6.1: the item frame places facing the clicked wall
+        // (the placement path writes the signed facing state)
+        ITEM_FRAME => ITEM_FRAME_STATE_BASE,
         TRIPWIRE_HOOK => tripwire_hook_state(0, false),
         WITHER_SKELETON_SKULL => WITHER_SKELETON_SKULL_STATE,
         COMMAND_BLOCK => COMMAND_BLOCK_STATE,
@@ -4357,7 +4371,7 @@ pub const WEST_B: PropDef = PropDef {
 
 /// property-driven blocks, states starting at MODEL_STATE_BASE
 pub const MODEL_STATE_BASE: u16 = 63;
-pub const PROP_BLOCKS: [PropBlock; 3] = [
+pub const PROP_BLOCKS: [PropBlock; 4] = [
     PropBlock {
         block: OAK_SLAB,
         name: "oak_slab",
@@ -4380,6 +4394,16 @@ pub const PROP_BLOCKS: [PropBlock; 3] = [
         props: &[EAST_B, NORTH_B, SOUTH_B, WEST_B],
         base_state: 73,
         state_count: 16,
+    },
+    // Part 6 §6.1: the item frame's wall-plate render form — a
+    // property state window so the thin plate attaches to the wall it
+    // was placed against (base = facing north).
+    PropBlock {
+        block: ITEM_FRAME,
+        name: "item_frame",
+        props: &[FACING],
+        base_state: ITEM_FRAME_STATE_BASE,
+        state_count: 4,
     },
 ];
 
@@ -4974,7 +4998,7 @@ pub fn is_model_state(s: u16) -> bool {
 /// true if this block id has property-driven model states
 #[inline]
 pub fn is_model_block(b: u16) -> bool {
-    (OAK_SLAB..=OAK_FENCE).contains(&b)
+    (OAK_SLAB..=OAK_FENCE).contains(&b) || b == ITEM_FRAME
 }
 
 /// Hand break time in SECONDS for a block (2026-09-14 round — the
@@ -8210,14 +8234,15 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
         0,
         SoundFamily::Grass,
     ),
-    // item frame: cross-rendered sprite of the frame; contents ride the
-    // container system (1-slot, position-keyed)
+    // item frame: Part 6 §6.1 wall plate (thin frame attached to the
+    // clicked wall face, rendered through the blockstate/model dispatch);
+    // contents ride the container system (1-slot, position-keyed)
     d(
         "Item Frame",
         [TILE_ITEM_FRAME, TILE_ITEM_FRAME, TILE_ITEM_FRAME],
         false,
         false,
-        true,
+        false,
         false,
         0,
         SoundFamily::Wood,
@@ -14668,6 +14693,37 @@ mod state_tests {
             Some(77),
             "single connection north = base + 1*4 (east slot slow radix)"
         );
+        // Part 6 §6.1: item frame facing window (940..=943, N/E/S/W)
+        assert_eq!(
+            prop_state_decode(ITEM_FRAME_STATE_BASE),
+            Some((ITEM_FRAME, vec![("facing", "north")]))
+        );
+        assert_eq!(
+            prop_state_decode(ITEM_FRAME_STATE_END),
+            Some((ITEM_FRAME, vec![("facing", "west")]))
+        );
+        assert_eq!(
+            prop_state_encode(ITEM_FRAME, &[("facing", "south")]),
+            Some(942)
+        );
+        assert_eq!(
+            prop_state_encode(ITEM_FRAME, &[]),
+            Some(ITEM_FRAME_STATE_BASE),
+            "the frame's default state is facing north"
+        );
+        // the placement default and every facing state fold back to the
+        // frame block
+        assert_eq!(default_state(ITEM_FRAME), ITEM_FRAME_STATE_BASE);
+        for f in 0..4u16 {
+            let s = ITEM_FRAME_STATE_BASE + f;
+            assert_eq!(state_block(s), ITEM_FRAME, "facing state {s} folds");
+            assert!(is_model_block(ITEM_FRAME) && is_model_state(s));
+        }
+        // the legacy pre-facing state (290) still folds to the frame block
+        // and stays off the model path (world-compat)
+        assert_eq!(ITEM_FRAME_STATE, 290);
+        assert_eq!(state_block(ITEM_FRAME_STATE), ITEM_FRAME);
+        assert!(!is_model_state(ITEM_FRAME_STATE));
         // exhaustive roundtrip over all model states (water flow states
         // 89..=95 are SIM states — decoded by water_level, not the prop
         // machinery)
@@ -15204,7 +15260,7 @@ mod state_tests {
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
         assert_eq!(BLOCK_COUNT, 587, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone + the TNT block + 2.1e placeholder + 3.1a tools + 3.3a splash + 3.3b breath/lingering + 3.3c bow + 3.3d tipped + 4.2d structure blocks");
-        assert_eq!(STATE_COUNT, 940, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities + 3.1a tool identities + 3.3a splash identities + 3.3b breath/lingering + 3.3c bow + 3.3d tipped + 4.2d structure states");
+        assert_eq!(STATE_COUNT, 944, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities + 3.1a tool identities + 3.3a splash identities + 3.3b breath/lingering + 3.3c bow + 3.3d tipped + 4.2d structure states + the Part 6 §6.1 item-frame facing window (940..=943)");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -15256,7 +15312,7 @@ mod v110_tests {
             assert!(is_v5_state(s));
         }
         assert_eq!(BLOCK_COUNT, 587); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 940); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(STATE_COUNT, 944); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
     }
 
     /// magma emits light level 3 (VERIFIED — reference wiki /Magma_Block,
@@ -15297,7 +15353,7 @@ mod auditfix_tests {
         }
         assert_eq!(V6_COUNT, 6);
         assert_eq!(BLOCK_COUNT, 587); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 940); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(STATE_COUNT, 944); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // solidity classes: log/planks solid-opaque (hardness family 2
                                       // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
                                       // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -15356,7 +15412,7 @@ mod v111_tests {
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
         assert_eq!(BLOCK_COUNT, 587); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 940); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
+        assert_eq!(STATE_COUNT, 944); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
                                       // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_CLEAVER), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -15486,7 +15542,7 @@ mod v112_tests {
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
         assert_eq!(BLOCK_COUNT, 587);
-        assert_eq!(STATE_COUNT, 940); // + the Round-13 station identities (861..=862)
+        assert_eq!(STATE_COUNT, 944); // + the Round-13 station identities (861..=862)
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -15652,7 +15708,7 @@ mod v114_tests {
         );
         // bounds + window shape
         assert_eq!(BLOCK_COUNT, 587);
-        assert_eq!(STATE_COUNT, 940); // + the Round-13 station identities (861..=862)
+        assert_eq!(STATE_COUNT, 944); // + the Round-13 station identities (861..=862)
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -15787,7 +15843,7 @@ mod v114_tests {
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
         assert_eq!(BLOCK_COUNT, 587);
-        assert_eq!(STATE_COUNT, 940); // + the Round-13 station identities (861..=862)
+        assert_eq!(STATE_COUNT, 944); // + the Round-13 station identities (861..=862)
     }
 }
 
@@ -15888,7 +15944,7 @@ mod v115_tests {
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
         assert_eq!(BLOCK_COUNT, 587);
-        assert_eq!(STATE_COUNT, 940); // + the Round-13 station identities (861..=862)
+        assert_eq!(STATE_COUNT, 944); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 474);
     }
 }
@@ -16054,7 +16110,7 @@ mod v116_tests {
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
         assert_eq!(BLOCK_COUNT, 587);
-        assert_eq!(STATE_COUNT, 940); // + the Round-13 station identities (861..=862)
+        assert_eq!(STATE_COUNT, 944); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 474);
     }
 
@@ -16249,7 +16305,7 @@ mod v116_tests {
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
         assert_eq!(BLOCK_COUNT, 587);
-        assert_eq!(STATE_COUNT, 940); // + the Round-13 station identities (861..=862)
+        assert_eq!(STATE_COUNT, 944); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 474);
     }
 
@@ -16522,7 +16578,7 @@ mod tnt_tests {
         assert!(PICKER_BLOCKS.contains(&TNT), "picker missing TNT");
         assert_eq!(creative_tab(TNT), CreativeTab::Redstone);
         assert_eq!(BLOCK_COUNT, 587);
-        assert_eq!(STATE_COUNT, 940);
+        assert_eq!(STATE_COUNT, 944);
         // the per-state tiles fold to the same three faces (the HUD/hotbar
         // blit path through state_tiles's fallback)
         assert_eq!(

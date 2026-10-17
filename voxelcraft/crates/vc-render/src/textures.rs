@@ -5528,6 +5528,20 @@ pub fn scan_labpbr_materials(source: &dyn vc_pack::pack::PackSource) -> usize {
     tiles_with_maps
 }
 
+/// Built-in models may reference a procedurally painted atlas tile by its
+/// canonical engine texture location instead of shipping a duplicate PNG
+/// inside the pack: the atlas already holds that art (painted in-repo, L3),
+/// so the model merge reuses the existing tile in place.
+///
+/// Every entry is deliberately limited to art the engine paints itself —
+/// anything else still resolves through the pack's `textures/` files.
+pub fn procedural_tile_for(loc: &str) -> Option<u16> {
+    match vc_pack::model::loc_key(loc) {
+        "block/item_frame" => Some(vc_blocks::blocks::TILE_ITEM_FRAME),
+        _ => None,
+    }
+}
+
 /// Merge pack textures into the procedural atlas + fill the ModelSet's
 /// tile registry. Returns the animations to drive per frame.
 ///
@@ -5563,13 +5577,19 @@ pub fn merge_pack_textures(
     let mut next_tile = PACK_TILE_BASE;
     for loc in locs {
         if next_tile > PACK_TILE_MAX {
-            // atlas full: everything remaining falls back to the missing tile
-            models.tiles.insert(loc, vc_mesh::mesh::TILE_MISSING);
+            // atlas full: everything remaining falls back to the
+            // procedural tile addressing this location (if any), else the
+            // missing tile
+            let t = procedural_tile_for(&loc).unwrap_or(vc_mesh::mesh::TILE_MISSING);
+            models.tiles.insert(loc, t);
             continue;
         }
         let path = vc_pack::model::texture_path(&loc);
         let Some(bytes) = source.read(&path) else {
-            models.tiles.insert(loc, vc_mesh::mesh::TILE_MISSING);
+            // no pack file: a procedurally painted tile addressing this
+            // location is reused in place (never a missing tile)
+            let t = procedural_tile_for(&loc).unwrap_or(vc_mesh::mesh::TILE_MISSING);
+            models.tiles.insert(loc, t);
             continue;
         };
         let Ok(img) = image::load_from_memory(&bytes) else {
@@ -6379,6 +6399,28 @@ mod pack_merge_tests {
                 "atlas tile {t} changed under the pack merge — pack tiles overlap procedural tiles"
             );
         }
+    }
+
+    /// Part 6 §6.1: the item-frame model references the procedurally
+    /// painted frame tile by location — no duplicated PNG in the pack and
+    /// no pack-range tile (the existing atlas art is reused untouched).
+    #[test]
+    fn item_frame_model_uses_the_procedural_tile() {
+        use vc_blocks::blocks::TILE_ITEM_FRAME;
+        assert_eq!(
+            procedural_tile_for("voxelcraft:block/item_frame"),
+            Some(TILE_ITEM_FRAME)
+        );
+        assert_eq!(
+            procedural_tile_for("block/item_frame"),
+            Some(TILE_ITEM_FRAME)
+        );
+        // unrelated locations still resolve through the pack's own files
+        assert_eq!(procedural_tile_for("voxelcraft:block/oak_planks"), None);
+        assert!(
+            TILE_ITEM_FRAME < PACK_TILE_BASE,
+            "the procedural tile must live outside the pack tile range"
+        );
     }
 }
 

@@ -177,7 +177,9 @@ pub(super) fn flower_pot_art(a: &mut [u8], t: u16) {
     }
 }
 
-/// Item frame — dark-wood frame with a pale face (cross-rendered sprite;
+/// Item frame — dark-wood frame with a pale face. Part 6 §6.1: the
+/// frame now renders as a thin wall plate through the blockstate/model
+/// dispatch (this tile is the plate's texture, addressed by location —
 /// the displayed item blits over the face at draw time).
 pub(super) fn item_frame_art(a: &mut [u8], t: u16) {
     let rows = [
